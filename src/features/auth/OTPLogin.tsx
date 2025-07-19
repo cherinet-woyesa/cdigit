@@ -1,11 +1,36 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
-import logo from '../../assets/logo.jpg'
-import React from 'react'
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import logo from '../../assets/logo.jpg';
+import React from 'react';
+import authService from './authService';
 
 // Reusable Input component
-function FormInput({ id, type, value, onChange, placeholder, ariaLabel, ariaInvalid, ariaDescribedby, autoFocus, disabled }: any) {
+interface FormInputProps {
+  id: string;
+  type: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+  ariaLabel: string;
+  ariaInvalid?: boolean;
+  ariaDescribedby?: string;
+  autoFocus?: boolean;
+  disabled?: boolean;
+}
+
+const FormInput: React.FC<FormInputProps> = ({
+  id,
+  type,
+  value,
+  onChange,
+  placeholder,
+  ariaLabel,
+  ariaInvalid,
+  ariaDescribedby,
+  autoFocus,
+  disabled,
+}) => {
   return (
     <input
       id={id}
@@ -20,11 +45,25 @@ function FormInput({ id, type, value, onChange, placeholder, ariaLabel, ariaInva
       autoFocus={autoFocus}
       disabled={disabled}
     />
-  )
-}
+  );
+};
 
 // Reusable Button component
-function FormButton({ onClick, disabled, children, ariaLabel, className }: any) {
+interface FormButtonProps {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  ariaLabel: string;
+  className?: string;
+}
+
+const FormButton: React.FC<FormButtonProps> = ({
+  onClick,
+  disabled,
+  children,
+  ariaLabel,
+  className,
+}) => {
   return (
     <button
       onClick={onClick}
@@ -34,98 +73,94 @@ function FormButton({ onClick, disabled, children, ariaLabel, className }: any) 
     >
       {children}
     </button>
-  )
-}
+  );
+};
 
-export default function OTPLogin() {
-  const [step, setStep] = useState(1)
-  const [phone, setPhoneInput] = useState('')
-  const [otp, setOtp] = useState('')
-  const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
-  const { setPhone } = useAuth()
-  const [phoneError, setPhoneError] = useState('')
-  const [otpError, setOtpError] = useState('')
-  const [resendCooldown, setResendCooldown] = useState(0)
-  const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null)
+const OTPLogin: React.FC = () => {
+  const [step, setStep] = useState<'request' | 'verify'>('request');
+  const [phone, setPhoneInput] = useState<string>('');
+  const [otp, setOtp] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const navigate = useNavigate();
+  const { setPhone } = useAuth();
+  const [phoneError, setPhoneError] = useState<string>('');
+  const [otpError, setOtpError] = useState<string>('');
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+  const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Start cooldown timer when OTP is sent
   const startResendCooldown = () => {
-    setResendCooldown(30)
+    setResendCooldown(30);
     const timer = setInterval(() => {
       setResendCooldown((prev) => {
         if (prev <= 1) {
-          clearInterval(timer)
-          return 0
+          clearInterval(timer);
+          return 0;
         }
-        return prev - 1
-      })
-    }, 1000)
-    setResendTimer(timer)
-  }
+        return prev - 1;
+      });
+    }, 1000);
+    setResendTimer(timer);
+  };
 
   // Clean up timer on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
-      if (resendTimer) clearInterval(resendTimer)
-    }
-  }, [resendTimer])
+      if (resendTimer) clearInterval(resendTimer);
+    };
+  }, [resendTimer]);
 
-  // Send OTP handler (simulated async API call)
+  // Send OTP handler
   const handleSendOtp = async () => {
-    setPhoneError('')
+    setPhoneError('');
     if (!phone) {
-      setPhoneError('Phone number is required')
-      return
+      setPhoneError('Phone number is required');
+      return;
     }
-    // Simple validation: must be 10 digits, starts with 09
-    if (!/^09\d{8}$/.test(phone)) {
-      setPhoneError('Enter a valid 10-digit phone number starting with 09')
-      return
-    }
-    setLoading(true)
-    // Simulate async API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setLoading(false)
-    setStep(2)
-    startResendCooldown()
-  }
+    setLoading(true);
 
-  // Verify OTP handler (simulated async API call)
+    try {
+      const response = await authService.requestOtp(phone);
+      setStep('verify');
+      startResendCooldown();
+    } catch (err: any) {
+      setPhoneError(
+        err?.response?.data?.message || 'Failed to send OTP. Please ensure the phone number is registered and valid.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Verify OTP handler
   const handleVerifyOtp = async () => {
-    setOtpError('')
+    setOtpError('');
     if (!otp) {
-      setOtpError('OTP is required')
-      return
+      setOtpError('OTP is required');
+      return;
     }
-    // Simple validation: must be 4 digits
-    if (!/^\d{4}$/.test(otp)) {
-      setOtpError('Enter a valid 4-digit OTP')
-      return
+    setLoading(true);
+    try {
+      await authService.loginWithOtp(phone, otp);
+      setPhone(phone);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setOtpError(
+        err?.response?.data?.message || 'Invalid OTP. Please try again.'
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(true)
-    // Simulate async API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setLoading(false)
-    setPhone(phone)
-    navigate('/dashboard')
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-4">
       <div className="w-full max-w-2xl bg-white shadow-2xl rounded-2xl p-14 space-y-12">
         {/* Brand Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-2xl font-semibold text-gray-900 uppercase">
-            Commercial Bank of Ethiopia
-          </h1>
-          {/* Logo placeholder */}
+          <h1 className="text-2xl font-semibold text-gray-900 uppercase">Commercial Bank of Ethiopia</h1>
           <div className="w-44 h-44 mx-auto">
-            <img
-              src={logo}
-              alt="CBE Logo"
-              className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-purple-200"
-            />
+            <img src={logo} alt="CBE Logo" className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-purple-200" />
           </div>
         </div>
 
@@ -133,14 +168,12 @@ export default function OTPLogin() {
         <div className="text-center">
           <h2 className="text-4xl font-extrabold text-purple-700">WELCOME</h2>
           <p className="text-gray-600 mt-4 text-lg">
-            {step === 1
-              ? 'Enter your phone number to access dashboard'
-              : 'Enter the OTP sent to your phone'}
+            {step === 'request' ? 'Enter your phone number to access dashboard' : 'Enter the OTP sent to your phone'}
           </p>
         </div>
 
         {/* Step 1: Enter Phone */}
-        {step === 1 && (
+        {step === 'request' && (
           <div className="space-y-10">
             <label className="block" htmlFor="phone-input">
               <span className="text-gray-700 font-medium text-lg">Phone Number</span>
@@ -148,7 +181,7 @@ export default function OTPLogin() {
                 id="phone-input"
                 type="tel"
                 value={phone}
-                onChange={(e: any) => setPhoneInput(e.target.value)}
+                onChange={(e) => setPhoneInput(e.target.value)}
                 placeholder="e.g. 09XXXXXXXX"
                 ariaLabel="Phone Number"
                 ariaInvalid={!!phoneError}
@@ -164,14 +197,20 @@ export default function OTPLogin() {
               ariaLabel="Send OTP"
             >
               {loading ? (
-                <span className="flex items-center"><svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>Sending OTP...</span>
+                <span className="flex items-center">
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Sending OTP...
+                </span>
               ) : 'Send OTP'}
             </FormButton>
           </div>
         )}
 
         {/* Step 2: Enter OTP */}
-        {step === 2 && (
+        {step === 'verify' && (
           <div className="space-y-10">
             <label className="block" htmlFor="otp-input">
               <span className="text-gray-700 font-medium text-lg">Enter OTP</span>
@@ -179,7 +218,7 @@ export default function OTPLogin() {
                 id="otp-input"
                 type="text"
                 value={otp}
-                onChange={(e: any) => setOtp(e.target.value)}
+                onChange={(e) => setOtp(e.target.value)}
                 placeholder="4-digit code"
                 ariaLabel="OTP Code"
                 ariaInvalid={!!otpError}
@@ -195,13 +234,19 @@ export default function OTPLogin() {
               ariaLabel="Verify and Continue"
             >
               {loading ? (
-                <span className="flex items-center"><svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>Verifying...</span>
+                <span className="flex items-center">
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Verifying...
+                </span>
               ) : 'Verify & Continue'}
             </FormButton>
             <div className="flex justify-between items-center mt-2">
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep('request')}
                 className="text-purple-700 hover:underline text-sm font-medium"
                 disabled={loading}
                 aria-label="Back to phone input"
@@ -222,5 +267,7 @@ export default function OTPLogin() {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
+
+export default OTPLogin;

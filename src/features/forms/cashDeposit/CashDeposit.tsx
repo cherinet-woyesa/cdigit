@@ -22,7 +22,7 @@ export default function CashDepositForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
 
-  // Auto-fill branch info from QR/link (as per FSD)
+  // Auto-fill branch info from QR/link
   const branchInfo = {
     name: 'Main Branch',
     id: 'BR1001',
