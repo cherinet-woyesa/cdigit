@@ -77,16 +77,19 @@ const FormButton: React.FC<FormButtonProps> = ({
 };
 
 const OTPLogin: React.FC = () => {
-  const [step, setStep] = useState<'request' | 'verify'>('request');
-  const [phone, setPhoneInput] = useState<string>('');
-  const [otp, setOtp] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [step, setStep] = useState(1);
+  const [phone, setPhoneInput] = useState('');
+  const [otp, setOtp] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { setPhone } = useAuth();
-  const [phoneError, setPhoneError] = useState<string>('');
-  const [otpError, setOtpError] = useState<string>('');
-  const [resendCooldown, setResendCooldown] = useState<number>(0);
+  const [phoneError, setPhoneError] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
+  
+  // State for showing test OTP
+  const [testOtp, setTestOtp] = useState<string>('');
 
   // Start cooldown timer when OTP is sent
   const startResendCooldown = () => {
@@ -113,19 +116,27 @@ const OTPLogin: React.FC = () => {
   // Send OTP handler
   const handleSendOtp = async () => {
     setPhoneError('');
+    setTestOtp('');
     if (!phone) {
       setPhoneError('Phone number is required');
       return;
     }
+    if (!/^09\d{8}$/.test(phone)) {
+      setPhoneError('Enter a valid 10-digit phone number starting with 09');
+      return;
+    }
     setLoading(true);
-
     try {
       const response = await authService.requestOtp(phone);
-      setStep('verify');
+      setStep(2);
       startResendCooldown();
+
+      // Show OTP for testing
+      setTestOtp(response.otp || '');
     } catch (err: any) {
       setPhoneError(
-        err?.response?.data?.message || 'Failed to send OTP. Please ensure the phone number is registered and valid.'
+        err?.response?.data?.message ||
+        'Failed to send OTP. Please ensure the phone number is registered and valid.'
       );
     } finally {
       setLoading(false);
@@ -139,6 +150,10 @@ const OTPLogin: React.FC = () => {
       setOtpError('OTP is required');
       return;
     }
+    if (!/^\d{4}$/.test(otp)) {
+      setOtpError('Enter a valid 4-digit OTP');
+      return;
+    }
     setLoading(true);
     try {
       await authService.loginWithOtp(phone, otp);
@@ -146,7 +161,8 @@ const OTPLogin: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       setOtpError(
-        err?.response?.data?.message || 'Invalid OTP. Please try again.'
+        err?.response?.data?.message ||
+        'Invalid OTP. Please try again.'
       );
     } finally {
       setLoading(false);
@@ -158,9 +174,15 @@ const OTPLogin: React.FC = () => {
       <div className="w-full max-w-2xl bg-white shadow-2xl rounded-2xl p-14 space-y-12">
         {/* Brand Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-2xl font-semibold text-gray-900 uppercase">Commercial Bank of Ethiopia</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 uppercase">
+            Commercial Bank of Ethiopia
+          </h1>
           <div className="w-44 h-44 mx-auto">
-            <img src={logo} alt="CBE Logo" className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-purple-200" />
+            <img
+              src={logo}
+              alt="CBE Logo"
+              className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-purple-200"
+            />
           </div>
         </div>
 
@@ -168,12 +190,14 @@ const OTPLogin: React.FC = () => {
         <div className="text-center">
           <h2 className="text-4xl font-extrabold text-purple-700">WELCOME</h2>
           <p className="text-gray-600 mt-4 text-lg">
-            {step === 'request' ? 'Enter your phone number to access dashboard' : 'Enter the OTP sent to your phone'}
+            {step === 1
+              ? 'Enter your phone number to access dashboard'
+              : 'Enter the OTP sent to your phone'}
           </p>
         </div>
 
         {/* Step 1: Enter Phone */}
-        {step === 'request' && (
+        {step === 1 && (
           <div className="space-y-10">
             <label className="block" htmlFor="phone-input">
               <span className="text-gray-700 font-medium text-lg">Phone Number</span>
@@ -210,8 +234,14 @@ const OTPLogin: React.FC = () => {
         )}
 
         {/* Step 2: Enter OTP */}
-        {step === 'verify' && (
+        {step === 2 && (
           <div className="space-y-10">
+            {/* Show test OTP for development/testing */}
+            {testOtp && (
+              <div className="bg-yellow-100 text-yellow-900 font-mono p-3 rounded-lg text-center mb-2">
+                <span className="font-bold">[Test OTP]:</span> {testOtp}
+              </div>
+            )}
             <label className="block" htmlFor="otp-input">
               <span className="text-gray-700 font-medium text-lg">Enter OTP</span>
               <FormInput
@@ -246,7 +276,7 @@ const OTPLogin: React.FC = () => {
             <div className="flex justify-between items-center mt-2">
               <button
                 type="button"
-                onClick={() => setStep('request')}
+                onClick={() => setStep(1)}
                 className="text-purple-700 hover:underline text-sm font-medium"
                 disabled={loading}
                 aria-label="Back to phone input"
