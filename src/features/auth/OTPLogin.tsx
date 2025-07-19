@@ -50,7 +50,6 @@ const FormInput: React.FC<FormInputProps> = ({
 
 // Reusable Button component
 interface FormButtonProps {
-  onClick: () => void;
   disabled?: boolean;
   children: React.ReactNode;
   ariaLabel: string;
@@ -58,7 +57,6 @@ interface FormButtonProps {
 }
 
 const FormButton: React.FC<FormButtonProps> = ({
-  onClick,
   disabled,
   children,
   ariaLabel,
@@ -66,7 +64,7 @@ const FormButton: React.FC<FormButtonProps> = ({
 }) => {
   return (
     <button
-      onClick={onClick}
+      type="submit" // Set to submit type
       disabled={disabled}
       className={`w-full bg-purple-700 text-white py-3 rounded-lg hover:bg-purple-800 disabled:opacity-50 transition text-lg font-medium flex items-center justify-center ${className || ''}`}
       aria-label={ariaLabel}
@@ -77,19 +75,16 @@ const FormButton: React.FC<FormButtonProps> = ({
 };
 
 const OTPLogin: React.FC = () => {
-  const [step, setStep] = useState(1);
-  const [phone, setPhoneInput] = useState('');
-  const [otp, setOtp] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'request' | 'verify'>('request');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [otp, setOtp] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
   const { setPhone } = useAuth();
-  const [phoneError, setPhoneError] = useState('');
-  const [otpError, setOtpError] = useState('');
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [message, setMessage] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
   const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
-  
-  // State for showing test OTP
-  const [testOtp, setTestOtp] = useState<string>('');
 
   // Start cooldown timer when OTP is sent
   const startResendCooldown = () => {
@@ -114,56 +109,40 @@ const OTPLogin: React.FC = () => {
   }, [resendTimer]);
 
   // Send OTP handler
-  const handleSendOtp = async () => {
-    setPhoneError('');
-    setTestOtp('');
-    if (!phone) {
-      setPhoneError('Phone number is required');
-      return;
-    }
-    if (!/^09\d{8}$/.test(phone)) {
-      setPhoneError('Enter a valid 10-digit phone number starting with 09');
-      return;
-    }
+  const handleRequestOtp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
     setLoading(true);
-    try {
-      const response = await authService.requestOtp(phone);
-      setStep(2);
-      startResendCooldown();
 
-      // Show OTP for testing
-      setTestOtp(response.otp || '');
+    try {
+      const response = await authService.requestOtp(phoneNumber);
+      setMessage(response.message || 'OTP sent! Please check your phone.');
+      setStep('verify');
+      startResendCooldown();
     } catch (err: any) {
-      setPhoneError(
-        err?.response?.data?.message ||
-        'Failed to send OTP. Please ensure the phone number is registered and valid.'
-      );
+      setError(err.response?.data?.message || 'Failed to send OTP. Please ensure the phone number is registered and valid.');
+      console.error('Request OTP Error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   // Verify OTP handler
-  const handleVerifyOtp = async () => {
-    setOtpError('');
-    if (!otp) {
-      setOtpError('OTP is required');
-      return;
-    }
-    if (!/^\d{4}$/.test(otp)) {
-      setOtpError('Enter a valid 4-digit OTP');
-      return;
-    }
+  const handleLoginWithOtp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
     setLoading(true);
+
     try {
-      await authService.loginWithOtp(phone, otp);
-      setPhone(phone);
+      const response = await authService.loginWithOtp(phoneNumber, otp);
+      setMessage(response.message || 'Login successful!');
+      setPhone(phoneNumber);
       navigate('/dashboard');
     } catch (err: any) {
-      setOtpError(
-        err?.response?.data?.message ||
-        'Invalid OTP. Please try again.'
-      );
+      setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+      console.error('Login with OTP Error:', err);
     } finally {
       setLoading(false);
     }
@@ -184,40 +163,39 @@ const OTPLogin: React.FC = () => {
               className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-purple-200"
             />
           </div>
-        </div>
-
-        {/* Welcome Text */}
-        <div className="text-center">
           <h2 className="text-4xl font-extrabold text-purple-700">WELCOME</h2>
-          <p className="text-gray-600 mt-4 text-lg">
-            {step === 1
-              ? 'Enter your phone number to access dashboard'
-              : 'Enter the OTP sent to your phone'}
-          </p>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Enter your phone number to access dashboard
+          </h2>
         </div>
 
-        {/* Step 1: Enter Phone */}
-        {step === 1 && (
-          <div className="space-y-10">
+        {/* Message and Error Display */}
+        {message && <p className="text-green-600 text-center">{message}</p>}
+        {error && <p className="text-red-600 text-center">{error}</p>}
+        
+       
+        
+
+        {/* Step 1: Enter Phone Number */}
+        {step === 'request' && (
+          <form onSubmit={handleRequestOtp} className="space-y-10">
             <label className="block" htmlFor="phone-input">
               <span className="text-gray-700 font-medium text-lg">Phone Number</span>
               <FormInput
                 id="phone-input"
                 type="tel"
-                value={phone}
-                onChange={(e) => setPhoneInput(e.target.value)}
-                placeholder="e.g. 09XXXXXXXX"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="e.g. 0976173985"
                 ariaLabel="Phone Number"
-                ariaInvalid={!!phoneError}
+                ariaInvalid={!!error}
                 ariaDescribedby="phone-error"
                 autoFocus
                 disabled={loading}
               />
             </label>
-            {phoneError && <div id="phone-error" className="text-red-600 text-sm">{phoneError}</div>}
             <FormButton
-              onClick={handleSendOtp}
-              disabled={!phone || loading}
+              disabled={!phoneNumber || loading}
               ariaLabel="Send OTP"
             >
               {loading ? (
@@ -230,18 +208,12 @@ const OTPLogin: React.FC = () => {
                 </span>
               ) : 'Send OTP'}
             </FormButton>
-          </div>
+          </form>
         )}
 
         {/* Step 2: Enter OTP */}
-        {step === 2 && (
-          <div className="space-y-10">
-            {/* Show test OTP for development/testing */}
-            {testOtp && (
-              <div className="bg-yellow-100 text-yellow-900 font-mono p-3 rounded-lg text-center mb-2">
-                <span className="font-bold">[Test OTP]:</span> {testOtp}
-              </div>
-            )}
+        {step === 'verify' && (
+          <form onSubmit={handleLoginWithOtp} className="space-y-10">
             <label className="block" htmlFor="otp-input">
               <span className="text-gray-700 font-medium text-lg">Enter OTP</span>
               <FormInput
@@ -251,15 +223,13 @@ const OTPLogin: React.FC = () => {
                 onChange={(e) => setOtp(e.target.value)}
                 placeholder="4-digit code"
                 ariaLabel="OTP Code"
-                ariaInvalid={!!otpError}
+                ariaInvalid={!!error}
                 ariaDescribedby="otp-error"
                 autoFocus
                 disabled={loading}
               />
             </label>
-            {otpError && <div id="otp-error" className="text-red-600 text-sm">{otpError}</div>}
             <FormButton
-              onClick={handleVerifyOtp}
               disabled={!otp || loading}
               ariaLabel="Verify and Continue"
             >
@@ -271,12 +241,12 @@ const OTPLogin: React.FC = () => {
                   </svg>
                   Verifying...
                 </span>
-              ) : 'Verify & Continue'}
+              ) : 'Verify & Login'}
             </FormButton>
             <div className="flex justify-between items-center mt-2">
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep('request')}
                 className="text-purple-700 hover:underline text-sm font-medium"
                 disabled={loading}
                 aria-label="Back to phone input"
@@ -285,7 +255,7 @@ const OTPLogin: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => { if (resendCooldown === 0) handleSendOtp() }}
+                onClick={() => { if (resendCooldown === 0) handleRequestOtp(new Event('click')) }}
                 disabled={resendCooldown > 0 || loading}
                 className="text-purple-700 hover:underline text-sm font-medium disabled:opacity-50"
                 aria-label="Resend OTP"
@@ -293,7 +263,7 @@ const OTPLogin: React.FC = () => {
                 {resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : 'Resend OTP'}
               </button>
             </div>
-          </div>
+          </form>
         )}
       </div>
     </div>
