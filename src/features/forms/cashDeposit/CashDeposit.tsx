@@ -130,22 +130,21 @@ export default function CashDepositForm() {
 
             // Navigate to confirmation page
             navigate('/form/cash-deposit/cashdepositconfirmation', {
-                state: {
-                    formType: 'Cash Deposit',
-                    referenceId: `CD-${Date.now()}`,
-                    accountNumber: formData.accountNumber,
-                    amount: formData.amount,
-                    branch: branchInfo.name,
-                    token: Math.floor(1000 + Math.random() * 9000),
-                    window: Math.floor(1 + Math.random() * 5),
-                    message: response.message, // Optional: display success message
-                }
-            });
-        } catch (error) {
-            setIsSubmitting(false);
-            alert(error); // Show error to user
-        }
-    };
+            state: {
+                formType: 'Cash Deposit',
+                referenceId: response.depositId ? `CD-${response.depositId}` : `CD-${Date.now()}`,
+                accountNumber: formData.accountNumber,
+                amount: formData.amount,
+                branch: branchInfo.name,
+                token: Math.floor(1000 + Math.random() * 9000),
+                message: response.message, // Show backend message
+            }
+        });
+    } catch (error: any) {
+        setIsSubmitting(false);
+        alert(error?.message || error?.Message || error); // Show backend error
+    }
+};
 
     return (
         <div className="min-h-screen bg-[#f5f0ff] p-4 md:p-8">
