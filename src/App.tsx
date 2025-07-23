@@ -5,7 +5,8 @@ import CashDeposit from './features/forms/cashDeposit/CashDeposit';
 import CashDepositConfirmation from './features/forms/cashDeposit/CashDepositConfirmation';
 import CashWithdrawal from './features/forms/cashWithdrawal/CashWithDrawal';
 import CashWithDrawalConfirmation from './features/forms/cashWithdrawal/CashWithDrawalConfirmation';
-import AccountOpening from './features/forms/accountOpening/AccountOpening'; // Import the new component
+//import AccountOpening from './features/forms/accountOpening/AccountOpening'; // Import the new component
+import AccountOpening from './components/AccountOpeningForm';
 
 
 function App() {
