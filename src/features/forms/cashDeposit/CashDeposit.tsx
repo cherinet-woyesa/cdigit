@@ -1,5 +1,6 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import depositService from '../../auth/depositService'; // Adjust as needed
 
 // Helper: simple number to words (English, for demo)
@@ -48,46 +49,75 @@ export default function CashDepositForm() {
 // Type for errors (move to top level)
 type Errors = Partial<Record<keyof FormData, string>>;
 
-    // Get phone number and name from auth (replace with your real auth logic)
-    // Example: from localStorage or context
-    const OTP_PHONE = localStorage.getItem('phoneNumber') || "0911000111";
-    const OTP_NAME = localStorage.getItem('userName') || "Customer Name";
+    // Get phone number from AuthContext (set at login)
+    const { phone } = useAuth();
+
+    // Load persisted fields from localStorage if present
+    const persistedAccountNumber = localStorage.getItem('cd_accountNumber') || '';
+    const persistedAccountHolderName = localStorage.getItem('cd_accountHolderName') || '';
+    const persistedDepositedBy = localStorage.getItem('cd_depositedBy') || '';
+    const persistedTelephoneNumber = localStorage.getItem('cd_telephoneNumber') || (phone || '');
 
     const [formData, setFormData] = useState<FormData>({
-        accountNumber: '',
-        accountHolderName: '',
+        accountNumber: persistedAccountNumber,
+        accountHolderName: persistedAccountHolderName,
         accountType: 'Savings',
         amount: '',
         amountInWords: '',
         sourceOfProceeds: '',
         denominations: '',
-        depositedBy: OTP_NAME,
-        telephoneNumber: OTP_PHONE
+        depositedBy: persistedDepositedBy,
+        telephoneNumber: persistedTelephoneNumber
     });
 
     // For account selection
     const [accounts, setAccounts] = useState<any[]>([]);
     const [accountDropdown, setAccountDropdown] = useState(false);
 
-    // Fetch accounts by phone number on mount
+    // Fetch accounts by phone number from AuthContext on mount or when phone changes
     useEffect(() => {
         const fetchAccounts = async () => {
-            if (!OTP_PHONE) return;
+            if (!phone) return;
             try {
-                const resp = await fetch(`/api/Accounts/by-phone/${OTP_PHONE}`);
+                const resp = await fetch(`/api/Accounts/by-phone/${phone}`);
                 if (resp.status === 200) {
                     const data = await resp.json();
                     setAccounts(data);
                     if (data.length === 1) {
-                        setFormData((prev: FormData) => ({
-                            ...prev,
-                            accountNumber: data[0].accountNumber,
-                            accountHolderName: data[0].accountHolderName || data[0].name || '',
-                            telephoneNumber: OTP_PHONE
-                        }));
+                        setFormData((prev: FormData) => {
+                            const updated = {
+                                ...prev,
+                                accountNumber: data[0].accountNumber,
+                                accountHolderName: data[0].accountHolderName || data[0].name || '',
+                                depositedBy: data[0].accountHolderName || data[0].name || '',
+                                telephoneNumber: phone
+                            };
+                            // Persist
+                            localStorage.setItem('cd_accountNumber', updated.accountNumber);
+                            localStorage.setItem('cd_accountHolderName', updated.accountHolderName);
+                            localStorage.setItem('cd_depositedBy', updated.depositedBy);
+                            localStorage.setItem('cd_telephoneNumber', updated.telephoneNumber);
+                            return updated;
+                        });
                         setAccountDropdown(false);
                     } else if (data.length > 1) {
                         setAccountDropdown(true);
+                        // Optionally clear fields until user selects
+                        setFormData((prev: FormData) => {
+                            const updated = {
+                                ...prev,
+                                accountNumber: '',
+                                accountHolderName: '',
+                                depositedBy: '',
+                                telephoneNumber: phone
+                            };
+                            // Persist
+                            localStorage.setItem('cd_accountNumber', '');
+                            localStorage.setItem('cd_accountHolderName', '');
+                            localStorage.setItem('cd_depositedBy', '');
+                            localStorage.setItem('cd_telephoneNumber', updated.telephoneNumber);
+                            return updated;
+                        });
                     }
                 } else {
                     setAccounts([]);
@@ -99,7 +129,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
             }
         };
         fetchAccounts();
-    }, [OTP_PHONE]);
+    }, [phone]);
 
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,10 +146,14 @@ type Errors = Partial<Record<keyof FormData, string>>;
     // Handle input changes
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData((prev: FormData) => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData((prev: FormData) => {
+            const updated = { ...prev, [name]: value };
+            // Persist relevant fields
+            if (["accountNumber", "accountHolderName", "depositedBy", "telephoneNumber"].includes(name)) {
+                localStorage.setItem(`cd_${name}`, value);
+            }
+            return updated;
+        });
         // Auto-fill amount in words
         if (name === "amount") {
             setFormData((prev: FormData) => ({
@@ -128,13 +162,22 @@ type Errors = Partial<Record<keyof FormData, string>>;
                 amountInWords: numberToWords(Number(value))
             }));
         }
-        // If accountNumber is changed via dropdown, update holder name
+        // If accountNumber is changed via dropdown, update holder name and depositedBy
         if (name === "accountNumber" && accounts.length > 0) {
             const selected = accounts.find(acc => acc.accountNumber === value);
-            setFormData((prev: FormData) => ({
-                ...prev,
-                accountHolderName: selected ? (selected.accountHolderName || selected.name || '') : ''
-            }));
+            setFormData((prev: FormData) => {
+                const updated = {
+                    ...prev,
+                    accountHolderName: selected ? (selected.accountHolderName || selected.name || '') : '',
+                    depositedBy: selected ? (selected.accountHolderName || selected.name || '') : '',
+                    telephoneNumber: phone || ''
+                };
+                // Persist
+                localStorage.setItem('cd_accountHolderName', updated.accountHolderName);
+                localStorage.setItem('cd_depositedBy', updated.depositedBy);
+                localStorage.setItem('cd_telephoneNumber', updated.telephoneNumber);
+                return updated;
+            });
         }
     };
 
@@ -245,7 +288,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
     };
 
     return (
-        <div className="min-h-screen bg-[#f5f0ff] p-4 md:p-8">
+        <div className="min-h-screen bg-[#faf6e9] p-4 md:p-8">
             <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden border border-purple-200">
                 <div className="bg-purple-700 p-6 text-white">
                     <h1 className="text-2xl font-bold">Cash Deposit Form</h1>
@@ -257,7 +300,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-7">
                     {/* Account Section */}
-                    <div className="space-y-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="space-y-4 p-4 bg-purple-100 rounded-lg border border-purple-200">
                         <h2 className="text-lg font-semibold text-purple-800">Account Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -270,7 +313,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                             name="accountNumber"
                                             value={formData.accountNumber}
                                             onChange={handleChange}
-                                            className={`flex-1 rounded-l-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
+                                            className={`flex-1 rounded-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-700 p-2`}
                                         >
                                             <option value="">Select account</option>
                                             {accounts.map(acc => (
@@ -285,19 +328,11 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                             name="accountNumber"
                                             value={formData.accountNumber}
                                             onChange={handleChange}
-                                            className={`flex-1 rounded-l-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
+                                            className={`flex-1 rounded-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-700 p-2`}
                                             placeholder="Enter account number"
                                             readOnly={accounts.length === 1}
                                         />
                                     )}
-                                    <button
-                                        type="button"
-                                        onClick={validateAccount}
-                                        disabled={isSearching}
-                                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-r-lg"
-                                    >
-                                        {isSearching ? "Searching..." : "Search"}
-                                    </button>
                                 </div>
                                 {errors.accountNumber &&
                                     <p className="mt-1 text-xs text-red-600">{errors.accountNumber}</p>
@@ -323,26 +358,24 @@ type Errors = Partial<Record<keyof FormData, string>>;
                         {/* Account type */}
                         <div>
                             <label className="block text-sm font-medium text-purple-700 mb-1">Type of Account <span className="text-red-500">*</span></label>
-                            <div className="flex space-x-4">
-                                {(['Savings', 'Current', 'Special Demand'] as const).map((type) => (
-                                    <label key={type} className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name="accountType"
-                                            value={type}
-                                            checked={formData.accountType === type}
-                                            onChange={handleChange}
-                                            className="text-purple-600 focus:ring-purple-500"
-                                        />
-                                        <span className="ml-2 text-gray-700">{type}</span>
-                                    </label>
-                                ))}
+                            <div>
+                                <select
+                                    name="accountType"
+                                    value={formData.accountType}
+                                    onChange={handleChange}
+                                    className="w-full rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-700 p-2"
+                                >
+                                    <option value="">Search or select type...</option>
+                                    {['Savings', 'Current', 'Special Demand'].map((type) => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                     </div>
 
                     {/* Amount Info */}
-                    <div className="space-y-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="space-y-4 p-4 bg-purple-100 rounded-lg border border-purple-200">
                         <h2 className="text-lg font-semibold text-purple-800">Amount Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -410,7 +443,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                     </div>
 
                     {/* Depositor Info */}
-                    <div className="space-y-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="space-y-4 p-4 bg-purple-100 rounded-lg border border-purple-200">
                         <h2 className="text-lg font-semibold text-purple-800">Depositor Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -437,8 +470,8 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                     type="tel"
                                     name="telephoneNumber"
                                     value={formData.telephoneNumber}
-                                    onChange={handleChange}
-                                    className={`w-full rounded-lg border ${errors.telephoneNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
+                                    readOnly
+                                    className={`w-full rounded-lg border ${errors.telephoneNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2 bg-purple-50`}
                                     placeholder="Phone number"
                                 />
                                 {errors.telephoneNumber &&
@@ -450,7 +483,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
 
                     {/* Note & Submit */}
                     <div className="pt-4 border-t border-purple-200">
-                        <div className="bg-purple-50 p-4 rounded-lg mb-4">
+                        <div className="bg-purple-100 p-4 rounded-lg mb-4">
                             <p className="text-sm text-purple-700">
                                 <strong>Note:</strong> This deposit form is not a receipt. Please collect an official receipt or check for digital receipt sent via SMS after transaction processing.
                             </p>
@@ -458,7 +491,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-70"
+                            className="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-70"
                         >
                             {isSubmitting ? 'Processing...' : 'Submit Deposit'}
                         </button>

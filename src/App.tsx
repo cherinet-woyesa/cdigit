@@ -6,7 +6,7 @@ import CashDepositConfirmation from './features/forms/cashDeposit/CashDepositCon
 import CashWithdrawal from './features/forms/cashWithdrawal/CashWithDrawal';
 import CashWithDrawalConfirmation from './features/forms/cashWithdrawal/CashWithDrawalConfirmation';
 //import AccountOpening from './features/forms/accountOpening/AccountOpening'; // Import the new component
-import AccountOpening from './components/AccountOpeningForm';
+import AccountOpening from './features/forms/accountOpening/AccountOpening';
 
 
 function App() {
@@ -19,6 +19,7 @@ function App() {
       <Route path="/form/cash-withdrawal" element={<CashWithdrawal />} />
       <Route path="/form/cash-withdrawal/cashwithdrawalconfirmation" element={<CashWithDrawalConfirmation />} />
       <Route path="/form/account-opening" element={<AccountOpening />} /> {/* Add route for AccountOpening */}
+      
       {/* Add other form routes here */}
     </Routes>
   );
