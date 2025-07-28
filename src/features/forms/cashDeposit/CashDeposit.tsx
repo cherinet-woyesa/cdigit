@@ -1,6 +1,6 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import depositService from '../../auth/depositService'; // Adjusted relative path// Import the deposit service
+import depositService from '../../auth/depositService'; // Adjust as needed
 
 // Helper: simple number to words (English, for demo)
 function numberToWords(num: number): string {
@@ -18,6 +18,20 @@ function numberToWords(num: number): string {
     return num.toString();
 }
 
+// TypeScript types matching your backend DTO
+type DepositFormDto = {
+    formKey: string;
+    branchId: number;
+    accountHolderName: string;
+    accountNumber: string;
+    typeOfAccount: 'Savings' | 'Current' | 'Special Demand';
+    amount: number;
+    amountInWords: string;
+    DepositedBy: string;
+    sourceOfProceeds: string;
+    telephoneNumber: string;
+};
+
 type FormData = {
     accountNumber: string;
     accountHolderName: string;
@@ -30,12 +44,14 @@ type FormData = {
     telephoneNumber: string;
 };
 
+export default function CashDepositForm() {
+// Type for errors (move to top level)
 type Errors = Partial<Record<keyof FormData, string>>;
 
-export default function CashDepositForm() {
-    // Mocked OTP login (real app: context/auth)
-    const OTP_PHONE = "0911000111";
-    const OTP_NAME = "Customer Name";
+    // Get phone number and name from auth (replace with your real auth logic)
+    // Example: from localStorage or context
+    const OTP_PHONE = localStorage.getItem('phoneNumber') || "0911000111";
+    const OTP_NAME = localStorage.getItem('userName') || "Customer Name";
 
     const [formData, setFormData] = useState<FormData>({
         accountNumber: '',
@@ -49,8 +65,45 @@ export default function CashDepositForm() {
         telephoneNumber: OTP_PHONE
     });
 
+    // For account selection
+    const [accounts, setAccounts] = useState<any[]>([]);
+    const [accountDropdown, setAccountDropdown] = useState(false);
+
+    // Fetch accounts by phone number on mount
+    useEffect(() => {
+        const fetchAccounts = async () => {
+            if (!OTP_PHONE) return;
+            try {
+                const resp = await fetch(`/api/Accounts/by-phone/${OTP_PHONE}`);
+                if (resp.status === 200) {
+                    const data = await resp.json();
+                    setAccounts(data);
+                    if (data.length === 1) {
+                        setFormData((prev: FormData) => ({
+                            ...prev,
+                            accountNumber: data[0].accountNumber,
+                            accountHolderName: data[0].accountHolderName || data[0].name || '',
+                            telephoneNumber: OTP_PHONE
+                        }));
+                        setAccountDropdown(false);
+                    } else if (data.length > 1) {
+                        setAccountDropdown(true);
+                    }
+                } else {
+                    setAccounts([]);
+                    setAccountDropdown(false);
+                }
+            } catch (err) {
+                setAccounts([]);
+                setAccountDropdown(false);
+            }
+        };
+        fetchAccounts();
+    }, [OTP_PHONE]);
+
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
     const navigate = useNavigate();
 
     // Auto-fill branch info from QR/link (as per FSD)
@@ -61,35 +114,79 @@ export default function CashDepositForm() {
     };
 
     // Handle input changes
-    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
+        setFormData((prev: FormData) => ({
             ...prev,
             [name]: value
         }));
         // Auto-fill amount in words
         if (name === "amount") {
-            setFormData(prev => ({
+            setFormData((prev: FormData) => ({
                 ...prev,
                 amount: value,
                 amountInWords: numberToWords(Number(value))
             }));
         }
+        // If accountNumber is changed via dropdown, update holder name
+        if (name === "accountNumber" && accounts.length > 0) {
+            const selected = accounts.find(acc => acc.accountNumber === value);
+            setFormData((prev: FormData) => ({
+                ...prev,
+                accountHolderName: selected ? (selected.accountHolderName || selected.name || '') : ''
+            }));
+        }
     };
 
-    // Simulated CBS validation for account number
-    const validateAccount = () => {
+    // Backend account validation (calls your API)
+    const validateAccount = async () => {
         if (!formData.accountNumber || formData.accountNumber.length < 7) {
-            setErrors(prev => ({ ...prev, accountNumber: 'Account number must be at least 7 digits.' }));
-            setFormData(prev => ({ ...prev, accountHolderName: '' }));
+            setErrors((prev: Errors) => ({ ...prev, accountNumber: 'Account number must be at least 7 digits.' }));
+            setFormData((prev: FormData) => ({ ...prev, accountHolderName: '' }));
             return false;
         }
-        setFormData(prev => ({
-            ...prev,
-            accountHolderName: "Sample Customer Name"
-        }));
-        setErrors(prev => ({ ...prev, accountNumber: undefined }));
-        return true;
+        setIsSearching(true);
+        try {
+            const resp = await fetch(`/api/Accounts/AccountNumExist/${formData.accountNumber}`);
+            console.log('Account check response status:', resp.status);
+            if (resp.status === 200) {
+                let account;
+                try {
+                    account = await resp.json();
+                } catch (jsonErr) {
+                    console.error('JSON parse error:', jsonErr);
+                    setErrors((prev: Errors) => ({ ...prev, accountNumber: 'Invalid server response.' }));
+                    setIsSearching(false);
+                    return false;
+                }
+                setFormData((prev: FormData) => ({
+                    ...prev,
+                    accountHolderName: account.accountHolderName || account.name || ''
+                }));
+                setErrors((prev: Errors) => ({ ...prev, accountNumber: undefined }));
+                setIsSearching(false);
+                return true;
+            } else if (resp.status === 404) {
+                setFormData((prev: FormData) => ({ ...prev, accountHolderName: '' }));
+                setErrors((prev: Errors) => ({ ...prev, accountNumber: 'Account not found.' }));
+                setIsSearching(false);
+                return false;
+            } else {
+                // Log the response text for debugging
+                const errorText = await resp.text();
+                console.error('Unexpected response:', resp.status, errorText);
+                setFormData((prev: FormData) => ({ ...prev, accountHolderName: '' }));
+                setErrors((prev: Errors) => ({ ...prev, accountNumber: `Account check failed: ${resp.status}` }));
+                setIsSearching(false);
+                return false;
+            }
+        } catch (err) {
+            console.error('Network or processing error:', err);
+            setFormData((prev: FormData) => ({ ...prev, accountHolderName: '' }));
+            setErrors((prev: Errors) => ({ ...prev, accountNumber: 'An error occurred during account check.' }));
+            setIsSearching(false);
+            return false;
+        }
     };
 
     // Validate all required fields
@@ -112,23 +209,23 @@ export default function CashDepositForm() {
 
         setIsSubmitting(true);
         try {
-            const depositData = {
-                formKey: 'YOUR_FORM_KEY', // Replace with actual form key
-                branchId: 1, // Replace with actual branch ID
+            const depositData: DepositFormDto = {
+                formKey: 'YOUR_FORM_KEY',
+                branchId: 1,
                 accountHolderName: formData.accountHolderName,
                 accountNumber: formData.accountNumber,
                 typeOfAccount: formData.accountType,
                 amount: Number(formData.amount),
                 amountInWords: formData.amountInWords,
-                depositedBy: formData.depositedBy,
+                DepositedBy: formData.depositedBy,
                 sourceOfProceeds: formData.sourceOfProceeds,
                 telephoneNumber: formData.telephoneNumber,
+                // Add other fields if needed
             };
 
             const response = await depositService.submitDeposit(depositData);
             setIsSubmitting(false);
 
-            // Navigate to confirmation page
             navigate('/form/cash-deposit/cashdepositconfirmation', {
                 state: {
                     formType: 'Cash Deposit',
@@ -138,12 +235,12 @@ export default function CashDepositForm() {
                     branch: branchInfo.name,
                     token: Math.floor(1000 + Math.random() * 9000),
                     window: Math.floor(1 + Math.random() * 5),
-                    message: response.message, // Optional: display success message
+                    message: response.message,
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             setIsSubmitting(false);
-            alert(error); // Show error to user
+            alert(error?.message || error);
         }
     };
 
@@ -168,20 +265,38 @@ export default function CashDepositForm() {
                                     Account Number <span className="text-red-500">*</span>
                                 </label>
                                 <div className="flex">
-                                    <input
-                                        type="text"
-                                        name="accountNumber"
-                                        value={formData.accountNumber}
-                                        onChange={handleChange}
-                                        className={`flex-1 rounded-l-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
-                                        placeholder="Enter account number"
-                                    />
+                                    {accountDropdown ? (
+                                        <select
+                                            name="accountNumber"
+                                            value={formData.accountNumber}
+                                            onChange={handleChange}
+                                            className={`flex-1 rounded-l-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
+                                        >
+                                            <option value="">Select account</option>
+                                            {accounts.map(acc => (
+                                                <option key={acc.accountNumber} value={acc.accountNumber}>
+                                                    {acc.accountNumber} - {acc.accountHolderName || acc.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            name="accountNumber"
+                                            value={formData.accountNumber}
+                                            onChange={handleChange}
+                                            className={`flex-1 rounded-l-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
+                                            placeholder="Enter account number"
+                                            readOnly={accounts.length === 1}
+                                        />
+                                    )}
                                     <button
                                         type="button"
                                         onClick={validateAccount}
+                                        disabled={isSearching}
                                         className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-r-lg"
                                     >
-                                        Search
+                                        {isSearching ? "Searching..." : "Search"}
                                     </button>
                                 </div>
                                 {errors.accountNumber &&
