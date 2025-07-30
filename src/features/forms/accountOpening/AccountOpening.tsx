@@ -1,5 +1,5 @@
-// src/components/AccountOpeningForm.tsx
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import accountOpeningService from "../../../services/accountOpeningService";
 
@@ -19,6 +19,45 @@ import type {
 
 // -----------------------------------------------------------------------------
 // Reusable Components (Field, ProgressBar)
+// Utility functions for session storage (avoid code repetition)
+const FORM_SESSION_KEY = "accountOpeningFormData";
+const STEP_SESSION_KEY = "accountOpeningCurrentStep";
+
+// Save ONLY serializable data (skip files!)
+function saveSession(formData: AccountOpeningFormData, step: number) {
+  const { DocumentDetails, DigitalSignature, ...rest } = formData;
+  // Remove files from storage (keep in-memory)
+  const storageData = {
+    ...rest,
+    DocumentDetails: { ...DocumentDetails, PhotoIdFile: null },
+    DigitalSignature: { ...DigitalSignature, PhotoFile: null },
+  };
+  sessionStorage.setItem(FORM_SESSION_KEY, JSON.stringify(storageData));
+  sessionStorage.setItem(STEP_SESSION_KEY, String(step));
+}
+
+function loadSession(initial: AccountOpeningFormData, setFiles: (files: { doc: File | null, sig: File | null }) => void) {
+  const saved = sessionStorage.getItem(FORM_SESSION_KEY);
+  const savedStep = sessionStorage.getItem(STEP_SESSION_KEY);
+  if (!saved) return { data: initial, step: 0 };
+  let parsed = JSON.parse(saved);
+  // Always restore without files; files must be re-uploaded (privacy best practice)
+  setFiles({ doc: null, sig: null });
+  return {
+    data: {
+      ...initial,
+      ...parsed,
+      DocumentDetails: { ...initial.DocumentDetails, ...parsed.DocumentDetails, PhotoIdFile: null },
+      DigitalSignature: { ...initial.DigitalSignature, ...parsed.DigitalSignature, PhotoFile: null },
+    },
+    step: savedStep ? parseInt(savedStep, 10) : 0,
+  };
+}
+
+function clearSession() {
+  sessionStorage.removeItem(FORM_SESSION_KEY);
+  sessionStorage.removeItem(STEP_SESSION_KEY);
+}
 // -----------------------------------------------------------------------------
 
 type FieldProps = {
@@ -1093,7 +1132,6 @@ function StepSignature({ data, setData, errors, onSubmit, onBack, submitting, su
 
 function AccountOpening() {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState<number>(0); // 0-indexed for array access
   const totalSteps = 8;
   const stepTitles = [
     "Personal",
@@ -1105,10 +1143,10 @@ function AccountOpening() {
     "Passbook",
     "Signature",
   ];
-
-  // Global form data state (NOW uses PascalCase keys for nested DTOs and their properties)
-  const [formData, setFormData] = useState<AccountOpeningFormData>({
-    PersonalDetails: { // Changed from personalDetails
+  
+// Initial state setup
+  const initialState: AccountOpeningFormData = {
+    PersonalDetails: {
       AccountType: "",
       Title: "",
       YourName: "",
@@ -1122,7 +1160,7 @@ function AccountOpening() {
       EducationQualification: "",
       Nationality: "",
     },
-    AddressDetails: { // Changed from addressDetails
+    AddressDetails: {
       RegionCityAdministration: "",
       Zone: "",
       SubCity: "",
@@ -1132,7 +1170,7 @@ function AccountOpening() {
       OfficePhone: "",
       EmailAddress: "",
     },
-    FinancialDetails: { // Changed from financialDetails
+    FinancialDetails: {
       TypeOfWork: "",
       BusinessSector: "",
       IncomeFrequency: "",
@@ -1141,7 +1179,7 @@ function AccountOpening() {
       SectorOfEmployer: "",
       JobPosition: "",
     },
-    OtherDetails: { // Changed from otherDetails
+    OtherDetails: {
       HasBeenConvicted: false,
       ConvictionReason: "",
       IsPoliticallyExposed: false,
@@ -1149,7 +1187,7 @@ function AccountOpening() {
       SourceOfFund: "",
       OtherSourceOfFund: "",
     },
-    DocumentDetails: { // Changed from documentDetails
+    DocumentDetails: {
       IdType: "",
       IdPassportNo: "",
       IdIssueDate: "",
@@ -1157,7 +1195,7 @@ function AccountOpening() {
       IdIssuePlace: "",
       PhotoIdFile: null,
     },
-    EPaymentServices: { // Changed from ePaymentServices
+    EPaymentServices: {
       HasAtmCard: false,
       AtmCardType: "",
       AtmCardDeliveryBranch: "",
@@ -1165,26 +1203,77 @@ function AccountOpening() {
       HasInternetBanking: false,
       HasSmsBanking: false,
     },
-    PassbookMudayRequest: { // Changed from passbookMudayRequest
+    PassbookMudayRequest: {
       NeedsPassbook: false,
       NeedsMudayBox: false,
       MudayBoxDeliveryBranch: "",
     },
-    DigitalSignature: { // Changed from digitalSignature
+    DigitalSignature: {
       TermsAccepted: false,
       PhotoFile: null,
     },
-  });
+  };
+
+  // Global form data state (NOW uses PascalCase keys for nested DTOs and their properties)
+ const [formData, setFormData] = useState<AccountOpeningFormData>(initialState);
+ const [currentStep, setCurrentStep] = useState<number>(0);
+ const [files, setFiles] = useState<{ doc: File | null, sig: File | null }>({ doc: null, sig: null });
+ const [autoSaved, setAutoSaved] = useState<boolean>(false);
+
+ // Restore from session storage on mount
+  useEffect(() => {
+    const { data, step } = loadSession(initialState, setFiles);
+    setFormData(data);
+    setCurrentStep(step);
+  }, []);
+
+  // Save on every major change (debounced for performance)
+  const saveTimeout = useRef<number | null>(null);
+
+useEffect(() => {
+  if (saveTimeout.current) window.clearTimeout(saveTimeout.current);
+  saveTimeout.current = window.setTimeout(() => {
+    saveSession(formData, currentStep);
+    setAutoSaved(true);
+    setTimeout(() => setAutoSaved(false), 1200);
+  }, 400);
+  return () => {
+    if (saveTimeout.current) window.clearTimeout(saveTimeout.current);
+  };
+}, [formData, currentStep]);
+  // Save form data to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem("accountOpeningFormData", JSON.stringify(formData));
+  }, [formData]);
 
   // Function to update nested form data
   const updateFormData = <K extends keyof AccountOpeningFormData>(
     key: K,
     data: AccountOpeningFormData[K]
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [key]: data,
-    }));
+    if (key === "DocumentDetails" && (data as any).PhotoIdFile !== undefined) {
+      setFiles(f => ({ ...f, doc: (data as any).PhotoIdFile }));
+      setFormData(prev => ({
+        ...prev,
+        [key]: { ...(data as any), PhotoIdFile: null }, // keep file input in memory, not in state
+      }));
+    } else if (key === "DigitalSignature" && (data as any).PhotoFile !== undefined) {
+      setFiles(f => ({ ...f, sig: (data as any).PhotoFile }));
+      setFormData(prev => ({
+        ...prev,
+        [key]: { ...(data as any), PhotoFile: null },
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [key]: data,
+      }));
+    }
+  };
+  // Clear session storage after submit/cancel
+  const handleClearAndExit = () => {
+    clearSession();
+    navigate("/dashboard");
   };
 
   // State for errors (keys now match PascalCase properties)
@@ -1374,13 +1463,11 @@ function AccountOpening() {
     setCurrentStep((prev) => prev - 1);
   };
 
-  // --- Final Submission Handler ---
+// Final submission: include files from refs
   const handleSubmit = async () => {
     setSubmitError(null);
-    if (!validateDigitalSignature()) {
-      return;
-    }
-
+    if (!validateDigitalSignature()) return;
+    // Run all validation
     const allValid =
       validatePersonal() &&
       validateAddress() &&
@@ -1390,20 +1477,24 @@ function AccountOpening() {
       validateEPayment() &&
       validatePassbookMuday() &&
       validateDigitalSignature();
-
     if (!allValid) {
       setSubmitError("Please correct all errors in previous steps before submitting.");
       return;
     }
-
     setSubmitting(true);
     try {
-      const resp = await accountOpeningService.submitAccountOpening(formData);
+      // Compose full payload with files from refs
+      const fullData = {
+        ...formData,
+        DocumentDetails: { ...formData.DocumentDetails, PhotoIdFile: files.doc },
+        DigitalSignature: { ...formData.DigitalSignature, PhotoFile: files.sig },
+      };
+      const resp = await accountOpeningService.submitAccountOpening(fullData);
+      clearSession();
       setReferenceId(resp.referenceId || null);
       setCustomerId(resp.customerId || null);
       setCurrentStep(totalSteps);
     } catch (e: any) {
-      console.error("Submission failed:", e);
       setSubmitError(e.message || "An unexpected error occurred during submission.");
     } finally {
       setSubmitting(false);
@@ -1411,20 +1502,32 @@ function AccountOpening() {
   };
 
   // --- Main Render Logic ---
-  return (
-    <div className="min-h-screen bg-[#f5f0ff] p-4 md:p-8">
+   return (
+    <div className="min-h-screen bg-[#f5f0ff] p-2 md:p-8">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl border border-purple-200">
-        <div className="bg-gradient-to-r from-purple-700 to-purple-500 p-6 text-white rounded-t-xl">
+        <div className="bg-gradient-to-r from-purple-700 to-purple-500 p-6 text-white rounded-t-xl flex flex-col md:flex-row md:items-center md:justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Account Opening Form</h1>
-          <div className="text-sm text-purple-100 mt-1">Step {currentStep + 1} of {totalSteps}</div>
+          <div className="text-sm text-purple-100 mt-1 md:mt-0">
+            Step {currentStep + 1} of {totalSteps}
+            {autoSaved && (
+              <span className="ml-3 text-green-200 animate-pulse font-medium">
+                <svg className="inline w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-7V6a1 1 0 112 0v5a1 1 0 01-2 0zm2 3a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
+                </svg>
+                Saved!
+              </span>
+            )}
+          </div>
         </div>
-        <div className="p-8">
-          <ProgressBar currentStep={currentStep} totalSteps={totalSteps} stepTitles={stepTitles} />
-
+        <div className="p-4 md:p-8">
+          <div className="sticky top-0 z-10 bg-white pb-4">
+            <ProgressBar currentStep={currentStep} totalSteps={totalSteps} stepTitles={stepTitles} />
+          </div>
+          {/* Render Steps */}
           {currentStep === 0 && (
             <StepPersonal
               data={formData.PersonalDetails}
-              setData={(d) => updateFormData('PersonalDetails', d)}
+              setData={d => updateFormData('PersonalDetails', d)}
               errors={personalErrors}
               onNext={handleNext}
               submitting={submitting}
@@ -1433,7 +1536,7 @@ function AccountOpening() {
           {currentStep === 1 && (
             <StepAddress
               data={formData.AddressDetails}
-              setData={(d) => updateFormData('AddressDetails', d)}
+              setData={d => updateFormData('AddressDetails', d)}
               errors={addressErrors}
               onNext={handleNext}
               onBack={handleBack}
@@ -1443,7 +1546,7 @@ function AccountOpening() {
           {currentStep === 2 && (
             <StepFinancial
               data={formData.FinancialDetails}
-              setData={(d) => updateFormData('FinancialDetails', d)}
+              setData={d => updateFormData('FinancialDetails', d)}
               errors={financialErrors}
               onNext={handleNext}
               onBack={handleBack}
@@ -1453,7 +1556,7 @@ function AccountOpening() {
           {currentStep === 3 && (
             <StepOther
               data={formData.OtherDetails}
-              setData={(d) => updateFormData('OtherDetails', d)}
+              setData={d => updateFormData('OtherDetails', d)}
               errors={otherErrors}
               onNext={handleNext}
               onBack={handleBack}
@@ -1462,8 +1565,8 @@ function AccountOpening() {
           )}
           {currentStep === 4 && (
             <StepDocument
-              data={formData.DocumentDetails}
-              setData={(d) => updateFormData('DocumentDetails', d)}
+              data={{ ...formData.DocumentDetails, PhotoIdFile: files.doc }}
+              setData={d => updateFormData('DocumentDetails', d)}
               errors={documentErrors}
               onNext={handleNext}
               onBack={handleBack}
@@ -1473,7 +1576,7 @@ function AccountOpening() {
           {currentStep === 5 && (
             <StepEPayment
               data={formData.EPaymentServices}
-              setData={(d) => updateFormData('EPaymentServices', d)}
+              setData={d => updateFormData('EPaymentServices', d)}
               errors={epaymentErrors}
               onNext={handleNext}
               onBack={handleBack}
@@ -1483,7 +1586,7 @@ function AccountOpening() {
           {currentStep === 6 && (
             <StepPassbookMuday
               data={formData.PassbookMudayRequest}
-              setData={(d) => updateFormData('PassbookMudayRequest', d)}
+              setData={d => updateFormData('PassbookMudayRequest', d)}
               errors={passbookMudayErrors}
               onNext={handleNext}
               onBack={handleBack}
@@ -1492,8 +1595,8 @@ function AccountOpening() {
           )}
           {currentStep === 7 && (
             <StepSignature
-              data={formData.DigitalSignature}
-              setData={(d) => updateFormData('DigitalSignature', d)}
+              data={{ ...formData.DigitalSignature, PhotoFile: files.sig }}
+              setData={d => updateFormData('DigitalSignature', d)}
               errors={digitalSignatureErrors}
               onSubmit={handleSubmit}
               onBack={handleBack}
@@ -1507,15 +1610,37 @@ function AccountOpening() {
               Submitted! Your Reference ID: <span className="font-mono">{referenceId || "N/A"}</span>
               <br/>
               Customer ID: <span className="font-mono">{customerId || "N/A"}</span>
-              <div className="mt-4">
+              <div className="mt-4 flex gap-4 justify-center">
                 <button
                   className="bg-purple-700 text-white px-6 py-2 rounded shadow hover:bg-purple-800 mt-2"
-                  onClick={() => navigate("/dashboard")}
+                  onClick={handleClearAndExit}
                   type="button"
                 >
                   Go to Home
                 </button>
+                <button
+                  className="bg-gray-300 text-purple-700 px-6 py-2 rounded shadow hover:bg-gray-400 mt-2"
+                  onClick={() => {
+                    clearSession();
+                    navigate("/account-opening");
+                  }}
+                  type="button"
+                >
+                  Start New Application
+                </button>
               </div>
+            </div>
+          )}
+          {/* Cancel button for user control */}
+          {currentStep < totalSteps && (
+            <div className="mt-8 flex justify-end">
+              <button
+                className="text-sm text-purple-500 hover:underline"
+                onClick={handleClearAndExit}
+                type="button"
+              >
+                Cancel and Exit
+              </button>
             </div>
           )}
         </div>
