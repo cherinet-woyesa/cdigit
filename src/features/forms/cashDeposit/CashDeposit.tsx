@@ -270,22 +270,21 @@ type Errors = Partial<Record<keyof FormData, string>>;
             setIsSubmitting(false);
 
             navigate('/form/cash-deposit/cashdepositconfirmation', {
-                state: {
-                    formType: 'Cash Deposit',
-                    referenceId: `CD-${Date.now()}`,
-                    accountNumber: formData.accountNumber,
-                    amount: formData.amount,
-                    branch: branchInfo.name,
-                    token: Math.floor(1000 + Math.random() * 9000),
-                    window: Math.floor(1 + Math.random() * 5),
-                    message: response.message,
-                }
-            });
-        } catch (error: any) {
-            setIsSubmitting(false);
-            alert(error?.message || error);
-        }
-    };
+            state: {
+                formType: 'Cash Deposit',
+                referenceId: response.depositId ? `CD-${response.depositId}` : `CD-${Date.now()}`,
+                accountNumber: formData.accountNumber,
+                amount: formData.amount,
+                branch: branchInfo.name,
+                token: Math.floor(1000 + Math.random() * 9000),
+                message: response.message, // Show backend message
+            }
+        });
+    } catch (error: any) {
+        setIsSubmitting(false);
+        alert(error?.message || error?.Message || error); // Show backend error
+    }
+};
 
     return (
         <div className="min-h-screen bg-[#faf6e9] p-4 md:p-8">
