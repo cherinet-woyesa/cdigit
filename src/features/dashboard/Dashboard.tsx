@@ -1,6 +1,7 @@
 import { useAuth } from '../../context/AuthContext'
-import { useEffect } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 
 const forms = [
   { name: 'Account Opening', route: '/form/account-opening' },
@@ -16,6 +17,17 @@ const forms = [
 export default function Dashboard() {
   const { phone } = useAuth()
   const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Filter forms based on search query
+  const filteredForms = useMemo(() => {
+    if (!searchQuery.trim()) return forms
+    const query = searchQuery.toLowerCase().trim()
+    return forms.filter(form => 
+      form.name.toLowerCase().includes(query) ||
+      form.route.toLowerCase().includes(query)
+    )
+  }, [searchQuery])
 
   useEffect(() => {
     if (!phone) navigate('/') // Redirect to login if not verified
@@ -40,17 +52,35 @@ export default function Dashboard() {
         </div>
 
         {/* Search */}
-        <div className="mb-10">
-          <input
-            type="text"
-            placeholder="Search for a form..."
-            className="w-full p-4 border-0 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-purple-700 text-lg"
-          />
+        <div className="mb-10 relative">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for a form..."
+              className="w-full pl-12 pr-4 py-4 border-0 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-purple-700 text-lg"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
+            )}
+          </div>
+          {searchQuery && filteredForms.length === 0 && (
+            <p className="mt-2 text-sm text-gray-600">No forms match your search. Try a different term.</p>
+          )}
         </div>
 
         {/* Form Tiles */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {forms.map((form, idx) => (
+          {filteredForms.map((form, idx) => (
             <div
               key={idx}
               onClick={() => navigate(form.route)}
