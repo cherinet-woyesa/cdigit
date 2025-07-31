@@ -18,6 +18,12 @@ interface RequestOtpResponse {
     // Define properties based on your API response for OTP request
 }
 
+interface VerifyOtpResponse {
+    verified: boolean;
+    message: string;
+    token?: string;
+}
+
 interface AuthService {
     login: (email: string, password: string) => Promise<LoginResponse>;
     register: (email: string, password: string, phoneNumber: string) => Promise<RegisterResponse>;
@@ -25,6 +31,7 @@ interface AuthService {
     getCurrentUserToken: () => string | null;
     requestOtp: (phoneNumber: string) => Promise<RequestOtpResponse>;
     loginWithOtp: (phoneNumber: string, otp: string) => Promise<LoginResponse>;
+    verifyOtp: (phoneNumber: string, otp: string) => Promise<VerifyOtpResponse>;
 }
 
 const authService: AuthService = {
@@ -80,6 +87,36 @@ const authService: AuthService = {
         } catch (error: any) {
             console.error('Error logging in with OTP:', error);
             throw error;
+        }
+    },
+
+    verifyOtp: async (phoneNumber: string, otp: string) => {
+        try {
+            // Use the login-with-otp endpoint which is already implemented in the backend
+            const response = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/login-with-otp`, { 
+                phoneNumber, 
+                otp 
+            });
+            
+            if (response.data.token) {
+                localStorage.setItem('userToken', response.data.token);
+                // Return a verified response that matches the expected interface
+                return {
+                    verified: true,
+                    message: response.data.message || 'OTP verified successfully',
+                    token: response.data.token
+                };
+            }
+            
+            throw new Error('Verification failed: No token received');
+        } catch (error: any) {
+            console.error('Error verifying OTP:', error);
+            // Return a failed verification response
+            return {
+                verified: false,
+                message: error.response?.data?.message || 'OTP verification failed',
+                token: undefined
+            };
         }
     }
 };
