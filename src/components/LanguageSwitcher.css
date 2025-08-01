@@ -1,0 +1,110 @@
+.language-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.language-dropdown {
+  position: relative;
+  min-width: 120px;
+}
+
+.language-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2d3748;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.language-current:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.language-current:focus {
+  outline: none;
+  border-color: #9f7aea;
+  box-shadow: 0 0 0 3px rgba(159, 122, 234, 0.2);
+}
+
+.language-flag {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.language-code {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.dropdown-arrow {
+  margin-left: 8px;
+  font-size: 10px;
+  color: #718096;
+  transition: transform 0.2s ease;
+}
+
+.language-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  z-index: 10;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  color: #2d3748;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.language-option:hover {
+  background-color: #f7fafc;
+}
+
+.language-option.active {
+  background-color: #f0f4ff;
+  color: #553c9a;
+  font-weight: 500;
+}
+
+.language-option .checkmark {
+  margin-left: auto;
+  color: #6c2eb6;
+  font-weight: bold;
+}
+
+/* Animation for dropdown */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.language-menu {
+  animation: fadeIn 0.2s ease-out forwards;
+}

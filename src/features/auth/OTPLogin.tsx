@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import logo from '../../assets/logo.jpg';
 import React from 'react';
 import authService from './authService';
-
 
 // Reusable Input component
 interface FormInputProps {
@@ -76,6 +76,7 @@ const FormButton: React.FC<FormButtonProps> = ({
 };
 
 const OTPLogin: React.FC = () => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [otp, setOtp] = useState<string>('');
@@ -122,13 +123,12 @@ const OTPLogin: React.FC = () => {
     setLoading(true);
     try {
       const response = await authService.requestOtp(phoneNumber);
-      setMessage(response.message || 'OTP sent! Please check your phone.');
+      setMessage(response.message || t('otpSent'));
       setStep('verify');
       startResendCooldown();
     } catch (err: any) {
       setError(
-        err.response?.data?.message ||
-          'Failed to send OTP. Please ensure the phone number is registered and valid.'
+        err.response?.data?.message || t('otpSendError')
       );
       console.error('Request OTP Error:', err);
     } finally {
@@ -145,12 +145,12 @@ const OTPLogin: React.FC = () => {
 
     try {
       const response = await authService.loginWithOtp(phoneNumber, otp);
-      setMessage(response.message || 'Login successful!');
+      setMessage(response.message || t('loginSuccessful'));
       setPhone(phoneNumber);
       navigate('/dashboard');
     } catch (err: any) {
       setError(
-        err.response?.data?.message || 'Invalid OTP. Please try again.'
+        err.response?.data?.message || t('invalidOtp')
       );
       console.error('Login with OTP Error:', err);
     } finally {
@@ -164,18 +164,18 @@ const OTPLogin: React.FC = () => {
         {/* Brand Header */}
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-semibold text-gray-900 uppercase">
-            Commercial Bank of Ethiopia
+            {t('bankName')}
           </h1>
           <div className="w-44 h-44 mx-auto">
             <img
               src={logo}
-              alt="CBE Logo"
+              alt={t('logoAlt')}
               className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-purple-200"
             />
           </div>
-          <h2 className="text-4xl font-extrabold text-purple-700">WELCOME</h2>
+          <h2 className="text-4xl font-extrabold text-purple-700">{t('welcome')}</h2>
           <h2 className="text-xl font-semibold text-gray-800">
-            Enter your phone number to access dashboard
+            {t('enterPhonePrompt')}
           </h2>
         </div>
 
@@ -189,15 +189,15 @@ const OTPLogin: React.FC = () => {
             <form onSubmit={handleRequestOtp} className="space-y-10">
               <label className="block" htmlFor="phone-input">
                 <span className="text-gray-700 font-medium text-lg">
-                  Phone Number
+                  {t('phoneNumber')}
                 </span>
                 <FormInput
                   id="phone-input"
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="e.g. 0976173985"
-                  ariaLabel="Phone Number"
+                  placeholder={t('phonePlaceholder')}
+                  ariaLabel={t('phoneNumber')}
                   ariaInvalid={!!error}
                   ariaDescribedby="phone-error"
                   autoFocus
@@ -206,7 +206,7 @@ const OTPLogin: React.FC = () => {
               </label>
               <FormButton
                 disabled={!phoneNumber || loading}
-                ariaLabel="Send OTP"
+                ariaLabel={t('requestOtp')}
               >
                 {loading ? (
                   <span className="flex items-center">
@@ -230,27 +230,22 @@ const OTPLogin: React.FC = () => {
                         d="M4 12a8 8 0 018-8v8z"
                       ></path>
                     </svg>
-                    Sending OTP...
+                    {t('sendingOtp')}
                   </span>
                 ) : (
-                  'Send OTP'
+                  t('requestOtp')
                 )}
               </FormButton>
             </form>
-            <div className="text-center mt-4">
-  <span className="text-gray-700">Don't have an account?</span>
-  <Link
-    to="/form/account-opening" // Update this path
-    className="ml-2 text-purple-700 font-semibold hover:underline"
-    style={{
-      textDecoration: 'none',
-      color: '#6c2eb6',
-      fontWeight: 'bold',
-    }}
-  >
-    Create an account
-  </Link>
-</div>
+            <div className="text-center mt-6">
+              <span className="text-gray-700">{t('noAccount')}</span>
+              <Link
+                to="/form/account-opening"
+                className="ml-2 text-purple-700 font-semibold hover:underline hover:text-purple-800 transition-colors"
+              >
+                {t('createAccount')}
+              </Link>
+            </div>
           </>
         )}
 
@@ -259,15 +254,15 @@ const OTPLogin: React.FC = () => {
           <form onSubmit={handleLoginWithOtp} className="space-y-10">
             <label className="block" htmlFor="otp-input">
               <span className="text-gray-700 font-medium text-lg">
-                Enter OTP
+                {t('enterOtp')}
               </span>
               <FormInput
                 id="otp-input"
                 type="text"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                placeholder="6-digit code"
-                ariaLabel="OTP Code"
+                placeholder={t('otpPlaceholder')}
+                ariaLabel={t('otpLabel')}
                 ariaInvalid={!!error}
                 ariaDescribedby="otp-error"
                 autoFocus
@@ -276,7 +271,7 @@ const OTPLogin: React.FC = () => {
             </label>
             <FormButton
               disabled={!otp || loading}
-              ariaLabel="Verify and Continue"
+              ariaLabel={t('verifyOtp')}
             >
               {loading ? (
                 <span className="flex items-center">
@@ -300,10 +295,10 @@ const OTPLogin: React.FC = () => {
                       d="M4 12a8 8 0 018-8v8z"
                     ></path>
                   </svg>
-                  Verifying...
+                  {t('verifying')}
                 </span>
               ) : (
-                'Verify & Login'
+                t('verifyOtp')
               )}
             </FormButton>
             <div className="flex justify-between items-center mt-2">
@@ -312,9 +307,9 @@ const OTPLogin: React.FC = () => {
                 onClick={() => setStep('request')}
                 className="text-purple-700 hover:underline text-sm font-medium"
                 disabled={loading}
-                aria-label="Back to phone input"
+                aria-label={t('backToPhone')}
               >
-                &larr; Back
+                &larr; {t('backToPhone')}
               </button>
               <button
                 type="button"
@@ -323,11 +318,11 @@ const OTPLogin: React.FC = () => {
                 }}
                 disabled={resendCooldown > 0 || loading}
                 className="text-purple-700 hover:underline text-sm font-medium disabled:opacity-50"
-                aria-label="Resend OTP"
+                aria-label={t('resendOtp')}
               >
                 {resendCooldown > 0
-                  ? `Resend OTP (${resendCooldown}s)`
-                  : 'Resend OTP'}
+                  ? t('resendTimer', { seconds: resendCooldown })
+                  : t('resendOtp')}
               </button>
             </div>
           </form>
