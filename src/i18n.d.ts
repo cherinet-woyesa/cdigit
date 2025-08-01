@@ -3,6 +3,8 @@ import enTranslations from './locales/en/translation.json';
 import amTranslations from './locales/am/translation.json';
 
 declare module 'i18next' {
+  type FormKeys = 'accountOpening' | 'cashDeposit' | 'cashWithdrawal' | 'fundTransfer' | 'mobileBanking' | 'atmCard' | 'cbeBirr' | 'otherForms';
+  
   interface CustomTypeOptions {
     defaultNS: 'translation';
     resources: {
@@ -43,6 +45,21 @@ declare module 'i18next' {
         otpPlaceholder: string;
         otpLabel: string;
         backToPhone: string;
+        
+        // Dashboard
+        dashboardTitle: string;
+        loggedInAs: string;
+        welcomeBanner: string;
+        welcomeSubtitle: string;
+        searchPlaceholder: string;
+        noResults: string;
+        startForm: string;
+        forms: {
+          [key in FormKeys]: string;
+        };
+        
+        // Allow string indexing for dynamic form keys
+        [key: `forms.${FormKeys}`]: string;
       };
     };
   }

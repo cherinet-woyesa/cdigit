@@ -27,5 +27,23 @@
     "enterOtp": "OTP ያስገቡ",
     "otpPlaceholder": "6-አሃዝ ኮድ",
     "otpLabel": "አንዴ የሚሠራ የይለፍ ቃል",
-    "backToPhone": "ወደ ስልክ ቁጥር ተመለስ"
+    "backToPhone": "ወደ ስልክ ቁጥር ተመለስ",
+    
+    "dashboardTitle": "ሲቢኢ ዲጂታል ቅጾች",
+    "loggedInAs": "የገቡት ሆነው",
+    "welcomeBanner": "ወደ ሲቢኢ ዲጂታል አገልግሎቶች እንኳን በደህና መጡ",
+    "welcomeSubtitle": "ለመጀመር ከታች ያለውን ቅጽ ይምረጡ",
+    "searchPlaceholder": "ቅጽ ይፈልጉ...",
+    "noResults": "ምንም ቅጾች አልተገኙም። ሌላ ቃል ይሞክሩ።",
+    "startForm": "ይህን ቅጽ ይጀምሩ",
+    "forms": {
+      "accountOpening": "መለያ መክፈቻ",
+      "cashDeposit": "ገንዘብ ማስገቢያ",
+      "cashWithdrawal": "ገንዘብ መውጫ",
+      "fundTransfer": "ገንዘብ ማስተላለፊያ",
+      "mobileBanking": "ሞባይል ባንኪንግ ምዝገባ",
+      "atmCard": "ኤቲኤም ካርድ ጥያቄ",
+      "cbeBirr": "ሲቢኢ-ብር ምዝገባ",
+      "otherForms": "ሌሎች ቅጾች"
+    }
   }

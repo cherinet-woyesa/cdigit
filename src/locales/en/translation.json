@@ -27,5 +27,23 @@
     "enterOtp": "Enter OTP",
     "otpPlaceholder": "6-digit code",
     "otpLabel": "One Time Password",
-    "backToPhone": "Back to phone input"
+    "backToPhone": "Back to phone input",
+    
+    "dashboardTitle": "CBE Digital Forms",
+    "loggedInAs": "Logged in as",
+    "welcomeBanner": "Welcome to CBE Digital Services",
+    "welcomeSubtitle": "Select a form below to get started",
+    "searchPlaceholder": "Search for a form...",
+    "noResults": "No forms match your search. Try a different term.",
+    "startForm": "Start this form",
+    "forms": {
+      "accountOpening": "Account Opening",
+      "cashDeposit": "Cash Deposit",
+      "cashWithdrawal": "Cash Withdrawal",
+      "fundTransfer": "Fund Transfer",
+      "mobileBanking": "Mobile Banking Registration",
+      "atmCard": "ATM Card Request",
+      "cbeBirr": "CBE-Birr Registration",
+      "otherForms": "Other Forms"
+    }
   }

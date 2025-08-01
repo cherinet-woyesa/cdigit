@@ -1,33 +1,46 @@
-import { useAuth } from '../../context/AuthContext'
-import { useEffect, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { useAuth } from '../../context/AuthContext';
+import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
-const forms = [
-  { name: 'Account Opening', route: '/form/account-opening' },
-  { name: 'Cash Deposit', route: '/form/cash-deposit' },
-  { name: 'Cash Withdrawal', route: '/form/cash-withdrawal' },
-  { name: 'Fund Transfer', route: '/form/fund-transfer' },
-  { name: 'Mobile Banking Registration', route: '/form/mobile-banking' },
-  { name: 'ATM Card Request', route: '/form/atm-card' },
-  { name: 'CBE-Birr Registration', route: '/form/cbe-birr' },
-  { name: 'Other Forms', route: '/form/other-forms' },
+type FormName = 'accountOpening' | 'cashDeposit' | 'cashWithdrawal' | 'fundTransfer' | 
+  'mobileBanking' | 'atmCard' | 'cbeBirr' | 'otherForms';
+
+interface Form {
+  name: FormName;
+  route: string;
+}
+
+const forms: Form[] = [
+  { name: 'accountOpening', route: '/form/account-opening' },
+  { name: 'cashDeposit', route: '/form/cash-deposit' },
+  { name: 'cashWithdrawal', route: '/form/cash-withdrawal' },
+  { name: 'fundTransfer', route: '/form/fund-transfer' },
+  { name: 'mobileBanking', route: '/form/mobile-banking' },
+  { name: 'atmCard', route: '/form/atm-card' },
+  { name: 'cbeBirr', route: '/form/cbe-birr' },
+  { name: 'otherForms', route: '/form/other-forms' },
 ]
 
 export default function Dashboard() {
-  const { phone } = useAuth()
-  const navigate = useNavigate()
-  const [searchQuery, setSearchQuery] = useState('')
+  const { phone } = useAuth();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Filter forms based on search query
   const filteredForms = useMemo(() => {
-    if (!searchQuery.trim()) return forms
-    const query = searchQuery.toLowerCase().trim()
-    return forms.filter(form => 
-      form.name.toLowerCase().includes(query) ||
-      form.route.toLowerCase().includes(query)
-    )
-  }, [searchQuery])
+    if (!searchQuery.trim()) return forms;
+    const query = searchQuery.toLowerCase().trim();
+    
+    return forms.filter(form => {
+      // Use type assertion to ensure TypeScript knows this is a valid key
+      const formName = t(`forms.${form.name}` as const).toLowerCase();
+      const formRoute = form.route.toLowerCase();
+      return formName.includes(query) || formRoute.includes(query);
+    });
+  }, [searchQuery, t]);
 
   useEffect(() => {
     if (!phone) navigate('/') // Redirect to login if not verified
@@ -38,8 +51,10 @@ export default function Dashboard() {
       {/* Header */}
       <header className="bg-purple-700 text-white py-5 px-6 shadow-lg">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">CBE Digital Forms</h1>
-          <p className="text-sm bg-purple-800 px-3 py-1 rounded-full">Logged in as: {phone}</p>
+          <h1 className="text-2xl font-bold">{t('dashboardTitle')}</h1>
+          <p className="text-sm bg-purple-800 px-3 py-1 rounded-full">
+            {t('loggedInAs')}: {phone}
+          </p>
         </div>
       </header>
 
@@ -47,8 +62,8 @@ export default function Dashboard() {
       <main className="max-w-6xl mx-auto px-4 py-10">
         {/* Welcome Banner */}
         <div className="bg-purple-700 text-white p-6 rounded-xl mb-8 shadow-lg">
-          <h2 className="text-2xl font-bold mb-2">Welcome to CBE Digital Services</h2>
-          <p className="opacity-90">Select a form below to get started</p>
+          <h2 className="text-2xl font-bold mb-2">{t('welcomeBanner')}</h2>
+          <p className="opacity-90">{t('welcomeSubtitle')}</p>
         </div>
 
         {/* Search */}
@@ -61,7 +76,7 @@ export default function Dashboard() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for a form..."
+              placeholder={t('searchPlaceholder')}
               className="w-full pl-12 pr-4 py-4 border-0 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-purple-700 text-lg"
             />
             {searchQuery && (
@@ -74,7 +89,7 @@ export default function Dashboard() {
             )}
           </div>
           {searchQuery && filteredForms.length === 0 && (
-            <p className="mt-2 text-sm text-gray-600">No forms match your search. Try a different term.</p>
+            <p className="mt-2 text-sm text-gray-600">{t('noResults')}</p>
           )}
         </div>
 
@@ -104,10 +119,10 @@ export default function Dashboard() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800 group-hover:text-white transition-colors">
-                  {form.name}
+                  {t(`forms.${form.name}` as const)}
                 </h3>
                 <p className="text-sm text-purple-700 mt-2 group-hover:text-white transition-colors mt-auto">
-                  Start this form →
+                  {t('startForm')} →
                 </p>
               </div>
             </div>
