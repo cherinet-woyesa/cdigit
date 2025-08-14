@@ -3,13 +3,10 @@ import enTranslations from './locales/en/translation.json';
 import amTranslations from './locales/am/translation.json';
 
 declare module 'i18next' {
-  type FormKeys = 'accountOpening' | 'cashDeposit' | 'cashWithdrawal' | 'fundTransfer' | 'mobileBanking' | 'atmCard' | 'cbeBirr' | 'otherForms';
-  
   interface CustomTypeOptions {
     defaultNS: 'translation';
     resources: {
       translation: {
-        // Navigation
         language: string;
         login: string;
         dashboard: string;
@@ -17,20 +14,14 @@ declare module 'i18next' {
         withdrawal: string;
         accountOpening: string;
         submit: string;
-        
-        // OTP Login
         otpSent: string;
         otpSendError: string;
         loginSuccessful: string;
         invalidOtp: string;
-        
-        // UI Text
         bankName: string;
         logoAlt: string;
         welcome: string;
         enterPhonePrompt: string;
-        
-        // Form Fields
         phoneNumber: string;
         phonePlaceholder: string;
         requestOtp: string;
@@ -45,8 +36,6 @@ declare module 'i18next' {
         otpPlaceholder: string;
         otpLabel: string;
         backToPhone: string;
-        
-        // Dashboard
         dashboardTitle: string;
         loggedInAs: string;
         welcomeBanner: string;
@@ -54,12 +43,67 @@ declare module 'i18next' {
         searchPlaceholder: string;
         noResults: string;
         startForm: string;
+        select: string;
+        next: string;
         forms: {
-          [key in FormKeys]: string;
+          accountOpening: string;
+          cashDeposit: string;
+          cashWithdrawal: string;
+          fundTransfer: string;
+          mobileBanking: string;
+          atmCard: string;
+          cbeBirr: string;
+          otherForms: string;
         };
-        
-        // Allow string indexing for dynamic form keys
-        [key: `forms.${FormKeys}`]: string;
+        account: {
+          personalDetailsTitle: string;
+          accountType: string;
+          savings: string;
+          current: string;
+          ifb: string;
+          title: string;
+          titles: {
+            Mr: string;
+            Mrs: string;
+            Miss: string;
+            Ms: string;
+            Dr: string;
+          };
+          yourName: string;
+          fullNamePlaceholder: string;
+          fatherName: string;
+          grandfatherName: string;
+          motherFullName: string;
+          sex: string;
+          sexOptions: {
+            male: string;
+            female: string;
+          };
+          dateOfBirth: string;
+          placeOfBirth: string;
+          maritalStatus: string;
+          maritalStatusOptions: {
+            single: string;
+            married: string;
+            divorced: string;
+            widowed: string;
+          };
+          educationQualification: string;
+          education: {
+            none: string;
+            primary: string;
+            secondary: string;
+            diploma: string;
+            degree: string;
+            masters: string;
+            phd: string;
+          };
+          nationality: string;
+          nationalityOptions: {
+            ethiopian: string;
+            foreignnational: string;
+          };
+        };
       };
     };
   }

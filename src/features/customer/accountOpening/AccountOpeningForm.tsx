@@ -1,0 +1,551 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import * as accountOpeningService from "../../../services/accountOpeningService";
+import { ProgressBar, Field } from "./FormElements";
+import type {
+    PersonalDetail,
+    AddressDetail,
+    FinancialDetail,
+    OtherDetail,
+    DocumentDetail,
+    EPaymentService,
+    PassbookMudayRequest,
+    DigitalSignature,
+    Errors,
+    FormData,
+    FormErrors,
+    FormSummary,
+} from "./formTypes";
+import { INITIAL_DATA } from "./formTypes";
+import { StepPersonal } from "./StepPersonal";
+import { StepAddress } from "./StepAddress";
+import { StepFinancial } from "./StepFinancial";
+import { StepOther } from "./StepOther";
+import { StepDocument } from "./StepDocument";
+import { StepEPayment } from "./StepEPayment";
+import { StepPassbook } from "./StepPassbook";
+import { StepSignature } from "./StepSignature";
+
+const steps = [
+    "Personal",
+    "Address",
+    "Financial",
+    "Other",
+    "Document",
+    "E-Payment",
+    "Passbook",
+    "Signature",
+];
+
+export function AccountOpeningForm() {
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
+    const [currentStep, setCurrentStep] = useState(0);
+    const [errors, setErrors] = useState<FormErrors>({
+        personalDetails: {},
+        addressDetails: {},
+        financialDetails: {},
+        otherDetails: {},
+        documentDetails: {},
+        ePaymentService: {},
+        passbookMudayRequest: {},
+        digitalSignature: {},
+        apiError: undefined,
+    });
+    const [submitting, setSubmitting] = useState(false);
+    const [phoneNumberScreenActive, setPhoneNumberScreenActive] = useState(true);
+    const [phoneNumberInput, setPhoneNumberInput] = useState("");
+    const [phoneCheckLoading, setPhoneCheckLoading] = useState(false);
+    const [phoneInputError, setPhoneInputError] = useState<string | undefined>(undefined);
+
+    const stepKeys = [
+        "personalDetails",
+        "addressDetails",
+        "financialDetails",
+        "otherDetails",
+        "documentDetails",
+        "ePaymentService",
+        "passbookMudayRequest",
+        "digitalSignature",
+    ];
+
+    const updateSectionData = <K extends keyof FormData>(section: K, data: Partial<FormData[K]>) => {
+        setFormData((prev) => {
+            const prevSectionData = prev[section];
+            if (typeof prevSectionData === 'object' && prevSectionData !== null && !Array.isArray(prevSectionData)) {
+                return {
+                    ...prev,
+                    [section]: { ...prevSectionData, ...data },
+                };
+            } else {
+                return {
+                    ...prev,
+                    [section]: data,
+                };
+            }
+        });
+    };
+
+    const validateStep = (data: any, stepIndex: number): Errors<any> => {
+        let newErrors: Errors<any> = {};
+        if (stepIndex === 0) { // Personal Details
+            if (!data.accountType) newErrors.accountType = "Account Type is required";
+            if (!data.title) newErrors.title = "Title is required";
+            if (!data.firstName) newErrors.firstName = "First Name is required";
+            if (!data.grandfatherName) newErrors.grandfatherName = "Grandfather's Name is required";
+            if (!data.sex) newErrors.sex = "Sex is required";
+            if (!data.dateOfBirth) newErrors.dateOfBirth = "Date of Birth is required";
+            if (!data.maritalStatus) newErrors.maritalStatus = "Marital Status is required";
+            if (!data.nationality) newErrors.nationality = "Nationality is required";
+        } else if (stepIndex === 1) { // Address Details
+            if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required";
+            if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required";
+        } else if (stepIndex === 2) { // Financial Details
+            if (!data.typeOfWork) newErrors.typeOfWork = "Type of Work is required";
+            if (data.typeOfWork === "Private") {
+                if (!data.businessSector) newErrors.businessSector = "Business Sector is required";
+                if (!data.incomeDetails_Private) newErrors.incomeDetails_Private = "Income Details are required";
+            } else if (data.typeOfWork === "Employee") {
+                if (!data.sectorOfEmployer) newErrors.sectorOfEmployer = "Sector of Employer is required";
+                if (!data.jobPosition) newErrors.jobPosition = "Job Position is required";
+                if (!data.incomeDetails_Employee) newErrors.incomeDetails_Employee = "Income Details are required";
+            }
+        } else if (stepIndex === 3) { // Other Details
+            if (data.hasBeenConvicted && !data.convictionReason) newErrors.convictionReason = "Reason for conviction is required";
+            if (data.isPoliticallyExposed && !data.pepPosition) newErrors.pepPosition = "PEP Position is required";
+            if (!data.sourceOfFund) newErrors.sourceOfFund = "Source of Fund is required";
+            if (data.sourceOfFund === "Other" && !data.otherSourceOfFund) newErrors.otherSourceOfFund = "Please specify other source of fund";
+        } else if (stepIndex === 4) { // Document Details
+            if (!data.idType) newErrors.idType = "ID Type is required";
+            if (!data.idPassportNo) newErrors.idPassportNo = "ID / Passport No. is required";
+            if (!data.issuedBy) newErrors.issuedBy = "Issued By is required";
+            if (!data.issueDate) newErrors.issueDate = "Issue Date is required";
+            if (!data.expiryDate) newErrors.expiryDate = "Expiry Date is required";
+            if (!data.mobilePhoneNo) newErrors.mobilePhoneNo = "Mobile Phone is required";
+            if (!data.photoIdFile && !data.docPhotoUrl) newErrors.docPhotoUrl = "Document photo is required";
+        } else if (stepIndex === 6) { // Passbook & Muday Request
+            if (data.needsMudayBox && !data.mudayBoxDeliveryBranch) {
+                newErrors.mudayBoxDeliveryBranch = "Muday Box Delivery Branch is required";
+            }
+        } else if (stepIndex === 7) { // Digital Signature
+            if (!data.signatureFile && !data.signatureUrl) newErrors.signatureUrl = "Digital signature is required";
+            if (!data.termsAccepted) newErrors.termsAccepted = "You must accept the terms and conditions";
+        }
+        return newErrors;
+    };
+
+    const handleNext = async () => {
+        const stepDataKey = stepKeys[currentStep];
+        const currentStepData = formData[stepDataKey as keyof FormData];
+
+        if (!currentStepData) {
+            console.error(`Data for step ${currentStep} (${stepDataKey}) is undefined.`);
+            return;
+        }
+
+        const currentStepErrors = validateStep(currentStepData, currentStep);
+        setErrors((prevErrors) => ({
+            ...prevErrors,
+            [stepDataKey]: currentStepErrors,
+        }));
+
+        if (Object.keys(currentStepErrors).length > 0) {
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            let response: any;
+            let updatedCustomerData: Partial<FormData> = {};
+
+            switch (currentStep) {
+                case 0: // Personal Details
+                    response = await accountOpeningService.savePersonalDetails(formData.personalDetails, phoneNumberInput);
+                    updatedCustomerData = {
+                        customerId: response.id,
+                        personalDetails: { ...formData.personalDetails, id: response.id }
+                    };
+                    console.log("Customer ID from personal details:", response.id);
+                    break;
+                case 1: // Address Details
+                    const addressPayload = {
+                        ...formData.addressDetails,
+                        customerId: formData.customerId
+                    };
+                    response = await accountOpeningService.saveAddressDetails(addressPayload);
+                    updatedCustomerData = { addressDetails: { ...formData.addressDetails, id: response.id } };
+                    break;
+                case 2: // Financial Details
+                    const financialPayload = { ...formData.financialDetails, customerId: formData.customerId };
+                    response = await accountOpeningService.saveFinancialDetails(financialPayload);
+                    updatedCustomerData = { financialDetails: { ...formData.financialDetails, id: response.id } };
+                    break;
+                case 3: // Other Details
+                    const otherPayload = { ...formData.otherDetails, customerId: formData.customerId };
+                    response = await accountOpeningService.saveOtherDetails(otherPayload);
+                    updatedCustomerData = { otherDetails: { ...formData.otherDetails, id: response.id } };
+                    break;
+                case 4: // Document Details
+                    let docPhotoUrl = formData.documentDetails.docPhotoUrl;
+                    if (formData.documentDetails.photoIdFile) {
+                        docPhotoUrl = await accountOpeningService.uploadDocumentPhoto(formData.documentDetails.photoIdFile);
+                    }
+                    const documentPayload = { ...formData.documentDetails, customerId: formData.customerId, docPhotoUrl: docPhotoUrl };
+                    response = await accountOpeningService.saveDocumentDetails(documentPayload);
+                    updatedCustomerData = { documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl: docPhotoUrl } };
+                    break;
+                case 5: // E-Payment Service
+                    const ePaymentPayload = { ...formData.ePaymentService, customerId: formData.customerId };
+                    response = await accountOpeningService.saveEPaymentService(ePaymentPayload);
+                    updatedCustomerData = { ePaymentService: { ...formData.ePaymentService, id: response.id } };
+                    break;
+                case 6: // Passbook & Muday Request
+                    const passbookPayload = { ...formData.passbookMudayRequest, customerId: formData.customerId };
+                    response = await accountOpeningService.savePassbookMudayRequest(passbookPayload);
+                    updatedCustomerData = { passbookMudayRequest: { ...formData.passbookMudayRequest, id: response.id } };
+                    break;
+                case 7: // Digital Signature
+                    let signatureUrl = formData.digitalSignature.signatureUrl;
+                    if (formData.digitalSignature.signatureFile) {
+                        signatureUrl = await accountOpeningService.uploadDigitalSignature(formData.digitalSignature.signatureFile);
+                    }
+                    const signaturePayload = { ...formData.digitalSignature, customerId: formData.customerId, signatureUrl: signatureUrl };
+                    response = await accountOpeningService.saveDigitalSignature(signaturePayload);
+                    updatedCustomerData = { digitalSignature: { ...formData.digitalSignature, id: response.id, signatureUrl: signatureUrl } };
+                    break;
+                default:
+                    break;
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                ...updatedCustomerData
+            }));
+            setCurrentStep(prev => prev + 1);
+        } catch (error) {
+            console.error("Error saving form data:", error);
+            setErrors((prevErrors) => ({
+                ...prevErrors,
+                apiError: "Failed to save data. Please try again.",
+            }));
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleBack = () => {
+        setCurrentStep(prev => prev - 1);
+    };
+
+    const handlePhoneNumberSubmit = async () => {
+        if (!phoneNumberInput.trim()) {
+            setPhoneInputError("Mobile phone number is required.");
+            return;
+        }
+        setPhoneInputError(undefined);
+        setPhoneCheckLoading(true);
+
+        try {
+            const savedFormData: FormSummary | null = await accountOpeningService.getSavedForm(phoneNumberInput);
+
+            if (savedFormData) {
+                // Form found, populate data and move to the last filled step
+                // CRUCIAL CHANGE HERE: Initialize null sections with empty objects based on INITIAL_DATA
+                const transformedData: FormData = {
+                    customerId: savedFormData.customerId,
+                    personalDetails: savedFormData.personalDetails || INITIAL_DATA.personalDetails,
+                    addressDetails: savedFormData.addressDetails || INITIAL_DATA.addressDetails,
+                    financialDetails: savedFormData.financialDetails || INITIAL_DATA.financialDetails,
+                    otherDetails: savedFormData.otherDetails || INITIAL_DATA.otherDetails,
+                    documentDetails: savedFormData.documentDetails || INITIAL_DATA.documentDetails,
+                    ePaymentService: savedFormData.ePaymentService || INITIAL_DATA.ePaymentService,
+                    passbookMudayRequest: savedFormData.passbookMudayRequest || INITIAL_DATA.passbookMudayRequest,
+                    digitalSignature: savedFormData.digitalSignature || INITIAL_DATA.digitalSignature,
+                };
+                setFormData(transformedData);
+
+                let lastFilledStep = 0;
+                if (savedFormData.personalDetails?.id) lastFilledStep = Math.max(lastFilledStep, 0);
+                if (savedFormData.addressDetails?.id) lastFilledStep = Math.max(lastFilledStep, 1);
+                if (savedFormData.financialDetails?.id) lastFilledStep = Math.max(lastFilledStep, 2);
+                if (savedFormData.otherDetails?.id) lastFilledStep = Math.max(lastFilledStep, 3);
+                if (savedFormData.documentDetails?.id) lastFilledStep = Math.max(lastFilledStep, 4);
+                if (savedFormData.ePaymentService?.id) lastFilledStep = Math.max(lastFilledStep, 5);
+                if (savedFormData.passbookMudayRequest?.id) lastFilledStep = Math.max(lastFilledStep, 6);
+                if (savedFormData.digitalSignature?.id) lastFilledStep = Math.max(lastFilledStep, 7);
+
+                setCurrentStep(lastFilledStep);
+                console.log("Form data loaded for resume:", transformedData);
+                console.log("Resumed at step:", lastFilledStep);
+            } else {
+                // No form found, start a new form
+                setFormData(INITIAL_DATA);
+                setCurrentStep(0);
+                console.log("No saved form found. Starting a new form.");
+            }
+            setPhoneNumberScreenActive(false);
+        } catch (error: any) {
+            console.error("Error checking phone number:", error);
+            if (error.response && error.response.data && error.response.data.errors) {
+                setPhoneInputError(error.response.data.errors.phoneNumber || "Validation error.");
+            } else if (error.response && error.response.data) {
+                setPhoneInputError(error.response.data);
+            } else {
+                setPhoneInputError("An unexpected error occurred. Please check your internet connection and try again.");
+            }
+        } finally {
+            setPhoneCheckLoading(false);
+        }
+    };
+
+    const handleUpdateApplication = () => { // Renamed from handleStartNewApplication
+        // Keep existing formData, just navigate back to the first step of the form
+        setCurrentStep(0);
+        setPhoneNumberScreenActive(false); // Ensure form steps are active
+        setPhoneInputError(undefined); // Clear any errors
+    };
+
+
+    const renderStep = () => {
+        console.log("Current Step Index:", currentStep);
+        console.log("Current formData.customerId:", formData.customerId);
+
+        if (phoneNumberScreenActive) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                    <h2 className="text-2xl font-bold mb-4 text-purple-800">Welcome!</h2>
+                    <p className="mb-6 text-gray-700 text-center">
+                        Enter your **mobile phone number** to start or resume your account opening application.
+                    </p>
+                    <Field label="Mobile Phone Number" error={phoneInputError}>
+                        <input
+                            type="tel"
+                            name="phoneNumberInput"
+                            className="form-input w-full p-3 rounded border text-center"
+                            value={phoneNumberInput}
+                            onChange={(e) => setPhoneNumberInput(e.target.value)}
+                            placeholder="e.g., 0912345678"
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                    handlePhoneNumberSubmit();
+                                }
+                            }}
+                        />
+                    </Field>
+                    <div className="flex gap-4 mt-6">
+                        <button
+                            type="button"
+                            className="bg-purple-700 text-white px-6 py-3 rounded-lg shadow-md hover:bg-purple-800 transition disabled:opacity-50"
+                            onClick={handlePhoneNumberSubmit}
+                            disabled={phoneCheckLoading}
+                        >
+                            {phoneCheckLoading ? "Checking..." : "Continue"}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        switch (currentStep) {
+            case 0:
+                return (
+                    <StepPersonal
+                        data={formData.personalDetails}
+                        setData={(d) => updateSectionData("personalDetails", d)}
+                        errors={errors.personalDetails}
+                        onNext={handleNext}
+                        submitting={submitting}
+                    />
+                );
+            case 1:
+                return (
+                    <StepAddress
+                        data={formData.addressDetails}
+                        setData={(d) => updateSectionData("addressDetails", d)}
+                        errors={errors.addressDetails}
+                        onNext={handleNext}
+                        onBack={handleBack}
+                        submitting={submitting}
+                    />
+                );
+            case 2:
+                return (
+                    <StepFinancial
+                        data={formData.financialDetails}
+                        setData={(d) => updateSectionData("financialDetails", d)}
+                        errors={errors.financialDetails}
+                        onNext={handleNext}
+                        onBack={handleBack}
+                        submitting={submitting}
+                    />
+                );
+            case 3:
+                return (
+                    <StepOther
+                        data={formData.otherDetails}
+                        setData={(d) => updateSectionData("otherDetails", d)}
+                        errors={errors.otherDetails}
+                        onNext={handleNext}
+                        onBack={handleBack}
+                        submitting={submitting}
+                    />
+                );
+            case 4:
+                return (
+                    <StepDocument
+                        data={formData.documentDetails}
+                        setData={(d) => updateSectionData("documentDetails", d)}
+                        errors={errors.documentDetails}
+                        onNext={handleNext}
+                        onBack={handleBack}
+                        submitting={submitting}
+                    />
+                );
+            case 5:
+                return (
+                    <StepEPayment
+                        data={formData.ePaymentService}
+                        setData={(d) => updateSectionData("ePaymentService", d)}
+                        errors={errors.ePaymentService}
+                        onNext={handleNext}
+                        onBack={handleBack}
+                        submitting={submitting}
+                    />
+                );
+            case 6:
+                return (
+                    <StepPassbook
+                        data={formData.passbookMudayRequest}
+                        setData={(d) => updateSectionData("passbookMudayRequest", d)}
+                        errors={errors.passbookMudayRequest}
+                        onNext={handleNext}
+                        onBack={handleBack}
+                        submitting={submitting}
+                    />
+                );
+            case 7:
+                return (
+                    <StepSignature
+                        data={formData.digitalSignature}
+                        setData={(d) => updateSectionData("digitalSignature", d)}
+                        errors={errors.digitalSignature}
+                        onNext={handleNext}
+                        onBack={handleBack}
+                        submitting={submitting}
+                    />
+                );
+            default:
+                // This is the success screen
+                return (
+                    <div className="text-center p-8">
+                        <svg
+                            className="mx-auto h-24 w-24 text-green-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                        <h2 className="text-3xl font-extrabold text-purple-800 mt-4 mb-2">
+                            Application Submitted Successfully!
+                        </h2>
+                        <p className="text-lg text-gray-700 mb-6">
+                            Thank you for completing your account opening application.
+                            We've received your details and will process them shortly.
+                            Your application reference ID is: <span className="font-semibold text-purple-700">{formData.personalDetails.id}</span>
+                        </p>
+
+                        <div className="text-left bg-gray-50 p-6 rounded-lg shadow-inner max-h-96 overflow-y-auto mb-6">
+                            <h3 className="text-xl font-bold text-purple-700 mb-4">Summary of Your Application:</h3>
+                            {Object.entries(formData).map(([key, value]) => {
+                                // Skip customerId as it's often an internal ID, and File objects
+                                if (key === 'customerId' || key.endsWith('File')) {
+                                    return null;
+                                }
+
+                                return (
+                                    <div key={key} className="mb-4 last:mb-0">
+                                        <h4 className="font-semibold text-purple-600 capitalize mb-1">
+                                            {key.replace(/([A-Z])/g, ' $1').trim()}:
+                                        </h4>
+                                        <ul className="list-disc list-inside text-gray-700">
+                                            {Object.entries(value || {}).map(([subKey, subValue]) => {
+                                                // Skip internal IDs and File objects within sub-sections
+                                                if (subKey === 'id' || subKey === 'customerId' || subKey.endsWith('File')) {
+                                                    return null;
+                                                }
+
+                                                let displayValue = subValue;
+                                                if (typeof subValue === 'boolean') {
+                                                    displayValue = subValue ? 'Yes' : 'No';
+                                                } else if (subValue instanceof Date) {
+                                                    displayValue = subValue.toLocaleDateString();
+                                                } else if (typeof subValue === 'string' && (subKey.includes('DateOfBirth') || subKey.includes('issueDate') || subKey.includes('expiryDate')) && subValue) {
+                                                    try {
+                                                        displayValue = new Date(subValue).toLocaleDateString();
+                                                    } catch (e) {
+                                                        displayValue = subValue; // Fallback if date parsing fails
+                                                    }
+                                                } else if (subValue === null || subValue === undefined || subValue === '') {
+                                                    displayValue = 'Not provided';
+                                                }
+
+                                                // Clean up camelCase for display
+                                                const cleanedSubKey = subKey.replace(/([A-Z])/g, ' $1').replace(/_([A-Z])/g, ' $1').trim();
+
+                                                // Only display if value is not 'Not provided' or a meaningful value
+                                                if (displayValue === 'Not provided' && (subValue === null || subValue === undefined || subValue === '')) {
+                                                    return null;
+                                                }
+
+                                                return (
+                                                    <li key={subKey}>
+                                                        <span className="font-medium">{cleanedSubKey}:</span> {String(displayValue)}
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+                            <button
+                                onClick={handleUpdateApplication} // Changed to handleUpdateApplication
+                                className="bg-purple-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-purple-800 transition transform hover:scale-105"
+                            >
+                                Update Application
+                            </button>
+                            <button
+                                onClick={() => navigate("/")}
+                                className="bg-gray-300 text-purple-700 px-8 py-3 rounded-lg shadow-md hover:bg-gray-400 transition transform hover:scale-105"
+                            >
+                                Go to Home
+                            </button>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-4">
+                            For any inquiries, please contact our support team.
+                        </p>
+                    </div>
+                );
+        }
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
+            {!phoneNumberScreenActive && currentStep < steps.length && <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />}
+            <hr className="my-6" />
+            <form onSubmit={(e) => e.preventDefault()}>
+                {renderStep()}
+            </form>
+        </div>
+    );
+}
+export default AccountOpeningForm;

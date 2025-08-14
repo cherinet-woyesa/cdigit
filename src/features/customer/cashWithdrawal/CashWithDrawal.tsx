@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../context/AuthContext';
-import authService from '../../auth/authService';
+import authService from '../../../services/authService';
 
 export default function CashWithdrawalForm() {
   // Get phone number from AuthContext (set at login)

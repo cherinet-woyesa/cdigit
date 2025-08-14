@@ -92,8 +92,9 @@ const depositService = {
             if (response.ok) {
                 return await response.json();
             } else {
-                console.error("Unexpected error:", error);
-                throw new Error("Deposit submission failed");
+                const errorData: ErrorResponse = await response.json();
+                const errorMessage = errorData.Message || 'Deposit not found.';
+                throw new Error(errorMessage);
             }
         } catch (error) {
             console.error(`Error fetching deposit by ID ${id}:`, error);
