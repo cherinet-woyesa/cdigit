@@ -74,8 +74,10 @@ const MakerDashboard: React.FC = () => {
     const [message, setMessage] = useState('');
     const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
 
-    // NEW state to hold the full details of the customer currently being served
+    // State to hold the full details of the customer currently being served
     const [currentCustomer, setCurrentCustomer] = useState<QueuedForm | null>(null);
+    // State to track finishing status
+    const [finishing, setFinishing] = useState(false);
 
     const fetchForms = useCallback(async () => {
         if (!token || !assignedWindowId) return;
@@ -188,17 +190,17 @@ const MakerDashboard: React.FC = () => {
     
     const handleMarkAsDeposited = async (form: DepositForm) => {
         if (!token || !user) return;
-        setLoading(true);
+        setFinishing(true);
         setError('');
-
         try {
             await makerService.markDepositAsDeposited(form.formKey, user.id, token);
+            setCurrentCustomer(null); // Clear current customer after finishing
             fetchForms();
         } catch (err: any) {
             setError(err.response?.data?.Message || 'Failed to update deposit status.');
             console.error('Mark as deposited error:', err);
         } finally {
-            setLoading(false);
+            setFinishing(false);
         }
     };
 
@@ -256,7 +258,6 @@ const MakerDashboard: React.FC = () => {
     };
 
     // --- Conditional Rendering for the main content ---
-
     if (!user || loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -264,8 +265,8 @@ const MakerDashboard: React.FC = () => {
             </div>
         );
     }
-    
-    // NEW conditional rendering logic: Show either the detailed view or the queue list
+
+    // Show either the detailed view for the current customer or the queue list
     const renderMainContent = () => {
         if (currentCustomer) {
             return (
@@ -275,26 +276,33 @@ const MakerDashboard: React.FC = () => {
                     </h2>
                     <p className="text-sm text-gray-600">Queue No: <span className="font-bold">{currentCustomer.queueNumber}</span></p>
                     <p className="text-sm text-gray-600">Form Key: <span className="font-mono">{currentCustomer.formKey}</span></p>
-                    <span className="font-mono">current form type: {currentCustomer.type}</span>
+                    <span className="font-mono">Current form type: {currentCustomer.type}</span>
                     <div className="mt-6 border-t border-gray-200 pt-6">
-                        {currentCustomer.type == 'Deposit' && (
-                          <DepositDetailView
-                              form={currentCustomer as DepositForm}
-                              onUpdateDenominationsClick={handleUpdateDenominations} // Pass the handler here
-                          />
-                      )}
-
+                        {currentCustomer.type === 'Deposit' && (
+                            <>
+                                <DepositDetailView
+                                    form={currentCustomer as DepositForm}
+                                    onUpdateDenominationsClick={handleUpdateDenominations}
+                                />
+                                <button
+                                    onClick={() => handleMarkAsDeposited(currentCustomer as DepositForm)}
+                                    disabled={finishing}
+                                    className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                                >
+                                    {finishing ? 'Finishing...' : 'Finish Serving'}
+                                </button>
+                            </>
+                        )}
                         {currentCustomer.type === 'Withdrawal' && (
                             <WithdrawalDetailView form={currentCustomer as WithdrawalForm} />
                         )}
-                         {currentCustomer.type === 'FundTransfer' && (
+                        {currentCustomer.type === 'FundTransfer' && (
                             <FundTransferDetailView form={currentCustomer as FundTransferForm} />
                         )}
                     </div>
                 </div>
             );
         }
-
         // If no customer is being served, render the standard queue list
         return (
             <>
@@ -308,14 +316,12 @@ const MakerDashboard: React.FC = () => {
                         Call Next Customer
                     </button>
                 </div>
-                
                 {forms.length === 0 && !loading && (
                     <div className="text-center py-20 text-gray-500">
                         <p className="text-2xl font-semibold">No pending forms in your queue.</p>
                         <p className="mt-2">Click the button above to call the next customer.</p>
                     </div>
                 )}
-                
                 {forms.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {forms.map((form) => (
@@ -346,9 +352,9 @@ const MakerDashboard: React.FC = () => {
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <h1 className="text-3xl font-bold">Maker Dashboard</h1>
                     {user && (
-                      <p className="text-sm bg-purple-800 px-3 py-1 rounded-full">
-                        Welcome, {user.firstName} {user.lastName} ({user.role})
-                      </p>
+                        <p className="text-sm bg-purple-800 px-3 py-1 rounded-full">
+                            Welcome, {user.firstName} {user.lastName} ({user.role})
+                        </p>
                     )}
                 </div>
             </header>
@@ -361,60 +367,24 @@ const MakerDashboard: React.FC = () => {
                     <p className="opacity-90">View and process customer transactions efficiently.</p>
                 </div>
 
-                {/* Transaction Queue */}
+                {/* Transaction Queue or Current Customer */}
                 <div className="bg-white p-8 rounded-lg shadow-lg">
                     {error && <p className="text-red-600 mb-4 font-medium text-center">{error}</p>}
-
-                    {forms.length === 0 && !loading && (
-                        <div className="text-center py-20 text-gray-500">
-                            <p className="text-2xl font-semibold">No pending forms in your queue.</p>
-                            <p className="mt-2">Click the button below to call the next customer.</p>
-                        </div>
-                    )}
-
-                    {forms.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {forms.map((form) => (
-                                <div key={form.formKey} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${form.type === 'Deposit' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                            {form.type}
-                                        </span>
-                                        <span className="text-sm text-gray-500">Queue: {form.queueNumber}</span>
-                                    </div>
-                                    <h3 className="text-xl font-bold text-gray-800 mb-2">{form.customerFullName}</h3>
-                                    <p className="text-sm text-gray-600">Account No: <span className="font-mono">{(form as DepositForm).accountNumber || (form as WithdrawalForm).accountNumber || (form as FundTransferForm).sourceAccountNumber}</span></p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-4">
-                                        ETB {(form as DepositForm).amount?.toFixed(2) || (form as WithdrawalForm).withdrawalAmount?.toFixed(2) || (form as FundTransferForm).amount?.toFixed(2)}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <div className="flex justify-center space-x-4 mt-6">
-                        <button
-                            onClick={handleCallNextCustomer}
-                            disabled={loading}
-                            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-150 ease-in-out disabled:opacity-50 flex items-center"
-                        >
-                            Call Next Customer
-                        </button>
-                    </div>
+                    {renderMainContent()}
                 </div>
             </main>
-            
-            {/* The modal components would be rendered here, as before */}
+
+            {/* Denomination Modal */}
             <DenominationModal
                 isOpen={isDenominationModalOpen}
                 onClose={() => setIsDenominationModalOpen(false)}
                 form={selectedForm}
                 onSave={() => {
                     fetchForms();
-                    // setIsDenominationModalOpen(false);
                 }}
             />
-            
+
+            {/* Window Selection Modal */}
             {showWindowModal && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-lg p-8 max-w-md w-full">
