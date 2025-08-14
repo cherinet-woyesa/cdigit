@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext';
-import logo from '../../assets/logo.jpg'; // Verified import path
+import logo from '../assets/logo.jpg'; // Verified import path
 
 const StaffLogin: React.FC = () => {
   const [email, setEmail] = useState('');
