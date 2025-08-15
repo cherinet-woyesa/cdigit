@@ -34,14 +34,14 @@ export function ProgressBar({ currentStep, totalSteps, stepTitles }: ProgressBar
           <div className="flex flex-col items-center flex-1">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                index <= currentStep ? "bg-purple-600" : "bg-gray-400"
+                index <= currentStep ? "bg-fuchsia-600" : "bg-gray-400"
               }`}
             >
               {index + 1}
             </div>
             <div
               className={`text-xs mt-1 text-center ${
-                index <= currentStep ? "text-purple-700" : "text-gray-500"
+                index <= currentStep ? "text-fuchsia-700" : "text-gray-500"
               }`}
             >
               {stepTitles[index]}
@@ -50,7 +50,7 @@ export function ProgressBar({ currentStep, totalSteps, stepTitles }: ProgressBar
           {index < totalSteps - 1 && (
             <div
               className={`flex-1 h-1 ${
-                index < currentStep ? "bg-purple-600" : "bg-gray-300"
+                index < currentStep ? "bg-fuchsia-600" : "bg-gray-300"
               }`}
             />
           )}

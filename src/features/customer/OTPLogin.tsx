@@ -39,7 +39,7 @@ const FormInput: React.FC<FormInputProps> = ({
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className="mt-2 block w-full rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 text-lg p-3"
+  className="mt-2 block w-full rounded-lg border-gray-300 focus:border-fuchsia-500 focus:ring-fuchsia-500 text-lg p-3"
       aria-label={ariaLabel}
       aria-invalid={ariaInvalid}
       aria-describedby={ariaDescribedby}
@@ -67,7 +67,7 @@ const FormButton: React.FC<FormButtonProps> = ({
     <button
       type="submit"
       disabled={disabled}
-      className={`w-full bg-purple-700 text-white py-3 rounded-lg hover:bg-purple-800 disabled:opacity-50 transition text-lg font-medium flex items-center justify-center ${className || ''}`}
+  className={`w-full bg-fuchsia-700 text-white py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 transition text-lg font-medium flex items-center justify-center ${className || ''}`}
       aria-label={ariaLabel}
     >
       {children}
@@ -160,7 +160,7 @@ const OTPLogin: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-4">
-      <div className="w-full max-w-2xl bg-white shadow-2xl rounded-2xl p-14 space-y-12">
+  <div className="w-full max-w-2xl bg-white shadow-2xl rounded-2xl p-14 space-y-12">
         {/* Brand Header */}
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-semibold text-gray-900 uppercase">
@@ -170,10 +170,10 @@ const OTPLogin: React.FC = () => {
             <img
               src={logo}
               alt={t('logoAlt')}
-              className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-purple-200"
+              className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-fuchsia-200"
             />
           </div>
-          <h2 className="text-4xl font-extrabold text-purple-700">{t('welcome')}</h2>
+          <h2 className="text-4xl font-extrabold text-fuchsia-700">{t('welcome')}</h2>
           <h2 className="text-xl font-semibold text-gray-800">
             {t('enterPhonePrompt')}
           </h2>
@@ -241,7 +241,7 @@ const OTPLogin: React.FC = () => {
               <span className="text-gray-700">{t('noAccount')}</span>
               <Link
                 to="/form/account-opening"
-                className="ml-2 text-purple-700 font-semibold hover:underline hover:text-purple-800 transition-colors"
+                className="ml-2 text-fuchsia-700 font-semibold hover:underline hover:text-fuchsia-800 transition-colors"
               >
                 {t('createAccount')}
               </Link>
@@ -305,7 +305,7 @@ const OTPLogin: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setStep('request')}
-                className="text-purple-700 hover:underline text-sm font-medium"
+                className="text-fuchsia-700 hover:underline text-sm font-medium"
                 disabled={loading}
                 aria-label={t('backToPhone')}
               >
@@ -317,7 +317,7 @@ const OTPLogin: React.FC = () => {
                   if (resendCooldown === 0) requestOtpDirect();
                 }}
                 disabled={resendCooldown > 0 || loading}
-                className="text-purple-700 hover:underline text-sm font-medium disabled:opacity-50"
+                className="text-fuchsia-700 hover:underline text-sm font-medium disabled:opacity-50"
                 aria-label={t('resendOtp')}
               >
                 {resendCooldown > 0

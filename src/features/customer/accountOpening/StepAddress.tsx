@@ -18,16 +18,43 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
         setData({ ...data, [name]: value });
     };
 
+    // Email and phone validation helpers
+    function isValidEmail(email: string) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+    function isValidPhone(phone: string) {
+        // Ethiopian mobile: starts with 09 or +2519, 10 digits
+        return /^09\d{8}$|^\+2519\d{8}$/.test(phone);
+    }
+    function isValidOfficePhone(phone: string) {
+        // Allow empty, or must start with +251 and be numeric (Ethiopian format)
+        if (!phone) return true;
+        return /^\+251\d{8,9}$/.test(phone);
+    }
+
+    // Custom validation for email and phone
+    const localErrors: Partial<typeof errors> = { ...errors };
+    if (data.emailAddress && !isValidEmail(data.emailAddress)) {
+        localErrors.emailAddress = "Invalid email format";
+    }
+    if (data.mobilePhone && !isValidPhone(data.mobilePhone)) {
+        localErrors.mobilePhone = "Invalid Ethiopian phone number";
+    }
+    if (data.officePhone && !isValidOfficePhone(data.officePhone)) {
+        localErrors.officePhone = "Office phone must start with +251 and be numeric (e.g., +251112345678)";
+    }
+
     return (
         <>
-            <div className="text-xl font-bold mb-3 text-purple-800">Address Details</div>
+            <div className="text-xl font-bold mb-3 text-fuchsia-800">Address Details</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Region / City Administration" required error={errors.regionCityAdministration}>
                     <select
                         className="form-select w-full p-2 rounded border"
-                        name="regionCityAdministration" // Changed to camelCase
+                        name="regionCityAdministration"
                         value={data.regionCityAdministration}
                         onChange={handleChange}
+                        required
                     >
                         <option value="">Select</option>
                         <option value="Addis Ababa">Addis Ababa</option>
@@ -47,78 +74,83 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
                 <Field label="Zone" error={errors.zone}>
                     <input
                         type="text"
-                        name="zone" // Changed to camelCase
+                        name="zone"
                         className="form-input w-full p-2 rounded border"
                         value={data.zone || ""}
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="Sub-City" error={errors.subCity}>
+                <Field label="Sub-City" required error={errors.subCity}>
                     <input
                         type="text"
-                        name="subCity" // Changed to camelCase
+                        name="subCity"
                         className="form-input w-full p-2 rounded border"
                         value={data.subCity || ""}
                         onChange={handleChange}
+                        required
                     />
                 </Field>
-                <Field label="Wereda / Kebele" error={errors.weredaKebele}>
+                <Field label="Wereda / Kebele" required error={errors.weredaKebele}>
                     <input
                         type="text"
-                        name="weredaKebele" // Changed to camelCase
+                        name="weredaKebele"
                         className="form-input w-full p-2 rounded border"
                         value={data.weredaKebele || ""}
                         onChange={handleChange}
+                        required
                     />
                 </Field>
-                <Field label="House Number" error={errors.houseNumber}>
+                <Field label="House Number" required error={errors.houseNumber}>
                     <input
                         type="text"
-                        name="houseNumber" // Changed to camelCase
+                        name="houseNumber"
                         className="form-input w-full p-2 rounded border"
                         value={data.houseNumber || ""}
                         onChange={handleChange}
+                        required
                     />
                 </Field>
-                <Field label="Mobile Phone" required error={errors.mobilePhone}>
+                <Field label="Mobile Phone" required error={localErrors.mobilePhone}>
                     <input
                         type="tel"
-                        name="mobilePhone" // Changed to camelCase
+                        name="mobilePhone"
                         className="form-input w-full p-2 rounded border"
                         value={data.mobilePhone}
                         onChange={handleChange}
+                        required
                     />
                 </Field>
-                <Field label="Office Phone" error={errors.officePhone}>
+                <Field label="Office Phone" error={localErrors.officePhone}>
                     <input
                         type="tel"
-                        name="officePhone" // Changed to camelCase
+                        name="officePhone"
                         className="form-input w-full p-2 rounded border"
                         value={data.officePhone || ""}
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="Email Address" error={errors.emailAddress}>
+                <Field label="Email Address" required error={localErrors.emailAddress}>
                     <input
                         type="email"
-                        name="emailAddress" // Changed to camelCase
+                        name="emailAddress"
                         className="form-input w-full p-2 rounded border"
                         value={data.emailAddress || ""}
                         onChange={handleChange}
+                        required
                     />
                 </Field>
             </div>
             <div className="flex justify-between mt-6">
                 <button
                     type="button"
-                    className="bg-gray-300 text-purple-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition"
+                    className="bg-gray-300 text-fuchsia-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition"
                     onClick={onBack}
                 >
                     Back
                 </button>
                 <button
                     type="button"
-                    className="bg-purple-700 text-white px-6 py-2 rounded shadow hover:bg-purple-800 transition"
+                    className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
                     onClick={onNext}
                     disabled={submitting}
                 >

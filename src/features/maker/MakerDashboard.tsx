@@ -261,7 +261,7 @@ const MakerDashboard: React.FC = () => {
     if (!user || loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <FontAwesomeIcon icon={faSpinner} spin size="2x" className="text-purple-600" />
+                <FontAwesomeIcon icon={faSpinner} spin size="2x" className="text-fuchsia-600" />
             </div>
         );
     }
@@ -348,11 +348,11 @@ const MakerDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-100">
             {/* Header */}
-            <header className="bg-purple-700 text-white py-5 px-6 shadow-lg">
+            <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <h1 className="text-3xl font-bold">Maker Dashboard</h1>
                     {user && (
-                        <p className="text-sm bg-purple-800 px-3 py-1 rounded-full">
+                        <p className="text-sm bg-fuchsia-800 px-3 py-1 rounded-full">
                             Welcome, {user.firstName} {user.lastName} ({user.role})
                         </p>
                     )}
@@ -362,7 +362,7 @@ const MakerDashboard: React.FC = () => {
             {/* Main Content */}
             <main className="max-w-6xl mx-auto px-4 py-10">
                 {/* Welcome Banner */}
-                <div className="bg-purple-700 text-white p-6 rounded-xl mb-8 shadow-lg">
+                <div className="bg-fuchsia-700 text-white p-6 rounded-xl mb-8 shadow-lg">
                     <h2 className="text-2xl font-bold mb-2">Manage Transactions</h2>
                     <p className="opacity-90">View and process customer transactions efficiently.</p>
                 </div>

@@ -6,7 +6,7 @@ import authService from '../../../services/authService';
 
 export default function CashWithdrawalForm() {
   // Get phone number from AuthContext (set at login)
-  const { phone } = useAuth();
+  const { phone, user } = useAuth();
   
   // Load persisted fields from localStorage if present
   const persistedAccountNumber = localStorage.getItem('cw_accountNumber') || '';
@@ -71,12 +71,22 @@ export default function CashWithdrawalForm() {
     };
   }, [resendTimer]);
 
-  // Fetch accounts by phone number from AuthContext on mount or when phone changes
+  // Fetch accounts for customer (OTPLogin) or staff (StaffLogin)
   useEffect(() => {
     const fetchAccounts = async () => {
-      if (!phone) return;
+      let resp;
       try {
-        const resp = await fetch(`/api/Accounts/by-phone/${phone}`);
+        if (phone) {
+          // Customer flow (OTPLogin)
+          resp = await fetch(`/api/Accounts/by-phone/${phone}`);
+        } else if (user && user.role && user.role.toLowerCase() !== 'customer') {
+          // Staff/Admin flow (StaffLogin)
+          resp = await fetch(`/api/Accounts/my-accounts`);
+        } else {
+          setAccounts([]);
+          setAccountDropdown(false);
+          return;
+        }
         if (resp.status === 200) {
           const data = await resp.json();
           setAccounts(data);
@@ -86,7 +96,7 @@ export default function CashWithdrawalForm() {
                 ...prev,
                 accountNumber: data[0].accountNumber,
                 accountHolderName: data[0].accountHolderName || data[0].name || '',
-                telephoneNumber: phone
+                telephoneNumber: phone || ''
               };
               // Persist
               localStorage.setItem('cw_accountNumber', updated.accountNumber);
@@ -103,7 +113,7 @@ export default function CashWithdrawalForm() {
                 ...prev,
                 accountNumber: '',
                 accountHolderName: '',
-                telephoneNumber: phone
+                telephoneNumber: phone || ''
               };
               // Clear persisted fields until selection
               localStorage.setItem('cw_accountNumber', '');
@@ -123,7 +133,7 @@ export default function CashWithdrawalForm() {
       }
     };
     fetchAccounts();
-  }, [phone]);
+  }, [phone, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -286,12 +296,12 @@ export default function CashWithdrawalForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-4 md:p-8">
-      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-purple-100">
+    <div className="min-h-screen bg-gradient-to-br from-fuchsia-50 to-white p-4 md:p-8">
+      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-fuchsia-100">
         {/* Form Header */}
-        <div className="bg-gradient-to-r from-purple-700 to-purple-600 p-6 text-white text-center">
+        <div className="bg-gradient-to-r from-fuchsia-700 to-fuchsia-600 p-6 text-white text-center">
           <h1 className="text-2xl font-bold">Cash Withdrawal</h1>
-          <div className="flex justify-between items-center mt-3 text-purple-100 text-sm">
+          <div className="flex justify-between items-center mt-3 text-fuchsia-100 text-sm">
             <span>Branch: {branchInfo.name}</span>
             <span>{branchInfo.date}</span>
           </div>
@@ -303,18 +313,18 @@ export default function CashWithdrawalForm() {
             {[1, 2, 3].map((stepNum) => (
               <div key={stepNum} className="flex flex-col items-center z-10">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center 
-                  ${step >= stepNum ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600'} 
-                  ${step === stepNum ? 'ring-4 ring-purple-300' : ''}`}>
+                  ${step >= stepNum ? 'bg-fuchsia-600 text-white' : 'bg-fuchsia-100 text-fuchsia-600'} 
+                  ${step === stepNum ? 'ring-4 ring-fuchsia-300' : ''}`}>
                   {stepNum}
                 </div>
-                <div className={`text-xs mt-1 ${step >= stepNum ? 'text-purple-700 font-medium' : 'text-gray-400'}`}>
+                <div className={`text-xs mt-1 ${step >= stepNum ? 'text-fuchsia-700 font-medium' : 'text-gray-400'}`}>
                   {['Account', 'OTP', 'Confirm'][stepNum - 1]}
                 </div>
               </div>
             ))}
-            <div className="absolute h-1 bg-purple-100 top-4 left-8 right-8">
+            <div className="absolute h-1 bg-fuchsia-100 top-4 left-8 right-8">
               <div 
-                className="h-1 bg-purple-600 transition-all duration-500" 
+                className="h-1 bg-fuchsia-600 transition-all duration-500" 
                 style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}
               ></div>
             </div>
@@ -326,7 +336,7 @@ export default function CashWithdrawalForm() {
           {step === 1 && (
             <div className="space-y-5 animate-fadeIn">
               <div>
-                <label className="block text-sm font-medium text-purple-700 mb-2">
+                <label className="block text-sm font-medium text-fuchsia-700 mb-2">
                   Account Number *
                 </label>
                 {accountDropdown && accounts.length > 0 ? (
@@ -334,7 +344,7 @@ export default function CashWithdrawalForm() {
                     name="accountNumber"
                     value={formData.accountNumber}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 p-3"
+                    className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
                   >
                     <option value="">Select an account</option>
                     {accounts.map((account) => (
@@ -350,14 +360,14 @@ export default function CashWithdrawalForm() {
                       name="accountNumber"
                       value={formData.accountNumber}
                       onChange={handleChange}
-                      className="flex-1 rounded-l-lg border border-purple-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 p-3"
+                      className="flex-1 rounded-l-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
                       placeholder="Enter account number"
                     />
                     <button
                       type="button"
                       onClick={validateAccount}
                       disabled={!formData.accountNumber}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-r-lg transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 rounded-r-lg transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : 'Search'}
                     </button>
@@ -369,14 +379,14 @@ export default function CashWithdrawalForm() {
               </div>
 
               {formData.accountHolderName && (
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                  <p className="text-sm text-purple-600">Account Holder</p>
+                <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100">
+                  <p className="text-sm text-fuchsia-600">Account Holder</p>
                   <p className="font-medium">{formData.accountHolderName}</p>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-purple-700 mb-2">
+                <label className="block text-sm font-medium text-fuchsia-700 mb-2">
                   Withdrawal Amount (ETB) *
                 </label>
                 <input
@@ -384,7 +394,7 @@ export default function CashWithdrawalForm() {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 p-3"
+                  className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
                   placeholder="Enter amount"
                 />
                 {Number(formData.amount) > 50000 && (
@@ -397,7 +407,7 @@ export default function CashWithdrawalForm() {
               <button
                 onClick={sendOTP}
                 disabled={!formData.accountHolderName || !formData.amount || Number(formData.amount) > 50000}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Sending OTP...' : 'Continue to OTP Verification'}
               </button>
@@ -406,8 +416,8 @@ export default function CashWithdrawalForm() {
 
           {step === 2 && (
             <div className="space-y-5 animate-fadeIn">
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                <p className="text-sm text-purple-600">OTP Sent to your registered phone</p>
+              <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100">
+                <p className="text-sm text-fuchsia-600">OTP Sent to your registered phone</p>
                 <p className="font-medium">•••• {phone || formData.telephoneNumber?.slice(-3) || '•••'}</p>
                 {otpMessage && <p className="text-sm text-green-600 mt-1">{otpMessage}</p>}
                 <div className="mt-2 flex justify-between items-center">
@@ -415,7 +425,7 @@ export default function CashWithdrawalForm() {
                     type="button"
                     onClick={handleResendOtp}
                     disabled={resendCooldown > 0 || isLoading}
-                    className="text-sm text-purple-600 hover:text-purple-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    className="text-sm text-fuchsia-600 hover:text-fuchsia-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
                   </button>
@@ -423,7 +433,7 @@ export default function CashWithdrawalForm() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-purple-700 mb-2">
+                <label className="block text-sm font-medium text-fuchsia-700 mb-2">
                   Enter 4-digit OTP *
                 </label>
                 <input
@@ -432,7 +442,7 @@ export default function CashWithdrawalForm() {
                   value={formData.otp}
                   onChange={handleChange}
                   maxLength={4}
-                  className="w-full rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 p-3 text-center text-xl tracking-widest"
+                  className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest"
                   placeholder="----"
                 />
                 {errors.otp && (
@@ -443,14 +453,14 @@ export default function CashWithdrawalForm() {
               <div className="flex justify-between items-center">
                 <button
                   onClick={() => setStep(1)}
-                  className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                  className="text-fuchsia-600 hover:text-fuchsia-800 text-sm font-medium"
                 >
                   Back
                 </button>
                 <button
                   onClick={verifyOTP}
                   disabled={formData.otp.length !== 4 || isLoading}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition disabled:opacity-50 flex items-center justify-center min-w-24"
+                  className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition disabled:opacity-50 flex items-center justify-center min-w-24"
                 >
                   Verify OTP
                 </button>
@@ -462,8 +472,8 @@ export default function CashWithdrawalForm() {
 
           {step === 3 && (
             <div className="space-y-5 animate-fadeIn">
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                <p className="text-sm text-purple-600">Review Your Withdrawal</p>
+              <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100">
+                <p className="text-sm text-fuchsia-600">Review Your Withdrawal</p>
                 <p className="font-medium">Please confirm details before submission</p>
               </div>
 
@@ -495,7 +505,7 @@ export default function CashWithdrawalForm() {
               <button
                 onClick={submitWithdrawal}
                 disabled={isLoading}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-70 flex items-center justify-center"
+                className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-70 flex items-center justify-center"
               >
                 {isLoading ? (
                   <>

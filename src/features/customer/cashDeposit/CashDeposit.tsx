@@ -50,7 +50,7 @@ export default function CashDepositForm() {
 type Errors = Partial<Record<keyof FormData, string>>;
 
     // Get phone number from AuthContext (set at login)
-    const { phone } = useAuth();
+    const { phone, user } = useAuth();
 
     // Load persisted fields from localStorage if present
     const persistedAccountNumber = localStorage.getItem('cd_accountNumber') || '';
@@ -74,12 +74,22 @@ type Errors = Partial<Record<keyof FormData, string>>;
     const [accounts, setAccounts] = useState<any[]>([]);
     const [accountDropdown, setAccountDropdown] = useState(false);
 
-    // Fetch accounts by phone number from AuthContext on mount or when phone changes
+    // Fetch accounts for customer (OTPLogin) or staff (StaffLogin)
     useEffect(() => {
         const fetchAccounts = async () => {
-            if (!phone) return;
+            let resp;
             try {
-                const resp = await fetch(`/api/Accounts/by-phone/${phone}`);
+                if (phone) {
+                    // Customer flow (OTPLogin)
+                    resp = await fetch(`/api/Accounts/by-phone/${phone}`);
+                } else if (user && user.role && user.role.toLowerCase() !== 'customer') {
+                    // Staff/Admin flow (StaffLogin)
+                    resp = await fetch(`/api/Accounts/my-accounts`);
+                } else {
+                    setAccounts([]);
+                    setAccountDropdown(false);
+                    return;
+                }
                 if (resp.status === 200) {
                     const data = await resp.json();
                     setAccounts(data);
@@ -90,7 +100,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                 accountNumber: data[0].accountNumber,
                                 accountHolderName: data[0].accountHolderName || data[0].name || '',
                                 depositedBy: data[0].accountHolderName || data[0].name || '',
-                                telephoneNumber: phone
+                                telephoneNumber: phone || ''
                             };
                             // Persist
                             localStorage.setItem('cd_accountNumber', updated.accountNumber);
@@ -109,7 +119,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                 accountNumber: '',
                                 accountHolderName: '',
                                 depositedBy: '',
-                                telephoneNumber: phone
+                                telephoneNumber: phone || ''
                             };
                             // Persist
                             localStorage.setItem('cd_accountNumber', '');
@@ -129,7 +139,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
             }
         };
         fetchAccounts();
-    }, [phone]);
+    }, [phone, user]);
 
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -251,10 +261,16 @@ type Errors = Partial<Record<keyof FormData, string>>;
         if (!validateAll()) return;
 
         setIsSubmitting(true);
+
         try {
-            const depositData: DepositFormDto = {
-                formKey: 'YOUR_FORM_KEY',
-                branchId: 1,
+            // Use a valid GUID for branchId. Replace with actual branch GUID if available.
+
+            // Use a hardcoded valid GUID for now (replace with real branch GUID if available)
+            const branchGuid = '00000000-0000-0000-0000-000000000001';
+            // Generate a unique formKey for each submission
+            const depositData = {
+                formKey: Date.now().toString(),
+                branchId: branchGuid,
                 accountHolderName: formData.accountHolderName,
                 accountNumber: formData.accountNumber,
                 typeOfAccount: formData.accountType,
@@ -263,47 +279,47 @@ type Errors = Partial<Record<keyof FormData, string>>;
                 DepositedBy: formData.depositedBy,
                 sourceOfProceeds: formData.sourceOfProceeds,
                 telephoneNumber: formData.telephoneNumber,
-                // Add other fields if needed
             };
 
-            const response = await depositService.submitDeposit(depositData);
+            // Backend expects { depositForm: { ... } }
+            const response = await depositService.submitDeposit({ depositForm: depositData });
             setIsSubmitting(false);
 
             navigate('/form/cash-deposit/cashdepositconfirmation', {
-            state: {
-                formType: 'Cash Deposit',
-                referenceId: response.depositId ? `CD-${response.depositId}` : `CD-${Date.now()}`,
-                accountNumber: formData.accountNumber,
-                amount: formData.amount,
-                branch: branchInfo.name,
-                token: Math.floor(1000 + Math.random() * 9000),
-                message: response.message, // Show backend message
-            }
-        });
-    } catch (error: any) {
-        setIsSubmitting(false);
-        alert(error?.message || error?.Message || error); // Show backend error
-    }
-};
+                state: {
+                    formType: 'Cash Deposit',
+                    referenceId: response.depositId ? `CD-${response.depositId}` : `CD-${Date.now()}`,
+                    accountNumber: formData.accountNumber,
+                    amount: formData.amount,
+                    branch: branchInfo.name,
+                    token: Math.floor(1000 + Math.random() * 9000),
+                    message: response.message,
+                }
+            });
+        } catch (error: any) {
+            setIsSubmitting(false);
+            alert(error?.message || error?.Message || error);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#faf6e9] p-4 md:p-8">
-            <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden border border-purple-200">
-                <div className="bg-purple-700 p-6 text-white">
+            <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden border border-fuchsia-200">
+                <div className="bg-fuchsia-700 p-6 text-white">
                     <h1 className="text-2xl font-bold">Cash Deposit Form</h1>
                     <div className="flex justify-between items-center mt-2">
-                        <p className="text-purple-100">Branch: {branchInfo.name} ({branchInfo.id})</p>
-                        <p className="text-purple-100">{branchInfo.date}</p>
+                        <p className="text-fuchsia-100">Branch: {branchInfo.name} ({branchInfo.id})</p>
+                        <p className="text-fuchsia-100">{branchInfo.date}</p>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-7">
                     {/* Account Section */}
-                    <div className="space-y-4 p-4 bg-purple-100 rounded-lg border border-purple-200">
-                        <h2 className="text-lg font-semibold text-purple-800">Account Information</h2>
+                    <div className="space-y-4 p-4 bg-fuchsia-100 rounded-lg border border-fuchsia-200">
+                        <h2 className="text-lg font-semibold text-fuchsia-800">Account Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-purple-700 mb-1">
+                                <label className="block text-sm font-medium text-fuchsia-700 mb-1">
                                     Account Number <span className="text-red-500">*</span>
                                 </label>
                                 <div className="flex">
@@ -312,7 +328,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                             name="accountNumber"
                                             value={formData.accountNumber}
                                             onChange={handleChange}
-                                            className={`flex-1 rounded-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-700 p-2`}
+                                            className={`flex-1 rounded-lg border ${errors.accountNumber ? "border-red-400" : "border-fuchsia-300"} focus:ring-2 focus:ring-fuchsia-700 p-2`}
                                         >
                                             <option value="">Select account</option>
                                             {accounts.map(acc => (
@@ -327,7 +343,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                             name="accountNumber"
                                             value={formData.accountNumber}
                                             onChange={handleChange}
-                                            className={`flex-1 rounded-lg border ${errors.accountNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-700 p-2`}
+                                            className={`flex-1 rounded-lg border ${errors.accountNumber ? "border-red-400" : "border-fuchsia-300"} focus:ring-2 focus:ring-fuchsia-700 p-2`}
                                             placeholder="Enter account number"
                                             readOnly={accounts.length === 1}
                                         />
@@ -338,7 +354,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                 }
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-purple-700 mb-1">
+                                <label className="block text-sm font-medium text-fuchsia-700 mb-1">
                                     Account Holder Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -346,7 +362,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                     name="accountHolderName"
                                     value={formData.accountHolderName}
                                     readOnly
-                                    className="w-full rounded-lg border border-purple-300 bg-purple-50 p-2"
+                                    className="w-full rounded-lg border border-fuchsia-300 bg-fuchsia-50 p-2"
                                     placeholder="Auto-filled after CBS validation"
                                 />
                                 {errors.accountHolderName &&
@@ -356,13 +372,13 @@ type Errors = Partial<Record<keyof FormData, string>>;
                         </div>
                         {/* Account type */}
                         <div>
-                            <label className="block text-sm font-medium text-purple-700 mb-1">Type of Account <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-medium text-fuchsia-700 mb-1">Type of Account <span className="text-red-500">*</span></label>
                             <div>
                                 <select
                                     name="accountType"
                                     value={formData.accountType}
                                     onChange={handleChange}
-                                    className="w-full rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-700 p-2"
+                                    className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 p-2"
                                 >
                                     <option value="">Search or select type...</option>
                                     {['Savings', 'Current', 'Special Demand'].map((type) => (
@@ -374,11 +390,11 @@ type Errors = Partial<Record<keyof FormData, string>>;
                     </div>
 
                     {/* Amount Info */}
-                    <div className="space-y-4 p-4 bg-purple-100 rounded-lg border border-purple-200">
-                        <h2 className="text-lg font-semibold text-purple-800">Amount Information</h2>
+                    <div className="space-y-4 p-4 bg-fuchsia-100 rounded-lg border border-fuchsia-200">
+                        <h2 className="text-lg font-semibold text-fuchsia-800">Amount Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-purple-700 mb-1">
+                                <label className="block text-sm font-medium text-fuchsia-700 mb-1">
                                     Amount in Figure <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -387,7 +403,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                     name="amount"
                                     value={formData.amount}
                                     onChange={handleChange}
-                                    className={`w-full rounded-lg border ${errors.amount ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
+                                    className={`w-full rounded-lg border ${errors.amount ? "border-red-400" : "border-fuchsia-300"} focus:ring-2 focus:ring-fuchsia-500 p-2`}
                                     placeholder="Enter amount"
                                 />
                                 {errors.amount &&
@@ -395,7 +411,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                 }
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-purple-700 mb-1">
+                                <label className="block text-sm font-medium text-fuchsia-700 mb-1">
                                     Amount in Words
                                 </label>
                                 <input
@@ -403,14 +419,14 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                     name="amountInWords"
                                     value={formData.amountInWords}
                                     onChange={handleChange}
-                                    className="w-full rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-500 p-2"
+                                    className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 p-2"
                                     placeholder="Auto-filled"
                                     readOnly
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-purple-700 mb-1">
+                            <label className="block text-sm font-medium text-fuchsia-700 mb-1">
                                 Source of Proceeds <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -418,7 +434,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                 name="sourceOfProceeds"
                                 value={formData.sourceOfProceeds}
                                 onChange={handleChange}
-                                className={`w-full rounded-lg border ${errors.sourceOfProceeds ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
+                                className={`w-full rounded-lg border ${errors.sourceOfProceeds ? "border-red-400" : "border-fuchsia-300"} focus:ring-2 focus:ring-fuchsia-500 p-2`}
                                 placeholder="Source of funds"
                             />
                             {errors.sourceOfProceeds &&
@@ -426,14 +442,14 @@ type Errors = Partial<Record<keyof FormData, string>>;
                             }
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-purple-700 mb-1">
-                                Denominations <span className="text-purple-400">(for staff use)</span>
+                            <label className="block text-sm font-medium text-fuchsia-700 mb-1">
+                                Denominations <span className="text-fuchsia-400">(for staff use)</span>
                             </label>
                             <textarea
                                 name="denominations"
                                 value={formData.denominations}
                                 onChange={handleChange}
-                                className="w-full rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-500 p-2"
+                                className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 p-2"
                                 placeholder="To be filled by front maker"
                                 rows={3}
                                 disabled
@@ -442,11 +458,11 @@ type Errors = Partial<Record<keyof FormData, string>>;
                     </div>
 
                     {/* Depositor Info */}
-                    <div className="space-y-4 p-4 bg-purple-100 rounded-lg border border-purple-200">
-                        <h2 className="text-lg font-semibold text-purple-800">Depositor Information</h2>
+                    <div className="space-y-4 p-4 bg-fuchsia-100 rounded-lg border border-fuchsia-200">
+                        <h2 className="text-lg font-semibold text-fuchsia-800">Depositor Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-purple-700 mb-1">
+                                <label className="block text-sm font-medium text-fuchsia-700 mb-1">
                                     Deposited By <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -454,7 +470,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                     name="depositedBy"
                                     value={formData.depositedBy}
                                     onChange={handleChange}
-                                    className={`w-full rounded-lg border ${errors.depositedBy ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2`}
+                                    className={`w-full rounded-lg border ${errors.depositedBy ? "border-red-400" : "border-fuchsia-300"} focus:ring-2 focus:ring-fuchsia-500 p-2`}
                                     placeholder="Name of depositor"
                                 />
                                 {errors.depositedBy &&
@@ -462,7 +478,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                 }
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-purple-700 mb-1">
+                                <label className="block text-sm font-medium text-fuchsia-700 mb-1">
                                     Telephone Number <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -470,7 +486,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                     name="telephoneNumber"
                                     value={formData.telephoneNumber}
                                     readOnly
-                                    className={`w-full rounded-lg border ${errors.telephoneNumber ? "border-red-400" : "border-purple-300"} focus:ring-2 focus:ring-purple-500 p-2 bg-purple-50`}
+                                    className={`w-full rounded-lg border ${errors.telephoneNumber ? "border-red-400" : "border-fuchsia-300"} focus:ring-2 focus:ring-fuchsia-500 p-2 bg-fuchsia-50`}
                                     placeholder="Phone number"
                                 />
                                 {errors.telephoneNumber &&
@@ -481,16 +497,16 @@ type Errors = Partial<Record<keyof FormData, string>>;
                     </div>
 
                     {/* Note & Submit */}
-                    <div className="pt-4 border-t border-purple-200">
-                        <div className="bg-purple-100 p-4 rounded-lg mb-4">
-                            <p className="text-sm text-purple-700">
+                    <div className="pt-4 border-t border-fuchsia-200">
+                        <div className="bg-fuchsia-100 p-4 rounded-lg mb-4">
+                            <p className="text-sm text-fuchsia-700">
                                 <strong>Note:</strong> This deposit form is not a receipt. Please collect an official receipt or check for digital receipt sent via SMS after transaction processing.
                             </p>
                         </div>
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-70"
+                            className="w-full bg-fuchsia-700 hover:bg-fuchsia-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-70"
                         >
                             {isSubmitting ? 'Processing...' : 'Submit Deposit'}
                         </button>

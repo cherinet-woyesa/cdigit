@@ -36,7 +36,7 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
 
     return (
         <>
-            <div className="text-xl font-bold mb-3 text-purple-800">Digital Signature & Terms</div>
+            <div className="text-xl font-bold mb-3 text-fuchsia-800">Digital Signature & Terms</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Upload Digital Signature" required error={errors.signatureUrl}>
                     <input
@@ -61,14 +61,14 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
                                 name="termsAccepted"
                                 checked={data.termsAccepted}
                                 onChange={handleTermsChange}
-                                className="form-checkbox h-5 w-5 text-purple-600 rounded focus:ring-purple-500"
+                                className="form-checkbox h-5 w-5 text-fuchsia-600 rounded focus:ring-fuchsia-500"
                             />
                             <span className="text-gray-700">I accept the terms and conditions.</span>
                         </label>
                         {/* Button to view terms, visible always */}
                         <button
                             type="button"
-                            className="text-purple-700 hover:underline ml-2 text-sm"
+                            className="text-fuchsia-700 hover:underline ml-2 text-sm"
                             onClick={() => setShowTermsModal(true)}
                         >
                             View Terms
@@ -93,11 +93,11 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
                                     e.currentTarget.src = "https://placehold.co/96x96/800080/FFFFFF?text=CBE"; // Placeholder if logo fails
                                 }}
                             />
-                            <h1 className="text-3xl font-extrabold text-purple-800 mb-1">Commercial Bank of Ethiopia</h1>
-                            <p className="text-lg text-purple-700 font-semibold">The Bank You Can Always Rely On</p>
+                            <h1 className="text-3xl font-extrabold text-fuchsia-800 mb-1">Commercial Bank of Ethiopia</h1>
+                            <p className="text-lg text-fuchsia-700 font-semibold">The Bank You Can Always Rely On</p>
                         </div>
 
-                        <h3 className="text-xl font-bold mb-4 text-purple-800">Terms and Conditions</h3>
+                        <h3 className="text-xl font-bold mb-4 text-fuchsia-800">Terms and Conditions</h3>
                         <div className="text-gray-700 text-sm leading-relaxed">
                             <p className="mb-4">
                                 Welcome to our account opening process. By proceeding, you agree to the following terms and conditions. Please read them carefully.
@@ -135,7 +135,7 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
                         <div className="flex justify-center mt-6">
                             <button
                                 type="button"
-                                className="bg-purple-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-purple-800 transition"
+                                className="bg-fuchsia-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-fuchsia-800 transition"
                                 onClick={() => setShowTermsModal(false)}
                             >
                                 Close
@@ -148,7 +148,7 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
             <div className="flex justify-between mt-6">
                 <button
                     type="button"
-                    className="bg-gray-300 text-purple-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition"
+                    className="bg-gray-300 text-fuchsia-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition"
                     onClick={onBack}
                     disabled={submitting}
                 >
@@ -156,7 +156,7 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
                 </button>
                 <button
                     type="button"
-                    className="bg-purple-700 text-white px-6 py-2 rounded shadow hover:bg-purple-800 transition disabled:opacity-50"
+                    className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition disabled:opacity-50"
                     onClick={onNext}
                     disabled={submitting || !isSubmitEnabled}
                 >

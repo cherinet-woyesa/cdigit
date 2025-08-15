@@ -3,9 +3,11 @@
 const API_BASE_URL = 'http://localhost:5268/api/Deposits';// Make sure this matches your backend URL
 
 // Define the shape of the data you'll send to the backend for submitting a deposit
-type SubmitDepositData = {
+
+// The backend expects { depositForm: { ...fields... } }
+type DepositFormFields = {
     formKey: string;
-    branchId: number;
+    branchId: string; // Guid as string
     accountHolderName: string;
     accountNumber: string;
     typeOfAccount: 'Savings' | 'Current' | 'Special Demand';
@@ -14,8 +16,8 @@ type SubmitDepositData = {
     DepositedBy: string;
     sourceOfProceeds: string;
     telephoneNumber: string;
-    // Add other fields as needed based on your DepositFormDto in C#
 };
+type SubmitDepositData = { depositForm: DepositFormFields };
 
 // Define the shape of the response from the backend after submitting a deposit
 type SubmitDepositResponse = {
@@ -42,9 +44,9 @@ const depositService = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // 'Authorization': `Bearer ${YOUR_AUTH_TOKEN}`, // Add if you have authentication
+                    // 'Authorization': `Bearer ${YOUR_AUTH_TOKEN}`,
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify(data), // data should be { depositForm: { ...fields... } }
             });
 
             // Check if the response is OK (2xx status code)

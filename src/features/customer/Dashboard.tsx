@@ -49,10 +49,10 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#faf6e9]">
       {/* Header */}
-      <header className="bg-purple-700 text-white py-5 px-6 shadow-lg">
+      <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">{t('dashboardTitle')}</h1>
-          <p className="text-sm bg-purple-800 px-3 py-1 rounded-full">
+          <p className="text-sm bg-fuchsia-800 px-3 py-1 rounded-full">
             {t('loggedInAs')}: {phone}
           </p>
         </div>
@@ -61,7 +61,7 @@ export default function Dashboard() {
       {/* Main */}
       <main className="max-w-6xl mx-auto px-4 py-10">
         {/* Welcome Banner */}
-        <div className="bg-purple-700 text-white p-6 rounded-xl mb-8 shadow-lg">
+        <div className="bg-fuchsia-700 text-white p-6 rounded-xl mb-8 shadow-lg">
           <h2 className="text-2xl font-bold mb-2">{t('welcomeBanner')}</h2>
           <p className="opacity-90">{t('welcomeSubtitle')}</p>
         </div>
@@ -77,7 +77,7 @@ export default function Dashboard() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('searchPlaceholder')}
-              className="w-full pl-12 pr-4 py-4 border-0 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-purple-700 text-lg"
+              className="w-full pl-12 pr-4 py-4 border-0 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-fuchsia-700 text-lg"
             />
             {searchQuery && (
               <button
@@ -99,13 +99,13 @@ export default function Dashboard() {
             <div
               key={idx}
               onClick={() => navigate(form.route)}
-              className="cursor-pointer group bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-purple-700 hover:bg-purple-700"
+              className="cursor-pointer group bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-fuchsia-700 hover:bg-fuchsia-700"
             >
               <div className="flex flex-col h-full">
-                <div className="mb-4 p-3 bg-purple-100 rounded-lg w-12 h-12 flex items-center justify-center group-hover:bg-purple-800 transition-colors">
+                <div className="mb-4 p-3 bg-fuchsia-100 rounded-lg w-12 h-12 flex items-center justify-center group-hover:bg-fuchsia-800 transition-colors">
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
-                    className="h-6 w-6 text-purple-700 group-hover:text-white transition-colors" 
+                    className="h-6 w-6 text-fuchsia-700 group-hover:text-white transition-colors" 
                     fill="none" 
                     viewBox="0 0 24 24" 
                     stroke="currentColor"
@@ -121,7 +121,7 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-gray-800 group-hover:text-white transition-colors">
                   {t(`forms.${form.name}` as const)}
                 </h3>
-                <p className="text-sm text-purple-700 mt-2 group-hover:text-white transition-colors mt-auto">
+                <p className="text-sm text-fuchsia-700 mt-2 group-hover:text-white transition-colors mt-auto">
                   {t('startForm')} →
                 </p>
               </div>

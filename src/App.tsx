@@ -7,6 +7,7 @@ import CashDeposit from './features/customer/cashDeposit/CashDeposit';
 import CashDepositConfirmation from './features/customer/cashDeposit/CashDepositConfirmation';
 import CashWithdrawal from './features/customer/cashWithdrawal/CashWithDrawal';
 import CashWithDrawalConfirmation from './features/customer/cashWithdrawal/CashWithDrawalConfirmation';
+import FundTransfer from './features/customer/fundTransfer/FundTransfer';
 import AccountOpeningForm from './features/customer/accountOpening/AccountOpeningForm';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import './i18n';
@@ -94,6 +95,12 @@ function App() {
         <Route path="/form/cash-withdrawal/cashwithdrawalconfirmation" element={
           <ProtectedRoute role="Maker">
             <CashWithDrawalConfirmation />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/form/fund-transfer" element={
+          <ProtectedRoute>
+            <FundTransfer />
           </ProtectedRoute>
         } />
 

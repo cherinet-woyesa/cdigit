@@ -21,7 +21,7 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
 
     return (
         <>
-            <div className="text-xl font-bold mb-3 text-purple-800">Other Details</div>
+            <div className="text-xl font-bold mb-3 text-fuchsia-800">Other Details</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Have you ever been convicted of a crime?" error={errors.hasBeenConvicted}>
                     <div className="flex gap-3">
@@ -121,14 +121,14 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
             <div className="flex justify-between mt-6">
                 <button
                     type="button"
-                    className="bg-gray-300 text-purple-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition"
+                    className="bg-gray-300 text-fuchsia-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition"
                     onClick={onBack}
                 >
                     Back
                 </button>
                 <button
                     type="button"
-                    className="bg-purple-700 text-white px-6 py-2 rounded shadow hover:bg-purple-800 transition"
+                    className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
                     onClick={onNext}
                     disabled={submitting}
                 >

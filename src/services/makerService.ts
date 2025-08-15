@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 
-const API_BASE_URL = 'https://localhost:7101/api';
+const API_BASE_URL = 'https://localhost:5268/api';
 
 
 interface NextCustomerResponse {

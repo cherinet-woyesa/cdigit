@@ -30,7 +30,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
 
     return (
         <>
-            <div className="text-xl font-bold mb-3 text-purple-800">Personal Details</div>
+            <div className="text-xl font-bold mb-3 text-fuchsia-800">Personal Details</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Account Type" required error={errors.accountType}>
                     <select
@@ -117,10 +117,15 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                 <Field label="Date of Birth" required error={errors.dateOfBirth}>
                     <input
                         type="date"
-                        name="dateOfBirth" // Changed to camelCase
+                        name="dateOfBirth"
                         className="form-input w-full p-2 rounded border"
                         value={formatDateForInput(data.dateOfBirth)}
                         onChange={handleChange}
+                        max={(() => {
+                            const d = new Date();
+                            d.setFullYear(d.getFullYear() - 18);
+                            return d.toISOString().split('T')[0];
+                        })()}
                     />
                 </Field>
                 <Field label="Place of Birth" error={errors.placeOfBirth}>
@@ -185,7 +190,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
             <div className="flex justify-end mt-6">
                 <button
                     type="button"
-                    className="bg-purple-700 text-white px-6 py-2 rounded shadow hover:bg-purple-800 transition"
+                    className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
                     onClick={onNext}
                     disabled={submitting}
                 >

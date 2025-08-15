@@ -44,9 +44,9 @@ const StaffLogin: React.FC = () => {
             Commercial Bank of Ethiopia
           </h1>
           <div className="w-44 h-44 mx-auto">
-            <img src={logo} alt="CBE Logo" className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-purple-200" />
+            <img src={logo} alt="CBE Logo" className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-fuchsia-200" />
           </div>
-          <h2 className="text-4xl font-extrabold text-purple-700">STAFF LOGIN</h2>
+          <h2 className="text-4xl font-extrabold text-fuchsia-700">STAFF LOGIN</h2>
           <h2 className="text-xl font-semibold text-gray-800">
             Login with your AD account to access the dashboard
           </h2>
@@ -63,7 +63,7 @@ const StaffLogin: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Your AD Email"
-              className="mt-2 block w-full rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 text-lg p-3"
+              className="mt-2 block w-full rounded-lg border-gray-300 focus:border-fuchsia-500 focus:ring-fuchsia-500 text-lg p-3"
               disabled={loading}
               required
             />
@@ -76,7 +76,7 @@ const StaffLogin: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Your AD Password"
-              className="mt-2 block w-full rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 text-lg p-3"
+              className="mt-2 block w-full rounded-lg border-gray-300 focus:border-fuchsia-500 focus:ring-fuchsia-500 text-lg p-3"
               disabled={loading}
               required
             />
@@ -84,7 +84,7 @@ const StaffLogin: React.FC = () => {
           <button
             type="submit"
             disabled={!email || !password || loading}
-            className="w-full bg-purple-700 text-white py-3 rounded-lg hover:bg-purple-800 disabled:opacity-50 transition text-lg font-medium flex items-center justify-center"
+            className="w-full bg-fuchsia-700 text-white py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 transition text-lg font-medium flex items-center justify-center"
           >
             {loading ? (
               <span className="flex items-center">

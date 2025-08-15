@@ -1,16 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as accountOpeningService from "../../../services/accountOpeningService";
 import { ProgressBar, Field } from "./FormElements";
 import type {
-    PersonalDetail,
-    AddressDetail,
-    FinancialDetail,
-    OtherDetail,
-    DocumentDetail,
-    EPaymentService,
-    PassbookMudayRequest,
-    DigitalSignature,
     Errors,
     FormData,
     FormErrors,
@@ -94,21 +86,43 @@ export function AccountOpeningForm() {
             if (!data.firstName) newErrors.firstName = "First Name is required";
             if (!data.grandfatherName) newErrors.grandfatherName = "Grandfather's Name is required";
             if (!data.sex) newErrors.sex = "Sex is required";
-            if (!data.dateOfBirth) newErrors.dateOfBirth = "Date of Birth is required";
+            if (!data.dateOfBirth) {
+                newErrors.dateOfBirth = "Date of Birth is required";
+            } else {
+                // Check if user is at least 18 years old
+                const dob = new Date(data.dateOfBirth);
+                const today = new Date();
+                const age = today.getFullYear() - dob.getFullYear();
+                const m = today.getMonth() - dob.getMonth();
+                const d = today.getDate() - dob.getDate();
+                let is18 = age > 18 || (age === 18 && (m > 0 || (m === 0 && d >= 0)));
+                if (!is18) {
+                    newErrors.dateOfBirth = "You must be at least 18 years old to open an account.";
+                }
+            }
             if (!data.maritalStatus) newErrors.maritalStatus = "Marital Status is required";
             if (!data.nationality) newErrors.nationality = "Nationality is required";
         } else if (stepIndex === 1) { // Address Details
-            if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required";
-            if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required";
+            if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required"; 
+            if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required"; 
+            // Do not require officePhone, only validate if present (handled in StepAddress)
         } else if (stepIndex === 2) { // Financial Details
             if (!data.typeOfWork) newErrors.typeOfWork = "Type of Work is required";
             if (data.typeOfWork === "Private") {
                 if (!data.businessSector) newErrors.businessSector = "Business Sector is required";
                 if (!data.incomeDetails_Private) newErrors.incomeDetails_Private = "Income Details are required";
+                // Require at least one income frequency
+                if (!data.incomeFrequencyAnnual_Private && !data.incomeFrequencyMonthly_Private && !data.incomeFrequencyDaily_Private) {
+                    newErrors.incomeFrequencyAnnual_Private = "Select an income frequency";
+                }
             } else if (data.typeOfWork === "Employee") {
                 if (!data.sectorOfEmployer) newErrors.sectorOfEmployer = "Sector of Employer is required";
                 if (!data.jobPosition) newErrors.jobPosition = "Job Position is required";
                 if (!data.incomeDetails_Employee) newErrors.incomeDetails_Employee = "Income Details are required";
+                // Require at least one income frequency
+                if (!data.incomeFrequencyAnnual_Employee && !data.incomeFrequencyMonthly_Employee && !data.incomeFrequencyDaily_Employee) {
+                    newErrors.incomeFrequencyAnnual_Employee = "Select an income frequency";
+                }
             }
         } else if (stepIndex === 3) { // Other Details
             if (data.hasBeenConvicted && !data.convictionReason) newErrors.convictionReason = "Reason for conviction is required";
@@ -123,6 +137,8 @@ export function AccountOpeningForm() {
             if (!data.expiryDate) newErrors.expiryDate = "Expiry Date is required";
             if (!data.mobilePhoneNo) newErrors.mobilePhoneNo = "Mobile Phone is required";
             if (!data.photoIdFile && !data.docPhotoUrl) newErrors.docPhotoUrl = "Document photo is required";
+        } else if (stepIndex === 5) { // E-Payment Service
+            // No required fields, but you can add if needed
         } else if (stepIndex === 6) { // Passbook & Muday Request
             if (data.needsMudayBox && !data.mudayBoxDeliveryBranch) {
                 newErrors.mudayBoxDeliveryBranch = "Muday Box Delivery Branch is required";
@@ -131,8 +147,22 @@ export function AccountOpeningForm() {
             if (!data.signatureFile && !data.signatureUrl) newErrors.signatureUrl = "Digital signature is required";
             if (!data.termsAccepted) newErrors.termsAccepted = "You must accept the terms and conditions";
         }
+        // Check for any required fields that are empty (generic check)
+        Object.keys(data).forEach((key) => {
+            // Do not require officePhone or houseNumber
+            if (key === "officePhone" || key === "houseNumber") return;
+            if ((data[key] === undefined || data[key] === null || data[key] === "") && !newErrors[key]) {
+                // Only add error if not already set for this field
+                newErrors[key] = "This field is required";
+            }
+        });
         return newErrors;
     };
+
+    function isValidPhoneNumber(phone: string) {
+        // Ethiopian mobile: starts with 09 or +2519, 10 digits
+        return /^09\d{8}$|^\+2519\d{8}$/.test(phone);
+    }
 
     const handleNext = async () => {
         const stepDataKey = stepKeys[currentStep];
@@ -150,6 +180,7 @@ export function AccountOpeningForm() {
         }));
 
         if (Object.keys(currentStepErrors).length > 0) {
+            // Prevent going to next step if any required field is missing
             return;
         }
 
@@ -165,24 +196,27 @@ export function AccountOpeningForm() {
                         customerId: response.id,
                         personalDetails: { ...formData.personalDetails, id: response.id }
                     };
-                    console.log("Customer ID from personal details:", response.id);
                     break;
                 case 1: // Address Details
-                    const addressPayload = {
+                    response = await accountOpeningService.saveAddressDetails({
                         ...formData.addressDetails,
-                        customerId: formData.customerId
-                    };
-                    response = await accountOpeningService.saveAddressDetails(addressPayload);
+                        customerId: formData.customerId,
+                        mobilePhone: formData.addressDetails.mobilePhone
+                    });
                     updatedCustomerData = { addressDetails: { ...formData.addressDetails, id: response.id } };
                     break;
                 case 2: // Financial Details
-                    const financialPayload = { ...formData.financialDetails, customerId: formData.customerId };
-                    response = await accountOpeningService.saveFinancialDetails(financialPayload);
+                    response = await accountOpeningService.saveFinancialDetails({
+                        ...formData.financialDetails,
+                        customerId: formData.customerId
+                    });
                     updatedCustomerData = { financialDetails: { ...formData.financialDetails, id: response.id } };
                     break;
                 case 3: // Other Details
-                    const otherPayload = { ...formData.otherDetails, customerId: formData.customerId };
-                    response = await accountOpeningService.saveOtherDetails(otherPayload);
+                    response = await accountOpeningService.saveOtherDetails({
+                        ...formData.otherDetails,
+                        customerId: formData.customerId
+                    });
                     updatedCustomerData = { otherDetails: { ...formData.otherDetails, id: response.id } };
                     break;
                 case 4: // Document Details
@@ -190,18 +224,25 @@ export function AccountOpeningForm() {
                     if (formData.documentDetails.photoIdFile) {
                         docPhotoUrl = await accountOpeningService.uploadDocumentPhoto(formData.documentDetails.photoIdFile);
                     }
-                    const documentPayload = { ...formData.documentDetails, customerId: formData.customerId, docPhotoUrl: docPhotoUrl };
-                    response = await accountOpeningService.saveDocumentDetails(documentPayload);
+                    response = await accountOpeningService.saveDocumentDetails({
+                        ...formData.documentDetails,
+                        customerId: formData.customerId,
+                        docPhotoUrl: docPhotoUrl
+                    });
                     updatedCustomerData = { documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl: docPhotoUrl } };
                     break;
                 case 5: // E-Payment Service
-                    const ePaymentPayload = { ...formData.ePaymentService, customerId: formData.customerId };
-                    response = await accountOpeningService.saveEPaymentService(ePaymentPayload);
+                    response = await accountOpeningService.saveEPaymentService({
+                        ...formData.ePaymentService,
+                        customerId: formData.customerId
+                    });
                     updatedCustomerData = { ePaymentService: { ...formData.ePaymentService, id: response.id } };
                     break;
                 case 6: // Passbook & Muday Request
-                    const passbookPayload = { ...formData.passbookMudayRequest, customerId: formData.customerId };
-                    response = await accountOpeningService.savePassbookMudayRequest(passbookPayload);
+                    response = await accountOpeningService.savePassbookMudayRequest({
+                        ...formData.passbookMudayRequest,
+                        customerId: formData.customerId
+                    });
                     updatedCustomerData = { passbookMudayRequest: { ...formData.passbookMudayRequest, id: response.id } };
                     break;
                 case 7: // Digital Signature
@@ -209,8 +250,11 @@ export function AccountOpeningForm() {
                     if (formData.digitalSignature.signatureFile) {
                         signatureUrl = await accountOpeningService.uploadDigitalSignature(formData.digitalSignature.signatureFile);
                     }
-                    const signaturePayload = { ...formData.digitalSignature, customerId: formData.customerId, signatureUrl: signatureUrl };
-                    response = await accountOpeningService.saveDigitalSignature(signaturePayload);
+                    response = await accountOpeningService.saveDigitalSignature({
+                        ...formData.digitalSignature,
+                        customerId: formData.customerId,
+                        signatureUrl: signatureUrl
+                    });
                     updatedCustomerData = { digitalSignature: { ...formData.digitalSignature, id: response.id, signatureUrl: signatureUrl } };
                     break;
                 default:
@@ -242,6 +286,10 @@ export function AccountOpeningForm() {
             setPhoneInputError("Mobile phone number is required.");
             return;
         }
+        if (!isValidPhoneNumber(phoneNumberInput.trim())) {
+            setPhoneInputError("Please enter a valid Ethiopian mobile phone number.");
+            return;
+        }
         setPhoneInputError(undefined);
         setPhoneCheckLoading(true);
 
@@ -250,14 +298,21 @@ export function AccountOpeningForm() {
 
             if (savedFormData) {
                 // Form found, populate data and move to the last filled step
-                // CRUCIAL CHANGE HERE: Initialize null sections with empty objects based on INITIAL_DATA
                 const transformedData: FormData = {
                     customerId: savedFormData.customerId,
                     personalDetails: savedFormData.personalDetails || INITIAL_DATA.personalDetails,
-                    addressDetails: savedFormData.addressDetails || INITIAL_DATA.addressDetails,
+                    addressDetails: {
+                        ...INITIAL_DATA.addressDetails,
+                        ...savedFormData.addressDetails,
+                        mobilePhone: savedFormData.addressDetails?.mobilePhone || phoneNumberInput
+                    },
                     financialDetails: savedFormData.financialDetails || INITIAL_DATA.financialDetails,
                     otherDetails: savedFormData.otherDetails || INITIAL_DATA.otherDetails,
-                    documentDetails: savedFormData.documentDetails || INITIAL_DATA.documentDetails,
+                    documentDetails: {
+                        ...INITIAL_DATA.documentDetails,
+                        ...savedFormData.documentDetails,
+                        mobilePhoneNo: savedFormData.documentDetails?.mobilePhoneNo || phoneNumberInput
+                    },
                     ePaymentService: savedFormData.ePaymentService || INITIAL_DATA.ePaymentService,
                     passbookMudayRequest: savedFormData.passbookMudayRequest || INITIAL_DATA.passbookMudayRequest,
                     digitalSignature: savedFormData.digitalSignature || INITIAL_DATA.digitalSignature,
@@ -275,13 +330,20 @@ export function AccountOpeningForm() {
                 if (savedFormData.digitalSignature?.id) lastFilledStep = Math.max(lastFilledStep, 7);
 
                 setCurrentStep(lastFilledStep);
-                console.log("Form data loaded for resume:", transformedData);
-                console.log("Resumed at step:", lastFilledStep);
             } else {
-                // No form found, start a new form
-                setFormData(INITIAL_DATA);
+                // No form found, start a new form and autofill phone
+                setFormData({
+                    ...INITIAL_DATA,
+                    addressDetails: {
+                        ...INITIAL_DATA.addressDetails,
+                        mobilePhone: phoneNumberInput
+                    },
+                    documentDetails: {
+                        ...INITIAL_DATA.documentDetails,
+                        mobilePhoneNo: phoneNumberInput
+                    }
+                });
                 setCurrentStep(0);
-                console.log("No saved form found. Starting a new form.");
             }
             setPhoneNumberScreenActive(false);
         } catch (error: any) {
@@ -313,7 +375,7 @@ export function AccountOpeningForm() {
         if (phoneNumberScreenActive) {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[400px]">
-                    <h2 className="text-2xl font-bold mb-4 text-purple-800">Welcome!</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-fuchsia-800">Welcome!</h2>
                     <p className="mb-6 text-gray-700 text-center">
                         Enter your **mobile phone number** to start or resume your account opening application.
                     </p>
@@ -335,7 +397,7 @@ export function AccountOpeningForm() {
                     <div className="flex gap-4 mt-6">
                         <button
                             type="button"
-                            className="bg-purple-700 text-white px-6 py-3 rounded-lg shadow-md hover:bg-purple-800 transition disabled:opacity-50"
+                            className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition disabled:opacity-50"
                             onClick={handlePhoneNumberSubmit}
                             disabled={phoneCheckLoading}
                         >
@@ -452,17 +514,17 @@ export function AccountOpeningForm() {
                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                             ></path>
                         </svg>
-                        <h2 className="text-3xl font-extrabold text-purple-800 mt-4 mb-2">
+                        <h2 className="text-3xl font-extrabold text-fuchsia-800 mt-4 mb-2">
                             Application Submitted Successfully!
                         </h2>
                         <p className="text-lg text-gray-700 mb-6">
                             Thank you for completing your account opening application.
                             We've received your details and will process them shortly.
-                            Your application reference ID is: <span className="font-semibold text-purple-700">{formData.personalDetails.id}</span>
+                            Your application reference ID is: <span className="font-semibold text-fuchsia-700">{formData.personalDetails.id}</span>
                         </p>
 
                         <div className="text-left bg-gray-50 p-6 rounded-lg shadow-inner max-h-96 overflow-y-auto mb-6">
-                            <h3 className="text-xl font-bold text-purple-700 mb-4">Summary of Your Application:</h3>
+                            <h3 className="text-xl font-bold text-fuchsia-700 mb-4">Summary of Your Application:</h3>
                             {Object.entries(formData).map(([key, value]) => {
                                 // Skip customerId as it's often an internal ID, and File objects
                                 if (key === 'customerId' || key.endsWith('File')) {
@@ -471,7 +533,7 @@ export function AccountOpeningForm() {
 
                                 return (
                                     <div key={key} className="mb-4 last:mb-0">
-                                        <h4 className="font-semibold text-purple-600 capitalize mb-1">
+                                        <h4 className="font-semibold text-fuchsia-600 capitalize mb-1">
                                             {key.replace(/([A-Z])/g, ' $1').trim()}:
                                         </h4>
                                         <ul className="list-disc list-inside text-gray-700">
@@ -519,13 +581,13 @@ export function AccountOpeningForm() {
                         <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
                             <button
                                 onClick={handleUpdateApplication} // Changed to handleUpdateApplication
-                                className="bg-purple-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-purple-800 transition transform hover:scale-105"
+                                className="bg-fuchsia-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition transform hover:scale-105"
                             >
                                 Update Application
                             </button>
                             <button
                                 onClick={() => navigate("/")}
-                                className="bg-gray-300 text-purple-700 px-8 py-3 rounded-lg shadow-md hover:bg-gray-400 transition transform hover:scale-105"
+                                className="bg-gray-300 text-fuchsia-700 px-8 py-3 rounded-lg shadow-md hover:bg-gray-400 transition transform hover:scale-105"
                             >
                                 Go to Home
                             </button>
