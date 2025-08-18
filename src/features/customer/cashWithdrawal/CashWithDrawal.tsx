@@ -235,7 +235,7 @@ export default function CashWithdrawalForm() {
   };
 
   const verifyOTP = async () => {
-    if (formData.otp.length !== 4) {
+    if (formData.otp.length !== 6) {
       setErrors({ otp: 'Please enter a valid 4-digit OTP' })
       return
     }
@@ -434,16 +434,16 @@ export default function CashWithdrawalForm() {
 
               <div>
                 <label className="block text-sm font-medium text-fuchsia-700 mb-2">
-                  Enter 4-digit OTP *
+                  Enter 6-digit OTP *
                 </label>
                 <input
                   type="text"
                   name="otp"
                   value={formData.otp}
                   onChange={handleChange}
-                  maxLength={4}
+                  maxLength={6}
                   className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest"
-                  placeholder="----"
+                  placeholder="------"
                 />
                 {errors.otp && (
                   <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
@@ -459,7 +459,7 @@ export default function CashWithdrawalForm() {
                 </button>
                 <button
                   onClick={verifyOTP}
-                  disabled={formData.otp.length !== 4 || isLoading}
+                  disabled={formData.otp.length !== 6 || isLoading}
                   className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition disabled:opacity-50 flex items-center justify-center min-w-24"
                 >
                   Verify OTP
