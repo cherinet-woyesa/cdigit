@@ -378,7 +378,7 @@ export function AccountOpeningForm() {
                 <div className="flex flex-col items-center justify-center min-h-[400px]">
                     <h2 className="text-2xl font-bold mb-4 text-fuchsia-800">Welcome!</h2>
                     <p className="mb-6 text-gray-700 text-center">
-                        Enter your <b>mobile phone number</b> to start or resume your account opening application.
+                        Enter your <b>mobile phone number</b> to begin.
                     </p>
                     <Field label="Mobile Phone Number" error={phoneInputError}>
                         <div className="relative w-full">
@@ -398,7 +398,7 @@ export function AccountOpeningForm() {
                                 inputMode="tel"
                                 pattern="^09\d{8}$|^\+2519\d{8}$"
                                 aria-invalid={!!phoneInputError || (phoneNumberInput && !isValid)}
-                                aria-describedby="phone-helper-text"
+                                aria-describedby="phone-error-text"
                                 onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                     if (e.key === 'Enter') {
                                         handlePhoneNumberSubmit();
@@ -416,9 +416,14 @@ export function AccountOpeningForm() {
                             )}
                         </div>
                         <div id="phone-helper-text" className="text-xs text-gray-500 mt-1 text-center">
-                            Format: 09XXXXXXXX or +2519XXXXXXXX (Ethiopian mobile)
+                            <span className="sr-only">Format: 09XXXXXXXX or +2519XXXXXXXX (Ethiopian mobile)</span>
                         </div>
                     </Field>
+                    {phoneInputError && (
+                        <div id="phone-error-text" className="text-sm text-red-600 text-center mt-2 font-medium" aria-live="assertive">
+                            {phoneInputError}
+                        </div>
+                    )}
                     <div className="flex gap-4 mt-6">
                         <button
                             type="button"
