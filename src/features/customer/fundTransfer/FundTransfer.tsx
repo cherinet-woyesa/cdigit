@@ -394,6 +394,11 @@ export default function FundTransfer() {
                   }
                   // Validate required fields
                   if (!formData.debitAccountName || !formData.creditAccountName || !formData.amount) return;
+                  // Ensure beneficiary and sender accounts are different
+                  if (formData.debitAccountNumber === formData.creditAccountNumber) {
+                    setErrors((e: any) => ({ ...e, creditAccountNumber: 'Beneficiary account must be different from sender account' }));
+                    return;
+                  }
                   await sendOTP();
                 }}
                 disabled={!formData.debitAccountName || !formData.creditAccountNumber || !formData.amount}

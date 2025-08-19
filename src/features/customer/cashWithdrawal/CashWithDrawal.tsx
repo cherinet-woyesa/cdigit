@@ -1,11 +1,12 @@
 // If you use windowService here, use type-only import for Window
 // import type { Window as WindowType } from '../../../services/windowService';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../context/AuthContext';
 import authService from '../../../services/authService';
 import { submitWithdrawal } from '../../../services/withdrawalService';
+
+
 
 export default function CashWithdrawalForm() {
   // Get phone number from AuthContext (set at login)
@@ -16,7 +17,7 @@ export default function CashWithdrawalForm() {
   const persistedAccountHolderName = localStorage.getItem('cw_accountHolderName') || '';
   const persistedTelephoneNumber = localStorage.getItem('cw_telephoneNumber') || (phone || '');
 
-  const [step, setStep] = useState(1) // 1 = Account, 2 = OTP, 3 = Confirm
+  const [step, setStep] = useState<'request' | 'verify' | 'confirm'>('request');
   // For account selection
   const [accounts, setAccounts] = useState<any[]>([]);
   const [accountDropdown, setAccountDropdown] = useState(false);
@@ -33,7 +34,7 @@ export default function CashWithdrawalForm() {
     amount: '',
     otp: '',
     telephoneNumber: persistedTelephoneNumber
-  })
+  });
   const [errors, setErrors] = useState<{
     accountNumber?: string;
     amount?: string;
@@ -42,7 +43,7 @@ export default function CashWithdrawalForm() {
   }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [otpMessage, setOtpMessage] = useState('');
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
   const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
   const navigate = useNavigate();
 
@@ -56,10 +57,10 @@ export default function CashWithdrawalForm() {
   };
 
   // Start cooldown timer when OTP is sent
-  const startResendCooldown = useCallback(() => {
+  const startResendCooldown = () => {
     setResendCooldown(30);
     const timer = setInterval(() => {
-      setResendCooldown((prev) => {
+      setResendCooldown((prev: number) => {
         if (prev <= 1) {
           clearInterval(timer);
           return 0;
@@ -68,7 +69,7 @@ export default function CashWithdrawalForm() {
       });
     }, 1000);
     setResendTimer(timer);
-  }, []);
+  };
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -184,7 +185,8 @@ export default function CashWithdrawalForm() {
     return true;
   };
 
-  const sendOTP = async () => {
+  const sendOTP = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setErrors({});
     setOtpMessage('');
     setIsLoading(true);
@@ -213,7 +215,7 @@ export default function CashWithdrawalForm() {
       // Call the OTP sending API
       const response = await authService.requestOtp(phone || formData.telephoneNumber);
       setOtpMessage(response.message || 'OTP has been sent to your registered phone number');
-      setStep(2);
+      setStep('verify');
       startResendCooldown();
     } catch (err: any) {
       setErrors({
@@ -227,11 +229,9 @@ export default function CashWithdrawalForm() {
   
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
-    
     setErrors({});
     setOtpMessage('');
     setIsLoading(true);
-    
     try {
       const response = await authService.requestOtp(phone || formData.telephoneNumber);
       setOtpMessage(response.message || 'New OTP has been sent');
@@ -246,13 +246,14 @@ export default function CashWithdrawalForm() {
     }
   };
 
-  const verifyOTP = async () => {
+  const verifyOTP = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!formData.otp) {
       setErrors({ otp: 'OTP is required' });
       return;
     }
-    if (!/^[0-9]{4,6}$/.test(formData.otp)) {
-      setErrors({ otp: 'Please enter a valid 4-6 digit OTP' });
+    if (!/^[0-9]{6}$/.test(formData.otp)) {
+      setErrors({ otp: 'Please enter a valid 6-digit OTP' });
       return;
     }
     setIsLoading(true);
@@ -261,7 +262,7 @@ export default function CashWithdrawalForm() {
       // Call the OTP verification API
       const verification = await authService.verifyOtp(phone || formData.telephoneNumber, formData.otp);
       if (verification.verified) {
-        setStep(3); // Move directly to confirmation step
+        setStep('confirm');
       } else {
         setErrors({ otp: verification.message || 'OTP verification failed' });
       }
@@ -272,7 +273,8 @@ export default function CashWithdrawalForm() {
     }
   };
 
-  const handleSubmitWithdrawal = async () => {
+  const handleSubmitWithdrawal = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsLoading(true);
     setErrors({});
     // Validate before submit
@@ -303,6 +305,11 @@ export default function CashWithdrawalForm() {
     }
     if (!formData.otp) {
       setErrors({ otp: 'OTP is required' });
+      setIsLoading(false);
+      return;
+    }
+    if (!/^[0-9]{6}$/.test(formData.otp)) {
+      setErrors({ otp: 'Please enter a valid 6-digit OTP' });
       setIsLoading(false);
       return;
     }
@@ -421,157 +428,154 @@ export default function CashWithdrawalForm() {
                     </button>
                   </div>
                 )}
-                {errors.accountNumber && (
-                  <p className="mt-1 text-sm text-red-600">{errors.accountNumber}</p>
-                )}
-              </div>
+                return (
+                  <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-4">
+                    <div className="w-full max-w-xl bg-white shadow-2xl rounded-2xl p-10 space-y-10">
+                      <div className="text-center space-y-2">
+                        <h1 className="text-2xl font-semibold text-gray-900 uppercase">Cash Withdrawal</h1>
+                        <h2 className="text-xl font-semibold text-fuchsia-700">{branchInfo.name}</h2>
+                        <div className="text-gray-500 text-sm">{branchInfo.date}</div>
+                      </div>
 
-              {formData.accountHolderName && (
-                <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100">
-                  <p className="text-sm text-fuchsia-600">Account Holder</p>
-                  <p className="font-medium">{formData.accountHolderName}</p>
-                </div>
-              )}
+                      {errors.message && (
+                        <div className="bg-red-100 border border-red-300 text-red-700 rounded-lg p-3 text-center">
+                          {errors.message}
+                        </div>
+                      )}
 
-              <div>
-                <label className="block text-sm font-medium text-fuchsia-700 mb-2">
-                  Withdrawal Amount (ETB) *
-                </label>
-                <input
-                  type="number"
-                  name="amount"
-                  value={formData.amount}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
-                  placeholder="Enter amount"
-                />
-                {errors.amount && (
-                  <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
-                )}
-              </div>
+                      {step === 'request' && (
+                        <form onSubmit={sendOTP} className="space-y-8">
+                          <div>
+                            <label className="block text-sm font-medium text-fuchsia-700 mb-2">Account Number *</label>
+                            <input
+                              type="text"
+                              name="accountNumber"
+                              value={formData.accountNumber}
+                              onChange={handleChange}
+                              className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
+                              placeholder="Enter account number"
+                              autoFocus
+                              disabled={isLoading}
+                            />
+                            {errors.accountNumber && (
+                              <p className="mt-1 text-sm text-red-600">{errors.accountNumber}</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-fuchsia-700 mb-2">Withdrawal Amount (ETB) *</label>
+                            <input
+                              type="number"
+                              name="amount"
+                              value={formData.amount}
+                              onChange={handleChange}
+                              className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
+                              placeholder="Enter amount"
+                              disabled={isLoading}
+                            />
+                            {errors.amount && (
+                              <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
+                            )}
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-fuchsia-700 text-white py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 transition text-lg font-medium flex items-center justify-center"
+                          >
+                            {isLoading ? 'Sending OTP...' : 'Request OTP'}
+                          </button>
+                        </form>
+                      )}
 
-              <button
-                onClick={sendOTP}
-                disabled={isLoading || !formData.accountHolderName || !formData.amount || Number(formData.amount) > 50000}
-                className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? 'Sending OTP...' : 'Continue to OTP Verification'}
-              </button>
-            </div>
-          )}
+                      {step === 'verify' && (
+                        <form onSubmit={verifyOTP} className="space-y-8">
+                          <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100 text-center">
+                            <p className="text-sm text-fuchsia-600">OTP sent to your registered phone</p>
+                            <p className="font-medium">•••• {phone || formData.telephoneNumber?.slice(-3) || '•••'}</p>
+                            {otpMessage && <p className="text-sm text-green-600 mt-1">{otpMessage}</p>}
+                            <div className="mt-2 flex justify-between items-center">
+                              <button
+                                type="button"
+                                onClick={handleResendOtp}
+                                disabled={resendCooldown > 0 || isLoading}
+                                className="text-sm text-fuchsia-700 hover:underline disabled:text-gray-400 disabled:cursor-not-allowed"
+                              >
+                                {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setStep('request')}
+                                className="text-sm text-fuchsia-700 hover:underline"
+                                disabled={isLoading}
+                              >
+                                &larr; Back
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-fuchsia-700 mb-2">Enter 6-digit OTP *</label>
+                            <input
+                              type="text"
+                              name="otp"
+                              value={formData.otp}
+                              onChange={handleChange}
+                              maxLength={6}
+                              className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest"
+                              placeholder="------"
+                              autoFocus
+                              disabled={isLoading}
+                            />
+                            {errors.otp && (
+                              <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
+                            )}
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={isLoading || !formData.otp || !/^[0-9]{6}$/.test(formData.otp)}
+                            className="w-full bg-fuchsia-700 text-white py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 transition text-lg font-medium flex items-center justify-center"
+                          >
+                            {isLoading ? 'Verifying...' : 'Verify OTP'}
+                          </button>
+                        </form>
+                      )}
 
-          {step === 2 && (
-            <div className="space-y-5 animate-fadeIn">
-              <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100">
-                <p className="text-sm text-fuchsia-600">OTP Sent to your registered phone</p>
-                <p className="font-medium">•••• {phone || formData.telephoneNumber?.slice(-3) || '•••'}</p>
-                {otpMessage && <p className="text-sm text-green-600 mt-1">{otpMessage}</p>}
-                <div className="mt-2 flex justify-between items-center">
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={resendCooldown > 0 || isLoading}
-                    className="text-sm text-fuchsia-600 hover:text-fuchsia-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-fuchsia-700 mb-2">
-                  Enter 4-digit OTP *
-                </label>
-                <input
-                  type="text"
-                  name="otp"
-                  value={formData.otp}
-                  onChange={handleChange}
-                  maxLength={6}
-                  className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest"
-                  placeholder="----"
-                />
-                {errors.otp && (
-                  <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
-                )}
-              </div>
-
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => setStep(1)}
-                  className="text-fuchsia-600 hover:text-fuchsia-800 text-sm font-medium"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={verifyOTP}
-                  disabled={isLoading || !formData.otp || !/^[0-9]{4,6}$/.test(formData.otp)}
-                  className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition disabled:opacity-50 flex items-center justify-center min-w-24"
-                >
-                  Verify OTP
-                </button>
-              </div>
-            </div>
-          )}
-
-
-
-          {step === 3 && (
-            <div className="space-y-5 animate-fadeIn">
-              <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100">
-                <p className="text-sm text-fuchsia-600">Review Your Withdrawal</p>
-                <p className="font-medium">Please confirm details before submission</p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Account Number:</span>
-                  <span className="font-medium">{formData.accountNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Account Holder:</span>
-                  <span className="font-medium">{formData.accountHolderName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Amount:</span>
-                  <span className="font-medium">{formData.amount} ETB</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Branch:</span>
-                  <span className="font-medium">{branchInfo.name}</span>
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                <p className="text-sm text-yellow-700">
-                  Note: You will need to present valid ID at the counter to complete this withdrawal.
-                </p>
-              </div>
-
-              <button
-                onClick={handleSubmitWithdrawal}
-                disabled={isLoading}
-                className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-70 flex items-center justify-center"
-              >
-                {isLoading ? (
-                  <>
-                    <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Submit Withdrawal Request'
-                )}
-              </button>
-            </div>
-          )}
-        {/* Global error message */}
-        {errors.message && (
-          <div className="bg-red-100 border border-red-300 text-red-700 rounded-lg p-3 mt-4 text-center">
-            {errors.message}
-          </div>
-        )}
-      </div>
-      </div>
-    </div>
-  )
-}
+                      {step === 'confirm' && (
+                        <form onSubmit={handleSubmitWithdrawal} className="space-y-8">
+                          <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100 text-center">
+                            <p className="text-sm text-fuchsia-600">Review Your Withdrawal</p>
+                            <p className="font-medium">Please confirm details before submission</p>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Account Number:</span>
+                              <span className="font-medium">{formData.accountNumber}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Account Holder:</span>
+                              <span className="font-medium">{formData.accountHolderName}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Amount:</span>
+                              <span className="font-medium">{formData.amount} ETB</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Branch:</span>
+                              <span className="font-medium">{branchInfo.name}</span>
+                            </div>
+                          </div>
+                          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                            <p className="text-sm text-yellow-700">
+                              Note: You will need to present valid ID at the counter to complete this withdrawal.
+                            </p>
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-fuchsia-700 text-white py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 transition text-lg font-medium flex items-center justify-center"
+                          >
+                            {isLoading ? 'Processing...' : 'Submit Withdrawal Request'}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+                );

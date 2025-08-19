@@ -373,33 +373,58 @@ export function AccountOpeningForm() {
         console.log("Current formData.customerId:", formData.customerId);
 
         if (phoneNumberScreenActive) {
+            const isValid = isValidPhoneNumber(phoneNumberInput.trim());
             return (
                 <div className="flex flex-col items-center justify-center min-h-[400px]">
                     <h2 className="text-2xl font-bold mb-4 text-fuchsia-800">Welcome!</h2>
                     <p className="mb-6 text-gray-700 text-center">
-                        Enter your **mobile phone number** to start or resume your account opening application.
+                        Enter your <b>mobile phone number</b> to start or resume your account opening application.
                     </p>
                     <Field label="Mobile Phone Number" error={phoneInputError}>
-                        <input
-                            type="tel"
-                            name="phoneNumberInput"
-                            className="form-input w-full p-3 rounded border text-center"
-                            value={phoneNumberInput}
-                            onChange={(e) => setPhoneNumberInput(e.target.value)}
-                            placeholder="e.g., 0912345678"
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                    handlePhoneNumberSubmit();
-                                }
-                            }}
-                        />
+                        <div className="relative w-full">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-fuchsia-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0-1.243 1.007-2.25 2.25-2.25h2.386c.51 0 .994.192 1.366.54l1.32 1.22a2.25 2.25 0 0 1 .728 1.66v2.09c0 .621-.504 1.125-1.125 1.125H6.75A2.25 2.25 0 0 1 4.5 9.75V6.75zM21.75 17.25c0 1.243-1.007 2.25-2.25 2.25h-2.386a2.25 2.25 0 0 1-1.366-.54l-1.32-1.22a2.25 2.25 0 0 1-.728-1.66v-2.09c0-.621.504-1.125 1.125-1.125h2.25a2.25 2.25 0 0 1 2.25 2.25v3z" />
+                                </svg>
+                            </span>
+                            <input
+                                type="tel"
+                                name="phoneNumberInput"
+                                className={`form-input w-full p-3 pl-12 rounded border text-center text-lg transition focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 ${phoneNumberInput ? (isValid ? 'border-green-500' : 'border-red-500') : ''}`}
+                                value={phoneNumberInput}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhoneNumberInput(e.target.value)}
+                                placeholder="09XXXXXXXX or +2519XXXXXXXX"
+                                autoFocus
+                                inputMode="tel"
+                                pattern="^09\d{8}$|^\+2519\d{8}$"
+                                aria-invalid={!!phoneInputError || (phoneNumberInput && !isValid)}
+                                aria-describedby="phone-helper-text"
+                                onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                    if (e.key === 'Enter') {
+                                        handlePhoneNumberSubmit();
+                                    }
+                                }}
+                            />
+                            {phoneNumberInput && (
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    {isValid ? (
+                                        <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                    ) : (
+                                        <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    )}
+                                </span>
+                            )}
+                        </div>
+                        <div id="phone-helper-text" className="text-xs text-gray-500 mt-1 text-center">
+                            Format: 09XXXXXXXX or +2519XXXXXXXX (Ethiopian mobile)
+                        </div>
                     </Field>
                     <div className="flex gap-4 mt-6">
                         <button
                             type="button"
-                            className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition disabled:opacity-50"
+                            className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition disabled:opacity-50 text-lg font-semibold"
                             onClick={handlePhoneNumberSubmit}
-                            disabled={phoneCheckLoading}
+                            disabled={phoneCheckLoading || !isValid}
                         >
                             {phoneCheckLoading ? "Checking..." : "Continue"}
                         </button>
