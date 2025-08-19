@@ -1,8 +1,11 @@
+// If you use windowService here, use type-only import for Window
+// import type { Window as WindowType } from '../../../services/windowService';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../context/AuthContext';
 import authService from '../../../services/authService';
+import { submitWithdrawal } from '../../../services/withdrawalService';
 
 export default function CashWithdrawalForm() {
   // Get phone number from AuthContext (set at login)
@@ -33,6 +36,7 @@ export default function CashWithdrawalForm() {
   })
   const [errors, setErrors] = useState<{
     accountNumber?: string;
+    amount?: string;
     otp?: string;
     message?: string;
   }>({});
@@ -43,9 +47,11 @@ export default function CashWithdrawalForm() {
   const navigate = useNavigate();
 
   // Auto-fill branch info from QR/link (as per FSD)
+  // For now, always use Abiy Branch for demo, but this can be dynamic
+  const ABIY_BRANCH_ID = 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6';
   const branchInfo = {
-    name: 'Main Branch',
-    id: 'BR1001',
+    name: 'Abiy Branch',
+    id: 'AB-1',
     date: new Date().toLocaleDateString()
   };
 
@@ -166,46 +172,52 @@ export default function CashWithdrawalForm() {
   }
 
   const validateAccount = () => {
-    // TODO: Implement CBS validation as per FSD
-    if (formData.accountNumber.length < 5) {
-      setErrors({ accountNumber: 'Invalid account number' })
-      return false
+    if (!formData.accountNumber) {
+      setErrors({ accountNumber: 'Account number is required' });
+      return false;
     }
-    // Mock successful validation
-    setFormData(prev => ({
-      ...prev,
-      accountHolderName: 'Sample Customer Name'
-    }))
-    setErrors({})
-    return true
-  }
+    if (formData.accountNumber.length < 7) {
+      setErrors({ accountNumber: 'Account number must be at least 7 digits' });
+      return false;
+    }
+    setErrors((prev) => ({ ...prev, accountNumber: undefined }));
+    return true;
+  };
 
   const sendOTP = async () => {
     setErrors({});
     setOtpMessage('');
     setIsLoading(true);
-    
     try {
-      // First validate required fields
+      // Validate required fields
       if (!formData.accountNumber) {
         setErrors({ accountNumber: 'Account number is required' });
+        setIsLoading(false);
         return;
       }
-      
       if (!formData.amount) {
-        setErrors({ message: 'Please enter withdrawal amount' });
+        setErrors({ amount: 'Please enter withdrawal amount' });
+        setIsLoading(false);
         return;
       }
-      
+      if (Number(formData.amount) <= 0) {
+        setErrors({ amount: 'Amount must be greater than zero' });
+        setIsLoading(false);
+        return;
+      }
+      if (Number(formData.amount) > 50000) {
+        setErrors({ amount: 'Daily withdrawal limit is ETB 50,000' });
+        setIsLoading(false);
+        return;
+      }
       // Call the OTP sending API
       const response = await authService.requestOtp(phone || formData.telephoneNumber);
-      
       setOtpMessage(response.message || 'OTP has been sent to your registered phone number');
       setStep(2);
       startResendCooldown();
     } catch (err: any) {
       setErrors({
-        message: err.response?.data?.message || 'Failed to send OTP. Please try again.'
+        message: err.response?.data?.message || err.message || 'Failed to send OTP. Please try again.'
       });
       console.error('Send OTP Error:', err);
     } finally {
@@ -235,65 +247,101 @@ export default function CashWithdrawalForm() {
   };
 
   const verifyOTP = async () => {
-    if (formData.otp.length !== 4) {
-      setErrors({ otp: 'Please enter a valid 4-digit OTP' })
-      return
+    if (!formData.otp) {
+      setErrors({ otp: 'OTP is required' });
+      return;
     }
-
-    setIsLoading(true)
-    setErrors({})
-
+    if (!/^[0-9]{4,6}$/.test(formData.otp)) {
+      setErrors({ otp: 'Please enter a valid 4-6 digit OTP' });
+      return;
+    }
+    setIsLoading(true);
+    setErrors({});
     try {
       // Call the OTP verification API
       const verification = await authService.verifyOtp(phone || formData.telephoneNumber, formData.otp);
-      
       if (verification.verified) {
-        setStep(3) // Move directly to confirmation step
+        setStep(3); // Move directly to confirmation step
       } else {
-        setErrors({ otp: verification.message || 'OTP verification failed' })
+        setErrors({ otp: verification.message || 'OTP verification failed' });
       }
     } catch (err: any) {
-      setErrors({ message: err.message || 'Failed to verify OTP' })
+      setErrors({ message: err.message || 'Failed to verify OTP' });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   };
 
-  const submitWithdrawal = async () => {
-    setIsLoading(true)
-    setErrors({})
-
+  const handleSubmitWithdrawal = async () => {
+    setIsLoading(true);
+    setErrors({});
+    // Validate before submit
+    if (!formData.accountNumber) {
+      setErrors({ accountNumber: 'Account number is required' });
+      setIsLoading(false);
+      return;
+    }
+    if (!formData.accountHolderName) {
+      setErrors({ accountNumber: undefined, message: 'Account holder name is required' });
+      setIsLoading(false);
+      return;
+    }
+    if (!formData.amount) {
+      setErrors({ amount: 'Please enter withdrawal amount' });
+      setIsLoading(false);
+      return;
+    }
+    if (Number(formData.amount) <= 0) {
+      setErrors({ amount: 'Amount must be greater than zero' });
+      setIsLoading(false);
+      return;
+    }
+    if (Number(formData.amount) > 50000) {
+      setErrors({ amount: 'Daily withdrawal limit is ETB 50,000' });
+      setIsLoading(false);
+      return;
+    }
+    if (!formData.otp) {
+      setErrors({ otp: 'OTP is required' });
+      setIsLoading(false);
+      return;
+    }
     try {
-      // In a real app, this would submit the withdrawal request to the server
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
+      // Prepare request for backend
+      const withdrawalReq = {
+        branchId: ABIY_BRANCH_ID,
+        customerFullName: formData.accountHolderName,
+        phoneNumber: phone || formData.telephoneNumber,
+        accountNumber: formData.accountNumber,
+        accountHolderName: formData.accountHolderName,
+        withdrawalAmount: Number(formData.amount),
+        otpCode: formData.otp,
+      };
+      const response = await submitWithdrawal(withdrawalReq);
+
       // Clear form data from localStorage on successful submission
-      localStorage.removeItem('cw_accountNumber')
-      localStorage.removeItem('cw_accountHolderName')
-      localStorage.removeItem('cw_telephoneNumber')
-      
-      // Generate a reference ID and token
-      const referenceId = `WD-${Date.now()}`
-      const token = Math.floor(1000 + Math.random() * 9000).toString()
-      const windowNumber = Math.floor(1 + Math.random() * 5).toString()
-      
-      // Navigate to confirmation page with all required data
+      localStorage.removeItem('cw_accountNumber');
+      localStorage.removeItem('cw_accountHolderName');
+      localStorage.removeItem('cw_telephoneNumber');
+
+      // Navigate to confirmation page with backend response
       navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', {
         state: {
-          referenceId,
-          accountNumber: formData.accountNumber,
-          amount: `${parseFloat(formData.amount).toLocaleString()}.00 ETB`,
+          referenceId: response.referenceId,
+          accountNumber: response.accountNumber,
+          amount: `${response.withdrawa_Amount.toLocaleString()}.00 ETB`,
           branch: branchInfo.name,
-          token,
-          window: windowNumber
+          token: response.tokenNumber,
+          window: response.windowNumber,
+          message: response.message,
         }
-      })
-    } catch (err) {
-      setErrors({ message: 'Failed to submit withdrawal. Please try again.' })
+      });
+    } catch (err: any) {
+      setErrors({ message: err.message || 'Failed to submit withdrawal. Please try again.' });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-fuchsia-50 to-white p-4 md:p-8">
@@ -397,16 +445,14 @@ export default function CashWithdrawalForm() {
                   className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
                   placeholder="Enter amount"
                 />
-                {Number(formData.amount) > 50000 && (
-  <p className="mt-1 text-sm text-red-600">
-    Daily withdrawal limit is ETB 50,000
-  </p>
-)}
+                {errors.amount && (
+                  <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
+                )}
               </div>
 
               <button
                 onClick={sendOTP}
-                disabled={!formData.accountHolderName || !formData.amount || Number(formData.amount) > 50000}
+                disabled={isLoading || !formData.accountHolderName || !formData.amount || Number(formData.amount) > 50000}
                 className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Sending OTP...' : 'Continue to OTP Verification'}
@@ -441,7 +487,7 @@ export default function CashWithdrawalForm() {
                   name="otp"
                   value={formData.otp}
                   onChange={handleChange}
-                  maxLength={4}
+                  maxLength={6}
                   className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest"
                   placeholder="----"
                 />
@@ -459,7 +505,7 @@ export default function CashWithdrawalForm() {
                 </button>
                 <button
                   onClick={verifyOTP}
-                  disabled={formData.otp.length !== 4 || isLoading}
+                  disabled={isLoading || !formData.otp || !/^[0-9]{4,6}$/.test(formData.otp)}
                   className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition disabled:opacity-50 flex items-center justify-center min-w-24"
                 >
                   Verify OTP
@@ -503,7 +549,7 @@ export default function CashWithdrawalForm() {
               </div>
 
               <button
-                onClick={submitWithdrawal}
+                onClick={handleSubmitWithdrawal}
                 disabled={isLoading}
                 className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-70 flex items-center justify-center"
               >
@@ -518,7 +564,13 @@ export default function CashWithdrawalForm() {
               </button>
             </div>
           )}
-        </div>
+        {/* Global error message */}
+        {errors.message && (
+          <div className="bg-red-100 border border-red-300 text-red-700 rounded-lg p-3 mt-4 text-center">
+            {errors.message}
+          </div>
+        )}
+      </div>
       </div>
     </div>
   )

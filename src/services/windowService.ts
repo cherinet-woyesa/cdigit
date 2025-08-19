@@ -1,13 +1,13 @@
 // src/services/windowService.ts
 
-export interface Window {
+export type Window = {
   id: string;
   branchId: string;
   windowNumber: number;
   description: string;
   windowType: string;
   status: string;
-}
+};
 
 export async function fetchWindowsByBranch(branchId: string): Promise<Window[]> {
   const response = await fetch(`http://localhost:5268/api/window/bybranch/${branchId}`);

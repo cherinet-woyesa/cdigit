@@ -9,9 +9,10 @@ export default function WithdrawalConfirmation() {
     referenceId: 'WD-87654321',
     accountNumber: '2000XXXXXX8910',
     amount: '25,000.00 ETB',
-    branch: 'Main Branch',
+    branch: 'Abiy Branch',
     token: '7319',
-    window: '5'
+    window: '5',
+    message: 'Withdrawal submitted successfully.'
   }
 
   return (
@@ -24,7 +25,7 @@ export default function WithdrawalConfirmation() {
           </div>
           <CheckBadgeIcon className="h-16 w-16 mx-auto text-fuchsia-200" />
           <h1 className="text-2xl font-bold mt-4">Withdrawal Request Confirmed!</h1>
-          <p className="text-fuchsia-100 mt-2">Your token number is ready</p>
+          <p className="text-fuchsia-100 mt-2">{confirmationData.message || 'Your token number is ready'}</p>
         </div>
 
         {/* Confirmation Details */}

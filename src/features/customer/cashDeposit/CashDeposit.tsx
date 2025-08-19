@@ -2,7 +2,8 @@ import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import depositService from '../../../services/depositService';
-import { fetchWindowsByBranch, Window } from '../../../services/windowService';
+import { fetchWindowsByBranch } from '../../../services/windowService';
+import type { Window as WindowType } from '../../../services/windowService';
 
 // Helper: simple number to words (English, for demo)
 function numberToWords(num: number): string {
@@ -162,7 +163,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
     useEffect(() => {
         // Fetch windows for the branch (Abiy Branch for now)
         fetchWindowsByBranch(ABIY_BRANCH_ID)
-            .then((windows: Window[]) => {
+            .then((windows: WindowType[]) => {
                 if (windows && windows.length > 0) {
                     setWindowNumber(windows[0].windowNumber.toString());
                 } else {
