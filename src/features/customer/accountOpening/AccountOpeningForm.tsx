@@ -190,9 +190,14 @@ export function AccountOpeningForm() {
             let response: any;
             let updatedCustomerData: Partial<FormData> = {};
 
-            // Type guard: Ensure customerId is present for all steps after 0
-            if (currentStep > 0 && !formData.customerId) {
-                throw new Error("Customer ID is missing. Please complete the Personal Details step first.");
+            // Stricter check: Ensure customerId is present and valid for all steps after 0
+            if (currentStep > 0 && (!formData.customerId || formData.customerId <= 0)) {
+                setErrors((prev) => ({
+                    ...prev,
+                    apiError: "Customer ID is missing or invalid. Please complete the Personal Details step first."
+                }));
+                setSubmitting(false);
+                return;
             }
 
             // Helper to map camelCase to PascalCase for backend

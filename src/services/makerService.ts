@@ -1,3 +1,4 @@
+
 import axios, { AxiosError } from 'axios';
 
 const API_BASE_URL = 'https://localhost:5268/api';
@@ -18,6 +19,33 @@ interface DepositDenominationsUpdateDto {
 
 
 const makerService = {
+  // Mark a withdrawal as served
+  markWithdrawalAsServed: async (formkey: string, makerId: string, token: string) => {
+    try {
+      const updateDto = { formkey, frontMakerId: makerId };
+      const response = await axios.put(`${API_BASE_URL}/withdrawal/mark-as-served`, updateDto, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to mark withdrawal as served:', error);
+      throw error;
+    }
+  },
+
+  // Mark a fund transfer as served
+  markFundTransferAsServed: async (formkey: string, makerId: string, token: string) => {
+    try {
+      const updateDto = { formkey, frontMakerId: makerId };
+      const response = await axios.put(`${API_BASE_URL}/fundTransfer/mark-as-served`, updateDto, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to mark fund transfer as served:', error);
+      throw error;
+    }
+  },
   // Fetch a list of pending forms for the maker's branch and assigned window
   getFormsForWindow: async (windowId: string, token: string) => {
     try {

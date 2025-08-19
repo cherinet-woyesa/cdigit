@@ -188,17 +188,25 @@ const MakerDashboard: React.FC = () => {
     };
 
     
-    const handleMarkAsDeposited = async (form: DepositForm) => {
+
+    // Unified finish/mark as served for all transaction types
+    const handleFinishServing = async (form: QueuedForm) => {
         if (!token || !user) return;
         setFinishing(true);
         setError('');
         try {
-            await makerService.markDepositAsDeposited(form.formKey, user.id, token);
+            if (form.type === 'Deposit') {
+                await makerService.markDepositAsDeposited(form.formKey, user.id, token);
+            } else if (form.type === 'Withdrawal') {
+                await makerService.markWithdrawalAsServed(form.formKey, user.id, token);
+            } else if (form.type === 'FundTransfer') {
+                await makerService.markFundTransferAsServed(form.formKey, user.id, token);
+            }
             setCurrentCustomer(null); // Clear current customer after finishing
             fetchForms();
         } catch (err: any) {
-            setError(err.response?.data?.Message || 'Failed to update deposit status.');
-            console.error('Mark as deposited error:', err);
+            setError(err.response?.data?.Message || 'Failed to update status.');
+            console.error('Finish serving error:', err);
         } finally {
             setFinishing(false);
         }
@@ -285,7 +293,7 @@ const MakerDashboard: React.FC = () => {
                                     onUpdateDenominationsClick={handleUpdateDenominations}
                                 />
                                 <button
-                                    onClick={() => handleMarkAsDeposited(currentCustomer as DepositForm)}
+                                    onClick={() => handleFinishServing(currentCustomer)}
                                     disabled={finishing}
                                     className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                                 >
@@ -294,10 +302,28 @@ const MakerDashboard: React.FC = () => {
                             </>
                         )}
                         {currentCustomer.type === 'Withdrawal' && (
-                            <WithdrawalDetailView form={currentCustomer as WithdrawalForm} />
+                            <>
+                                <WithdrawalDetailView form={currentCustomer as WithdrawalForm} />
+                                <button
+                                    onClick={() => handleFinishServing(currentCustomer)}
+                                    disabled={finishing}
+                                    className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                                >
+                                    {finishing ? 'Finishing...' : 'Finish Serving'}
+                                </button>
+                            </>
                         )}
                         {currentCustomer.type === 'FundTransfer' && (
-                            <FundTransferDetailView form={currentCustomer as FundTransferForm} />
+                            <>
+                                <FundTransferDetailView form={currentCustomer as FundTransferForm} />
+                                <button
+                                    onClick={() => handleFinishServing(currentCustomer)}
+                                    disabled={finishing}
+                                    className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                                >
+                                    {finishing ? 'Finishing...' : 'Finish Serving'}
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
