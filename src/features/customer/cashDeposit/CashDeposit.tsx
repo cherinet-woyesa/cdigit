@@ -2,7 +2,7 @@ import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import depositService from '../../../services/depositService';
-// import { fetchBranches, Branch } from '../../../services/branchService';
+import { fetchWindowsByBranch, Window } from '../../../services/windowService';
 
 // Helper: simple number to words (English, for demo)
 function numberToWords(num: number): string {
@@ -148,13 +148,29 @@ type Errors = Partial<Record<keyof FormData, string>>;
     const navigate = useNavigate();
 
 
-    // For testing: always use Abiy Branch from seed data
+    // For now, always use Abiy Branch for demo, but this can be dynamic
     const ABIY_BRANCH_ID = 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6';
     const branchInfo = {
         name: 'Abiy Branch',
         id: 'AB-1',
         date: new Date().toLocaleDateString(),
     };
+
+    // Window state
+    const [windowNumber, setWindowNumber] = useState<string>('');
+
+    useEffect(() => {
+        // Fetch windows for the branch (Abiy Branch for now)
+        fetchWindowsByBranch(ABIY_BRANCH_ID)
+            .then((windows: Window[]) => {
+                if (windows && windows.length > 0) {
+                    setWindowNumber(windows[0].windowNumber.toString());
+                } else {
+                    setWindowNumber('');
+                }
+            })
+            .catch(() => setWindowNumber(''));
+    }, []);
 
     // Handle input changes
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -266,7 +282,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
         setIsSubmitting(true);
 
         try {
-            // Always use Abiy Branch for testing
+            // Always use Abiy Branch for now
             const branchGuid = ABIY_BRANCH_ID;
             // Generate a unique formKey for each submission
             const depositData = {
@@ -293,6 +309,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                     amount: formData.amount,
                     branch: branchInfo.name,
                     token: Math.floor(1000 + Math.random() * 9000),
+                    window: windowNumber || 'N/A',
                     message: response.message,
                 }
             });

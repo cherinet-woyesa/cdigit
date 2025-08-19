@@ -10,7 +10,7 @@ export default function DepositConfirmation() {
     referenceId: 'CD-12345678',
     accountNumber: '1000XXXXXX4567',
     amount: '5,000.00 ETB',
-    branch: 'Main Branch',
+    branch: 'Abiy Branch',
     token: '2547',
     window: '3'
   }
@@ -58,7 +58,7 @@ export default function DepositConfirmation() {
               <p className="text-sm text-fuchsia-600">Your Token Number</p>
               <p className="text-4xl font-bold text-fuchsia-700 my-2">{confirmationData.token}</p>
               <p className="text-fuchsia-700 font-medium">
-                Proceed to Window: <span className="text-2xl">{confirmationData.window}</span>
+                Proceed to Window: <span className="text-2xl">{confirmationData.window ?? 'N/A'}</span>
               </p>
             </div>
           </div>
