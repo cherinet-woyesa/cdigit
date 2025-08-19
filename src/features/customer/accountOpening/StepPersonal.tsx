@@ -1,5 +1,22 @@
 // src/components/accountOpening/StepPersonal.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getAccountTypes } from "../../../services/accountTypeService";
+    const [accountTypes, setAccountTypes] = useState<{ id: number; name: string }[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setLoading(true);
+        getAccountTypes()
+            .then((types) => {
+                setAccountTypes(types);
+                setFetchError(null);
+            })
+            .catch((err) => {
+                setFetchError("Failed to load account types");
+            })
+            .finally(() => setLoading(false));
+    }, []);
 import { Field } from "./FormElements"; // Import Field from common
 import type { PersonalDetail, Errors } from "./formTypes"; // Ensure types are correct
 
@@ -33,17 +50,24 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
             <div className="text-xl font-bold mb-3 text-fuchsia-800">Personal Details</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Account Type" required error={errors.accountType}>
-                    <select
-                        className="form-select w-full p-2 rounded border"
-                        name="accountType" // Changed to camelCase
-                        value={data.accountType}
-                        onChange={handleChange}
-                    >
-                        <option value="">Select</option>
-                        <option value="Savings">Savings</option>
-                        <option value="Current">Current</option>
-                        <option value="IFB">IFB</option>
-                    </select>
+                    {loading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                    ) : fetchError ? (
+                        <div className="text-sm text-red-600">{fetchError}</div>
+                    ) : (
+                        <select
+                            className="form-select w-full p-2 rounded border"
+                            name="accountType"
+                            value={data.accountType}
+                            onChange={handleChange}
+                            disabled={loading || accountTypes.length === 0}
+                        >
+                            <option value="">Select</option>
+                            {accountTypes.map((type) => (
+                                <option key={type.id} value={type.name}>{type.name}</option>
+                            ))}
+                        </select>
+                    )}
                 </Field>
                 <Field label="Title" required error={errors.title}>
                     <div className="flex gap-3">

@@ -1,5 +1,6 @@
 // src/components/accountOpening/StepAddress.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getRegions, getZones, getWoredas } from "../../../services/addressService";
 import { Field } from "./FormElements";
 import type { AddressDetail, Errors } from "./formTypes";
 
@@ -13,6 +14,62 @@ type StepAddressProps = {
 };
 
 export function StepAddress({ data, setData, errors, onNext, onBack, submitting }: StepAddressProps) {
+    const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
+    const [zones, setZones] = useState<{ id: number; name: string; regionId: number }[]>([]);
+    const [woredas, setWoredas] = useState<{ id: number; name: string; zoneId: number }[]>([]);
+    const [regionLoading, setRegionLoading] = useState(false);
+    const [zoneLoading, setZoneLoading] = useState(false);
+    const [woredaLoading, setWoredaLoading] = useState(false);
+    const [regionError, setRegionError] = useState<string | undefined>(undefined);
+    const [zoneError, setZoneError] = useState<string | undefined>(undefined);
+    const [woredaError, setWoredaError] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+        setRegionLoading(true);
+        getRegions()
+            .then(setRegions)
+            .catch(() => setRegionError("Failed to load regions"))
+            .finally(() => setRegionLoading(false));
+    }, []);
+
+    useEffect(() => {
+        if (!data.regionCityAdministration) {
+            setZones([]);
+            return;
+        }
+        setZoneLoading(true);
+        setZoneError(undefined);
+        const selectedRegion = regions.find(r => r.name === data.regionCityAdministration);
+        if (!selectedRegion) {
+            setZones([]);
+            setZoneLoading(false);
+            return;
+        }
+        getZones(selectedRegion.id)
+            .then(setZones)
+            .catch(() => setZoneError("Failed to load zones"))
+            .finally(() => setZoneLoading(false));
+    }, [data.regionCityAdministration, regions]);
+
+    useEffect(() => {
+        if (!data.zone) {
+            setWoredas([]);
+            return;
+        }
+        setWoredaLoading(true);
+        setWoredaError(undefined);
+        const selectedZone = zones.find(z => z.name === data.zone);
+        if (!selectedZone) {
+            setWoredas([]);
+            setWoredaLoading(false);
+            return;
+        }
+        getWoredas(selectedZone.id)
+            .then(setWoredas)
+            .catch(() => setWoredaError("Failed to load woredas"))
+            .finally(() => setWoredaLoading(false));
+    }, [data.zone, zones]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setData({ ...data, [name]: value });
@@ -49,36 +106,42 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
             <div className="text-xl font-bold mb-3 text-fuchsia-800">Address Details</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Region / City Administration" required error={errors.regionCityAdministration}>
-                    <select
-                        className="form-select w-full p-2 rounded border"
-                        name="regionCityAdministration"
-                        value={data.regionCityAdministration}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="">Select</option>
-                        <option value="Addis Ababa">Addis Ababa</option>
-                        <option value="Oromia">Oromia</option>
-                        <option value="Amhara">Amhara</option>
-                        <option value="Tigray">Tigray</option>
-                        <option value="Sidama">Sidama</option>
-                        <option value="Southern Nations">Southern Nations</option>
-                        <option value="Gambella">Gambella</option>
-                        <option value="Benishangul-Gumuz">Benishangul-Gumuz</option>
-                        <option value="Afar">Afar</option>
-                        <option value="Somali">Somali</option>
-                        <option value="Harari">Harari</option>
-                        <option value="Dire Dawa">Dire Dawa</option>
-                    </select>
+                    {regionLoading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                    ) : regionError ? (
+                        <div className="text-sm text-red-600">{regionError}</div>
+                    ) : (
+                        <select
+                            className="form-select w-full p-2 rounded border"
+                            name="regionCityAdministration"
+                            value={data.regionCityAdministration}
+                            onChange={handleChange}
+                            required
+                        >
+                            <option value="">Select</option>
+                            {regions.map(r => (
+                                <option key={r.id} value={r.name}>{r.name}</option>
+                            ))}
+                        </select>
+                    )}
                 </Field>
-                <Field label="Zone" error={errors.zone}>
-                    <input
-                        type="text"
-                        name="zone"
-                        className="form-input w-full p-2 rounded border"
-                        value={data.zone || ""}
-                        onChange={handleChange}
-                    />
+                <Field label="Zone" error={errors.zone || zoneError || undefined}>
+                    {zoneLoading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                    ) : (
+                        <select
+                            className="form-select w-full p-2 rounded border"
+                            name="zone"
+                            value={data.zone || ""}
+                            onChange={handleChange}
+                            disabled={!data.regionCityAdministration || zoneLoading || zones.length === 0}
+                        >
+                            <option value="">Select</option>
+                            {zones.map(z => (
+                                <option key={z.id} value={z.name}>{z.name}</option>
+                            ))}
+                        </select>
+                    )}
                 </Field>
                 <Field label="Sub-City" required error={errors.subCity}>
                     <input
@@ -90,15 +153,23 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
                         required
                     />
                 </Field>
-                <Field label="Wereda / Kebele" required error={errors.weredaKebele}>
-                    <input
-                        type="text"
-                        name="weredaKebele"
-                        className="form-input w-full p-2 rounded border"
-                        value={data.weredaKebele || ""}
-                        onChange={handleChange}
-                        required
-                    />
+                <Field label="Wereda / Kebele" required error={errors.weredaKebele || woredaError || undefined}>
+                    {woredaLoading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                    ) : (
+                        <select
+                            className="form-select w-full p-2 rounded border"
+                            name="weredaKebele"
+                            value={data.weredaKebele || ""}
+                            onChange={handleChange}
+                            disabled={!data.zone || woredaLoading || woredas.length === 0}
+                        >
+                            <option value="">Select</option>
+                            {woredas.map(w => (
+                                <option key={w.id} value={w.name}>{w.name}</option>
+                            ))}
+                        </select>
+                    )}
                 </Field>
                 <Field label="House Number" required error={errors.houseNumber}>
                     <input

@@ -185,13 +185,33 @@ export function AccountOpeningForm() {
         }
 
         setSubmitting(true);
+
         try {
             let response: any;
             let updatedCustomerData: Partial<FormData> = {};
 
+            // Type guard: Ensure customerId is present for all steps after 0
+            if (currentStep > 0 && !formData.customerId) {
+                throw new Error("Customer ID is missing. Please complete the Personal Details step first.");
+            }
+
+            // Helper to map camelCase to PascalCase for backend
+            const toPascal = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+            const mapKeys = (obj: any): any => {
+                if (!obj || typeof obj !== 'object') return obj;
+                if (Array.isArray(obj)) return obj.map(mapKeys);
+                const mapped: any = {};
+                for (const key in obj) {
+                    if (obj[key] !== undefined) {
+                        mapped[toPascal(key)] = obj[key];
+                    }
+                }
+                return mapped;
+            };
+
             switch (currentStep) {
                 case 0: // Personal Details
-                    response = await accountOpeningService.savePersonalDetails(formData.personalDetails, phoneNumberInput);
+                    response = await accountOpeningService.savePersonalDetails(mapKeys(formData.personalDetails), phoneNumberInput);
                     updatedCustomerData = { 
                         customerId: response.id,
                         personalDetails: { ...formData.personalDetails, id: response.id }
@@ -199,23 +219,23 @@ export function AccountOpeningForm() {
                     break;
                 case 1: // Address Details
                     response = await accountOpeningService.saveAddressDetails({
-                        ...formData.addressDetails,
-                        customerId: formData.customerId,
-                        mobilePhone: formData.addressDetails.mobilePhone
+                        ...mapKeys(formData.addressDetails),
+                        CustomerId: formData.customerId,
+                        MobilePhone: formData.addressDetails.mobilePhone
                     });
                     updatedCustomerData = { addressDetails: { ...formData.addressDetails, id: response.id } };
                     break;
                 case 2: // Financial Details
                     response = await accountOpeningService.saveFinancialDetails({
-                        ...formData.financialDetails,
-                        customerId: formData.customerId
+                        ...mapKeys(formData.financialDetails),
+                        CustomerId: formData.customerId
                     });
                     updatedCustomerData = { financialDetails: { ...formData.financialDetails, id: response.id } };
                     break;
                 case 3: // Other Details
                     response = await accountOpeningService.saveOtherDetails({
-                        ...formData.otherDetails,
-                        customerId: formData.customerId
+                        ...mapKeys(formData.otherDetails),
+                        CustomerId: formData.customerId
                     });
                     updatedCustomerData = { otherDetails: { ...formData.otherDetails, id: response.id } };
                     break;
@@ -225,24 +245,18 @@ export function AccountOpeningForm() {
                         docPhotoUrl = await accountOpeningService.uploadDocumentPhoto(formData.documentDetails.photoIdFile);
                     }
                     response = await accountOpeningService.saveDocumentDetails({
-                        ...formData.documentDetails,
-                        customerId: formData.customerId,
-                        docPhotoUrl: docPhotoUrl
+                        ...mapKeys(formData.documentDetails),
+                        CustomerId: formData.customerId,
+                        DocPhotoUrl: docPhotoUrl
                     });
                     updatedCustomerData = { documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl: docPhotoUrl } };
                     break;
                 case 5: // E-Payment Service
-                    response = await accountOpeningService.saveEPaymentService({
-                        ...formData.ePaymentService,
-                        customerId: formData.customerId
-                    });
+                    response = await accountOpeningService.saveEPaymentService(mapKeys(formData.ePaymentService));
                     updatedCustomerData = { ePaymentService: { ...formData.ePaymentService, id: response.id } };
                     break;
                 case 6: // Passbook & Muday Request
-                    response = await accountOpeningService.savePassbookMudayRequest({
-                        ...formData.passbookMudayRequest,
-                        customerId: formData.customerId
-                    });
+                    response = await accountOpeningService.savePassbookMudayRequest(mapKeys(formData.passbookMudayRequest));
                     updatedCustomerData = { passbookMudayRequest: { ...formData.passbookMudayRequest, id: response.id } };
                     break;
                 case 7: // Digital Signature
@@ -251,9 +265,8 @@ export function AccountOpeningForm() {
                         signatureUrl = await accountOpeningService.uploadDigitalSignature(formData.digitalSignature.signatureFile);
                     }
                     response = await accountOpeningService.saveDigitalSignature({
-                        ...formData.digitalSignature,
-                        customerId: formData.customerId,
-                        signatureUrl: signatureUrl
+                        ...mapKeys(formData.digitalSignature),
+                        SignatureUrl: signatureUrl
                     });
                     updatedCustomerData = { digitalSignature: { ...formData.digitalSignature, id: response.id, signatureUrl: signatureUrl } };
                     break;
@@ -397,7 +410,7 @@ export function AccountOpeningForm() {
                                 autoFocus
                                 inputMode="tel"
                                 pattern="^09\d{8}$|^\+2519\d{8}$"
-                                aria-invalid={!!phoneInputError || (phoneNumberInput && !isValid)}
+                                aria-invalid={!!phoneInputError || (!!phoneNumberInput && !isValid) ? "true" : undefined}
                                 aria-describedby="phone-error-text"
                                 onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                     if (e.key === 'Enter') {

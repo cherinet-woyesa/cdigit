@@ -1,5 +1,6 @@
 // src/components/accountOpening/StepDocument.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getRegions, getZones, getWoredas } from "../../../services/addressService";
 import { Field } from "./FormElements";
 import type { DocumentDetail, Errors } from "./formTypes";
 
@@ -13,14 +14,94 @@ type StepDocumentProps = {
 };
 
 export function StepDocument({ data, setData, errors, onNext, onBack, submitting }: StepDocumentProps) {
+    // Dynamic region/zone/woreda state
+    const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
+    const [zones, setZones] = useState<{ id: number; name: string; regionId: number }[]>([]);
+    const [woredas, setWoredas] = useState<{ id: number; name: string; zoneId: number }[]>([]);
+    const [regionLoading, setRegionLoading] = useState(false);
+    const [zoneLoading, setZoneLoading] = useState(false);
+    const [woredaLoading, setWoredaLoading] = useState(false);
+    const [regionError, setRegionError] = useState<string | undefined>(undefined);
+    const [zoneError, setZoneError] = useState<string | undefined>(undefined);
+    const [woredaError, setWoredaError] = useState<string | undefined>(undefined);
+
+    // File upload feedback
+    const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [fileError, setFileError] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+        setRegionLoading(true);
+        getRegions()
+            .then(setRegions)
+            .catch(() => setRegionError("Failed to load regions"))
+            .finally(() => setRegionLoading(false));
+    }, []);
+
+    useEffect(() => {
+        if (!data.docRegionCitySubCity) {
+            setZones([]);
+            return;
+        }
+        setZoneLoading(true);
+        setZoneError(undefined);
+        const selectedRegion = regions.find(r => r.name === data.docRegionCitySubCity);
+        if (!selectedRegion) {
+            setZones([]);
+            setZoneLoading(false);
+            return;
+        }
+        getZones(selectedRegion.id)
+            .then(setZones)
+            .catch(() => setZoneError("Failed to load zones"))
+            .finally(() => setZoneLoading(false));
+    }, [data.docRegionCitySubCity, regions]);
+
+    useEffect(() => {
+        if (!data.docWeredaKebele) {
+            setWoredas([]);
+            return;
+        }
+        setWoredaLoading(true);
+        setWoredaError(undefined);
+        const selectedZone = zones.find(z => z.name === data.docWeredaKebele);
+        if (!selectedZone) {
+            setWoredas([]);
+            setWoredaLoading(false);
+            return;
+        }
+        getWoredas(selectedZone.id)
+            .then(setWoredas)
+            .catch(() => setWoredaError("Failed to load woredas"))
+            .finally(() => setWoredaLoading(false));
+    }, [data.docWeredaKebele, zones]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setData({ ...data, [name]: value });
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFileError(undefined);
+        setFilePreview(null);
         if (e.target.files && e.target.files.length > 0) {
-            setData({ ...data, photoIdFile: e.target.files[0] });
+            const file = e.target.files[0];
+            // Validate file type and size (max 2MB)
+            if (!file.type.startsWith('image/')) {
+                setFileError('Only image files are allowed.');
+                setData({ ...data, photoIdFile: undefined });
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                setFileError('File size must be less than 2MB.');
+                setData({ ...data, photoIdFile: undefined });
+                return;
+            }
+            setData({ ...data, photoIdFile: file });
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                setFilePreview(ev.target?.result as string);
+            };
+            reader.readAsDataURL(file);
         } else {
             setData({ ...data, photoIdFile: undefined });
         }
@@ -100,28 +181,63 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="Document Region / City / Sub-City" error={errors.docRegionCitySubCity}>
-                    <input
-                        type="text"
-                        name="docRegionCitySubCity" // Changed to camelCase
-                        className="form-input w-full p-2 rounded border"
-                        value={data.docRegionCitySubCity || ''}
-                        onChange={handleChange}
-                    />
+                <Field label="Document Region / City / Sub-City" error={errors.docRegionCitySubCity || regionError || undefined}>
+                    {regionLoading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                    ) : (
+                        <select
+                            className="form-select w-full p-2 rounded border"
+                            name="docRegionCitySubCity"
+                            value={data.docRegionCitySubCity || ''}
+                            onChange={handleChange}
+                        >
+                            <option value="">Select</option>
+                            {regions.map(r => (
+                                <option key={r.id} value={r.name}>{r.name}</option>
+                            ))}
+                        </select>
+                    )}
                 </Field>
-                <Field label="Document Wereda / Kebele" error={errors.docWeredaKebele}>
-                    <input
-                        type="text"
-                        name="docWeredaKebele" // Changed to camelCase
-                        className="form-input w-full p-2 rounded border"
-                        value={data.docWeredaKebele || ''}
-                        onChange={handleChange}
-                    />
+                <Field label="Document Zone" error={zoneError || undefined}>
+                    {zoneLoading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                    ) : (
+                        <select
+                            className="form-select w-full p-2 rounded border"
+                            name="docWeredaKebele"
+                            value={data.docWeredaKebele || ''}
+                            onChange={handleChange}
+                            disabled={!data.docRegionCitySubCity || zoneLoading || zones.length === 0}
+                        >
+                            <option value="">Select</option>
+                            {zones.map(z => (
+                                <option key={z.id} value={z.name}>{z.name}</option>
+                            ))}
+                        </select>
+                    )}
+                </Field>
+                <Field label="Document Woreda" error={woredaError || undefined}>
+                    {woredaLoading ? (
+                        <div className="text-sm text-gray-500">Loading...</div>
+                    ) : (
+                        <select
+                            className="form-select w-full p-2 rounded border"
+                            name="docWeredaKebele"
+                            value={data.docWeredaKebele || ''}
+                            onChange={handleChange}
+                            disabled={!data.docRegionCitySubCity || woredaLoading || woredas.length === 0}
+                        >
+                            <option value="">Select</option>
+                            {woredas.map(w => (
+                                <option key={w.id} value={w.name}>{w.name}</option>
+                            ))}
+                        </select>
+                    )}
                 </Field>
                 <Field label="Document House Number" error={errors.docHouseNumber}>
                     <input
                         type="text"
-                        name="docHouseNumber" // Changed to camelCase
+                        name="docHouseNumber"
                         className="form-input w-full p-2 rounded border"
                         value={data.docHouseNumber || ''}
                         onChange={handleChange}
@@ -145,15 +261,21 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="Upload Photo of ID" required error={errors.docPhotoUrl}>
+                <Field label="Upload Photo of ID" required error={errors.docPhotoUrl || fileError || undefined}>
                     <input
                         type="file"
-                        name="photoIdFile" // Changed to camelCase
+                        name="photoIdFile"
                         className="form-input w-full p-2 rounded border"
                         onChange={handleFileChange}
                         accept="image/*"
                     />
-                    {data.docPhotoUrl && (
+                    {filePreview && (
+                        <div className="mt-2 flex flex-col items-center">
+                            <img src={filePreview} alt="Preview" className="max-h-32 rounded shadow" />
+                            <span className="text-xs text-gray-500 mt-1">Preview</span>
+                        </div>
+                    )}
+                    {data.docPhotoUrl && !filePreview && (
                         <p className="text-sm text-gray-500 mt-1">Uploaded: {data.docPhotoUrl}</p>
                     )}
                 </Field>
