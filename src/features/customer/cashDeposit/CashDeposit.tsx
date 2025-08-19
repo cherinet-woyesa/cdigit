@@ -1,7 +1,8 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import depositService from '../../../services/depositService'; // Adjust as needed
+import depositService from '../../../services/depositService';
+// import { fetchBranches, Branch } from '../../../services/branchService';
 
 // Helper: simple number to words (English, for demo)
 function numberToWords(num: number): string {
@@ -146,11 +147,13 @@ type Errors = Partial<Record<keyof FormData, string>>;
     const [isSearching, setIsSearching] = useState(false);
     const navigate = useNavigate();
 
-    // Auto-fill branch info from QR/link (as per FSD)
+
+    // For testing: always use Abiy Branch from seed data
+    const ABIY_BRANCH_ID = 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6';
     const branchInfo = {
-        name: 'Main Branch',
-        id: 'BR1001',
-        date: new Date().toLocaleDateString()
+        name: 'Abiy Branch',
+        id: 'AB-1',
+        date: new Date().toLocaleDateString(),
     };
 
     // Handle input changes
@@ -263,10 +266,8 @@ type Errors = Partial<Record<keyof FormData, string>>;
         setIsSubmitting(true);
 
         try {
-            // Use a valid GUID for branchId. Replace with actual branch GUID if available.
-
-            // Use a hardcoded valid GUID for now (replace with real branch GUID if available)
-            const branchGuid = '00000000-0000-0000-0000-000000000001';
+            // Always use Abiy Branch for testing
+            const branchGuid = ABIY_BRANCH_ID;
             // Generate a unique formKey for each submission
             const depositData = {
                 formKey: Date.now().toString(),
@@ -281,7 +282,6 @@ type Errors = Partial<Record<keyof FormData, string>>;
                 telephoneNumber: formData.telephoneNumber,
             };
 
-            // Backend expects { depositForm: { ... } }
             const response = await depositService.submitDeposit(depositData);
             setIsSubmitting(false);
 
@@ -314,6 +314,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-7">
+                    {/* Branch Selection hidden for testing; always uses Abiy Branch */}
                     {/* Account Section */}
                     <div className="space-y-4 p-4 bg-fuchsia-100 rounded-lg border border-fuchsia-200">
                         <h2 className="text-lg font-semibold text-fuchsia-800">Account Information</h2>
