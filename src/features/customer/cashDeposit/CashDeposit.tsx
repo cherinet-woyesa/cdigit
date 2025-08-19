@@ -282,7 +282,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
             };
 
             // Backend expects { depositForm: { ... } }
-            const response = await depositService.submitDeposit({ depositForm: depositData });
+            const response = await depositService.submitDeposit(depositData);
             setIsSubmitting(false);
 
             navigate('/form/cash-deposit/cashdepositconfirmation', {

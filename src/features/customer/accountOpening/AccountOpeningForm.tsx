@@ -79,94 +79,85 @@ export function AccountOpeningForm() {
     };
 
     const validateStep = (data: any, stepIndex: number): Errors<any> => {
-    let newErrors: Errors<any> = {};
-
-    if (stepIndex === 0) { // Personal Details
-        if (!data.accountType) newErrors.accountType = "Account Type is required";
-        if (!data.title) newErrors.title = "Title is required";
-        if (!data.firstName) newErrors.firstName = "First Name is required";
-        if (!data.grandfatherName) newErrors.grandfatherName = "Grandfather's Name is required";
-        if (!data.sex) newErrors.sex = "Sex is required";
-        if (!data.dateOfBirth) {
-            newErrors.dateOfBirth = "Date of Birth is required";
-        } else {
-            // 18+ age check
-            const dob = new Date(data.dateOfBirth);
-            const today = new Date();
-            let age = today.getFullYear() - dob.getFullYear();
-            let m = today.getMonth() - dob.getMonth();
-            let d = today.getDate() - dob.getDate();
-            let is18 = age > 18 || (age === 18 && (m > 0 || (m === 0 && d >= 0)));
-            if (!is18) {
-                newErrors.dateOfBirth = "You must be at least 18 years old to open an account.";
+        let newErrors: Errors<any> = {};
+        if (stepIndex === 0) { // Personal Details
+            if (!data.accountType) newErrors.accountType = "Account Type is required";
+            if (!data.title) newErrors.title = "Title is required";
+            if (!data.firstName) newErrors.firstName = "First Name is required";
+            if (!data.grandfatherName) newErrors.grandfatherName = "Grandfather's Name is required";
+            if (!data.sex) newErrors.sex = "Sex is required";
+            if (!data.dateOfBirth) {
+                newErrors.dateOfBirth = "Date of Birth is required";
+            } else {
+                // Check if user is at least 18 years old
+                const dob = new Date(data.dateOfBirth);
+                const today = new Date();
+                const age = today.getFullYear() - dob.getFullYear();
+                const m = today.getMonth() - dob.getMonth();
+                const d = today.getDate() - dob.getDate();
+                let is18 = age > 18 || (age === 18 && (m > 0 || (m === 0 && d >= 0)));
+                if (!is18) {
+                    newErrors.dateOfBirth = "You must be at least 18 years old to open an account.";
+                }
             }
-        }
-        if (!data.maritalStatus) newErrors.maritalStatus = "Marital Status is required";
-        if (!data.nationality) newErrors.nationality = "Nationality is required";
-
-    } else if (stepIndex === 1) { // Address Details
-        if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required";
-        if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required";
-        // NOTE: officePhone and houseNumber are intentionally NOT required
-        // Add any other visible/required fields here for this step
-
-    } else if (stepIndex === 2) { // Financial Details
-        if (!data.typeOfWork) {
-            newErrors.typeOfWork = "Type of Work is required";
-        }
-        if (data.typeOfWork === "Private") {
-            if (!data.businessSector) newErrors.businessSector = "Business Sector is required";
-            if (!data.incomeDetails_Private) newErrors.incomeDetails_Private = "Income Details are required";
-            if (!data.incomeFrequencyAnnual_Private && !data.incomeFrequencyMonthly_Private && !data.incomeFrequencyDaily_Private) {
-                newErrors.incomeFrequencyAnnual_Private = "Select an income frequency";
+            if (!data.maritalStatus) newErrors.maritalStatus = "Marital Status is required";
+            if (!data.nationality) newErrors.nationality = "Nationality is required";
+        } else if (stepIndex === 1) { // Address Details
+            if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required"; 
+            if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required"; 
+            // Do not require officePhone, only validate if present (handled in StepAddress)
+        } else if (stepIndex === 2) { // Financial Details
+            if (!data.typeOfWork) newErrors.typeOfWork = "Type of Work is required";
+            if (data.typeOfWork === "Private") {
+                if (!data.businessSector) newErrors.businessSector = "Business Sector is required";
+                if (!data.incomeDetails_Private) newErrors.incomeDetails_Private = "Income Details are required";
+                // Require at least one income frequency
+                if (!data.incomeFrequencyAnnual_Private && !data.incomeFrequencyMonthly_Private && !data.incomeFrequencyDaily_Private) {
+                    newErrors.incomeFrequencyAnnual_Private = "Select an income frequency";
+                }
+            } else if (data.typeOfWork === "Employee") {
+                if (!data.sectorOfEmployer) newErrors.sectorOfEmployer = "Sector of Employer is required";
+                if (!data.jobPosition) newErrors.jobPosition = "Job Position is required";
+                if (!data.incomeDetails_Employee) newErrors.incomeDetails_Employee = "Income Details are required";
+                // Require at least one income frequency
+                if (!data.incomeFrequencyAnnual_Employee && !data.incomeFrequencyMonthly_Employee && !data.incomeFrequencyDaily_Employee) {
+                    newErrors.incomeFrequencyAnnual_Employee = "Select an income frequency";
+                }
             }
-            // Add any other "Private" fields here if required
-        } else if (data.typeOfWork === "Employee") {
-            if (!data.sectorOfEmployer) newErrors.sectorOfEmployer = "Sector of Employer is required";
-            if (!data.jobPosition) newErrors.jobPosition = "Job Position is required";
-            if (!data.incomeDetails_Employee) newErrors.incomeDetails_Employee = "Income Details are required";
-            if (!data.incomeFrequencyAnnual_Employee && !data.incomeFrequencyMonthly_Employee && !data.incomeFrequencyDaily_Employee) {
-                newErrors.incomeFrequencyAnnual_Employee = "Select an income frequency";
+        } else if (stepIndex === 3) { // Other Details
+            if (data.hasBeenConvicted && !data.convictionReason) newErrors.convictionReason = "Reason for conviction is required";
+            if (data.isPoliticallyExposed && !data.pepPosition) newErrors.pepPosition = "PEP Position is required";
+            if (!data.sourceOfFund) newErrors.sourceOfFund = "Source of Fund is required";
+            if (data.sourceOfFund === "Other" && !data.otherSourceOfFund) newErrors.otherSourceOfFund = "Please specify other source of fund";
+        } else if (stepIndex === 4) { // Document Details
+            if (!data.idType) newErrors.idType = "ID Type is required";
+            if (!data.idPassportNo) newErrors.idPassportNo = "ID / Passport No. is required";
+            if (!data.issuedBy) newErrors.issuedBy = "Issued By is required";
+            if (!data.issueDate) newErrors.issueDate = "Issue Date is required";
+            if (!data.expiryDate) newErrors.expiryDate = "Expiry Date is required";
+            if (!data.mobilePhoneNo) newErrors.mobilePhoneNo = "Mobile Phone is required";
+            if (!data.photoIdFile && !data.docPhotoUrl) newErrors.docPhotoUrl = "Document photo is required";
+        } else if (stepIndex === 5) { // E-Payment Service
+            // No required fields, but you can add if needed
+        } else if (stepIndex === 6) { // Passbook & Muday Request
+            if (data.needsMudayBox && !data.mudayBoxDeliveryBranch) {
+                newErrors.mudayBoxDeliveryBranch = "Muday Box Delivery Branch is required";
             }
-            // Add any other "Employee" fields here if required
+        } else if (stepIndex === 7) { // Digital Signature
+            if (!data.signatureFile && !data.signatureUrl) newErrors.signatureUrl = "Digital signature is required";
+            if (!data.termsAccepted) newErrors.termsAccepted = "You must accept the terms and conditions";
         }
-        // No validation for otherIncome (optional)
-
-    } else if (stepIndex === 3) { // Other Details
-        if (data.hasBeenConvicted && !data.convictionReason) newErrors.convictionReason = "Reason for conviction is required";
-        if (data.isPoliticallyExposed && !data.pepPosition) newErrors.pepPosition = "PEP Position is required";
-        if (!data.sourceOfFund) newErrors.sourceOfFund = "Source of Fund is required";
-        if (data.sourceOfFund === "Other" && !data.otherSourceOfFund) newErrors.otherSourceOfFund = "Please specify other source of fund";
-        // Add any other visible/required fields here for this step
-
-    } else if (stepIndex === 4) { // Document Details
-        if (!data.idType) newErrors.idType = "ID Type is required";
-        if (!data.idPassportNo) newErrors.idPassportNo = "ID / Passport No. is required";
-        if (!data.issuedBy) newErrors.issuedBy = "Issued By is required";
-        if (!data.issueDate) newErrors.issueDate = "Issue Date is required";
-        if (!data.expiryDate) newErrors.expiryDate = "Expiry Date is required";
-        if (!data.mobilePhoneNo) newErrors.mobilePhoneNo = "Mobile Phone is required";
-        if (!data.photoIdFile && !data.docPhotoUrl) newErrors.docPhotoUrl = "Document photo is required";
-        // No check for file objects; only required fields
-
-    } else if (stepIndex === 5) { // E-Payment Service
-        // No mandatory fields right now, but you can add checks if you require any
-
-    } else if (stepIndex === 6) { // Passbook & Muday Request
-        if (data.needsMudayBox && !data.mudayBoxDeliveryBranch) {
-            newErrors.mudayBoxDeliveryBranch = "Muday Box Delivery Branch is required";
-        }
-        // Add any other visible/required fields here for this step
-
-    } else if (stepIndex === 7) { // Digital Signature
-        if (!data.signatureFile && !data.signatureUrl) newErrors.signatureUrl = "Digital signature is required";
-        if (!data.termsAccepted) newErrors.termsAccepted = "You must accept the terms and conditions";
-        // Add any other visible/required fields here for this step
-    }
-
-    // No generic required-fields check at the end!
-    return newErrors;
-};
+        // Check for any required fields that are empty (generic check)
+        Object.keys(data).forEach((key) => {
+            // Do not require officePhone or houseNumber
+            if (key === "officePhone" || key === "houseNumber") return;
+            if ((data[key] === undefined || data[key] === null || data[key] === "") && !newErrors[key]) {
+                // Only add error if not already set for this field
+                newErrors[key] = "This field is required";
+            }
+        });
+        return newErrors;
+    };
 
     function isValidPhoneNumber(phone: string) {
         // Ethiopian mobile: starts with 09 or +2519, 10 digits
@@ -201,7 +192,7 @@ export function AccountOpeningForm() {
             switch (currentStep) {
                 case 0: // Personal Details
                     response = await accountOpeningService.savePersonalDetails(formData.personalDetails, phoneNumberInput);
-                    updatedCustomerData = {
+                    updatedCustomerData = { 
                         customerId: response.id,
                         personalDetails: { ...formData.personalDetails, id: response.id }
                     };
