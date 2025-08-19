@@ -645,7 +645,19 @@ export function AccountOpeningForm() {
 
     return (
         <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
-            {!phoneNumberScreenActive && currentStep < steps.length && <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />}
+            {/* Desktop: show full progress bar, Mobile: show only current step title */}
+            {!phoneNumberScreenActive && currentStep < steps.length && (
+                <>
+                    <div className="hidden sm:block">
+                        <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />
+                    </div>
+                    <div className="block sm:hidden mb-4">
+                        <div className="text-lg font-semibold text-fuchsia-700 bg-fuchsia-50 rounded px-4 py-2 border border-fuchsia-100 text-center">
+                            {steps[currentStep]} Details
+                        </div>
+                    </div>
+                </>
+            )}
             <hr className="my-6" />
             <form onSubmit={(e) => e.preventDefault()}>
                 {renderStep()}
