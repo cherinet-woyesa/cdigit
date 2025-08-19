@@ -260,15 +260,22 @@ export default function CashWithdrawalForm() {
     setIsLoading(true);
     setErrors({});
     try {
-      // Call the OTP verification API
+      // Call the OTP verification API and handle response like FundTransfer
       const verification = await authService.verifyOtp(phone || formData.telephoneNumber, formData.otp);
-      if (verification.verified) {
+      if (verification && verification.verified) {
         setStep('confirm');
       } else {
-        setErrors({ otp: verification.message || 'OTP verification failed' });
+        setErrors({ otp: verification?.message || 'OTP verification failed' });
       }
     } catch (err: any) {
-      setErrors({ message: err.message || 'Failed to verify OTP' });
+      // Try to extract backend error message for OTP
+      let errorMsg = 'OTP verification failed';
+      if (err?.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err?.message) {
+        errorMsg = err.message;
+      }
+      setErrors({ otp: errorMsg });
     } finally {
       setIsLoading(false);
     }

@@ -68,6 +68,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                             ))}
                         </select>
                     )}
+                        {errors.accountType && <div className="text-xs text-red-600 mt-1">{errors.accountType}</div>}
                 </Field>
                 <Field label="Title" required error={errors.title}>
                     <div className="flex gap-3">
@@ -84,6 +85,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                             </label>
                         ))}
                     </div>
+                        {errors.title && <div className="text-xs text-red-600 mt-1">{errors.title}</div>}
                 </Field>
                 <Field label="First Name" required error={errors.firstName}>
                     <input
@@ -94,6 +96,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                         onChange={handleChange}
                         placeholder="First Name"
                     />
+                        {errors.firstName && <div className="text-xs text-red-600 mt-1">{errors.firstName}</div>}
                 </Field>
                 <Field label="Middle Name" error={errors.middleName}>
                     <input
@@ -103,6 +106,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                         value={data.middleName || ""}
                         onChange={handleChange}
                     />
+                        {errors.middleName && <div className="text-xs text-red-600 mt-1">{errors.middleName}</div>}
                 </Field>
                 <Field label="Grandfather's Name" required error={errors.grandfatherName}>
                     <input
@@ -112,6 +116,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                         value={data.grandfatherName}
                         onChange={handleChange}
                     />
+                        {errors.grandfatherName && <div className="text-xs text-red-600 mt-1">{errors.grandfatherName}</div>}
                 </Field>
                 <Field label="Mother's Full Name" error={errors.motherFullName}>
                     <input
@@ -121,6 +126,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                         value={data.motherFullName || ""}
                         onChange={handleChange}
                     />
+                        {errors.motherFullName && <div className="text-xs text-red-600 mt-1">{errors.motherFullName}</div>}
                 </Field>
                 <Field label="Sex" required error={errors.sex}>
                     <div className="flex gap-3">
@@ -137,6 +143,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                             </label>
                         ))}
                     </div>
+                        {errors.sex && <div className="text-xs text-red-600 mt-1">{errors.sex}</div>}
                 </Field>
                 <Field label="Date of Birth" required error={errors.dateOfBirth}>
                     <input
@@ -151,6 +158,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                             return d.toISOString().split('T')[0];
                         })()}
                     />
+                        {errors.dateOfBirth && <div className="text-xs text-red-600 mt-1">{errors.dateOfBirth}</div>}
                 </Field>
                 <Field label="Place of Birth" error={errors.placeOfBirth}>
                     <input
@@ -160,6 +168,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                         value={data.placeOfBirth || ""}
                         onChange={handleChange}
                     />
+                        {errors.placeOfBirth && <div className="text-xs text-red-600 mt-1">{errors.placeOfBirth}</div>}
                 </Field>
                 <Field label="Marital Status" required error={errors.maritalStatus}>
                     <div className="flex gap-3">
@@ -176,6 +185,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                             </label>
                         ))}
                     </div>
+                        {errors.maritalStatus && <div className="text-xs text-red-600 mt-1">{errors.maritalStatus}</div>}
                 </Field>
                 <Field label="Education Qualification" error={errors.educationQualification}>
                     <select
@@ -193,6 +203,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                         <option value="Masters">Masters</option>
                         <option value="PhD">PhD</option>
                     </select>
+                        {errors.educationQualification && <div className="text-xs text-red-600 mt-1">{errors.educationQualification}</div>}
                 </Field>
                 <Field label="Nationality" required error={errors.nationality}>
                     <div className="flex gap-3">
@@ -209,6 +220,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                             </label>
                         ))}
                     </div>
+                        {errors.nationality && <div className="text-xs text-red-600 mt-1">{errors.nationality}</div>}
                 </Field>
             </div>
             <div className="flex justify-end mt-6">
