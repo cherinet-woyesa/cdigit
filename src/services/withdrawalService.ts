@@ -1,13 +1,12 @@
 // src/services/withdrawalService.ts
 
+// Align request with backend WithdrawalRequestDto
 export interface WithdrawalRequest {
-  branchId: string;
-  customerFullName: string;
   phoneNumber: string;
-  accountNumber: string;
-  accountHolderName: string;
-  withdrawalAmount: number;
-  otpCode: string; // For now, string; backend expects Guid or 6-digit code
+  accountNumber: number; // long on backend
+  withdrawa_Amount: number; // matches backend property name
+  remark?: string;
+  code: number; // int on backend
 }
 
 export interface WithdrawalResponse {
@@ -20,12 +19,14 @@ export interface WithdrawalResponse {
 }
 
 export async function submitWithdrawal(data: WithdrawalRequest): Promise<WithdrawalResponse> {
-  // Map payload keys to PascalCase as many backend endpoints expect that casing
-  const toPascal = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  const payload: Record<string, unknown> = {};
-  Object.entries(data).forEach(([k, v]) => {
-    payload[toPascal(k)] = v;
-  });
+  // Backend expects PascalCase keys per DTO
+  const payload = {
+    PhoneNumber: data.phoneNumber,
+    AccountNumber: data.accountNumber,
+    Withdrawa_Amount: data.withdrawa_Amount,
+    Remark: data.remark ?? '',
+    Code: data.code,
+  };
 
   const response = await fetch('http://localhost:5268/api/withdrawal/Submit', {
     method: 'POST',

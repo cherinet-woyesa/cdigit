@@ -83,7 +83,8 @@ const authService: AuthService = {
     // Verify OTP for customer
     verifyOtp: async (phoneNumber: string, otp: string) => {
         try {
-            const response = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/verify-otp`, { phoneNumber, otp });
+            // Backend expects PascalCase for verify-otp
+            const response = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/verify-otp`, { PhoneNumber: phoneNumber, OtpCode: otp });
             if (response.data.token) {
                 localStorage.setItem('userToken', response.data.token);
             }
@@ -96,7 +97,7 @@ const authService: AuthService = {
             console.error("Error verifying OTP:", error);
             return {
                 verified: false,
-                message: error.response?.data?.message || 'OTP verification failed',
+                message: error.response?.data?.message || error.response?.data?.errors?.OtpCode?.[0] || 'OTP verification failed',
                 token: undefined,
             };
         }

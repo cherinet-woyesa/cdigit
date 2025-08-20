@@ -282,10 +282,27 @@ export default function CashWithdrawalForm() {
       setErrors({ otp: 'Please enter a valid 6-digit OTP' });
       return;
     }
-    // Do not consume OTP here to avoid "Invalid or used Otp" at submission.
-    // Proceed to confirmation; backend will validate OTP during submission.
+    setIsLoading(true);
     setErrors({});
-    setStep('confirm');
+    try {
+      const targetPhone = phone || formData.telephoneNumber;
+      if (!targetPhone) {
+        setErrors({ otp: 'No phone number available for OTP verification.' });
+        setIsLoading(false);
+        return;
+      }
+      const verification = await authService.verifyOtp(targetPhone, formData.otp);
+      if (verification && verification.verified) {
+        setStep('confirm');
+      } else {
+        setErrors({ otp: verification?.message || 'OTP verification failed' });
+      }
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message || err?.message || 'OTP verification failed';
+      setErrors({ otp: errorMsg });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmitWithdrawal = async (e?: React.FormEvent) => {
@@ -334,34 +351,30 @@ export default function CashWithdrawalForm() {
       return;
     }
     try {
-      // Prepare request for backend
+      // Prepare request for backend (aligns with WithdrawalRequestDto)
       const withdrawalReq = {
-        branchId: ABIY_BRANCH_ID,
-        customerFullName: formData.accountHolderName,
-        phoneNumber: phone || formData.telephoneNumber,
-        accountNumber: formData.accountNumber,
-        accountHolderName: formData.accountHolderName,
-        withdrawalAmount: Number(formData.amount),
-        otpCode: formData.otp,
-      };
-      const response = await submitWithdrawal(withdrawalReq);
-
-      // Clear form data from localStorage on successful submission
+        phoneNumber: (phone || formData.telephoneNumber) as string,
+        accountNumber: parseInt(formData.accountNumber, 10),
+        withdrawa_Amount: Number(formData.amount),
+        remark: '',
+        code: parseInt(formData.otp, 10),
+      } as any;
+      // Immediately navigate to confirmation, and let that screen submit to backend
+      // Clear persisted fields now
       localStorage.removeItem('cw_accountNumber');
       localStorage.removeItem('cw_accountHolderName');
       localStorage.removeItem('cw_telephoneNumber');
 
-      // Navigate to confirmation page with backend response
       navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', {
         state: {
-          referenceId: response.referenceId,
-          accountNumber: response.accountNumber,
-          amount: `${response.withdrawa_Amount.toLocaleString()}.00 ETB`,
-          branch: branchInfo.name,
-          token: response.tokenNumber,
-          window: response.windowNumber,
-          message: response.message,
-        }
+          pending: true,
+          requestPayload: withdrawalReq,
+          ui: {
+            accountNumber: formData.accountNumber,
+            amount: `${Number(formData.amount).toLocaleString()}.00 ETB`,
+            branch: branchInfo.name,
+          },
+        },
       });
     } catch (err: any) {
       const backendMsg = err?.message || 'Failed to submit withdrawal. Please try again.';

@@ -1,8 +1,13 @@
+import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { CheckBadgeIcon, QrCodeIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/solid'
+import { submitWithdrawal } from '../../../services/withdrawalService'
 
 export default function WithdrawalConfirmation() {
-  const { state } = useLocation()
+  const { state } = useLocation() as { state?: any }
+  const [submitting, setSubmitting] = useState<boolean>(false)
+  const [error, setError] = useState<string>('')
+  const [serverData, setServerData] = useState<any>(null)
   
   // Default values if accessed directly (shouldn't happen in normal flow)
   const confirmationData = state || {
@@ -14,6 +19,25 @@ export default function WithdrawalConfirmation() {
     window: '5',
     message: 'Withdrawal submitted successfully.'
   }
+
+  const maskedAccount = String(confirmationData.accountNumber || state?.ui?.accountNumber || '').replace(/.(?=.{4})/g, '•')
+
+  useEffect(() => {
+    const runSubmit = async () => {
+      if (!state?.pending || !state?.requestPayload) return
+      setSubmitting(true)
+      setError('')
+      try {
+        const res = await submitWithdrawal(state.requestPayload)
+        setServerData(res)
+      } catch (e: any) {
+        setError(e?.message || 'Failed to submit withdrawal.')
+      } finally {
+        setSubmitting(false)
+      }
+    }
+    runSubmit()
+  }, [state])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-fuchsia-50 to-white flex items-center justify-center p-4">
@@ -36,10 +60,10 @@ export default function WithdrawalConfirmation() {
               <QrCodeIcon className="h-24 w-24" />
             </div>
             <p className="text-sm text-fuchsia-600 font-medium">YOUR TOKEN NUMBER</p>
-            <p className="text-5xl font-bold text-fuchsia-700 my-3 tracking-wider">{confirmationData.token}</p>
+            <p className="text-5xl font-bold text-fuchsia-700 my-3 tracking-wider">{serverData?.tokenNumber || confirmationData.token}</p>
             <div className="inline-flex items-center bg-fuchsia-100 text-fuchsia-700 px-4 py-1 rounded-full text-sm font-medium">
               <DevicePhoneMobileIcon className="h-4 w-4 mr-1" />
-              Window: {confirmationData.window}
+              Window: {serverData?.windowNumber || confirmationData.window}
             </div>
           </div>
 
@@ -52,7 +76,7 @@ export default function WithdrawalConfirmation() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-fuchsia-600">Reference ID:</p>
-                <p className="font-medium break-all">{confirmationData.referenceId}</p>
+                <p className="font-medium break-all">{serverData?.referenceId || confirmationData.referenceId}</p>
               </div>
               <div>
                 <p className="text-sm text-fuchsia-600">Branch:</p>
@@ -60,11 +84,11 @@ export default function WithdrawalConfirmation() {
               </div>
               <div>
                 <p className="text-sm text-fuchsia-600">Account Number:</p>
-                <p className="font-medium">{confirmationData.accountNumber}</p>
+                <p className="font-medium">{maskedAccount}</p>
               </div>
               <div>
                 <p className="text-sm text-fuchsia-600">Amount:</p>
-                <p className="font-medium">{confirmationData.amount}</p>
+                <p className="font-medium">{serverData ? `${Number(serverData.withdrawa_Amount).toLocaleString()}.00 ETB` : confirmationData.amount}</p>
               </div>
             </div>
           </div>
@@ -101,6 +125,13 @@ export default function WithdrawalConfirmation() {
             </ul>
           </div>
 
+          {/* Errors */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded">
+              {error}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex space-x-3 pt-2">
             <button
@@ -122,7 +153,7 @@ export default function WithdrawalConfirmation() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
               </svg>
-              Share
+              {submitting ? 'Submitting...' : 'Share'}
             </button>
           </div>
 
