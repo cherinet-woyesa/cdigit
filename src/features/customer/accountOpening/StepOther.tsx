@@ -16,8 +16,39 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target as HTMLInputElement;
         const { name, value, type, checked } = target;
-        setData({ ...data, [name]: type === "checkbox" ? checked : value });
+        if (name === 'hasBeenConvicted') {
+            const next = type === 'checkbox' ? checked : value === 'true';
+            setData({ ...data, hasBeenConvicted: next, convictionReason: next ? data.convictionReason : '' });
+            return;
+        }
+        if (name === 'isPoliticallyExposed') {
+            const next = type === 'checkbox' ? checked : value === 'true';
+            setData({ ...data, isPoliticallyExposed: next, pepPosition: next ? data.pepPosition : '' });
+            return;
+        }
+        if (name === 'sourceOfFund') {
+            setData({ ...data, sourceOfFund: value as any, otherSourceOfFund: value === 'Other' ? data.otherSourceOfFund : '' });
+            return;
+        }
+        setData({ ...data, [name]: type === "checkbox" ? checked : value } as OtherDetail);
     };
+
+    // Local conditional validation to mirror parent rules and provide instant feedback
+    const localErrors: Partial<Errors<OtherDetail>> = {};
+    if (data.hasBeenConvicted && !data.convictionReason) {
+        localErrors.convictionReason = 'Reason for conviction is required';
+    }
+    if (data.isPoliticallyExposed && !data.pepPosition) {
+        localErrors.pepPosition = 'PEP Position is required';
+    }
+    if (!data.sourceOfFund) {
+        localErrors.sourceOfFund = 'Source of Fund is required';
+    }
+    if (data.sourceOfFund === 'Other' && !data.otherSourceOfFund) {
+        localErrors.otherSourceOfFund = 'Please specify other source of fund';
+    }
+    const mergedErrors: Errors<OtherDetail> = { ...(errors || {}), ...(localErrors as Errors<OtherDetail>) };
+    const hasLocalErrors = Object.values(localErrors).some(Boolean);
 
     return (
         <>
@@ -39,14 +70,14 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                                 type="radio"
                                 name="hasBeenConvicted" // Changed to camelCase
                                 checked={data.hasBeenConvicted === false}
-                                onChange={() => setData({ ...data, hasBeenConvicted: false })}
+                                onChange={() => setData({ ...data, hasBeenConvicted: false, convictionReason: '' })}
                             />
                             <span>No</span>
                         </label>
                     </div>
                 </Field>
                 {data.hasBeenConvicted && (
-                    <Field label="Reason for Conviction" required error={errors.convictionReason}>
+                    <Field label="Reason for Conviction" required error={mergedErrors.convictionReason}>
                         <input
                             type="text"
                             name="convictionReason" // Changed to camelCase
@@ -72,14 +103,14 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                                 type="radio"
                                 name="isPoliticallyExposed" // Changed to camelCase
                                 checked={data.isPoliticallyExposed === false}
-                                onChange={() => setData({ ...data, isPoliticallyExposed: false })}
+                                onChange={() => setData({ ...data, isPoliticallyExposed: false, pepPosition: '' })}
                             />
                             <span>No</span>
                         </label>
                     </div>
                 </Field>
                 {data.isPoliticallyExposed && (
-                    <Field label="PEP Position" required error={errors.pepPosition}>
+                    <Field label="PEP Position" required error={mergedErrors.pepPosition}>
                         <input
                             type="text"
                             name="pepPosition" // Changed to camelCase
@@ -89,7 +120,7 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                         />
                     </Field>
                 )}
-                <Field label="Source of Fund" required error={errors.sourceOfFund}>
+                <Field label="Source of Fund" required error={mergedErrors.sourceOfFund}>
                     <select
                         className="form-select w-full p-2 rounded border"
                         name="sourceOfFund" // Changed to camelCase
@@ -107,7 +138,7 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                     </select>
                 </Field>
                 {data.sourceOfFund === "Other" && (
-                    <Field label="Specify Other Source of Fund" required error={errors.otherSourceOfFund}>
+                    <Field label="Specify Other Source of Fund" required error={mergedErrors.otherSourceOfFund}>
                         <input
                             type="text"
                             name="otherSourceOfFund" // Changed to camelCase
@@ -130,7 +161,7 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                     type="button"
                     className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
                     onClick={onNext}
-                    disabled={submitting}
+                    disabled={submitting || hasLocalErrors}
                 >
                     Next
                 </button>

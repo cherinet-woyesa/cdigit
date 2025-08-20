@@ -15,7 +15,7 @@ export const sendFundTransferOTP = async (phone: string) => {
 
 // Verify OTP using AuthController endpoint
 export const verifyFundTransferOTP = async (phone: string, otp: string) => {
-  const res = await axios.post('/api/auth/verify-otp', { phoneNumber: phone, otpCode: otp });
+  const res = await axios.post('/api/auth/verify-otp', { phoneNumber: phone, otp });
   return res.data;
 };
 

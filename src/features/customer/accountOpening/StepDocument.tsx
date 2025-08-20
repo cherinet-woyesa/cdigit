@@ -57,13 +57,13 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
     }, [data.docRegionCitySubCity, regions]);
 
     useEffect(() => {
-        if (!data.docWeredaKebele) {
+        if (!data.docZone) {
             setWoredas([]);
             return;
         }
         setWoredaLoading(true);
         setWoredaError(undefined);
-        const selectedZone = zones.find(z => z.name === data.docWeredaKebele);
+        const selectedZone = zones.find(z => z.name === data.docZone);
         if (!selectedZone) {
             setWoredas([]);
             setWoredaLoading(false);
@@ -73,11 +73,17 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
             .then(setWoredas)
             .catch(() => setWoredaError("Failed to load woredas"))
             .finally(() => setWoredaLoading(false));
-    }, [data.docWeredaKebele, zones]);
+    }, [data.docZone, zones]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setData({ ...data, [name]: value });
+        if (name === 'docRegionCitySubCity') {
+            setData({ ...data, docRegionCitySubCity: value, docZone: '', docWeredaKebele: '' });
+        } else if (name === 'docZone') {
+            setData({ ...data, docZone: value, docWeredaKebele: '' });
+        } else {
+            setData({ ...data, [name]: value } as any);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,6 +123,39 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
             return "";
         }
     };
+
+    // Local-only validation for formats and date ordering
+    function isValidEmail(email: string) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+    function isValidPhone(phone: string) {
+        return /^09\d{8}$|^\+2519\d{8}$/.test(phone);
+    }
+    function isValidOfficePhone(phone: string) {
+        if (!phone) return true;
+        return /^\+251\d{8,9}$/.test(phone);
+    }
+    const localOnlyErrors: Partial<Record<keyof DocumentDetail, string>> = {};
+    if (data.docEmail && !isValidEmail(data.docEmail)) {
+        localOnlyErrors.docEmail = 'Invalid email format';
+    }
+    if (data.mobilePhoneNo && !isValidPhone(data.mobilePhoneNo)) {
+        localOnlyErrors.mobilePhoneNo = 'Invalid Ethiopian phone number';
+    }
+    if (data.docOfficeTelephone && !isValidOfficePhone(data.docOfficeTelephone)) {
+        localOnlyErrors.docOfficeTelephone = 'Office phone must start with +251 and be numeric (e.g., +251112345678)';
+    }
+    if (data.issueDate && data.expiryDate) {
+        try {
+            const issue = new Date(data.issueDate);
+            const expiry = new Date(data.expiryDate);
+            if (expiry < issue) {
+                localOnlyErrors.expiryDate = 'Expiry date must be after issue date';
+            }
+        } catch {}
+    }
+    const mergedErrors = { ...errors, ...localOnlyErrors } as Errors<DocumentDetail>;
+    const hasLocalErrors = Object.values(localOnlyErrors).some(Boolean);
 
     return (
         <>
@@ -163,7 +202,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="ID Expiry Date" required error={errors.expiryDate}>
+                <Field label="ID Expiry Date" required error={mergedErrors.expiryDate}>
                     <input
                         type="date"
                         name="expiryDate" // Changed to camelCase
@@ -172,7 +211,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="Mobile Phone" required error={errors.mobilePhoneNo}>
+                <Field label="Mobile Phone" required error={mergedErrors.mobilePhoneNo}>
                     <input
                         type="tel"
                         name="mobilePhoneNo" // Changed to camelCase
@@ -204,8 +243,8 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                     ) : (
                         <select
                             className="form-select w-full p-2 rounded border"
-                            name="docWeredaKebele"
-                            value={data.docWeredaKebele || ''}
+                            name="docZone"
+                            value={data.docZone || ''}
                             onChange={handleChange}
                             disabled={!data.docRegionCitySubCity || zoneLoading || zones.length === 0}
                         >
@@ -225,7 +264,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                             name="docWeredaKebele"
                             value={data.docWeredaKebele || ''}
                             onChange={handleChange}
-                            disabled={!data.docRegionCitySubCity || woredaLoading || woredas.length === 0}
+                            disabled={!data.docZone || woredaLoading || woredas.length === 0}
                         >
                             <option value="">Select</option>
                             {woredas.map(w => (
@@ -243,7 +282,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="Document Email" error={errors.docEmail}>
+                <Field label="Document Email" error={mergedErrors.docEmail}>
                     <input
                         type="email"
                         name="docEmail" // Changed to camelCase
@@ -252,7 +291,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="Document Office Telephone" error={errors.docOfficeTelephone}>
+                <Field label="Document Office Telephone" error={mergedErrors.docOfficeTelephone}>
                     <input
                         type="tel"
                         name="docOfficeTelephone" // Changed to camelCase
@@ -292,7 +331,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                     type="button"
                     className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
                     onClick={onNext}
-                    disabled={submitting}
+                    disabled={submitting || hasLocalErrors}
                 >
                     Next
                 </button>

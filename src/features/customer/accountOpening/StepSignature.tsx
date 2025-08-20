@@ -15,9 +15,22 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
     // State to control the visibility of the terms and conditions modal/display
     const [showTermsModal, setShowTermsModal] = useState(false);
 
+    const [fileError, setFileError] = useState<string | undefined>(undefined);
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFileError(undefined);
         if (e.target.files && e.target.files.length > 0) {
-            setData({ ...data, signatureFile: e.target.files[0] });
+            const file = e.target.files[0];
+            if (!file.type.startsWith('image/')) {
+                setFileError('Only image files are allowed.');
+                setData({ ...data, signatureFile: undefined });
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                setFileError('File size must be less than 2MB.');
+                setData({ ...data, signatureFile: undefined });
+                return;
+            }
+            setData({ ...data, signatureFile: file });
         } else {
             setData({ ...data, signatureFile: undefined });
         }
@@ -28,7 +41,7 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
     };
 
     // Determine if the submit button should be enabled
-    const isSubmitEnabled = data.termsAccepted && (data.signatureFile || data.signatureUrl);
+    const isSubmitEnabled = data.termsAccepted && (data.signatureFile || data.signatureUrl) && !fileError;
 
     // Define the backend base URL for image assets
     // You might want to make this configurable (e.g., via environment variables)
@@ -38,7 +51,7 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
         <>
             <div className="text-xl font-bold mb-3 text-fuchsia-800">Digital Signature & Terms</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Upload Digital Signature" required error={errors.signatureUrl}>
+                <Field label="Upload Digital Signature" required error={errors.signatureUrl || fileError}>
                     <input
                         type="file"
                         name="signatureFile"

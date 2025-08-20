@@ -60,12 +60,13 @@ export const savePersonalDetails = async (data: PersonalDetail, phoneNumber: str
  * @returns A promise that resolves to the saved details with the generated ID.
  */
 export const saveAddressDetails = async (data: any): Promise<IdResponse> => {
-    // Assuming the backend expects a 'CustomerId' field directly in the payload
+    // Ensure the correct CustomerId is sent. Prefer already-pascal-cased CustomerId if present,
+    // otherwise fall back to camelCase customerId.
     const payload = {
         ...data,
-        CustomerId: data.customerId // Ensure CustomerId is passed directly if that's what backend expects
+        CustomerId: data?.CustomerId ?? data?.customerId,
     };
-    console.log("ID DATA OF CUSTOMER:", data.customerId);
+    console.log("Address payload CustomerId:", payload.CustomerId);
     const response = await api.post<IdResponse>(`/address-details`, payload);
     return response.data;
 };
@@ -121,8 +122,12 @@ export const saveDocumentDetails = async (data: DocumentDetail): Promise<IdRespo
  * @param data The e-payment services form data.
  * @returns A promise that resolves to the saved details with the generated ID.
  */
-export const saveEPaymentService = async (data: EPaymentService): Promise<IdResponse> => {
-    const response = await api.post<IdResponse>(`/e-payment-service`, data);
+export const saveEPaymentService = async (data: any): Promise<IdResponse> => {
+    const payload = {
+        ...data,
+        CustomerId: data?.CustomerId ?? data?.customerId,
+    };
+    const response = await api.post<IdResponse>(`/e-payment-service`, payload);
     return response.data;
 };
 
@@ -131,8 +136,12 @@ export const saveEPaymentService = async (data: EPaymentService): Promise<IdResp
  * @param data The passbook and muday box request form data.
  * @returns A promise that resolves to the saved details with the generated ID.
  */
-export const savePassbookMudayRequest = async (data: PassbookMudayRequest): Promise<IdResponse> => {
-    const response = await api.post<IdResponse>(`/passbook-muday-request`, data);
+export const savePassbookMudayRequest = async (data: any): Promise<IdResponse> => {
+    const payload = {
+        ...data,
+        CustomerId: data?.CustomerId ?? data?.customerId,
+    };
+    const response = await api.post<IdResponse>(`/passbook-muday-request`, payload);
     return response.data;
 };
 
@@ -157,7 +166,11 @@ export const uploadDigitalSignature = async (file: File): Promise<string> => {
  * @param data The digital signature and declaration form data.
  * @returns A promise that resolves to the saved details with the generated ID.
  */
-export const saveDigitalSignature = async (data: DigitalSignature): Promise<IdResponse> => {
-    const response = await api.post<IdResponse>(`/digital-signature`, data);
+export const saveDigitalSignature = async (data: any): Promise<IdResponse> => {
+    const payload = {
+        ...data,
+        CustomerId: data?.CustomerId ?? data?.customerId,
+    };
+    const response = await api.post<IdResponse>(`/digital-signature`, payload);
     return response.data;
 };

@@ -62,6 +62,7 @@ export interface DocumentDetail {
     id?: number; // Changed to camelCase
     customerId?: number; // Changed to camelCase
     docRegionCitySubCity?: string; // Changed to camelCase
+    docZone?: string; // Added to separate Zone from Woreda
     docWeredaKebele?: string; // Changed to camelCase
     docHouseNumber?: string; // Changed to camelCase
     docEmail?: string; // Changed to camelCase
@@ -203,6 +204,7 @@ export const INITIAL_DATA: FormData = {
         mobilePhoneNo: "", // Changed to camelCase
         docPhotoUrl: "", // Changed to camelCase
         docRegionCitySubCity: "", // Changed to camelCase
+        docZone: "", // Added default for zone
         docWeredaKebele: "", // Changed to camelCase
         docHouseNumber: "", // Changed to camelCase
         docEmail: "", // Changed to camelCase

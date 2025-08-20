@@ -173,9 +173,17 @@ export default function CashWithdrawalForm() {
     }
   }
 
+  // Simple validators
+  const isDigitsOnly = (value: string) => /^\d+$/.test(value);
+  const isValidEthiopianMobile = (value: string) => /^09\d{8}$|^\+2519\d{8}$/.test(value);
+
   const validateAccount = () => {
     if (!formData.accountNumber) {
       setErrors({ accountNumber: 'Account number is required' });
+      return false;
+    }
+    if (!isDigitsOnly(formData.accountNumber)) {
+      setErrors({ accountNumber: 'Account number must contain only digits' });
       return false;
     }
     if (formData.accountNumber.length < 7) {
@@ -198,6 +206,11 @@ export default function CashWithdrawalForm() {
         setIsLoading(false);
         return;
       }
+      if (!isDigitsOnly(formData.accountNumber)) {
+        setErrors({ accountNumber: 'Account number must contain only digits' });
+        setIsLoading(false);
+        return;
+      }
       if (!formData.amount) {
         setErrors({ amount: 'Please enter withdrawal amount' });
         setIsLoading(false);
@@ -213,8 +226,20 @@ export default function CashWithdrawalForm() {
         setIsLoading(false);
         return;
       }
+      // Validate phone availability and format for OTP delivery
+      const targetPhone = phone || formData.telephoneNumber;
+      if (!targetPhone) {
+        setErrors({ message: 'No phone number available for OTP. Please login again.' });
+        setIsLoading(false);
+        return;
+      }
+      if (!isValidEthiopianMobile(targetPhone)) {
+        setErrors({ message: 'Invalid phone format for OTP.' });
+        setIsLoading(false);
+        return;
+      }
       // Call the OTP sending API
-      const response = await authService.requestOtp(phone || formData.telephoneNumber);
+      const response = await authService.requestOtp(targetPhone);
       setOtpMessage(response.message || 'OTP has been sent to your registered phone number');
       setStep('verify');
       startResendCooldown();
@@ -257,28 +282,10 @@ export default function CashWithdrawalForm() {
       setErrors({ otp: 'Please enter a valid 6-digit OTP' });
       return;
     }
-    setIsLoading(true);
+    // Do not consume OTP here to avoid "Invalid or used Otp" at submission.
+    // Proceed to confirmation; backend will validate OTP during submission.
     setErrors({});
-    try {
-      // Call the OTP verification API and handle response like FundTransfer
-      const verification = await authService.verifyOtp(phone || formData.telephoneNumber, formData.otp);
-      if (verification && verification.verified) {
-        setStep('confirm');
-      } else {
-        setErrors({ otp: verification?.message || 'OTP verification failed' });
-      }
-    } catch (err: any) {
-      // Try to extract backend error message for OTP
-      let errorMsg = 'OTP verification failed';
-      if (err?.response?.data?.message) {
-        errorMsg = err.response.data.message;
-      } else if (err?.message) {
-        errorMsg = err.message;
-      }
-      setErrors({ otp: errorMsg });
-    } finally {
-      setIsLoading(false);
-    }
+    setStep('confirm');
   };
 
   const handleSubmitWithdrawal = async (e?: React.FormEvent) => {
@@ -288,6 +295,11 @@ export default function CashWithdrawalForm() {
     // Validate before submit
     if (!formData.accountNumber) {
       setErrors({ accountNumber: 'Account number is required' });
+      setIsLoading(false);
+      return;
+    }
+    if (!isDigitsOnly(formData.accountNumber)) {
+      setErrors({ accountNumber: 'Account number must contain only digits' });
       setIsLoading(false);
       return;
     }
@@ -352,7 +364,13 @@ export default function CashWithdrawalForm() {
         }
       });
     } catch (err: any) {
-      setErrors({ message: err.message || 'Failed to submit withdrawal. Please try again.' });
+      const backendMsg = err?.message || 'Failed to submit withdrawal. Please try again.';
+      setErrors({ message: backendMsg });
+      // If OTP is invalid/used, bounce user back to verify step to re-enter OTP
+      if (/invalid\s*or\s*used\s*otp/i.test(backendMsg)) {
+        setStep('verify');
+        setOtpMessage('The OTP is invalid or already used. Please request a new one.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -460,6 +478,8 @@ export default function CashWithdrawalForm() {
                           onChange={handleChange}
                           className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
                           placeholder="Enter amount"
+                          min={0}
+                          step={1}
                         />
                         {errors.amount && (
                           <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
@@ -514,6 +534,8 @@ export default function CashWithdrawalForm() {
                           maxLength={6}
                           className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest"
                           placeholder="------"
+                          inputMode="numeric"
+                          pattern="^[0-9]{6}$"
                         />
                         {errors.otp && (
                           <p className="mt-1 text-sm text-red-600">{errors.otp}</p>

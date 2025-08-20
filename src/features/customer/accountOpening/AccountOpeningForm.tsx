@@ -104,6 +104,10 @@ export function AccountOpeningForm() {
             if (!data.nationality) newErrors.nationality = "Nationality is required";
         } else if (stepIndex === 1) { // Address Details
             if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required"; 
+            if (!data.subCity) newErrors.subCity = "Sub-City is required";
+            if (!data.weredaKebele) newErrors.weredaKebele = "Wereda / Kebele is required";
+            if (!data.houseNumber) newErrors.houseNumber = "House Number is required";
+            if (!data.emailAddress) newErrors.emailAddress = "Email Address is required";
             if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required"; 
             // Do not require officePhone, only validate if present (handled in StepAddress)
         } else if (stepIndex === 2) { // Financial Details
@@ -147,15 +151,9 @@ export function AccountOpeningForm() {
             if (!data.signatureFile && !data.signatureUrl) newErrors.signatureUrl = "Digital signature is required";
             if (!data.termsAccepted) newErrors.termsAccepted = "You must accept the terms and conditions";
         }
-        // Check for any required fields that are empty (generic check)
-        Object.keys(data).forEach((key) => {
-            // Do not require officePhone or houseNumber
-            if (key === "officePhone" || key === "houseNumber") return;
-            if ((data[key] === undefined || data[key] === null || data[key] === "") && !newErrors[key]) {
-                // Only add error if not already set for this field
-                newErrors[key] = "This field is required";
-            }
-        });
+        // Note: Avoid a generic required-field sweep here, as many fields are optional
+        // or conditionally required per step (e.g., financial vs employee fields).
+        // Validation above handles only the relevant fields for the current step.
         return newErrors;
     };
 
@@ -189,7 +187,8 @@ export function AccountOpeningForm() {
         try {
             let response: any;
             let updatedCustomerData: Partial<FormData> = {};
-
+        // --- This variable will always have the latest customerId, even before state updates
+        let nextCustomerId = formData.customerId;
             // Stricter check: Ensure customerId is present and valid for all steps after 0
             if (currentStep > 0 && (!formData.customerId || formData.customerId <= 0)) {
                 setErrors((prev) => ({
@@ -202,98 +201,111 @@ export function AccountOpeningForm() {
 
             // Helper to map camelCase to PascalCase for backend
             const toPascal = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-            const mapKeys = (obj: any): any => {
-                if (!obj || typeof obj !== 'object') return obj;
-                if (Array.isArray(obj)) return obj.map(mapKeys);
-                const mapped: any = {};
-                for (const key in obj) {
-                    if (obj[key] !== undefined) {
-                        mapped[toPascal(key)] = obj[key];
-                    }
+        const mapKeys = (obj: any): any => {
+            if (!obj || typeof obj !== 'object') return obj;
+            if (Array.isArray(obj)) return obj.map(mapKeys);
+            const mapped: any = {};
+            for (const key in obj) {
+                if (obj[key] !== undefined) {
+                    mapped[toPascal(key)] = obj[key];
                 }
-                return mapped;
-            };
-
-            switch (currentStep) {
-                case 0: // Personal Details
-                    response = await accountOpeningService.savePersonalDetails(mapKeys(formData.personalDetails), phoneNumberInput);
-                    updatedCustomerData = { 
-                        customerId: response.id,
-                        personalDetails: { ...formData.personalDetails, id: response.id }
-                    };
-                    break;
-                case 1: // Address Details
-                    response = await accountOpeningService.saveAddressDetails({
-                        ...mapKeys(formData.addressDetails),
-                        CustomerId: formData.customerId,
-                        MobilePhone: formData.addressDetails.mobilePhone
-                    });
-                    updatedCustomerData = { addressDetails: { ...formData.addressDetails, id: response.id } };
-                    break;
-                case 2: // Financial Details
-                    response = await accountOpeningService.saveFinancialDetails({
-                        ...mapKeys(formData.financialDetails),
-                        CustomerId: formData.customerId
-                    });
-                    updatedCustomerData = { financialDetails: { ...formData.financialDetails, id: response.id } };
-                    break;
-                case 3: // Other Details
-                    response = await accountOpeningService.saveOtherDetails({
-                        ...mapKeys(formData.otherDetails),
-                        CustomerId: formData.customerId
-                    });
-                    updatedCustomerData = { otherDetails: { ...formData.otherDetails, id: response.id } };
-                    break;
-                case 4: // Document Details
-                    let docPhotoUrl = formData.documentDetails.docPhotoUrl;
-                    if (formData.documentDetails.photoIdFile) {
-                        docPhotoUrl = await accountOpeningService.uploadDocumentPhoto(formData.documentDetails.photoIdFile);
-                    }
-                    response = await accountOpeningService.saveDocumentDetails({
-                        ...mapKeys(formData.documentDetails),
-                        CustomerId: formData.customerId,
-                        DocPhotoUrl: docPhotoUrl
-                    });
-                    updatedCustomerData = { documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl: docPhotoUrl } };
-                    break;
-                case 5: // E-Payment Service
-                    response = await accountOpeningService.saveEPaymentService(mapKeys(formData.ePaymentService));
-                    updatedCustomerData = { ePaymentService: { ...formData.ePaymentService, id: response.id } };
-                    break;
-                case 6: // Passbook & Muday Request
-                    response = await accountOpeningService.savePassbookMudayRequest(mapKeys(formData.passbookMudayRequest));
-                    updatedCustomerData = { passbookMudayRequest: { ...formData.passbookMudayRequest, id: response.id } };
-                    break;
-                case 7: // Digital Signature
-                    let signatureUrl = formData.digitalSignature.signatureUrl;
-                    if (formData.digitalSignature.signatureFile) {
-                        signatureUrl = await accountOpeningService.uploadDigitalSignature(formData.digitalSignature.signatureFile);
-                    }
-                    response = await accountOpeningService.saveDigitalSignature({
-                        ...mapKeys(formData.digitalSignature),
-                        SignatureUrl: signatureUrl
-                    });
-                    updatedCustomerData = { digitalSignature: { ...formData.digitalSignature, id: response.id, signatureUrl: signatureUrl } };
-                    break;
-                default:
-                    break;
             }
+            return mapped;
+        };
 
-            setFormData(prev => ({
-                ...prev,
-                ...updatedCustomerData
-            }));
-            setCurrentStep(prev => prev + 1);
-        } catch (error) {
-            console.error("Error saving form data:", error);
-            setErrors((prevErrors) => ({
-                ...prevErrors,
-                apiError: "Failed to save data. Please try again.",
-            }));
-        } finally {
-            setSubmitting(false);
+      
+        switch (currentStep) {
+            case 0: // Personal Details
+                response = await accountOpeningService.savePersonalDetails(mapKeys(formData.personalDetails), phoneNumberInput);
+                // --- Save the new customerId from the response!
+                nextCustomerId = response.id;
+                updatedCustomerData = { 
+                    customerId: nextCustomerId,
+                    personalDetails: { ...formData.personalDetails, id: response.id }
+                };
+                break;
+            case 1: // Address Details
+                // --- Use the latest customerId (from above), NOT from possibly stale state!
+                response = await accountOpeningService.saveAddressDetails({
+                    ...mapKeys(formData.addressDetails),
+                    CustomerId: nextCustomerId,
+                    MobilePhone: formData.addressDetails.mobilePhone
+                });
+                updatedCustomerData = { addressDetails: { ...formData.addressDetails, id: response.id } };
+                break;
+            case 2: // Financial Details
+                response = await accountOpeningService.saveFinancialDetails({
+                    ...mapKeys(formData.financialDetails),
+                    CustomerId: nextCustomerId
+                });
+                updatedCustomerData = { financialDetails: { ...formData.financialDetails, id: response.id } };
+                break;
+            case 3: // Other Details
+                response = await accountOpeningService.saveOtherDetails({
+                    ...mapKeys(formData.otherDetails),
+                    CustomerId: nextCustomerId
+                });
+                updatedCustomerData = { otherDetails: { ...formData.otherDetails, id: response.id } };
+                break;
+            case 4: // Document Details
+                let docPhotoUrl = formData.documentDetails.docPhotoUrl;
+                if (formData.documentDetails.photoIdFile) {
+                    docPhotoUrl = await accountOpeningService.uploadDocumentPhoto(formData.documentDetails.photoIdFile);
+                }
+                response = await accountOpeningService.saveDocumentDetails({
+                    ...mapKeys(formData.documentDetails),
+                    CustomerId: nextCustomerId,
+                    DocPhotoUrl: docPhotoUrl
+                });
+                updatedCustomerData = { documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl: docPhotoUrl } };
+                break;
+            case 5: // E-Payment Service
+                response = await accountOpeningService.saveEPaymentService({
+                    ...mapKeys(formData.ePaymentService),
+                    CustomerId: nextCustomerId,
+                });
+                updatedCustomerData = { ePaymentService: { ...formData.ePaymentService, id: response.id } };
+                break;
+            case 6: // Passbook & Muday Request
+                response = await accountOpeningService.savePassbookMudayRequest({
+                    ...mapKeys(formData.passbookMudayRequest),
+                    CustomerId: nextCustomerId,
+                });
+                updatedCustomerData = { passbookMudayRequest: { ...formData.passbookMudayRequest, id: response.id } };
+                break;
+            case 7: // Digital Signature
+                let signatureUrl = formData.digitalSignature.signatureUrl;
+                if (formData.digitalSignature.signatureFile) {
+                    signatureUrl = await accountOpeningService.uploadDigitalSignature(formData.digitalSignature.signatureFile);
+                }
+                response = await accountOpeningService.saveDigitalSignature({
+                    ...mapKeys(formData.digitalSignature),
+                    SignatureUrl: signatureUrl,
+                    CustomerId: nextCustomerId,
+                });
+                updatedCustomerData = { digitalSignature: { ...formData.digitalSignature, id: response.id, signatureUrl: signatureUrl } };
+                break;
+            default:
+                break;
         }
-    };
+
+           // --- Always update both section data and customerId in state (in case customerId changes)
+        setFormData(prev => ({
+            ...prev,
+            ...updatedCustomerData,
+            customerId: nextCustomerId,
+        }));
+        setCurrentStep(prev => prev + 1);
+    } catch (error) {
+        console.error("Error saving form data:", error);
+        setErrors((prevErrors) => ({
+            ...prevErrors,
+            apiError: "Failed to save data. Please try again.",
+        }));
+    } finally {
+        setSubmitting(false);
+    }
+};
 
     const handleBack = () => {
         setCurrentStep(prev => prev - 1);

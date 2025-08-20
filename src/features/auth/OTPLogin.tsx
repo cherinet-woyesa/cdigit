@@ -116,13 +116,24 @@ const OTPLogin: React.FC = () => {
     await requestOtpDirect();
   };
 
+  // Normalize and validate Ethiopian mobile
+  // Accept both 09XXXXXXXX and +2519XXXXXXXX without forcing conversion
+  const normalizePhone = (raw: string) => raw.trim();
+  const isValidEthMobile = (p: string) => /^09\d{8}$|^\+2519\d{8}$/.test(p.trim());
+
   // Send OTP handler (no event, for button)
   const requestOtpDirect = async () => {
     setError('');
     setMessage('');
     setLoading(true);
     try {
-      const response = await authService.requestOtp(phoneNumber);
+      const normalized = normalizePhone(phoneNumber);
+      if (!isValidEthMobile(normalized)) {
+        setError('Please enter a valid Ethiopian mobile number (09XXXXXXXX or +2519XXXXXXXX).');
+        setLoading(false);
+        return;
+      }
+      const response = await authService.requestOtp(normalized);
       setMessage(response.message || t('otpSent'));
       setStep('verify');
       startResendCooldown();
@@ -144,9 +155,10 @@ const OTPLogin: React.FC = () => {
     setLoading(true);
 
     try {
-      const response: { message: string; token?: string } = await authService.loginWithOtp(phoneNumber, otp);
+      const normalized = normalizePhone(phoneNumber);
+      const response: { message: string; token?: string } = await authService.loginWithOtp(normalized, otp);
       setMessage(response.message || t('loginSuccessful'));
-      setPhone(phoneNumber);
+      setPhone(normalized);
       navigate('/customer/dashboard'); // Redirect to the customer dashboard
     } catch (err: any) {
       setError(

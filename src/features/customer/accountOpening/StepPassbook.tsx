@@ -16,13 +16,26 @@ export function StepPassbook({ data, setData, errors, onNext, onBack, submitting
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const target = e.target as HTMLInputElement;
         const { name, checked } = target;
-        setData({ ...data, [name]: checked });
+        if (name === "needsMudayBox") {
+            // Clear delivery branch when Muday is unchecked
+            setData({ ...data, needsMudayBox: checked, mudayBoxDeliveryBranch: checked ? data.mudayBoxDeliveryBranch : "" });
+            return;
+        }
+        setData({ ...data, [name]: checked } as PassbookMudayRequest);
     };
 
     const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setData({ ...data, [name]: value });
     };
+
+    // Local conditional validation
+    const localErrors: Partial<Errors<PassbookMudayRequest>> = {};
+    if (data.needsMudayBox && !data.mudayBoxDeliveryBranch) {
+        localErrors.mudayBoxDeliveryBranch = "Muday Box Delivery Branch is required";
+    }
+    const mergedErrors: Errors<PassbookMudayRequest> = { ...(errors || {}), ...(localErrors as Errors<PassbookMudayRequest>) };
+    const hasLocalErrors = Object.values(localErrors).some(Boolean);
 
     return (
         <>
@@ -45,7 +58,7 @@ export function StepPassbook({ data, setData, errors, onNext, onBack, submitting
                     />
                 </Field>
                 {data.needsMudayBox && (
-                    <Field label="Muday Box Delivery Branch" required error={errors.mudayBoxDeliveryBranch}>
+                    <Field label="Muday Box Delivery Branch" required error={mergedErrors.mudayBoxDeliveryBranch}>
                         <input
                             type="text"
                             name="mudayBoxDeliveryBranch" // Changed to camelCase
@@ -68,7 +81,7 @@ export function StepPassbook({ data, setData, errors, onNext, onBack, submitting
                     type="button"
                     className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
                     onClick={onNext}
-                    disabled={submitting}
+                    disabled={submitting || hasLocalErrors}
                 >
                     Next
                 </button>

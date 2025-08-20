@@ -16,8 +16,36 @@ export function StepEPayment({ data, setData, errors, onNext, onBack, submitting
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target as HTMLInputElement;
         const { name, type, checked, value } = target;
-        setData({ ...data, [name]: type === "checkbox" ? checked : value });
+        if (type === "checkbox") {
+            if (name === "hasAtmCard") {
+                // When ATM Card is unchecked, clear its dependent fields
+                const nextHasAtm = checked;
+                setData({
+                    ...data,
+                    hasAtmCard: nextHasAtm,
+                    atmCardType: nextHasAtm ? data.atmCardType : "",
+                    atmCardDeliveryBranch: nextHasAtm ? data.atmCardDeliveryBranch : "",
+                });
+                return;
+            }
+            setData({ ...data, [name]: checked } as EPaymentService);
+        } else {
+            setData({ ...data, [name]: value } as EPaymentService);
+        }
     };
+
+    // Local conditional validation: only when ATM is requested
+    const localErrors: Partial<Errors<EPaymentService>> = {};
+    if (data.hasAtmCard) {
+        if (!data.atmCardType) {
+            localErrors.atmCardType = "Card Type is required";
+        }
+        if (!data.atmCardDeliveryBranch) {
+            localErrors.atmCardDeliveryBranch = "Delivery Branch is required";
+        }
+    }
+    const mergedErrors: Errors<EPaymentService> = { ...(errors || {}), ...(localErrors as Errors<EPaymentService>) };
+    const hasLocalErrors = Object.values(localErrors).some(Boolean);
 
     return (
         <>
@@ -33,7 +61,7 @@ export function StepEPayment({ data, setData, errors, onNext, onBack, submitting
                 </Field>
                 {data.hasAtmCard && (
                     <>
-                        <Field label="Card Type" error={errors.atmCardType}>
+                        <Field label="Card Type" error={mergedErrors.atmCardType}>
                             <select
                                 className="form-select w-full p-2 rounded border"
                                 name="atmCardType" // Changed to camelCase
@@ -45,7 +73,7 @@ export function StepEPayment({ data, setData, errors, onNext, onBack, submitting
                                 <option value="Mastercard">Mastercard</option>
                             </select>
                         </Field>
-                        <Field label="Delivery Branch" error={errors.atmCardDeliveryBranch}>
+                        <Field label="Delivery Branch" error={mergedErrors.atmCardDeliveryBranch}>
                             <input
                                 type="text"
                                 name="atmCardDeliveryBranch" // Changed to camelCase
@@ -101,7 +129,7 @@ export function StepEPayment({ data, setData, errors, onNext, onBack, submitting
                     type="button"
                     className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
                     onClick={onNext}
-                    disabled={submitting}
+                    disabled={submitting || hasLocalErrors}
                 >
                     Next
                 </button>
