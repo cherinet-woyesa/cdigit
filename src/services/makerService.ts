@@ -137,6 +137,15 @@ const makerService = {
   return res.data;
 },
 
+//get by form reference id
+searchCustomerByFormReferenceId: async (formReferenceId: string, token: string) => {
+  const res = await axios.get<ApiResponse<NextCustomerData>>(
+    `${API_BASE_URL}/Teller/SearchByFormReference/${formReferenceId}`,
+    authHeader(token)
+  );
+  return res.data;
+},
+
 
 };
 
