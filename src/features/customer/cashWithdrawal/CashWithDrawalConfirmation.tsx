@@ -20,7 +20,14 @@ export default function WithdrawalConfirmation() {
     message: 'Withdrawal submitted successfully.'
   }
 
-  const maskedAccount = String(confirmationData.accountNumber || state?.ui?.accountNumber || '').replace(/.(?=.{4})/g, '•')
+  const displayAccount = (serverData?.accountNumber || state?.ui?.accountNumber || confirmationData.accountNumber || '').toString()
+  const maskedAccount = displayAccount.replace(/.(?=.{4})/g, '•')
+  const tokenValue = (serverData?.TokenNumber || serverData?.tokenNumber || state?.token || confirmationData.token) as string
+  const windowValue = (serverData?.windowNumber || serverData?.QueueNumber || state?.window || confirmationData.window) as string | number
+  const amountValueRaw = serverData ? (serverData.Withdrawal_Amount ?? serverData.withdrawa_Amount) : undefined
+  const amountText = (amountValueRaw !== undefined && !isNaN(Number(amountValueRaw)) && Number(amountValueRaw) > 0)
+    ? `${Number(amountValueRaw).toLocaleString()}.00 ETB`
+    : (state?.ui?.amount || confirmationData.amount)
 
   useEffect(() => {
     const runSubmit = async () => {
@@ -49,7 +56,7 @@ export default function WithdrawalConfirmation() {
           </div>
           <CheckBadgeIcon className="h-16 w-16 mx-auto text-fuchsia-200" />
           <h1 className="text-2xl font-bold mt-4">Withdrawal Request Confirmed!</h1>
-          <p className="text-fuchsia-100 mt-2">{confirmationData.message || 'Your token number is ready'}</p>
+          <p className="text-fuchsia-100 mt-2">{serverData?.message || confirmationData.message || 'Your token number is ready'}</p>
         </div>
 
         {/* Confirmation Details */}
@@ -60,10 +67,10 @@ export default function WithdrawalConfirmation() {
               <QrCodeIcon className="h-24 w-24" />
             </div>
             <p className="text-sm text-fuchsia-600 font-medium">YOUR TOKEN NUMBER</p>
-            <p className="text-5xl font-bold text-fuchsia-700 my-3 tracking-wider">{serverData?.tokenNumber || confirmationData.token}</p>
+            <p className="text-5xl font-bold text-fuchsia-700 my-3 tracking-wider">{tokenValue}</p>
             <div className="inline-flex items-center bg-fuchsia-100 text-fuchsia-700 px-4 py-1 rounded-full text-sm font-medium">
               <DevicePhoneMobileIcon className="h-4 w-4 mr-1" />
-              Window: {serverData?.windowNumber || confirmationData.window}
+              Window: {windowValue ?? 'N/A'}
             </div>
           </div>
 
@@ -88,7 +95,7 @@ export default function WithdrawalConfirmation() {
               </div>
               <div>
                 <p className="text-sm text-fuchsia-600">Amount:</p>
-                <p className="font-medium">{serverData ? `${Number(serverData.withdrawa_Amount).toLocaleString()}.00 ETB` : confirmationData.amount}</p>
+                <p className="font-medium">{amountText}</p>
               </div>
             </div>
           </div>
@@ -102,7 +109,7 @@ export default function WithdrawalConfirmation() {
               NEXT STEPS
             </h3>
             <ol className="text-sm text-blue-700 space-y-2 list-decimal list-inside">
-              <li>Proceed to <strong>Window {confirmationData.window}</strong></li>
+              <li>Proceed to <strong>Window {windowValue ?? 'N/A'}</strong></li>
               <li>Present your <strong>valid ID</strong> to the teller</li>
               <li>Provide your <strong>token number</strong> when asked</li>
               <li>Collect your cash and receipt</li>

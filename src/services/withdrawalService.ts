@@ -3,32 +3,39 @@
 // Align request with backend WithdrawalRequestDto
 export interface WithdrawalRequest {
   phoneNumber: string;
+  branchId: string; // Guid as string
   accountNumber: number; // long on backend
-  withdrawa_Amount: number; // matches backend property name
+  accountHolderName: string;
+  withdrawal_Amount: number; // will map to Withdrawal_Amount
   remark?: string;
   code: number; // int on backend
 }
 
 export interface WithdrawalResponse {
-  referenceId: string;
-  accountNumber: string;
-  withdrawa_Amount: number;
-  tokenNumber: string;
-  windowNumber: number;
-  message: string;
+  referenceId?: string;
+  accountNumber?: string | number;
+  Withdrawal_Amount?: number;
+  withdrawa_Amount?: number;
+  TokenNumber?: string;
+  tokenNumber?: string;
+  QueueNumber?: number;
+  windowNumber?: number;
+  message?: string;
 }
 
 export async function submitWithdrawal(data: WithdrawalRequest): Promise<WithdrawalResponse> {
   // Backend expects PascalCase keys per DTO
   const payload = {
     PhoneNumber: data.phoneNumber,
+    BranchId: data.branchId,
     AccountNumber: data.accountNumber,
-    Withdrawa_Amount: data.withdrawa_Amount,
+    AccountHolderName: data.accountHolderName,
+    Withdrawal_Amount: data.withdrawal_Amount,
     Remark: data.remark ?? '',
     Code: data.code,
   };
 
-  const response = await fetch('http://localhost:5268/api/withdrawal/Submit', {
+  const response = await fetch('http://localhost:5268/api/Withdrawal/Submit', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

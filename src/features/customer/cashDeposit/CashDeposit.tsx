@@ -2,6 +2,9 @@ import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import depositService from '../../../services/depositService';
+import { getAccountTypes, type AccountType } from '../../../services/accountTypeService';
+
+const API_BASE_URL = 'http://localhost:5268/api';
 import { fetchWindowsByBranch } from '../../../services/windowService';
 import type { Window as WindowType } from '../../../services/windowService';
 
@@ -75,61 +78,105 @@ type Errors = Partial<Record<keyof FormData, string>>;
     // For account selection
     const [accounts, setAccounts] = useState<any[]>([]);
     const [accountDropdown, setAccountDropdown] = useState(false);
+    const [accountTypes, setAccountTypes] = useState<AccountType[]>([]);
 
     // Fetch accounts for customer (OTPLogin) or staff (StaffLogin)
     useEffect(() => {
         const fetchAccounts = async () => {
-            let resp;
             try {
-                if (phone) {
-                    // Customer flow (OTPLogin)
-                    resp = await fetch(`/api/Accounts/by-phone/${phone}`);
-                } else if (user && user.role && user.role.toLowerCase() !== 'customer') {
-                    // Staff/Admin flow (StaffLogin)
-                    resp = await fetch(`/api/Accounts/my-accounts`);
-                } else {
+                // 1) Prefer accounts from OTP login (localStorage)
+                const cached = localStorage.getItem('customerAccounts');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        const hasUnmasked = parsed.every((acc: any) => acc.accountNumber || acc.AccountNumber);
+                        if (hasUnmasked) {
+                            const normalized = parsed.map((acc: any) => ({
+                                accountNumber: acc.accountNumber || acc.AccountNumber,
+                                accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
+                                typeOfAccount: acc.typeOfAccount || acc.TypeOfAccount,
+                            }));
+                            setAccounts(normalized);
+                            if (normalized.length === 1 && normalized[0].accountNumber) {
+                                const a = normalized[0];
+                                setFormData((prev: FormData) => {
+                                    const updated = {
+                                        ...prev,
+                                        accountNumber: a.accountNumber,
+                                        accountHolderName: a.accountHolderName || '',
+                                        accountType: (a.typeOfAccount || prev.accountType) as any,
+                                        depositedBy: a.accountHolderName || '',
+                                        telephoneNumber: phone || ''
+                                    };
+                                    localStorage.setItem('cd_accountNumber', updated.accountNumber);
+                                    localStorage.setItem('cd_accountHolderName', updated.accountHolderName);
+                                    localStorage.setItem('cd_accountType', updated.accountType);
+                                    localStorage.setItem('cd_depositedBy', updated.depositedBy);
+                                    localStorage.setItem('cd_telephoneNumber', updated.telephoneNumber);
+                                    return updated;
+                                });
+                                setAccountDropdown(false);
+                            } else if (normalized.length > 1) {
+                                setAccountDropdown(true);
+                                setFormData((prev: FormData) => ({
+                                    ...prev,
+                                    accountNumber: '',
+                                    accountHolderName: '',
+                                    depositedBy: '',
+                                    telephoneNumber: phone || ''
+                                }));
+                            }
+                            return;
+                        }
+                        // If cached accounts are masked (AccountNumberMasked), fall through to backend fetch
+                    }
+                }
+
+                // 2) Fallback to backend fetch by phone
+                if (!phone) {
                     setAccounts([]);
                     setAccountDropdown(false);
                     return;
                 }
+                const resp = await fetch(`${API_BASE_URL}/Accounts/by-phone/${phone}`);
                 if (resp.status === 200) {
-                    const data = await resp.json();
-                    setAccounts(data);
-                    if (data.length === 1) {
+                    const payload = await resp.json();
+                    const data = payload.data ?? payload;
+                    const normalized = (data || []).map((acc: any) => ({
+                        accountNumber: acc.accountNumber || acc.AccountNumber,
+                        accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
+                        typeOfAccount: acc.typeOfAccount || acc.TypeOfAccount,
+                        accountNumberMasked: acc.accountNumberMasked || acc.AccountNumberMasked,
+                    }));
+                    setAccounts(normalized);
+                    if (normalized.length === 1) {
+                        const a = normalized[0];
                         setFormData((prev: FormData) => {
                             const updated = {
                                 ...prev,
-                                accountNumber: data[0].accountNumber,
-                                accountHolderName: data[0].accountHolderName || data[0].name || '',
-                                depositedBy: data[0].accountHolderName || data[0].name || '',
+                                accountNumber: a.accountNumber,
+                                accountHolderName: a.accountHolderName || '',
+                                accountType: (a.typeOfAccount || prev.accountType) as any,
+                                depositedBy: a.accountHolderName || '',
                                 telephoneNumber: phone || ''
                             };
-                            // Persist
                             localStorage.setItem('cd_accountNumber', updated.accountNumber);
                             localStorage.setItem('cd_accountHolderName', updated.accountHolderName);
+                            localStorage.setItem('cd_accountType', updated.accountType);
                             localStorage.setItem('cd_depositedBy', updated.depositedBy);
                             localStorage.setItem('cd_telephoneNumber', updated.telephoneNumber);
                             return updated;
                         });
                         setAccountDropdown(false);
-                    } else if (data.length > 1) {
+                    } else if (normalized.length > 1) {
                         setAccountDropdown(true);
-                        // Optionally clear fields until user selects
-                        setFormData((prev: FormData) => {
-                            const updated = {
-                                ...prev,
-                                accountNumber: '',
-                                accountHolderName: '',
-                                depositedBy: '',
-                                telephoneNumber: phone || ''
-                            };
-                            // Persist
-                            localStorage.setItem('cd_accountNumber', '');
-                            localStorage.setItem('cd_accountHolderName', '');
-                            localStorage.setItem('cd_depositedBy', '');
-                            localStorage.setItem('cd_telephoneNumber', updated.telephoneNumber);
-                            return updated;
-                        });
+                        setFormData((prev: FormData) => ({
+                            ...prev,
+                            accountNumber: '',
+                            accountHolderName: '',
+                            depositedBy: '',
+                            telephoneNumber: phone || ''
+                        }));
                     }
                 } else {
                     setAccounts([]);
@@ -142,6 +189,13 @@ type Errors = Partial<Record<keyof FormData, string>>;
         };
         fetchAccounts();
     }, [phone, user]);
+
+    // Fetch account types once
+    useEffect(() => {
+        getAccountTypes()
+            .then((types) => setAccountTypes(types))
+            .catch(() => setAccountTypes([]));
+    }, []);
 
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -199,11 +253,13 @@ type Errors = Partial<Record<keyof FormData, string>>;
                 const updated = {
                     ...prev,
                     accountHolderName: selected ? (selected.accountHolderName || selected.name || '') : '',
+                    accountType: selected ? ((selected.typeOfAccount || selected.TypeOfAccount || prev.accountType) as any) : prev.accountType,
                     depositedBy: selected ? (selected.accountHolderName || selected.name || '') : '',
                     telephoneNumber: phone || ''
                 };
                 // Persist
                 localStorage.setItem('cd_accountHolderName', updated.accountHolderName);
+                localStorage.setItem('cd_accountType', updated.accountType);
                 localStorage.setItem('cd_depositedBy', updated.depositedBy);
                 localStorage.setItem('cd_telephoneNumber', updated.telephoneNumber);
                 return updated;
@@ -400,8 +456,8 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                     className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 p-2"
                                 >
                                     <option value="">Search or select type...</option>
-                                    {['Savings', 'Current', 'Special Demand'].map((type) => (
-                                        <option key={type} value={type}>{type}</option>
+                                    {accountTypes.map((t) => (
+                                        <option key={t.id} value={t.name}>{t.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -460,20 +516,7 @@ type Errors = Partial<Record<keyof FormData, string>>;
                                 <p className="mt-1 text-xs text-red-600">{errors.sourceOfProceeds}</p>
                             }
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-fuchsia-700 mb-1">
-                                Denominations <span className="text-fuchsia-400">(for staff use)</span>
-                            </label>
-                            <textarea
-                                name="denominations"
-                                value={formData.denominations}
-                                onChange={handleChange}
-                                className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 p-2"
-                                placeholder="To be filled by front maker"
-                                rows={3}
-                                disabled
-                            />
-                        </div>
+                        {/* Denomination removed for customer-facing form */}
                     </div>
 
                     {/* Depositor Info */}

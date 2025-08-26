@@ -87,6 +87,8 @@ const OTPLogin: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [resendCooldown, setResendCooldown] = useState<number>(0);
   const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
+  const [accounts, setAccounts] = useState<any[]>([]); // stored for later use in features like deposits/withdrawals
+  const [selectedAccountNum, setSelectedAccountNum] = useState<string>("");
 
   // Start cooldown timer when OTP is sent
   const startResendCooldown = () => {
@@ -124,12 +126,22 @@ const OTPLogin: React.FC = () => {
     try {
       const response = await authService.requestOtp(phoneNumber);
       setMessage(response.message || t('otpSent'));
+      const serverAccounts: any[] = response.accounts || [];
+      setAccounts(serverAccounts);
+      if (serverAccounts.length > 0) {
+        const first = serverAccounts[0] as any;
+        const accNum = first.accountNumber || first.accountNum || first.AccountNum || first.accountNo || first.AccountNo || first.accountNumberMasked || first.AccountNumberMasked || 'AUTO';
+        setSelectedAccountNum(accNum || 'AUTO');
+        try { localStorage.setItem('customerAccounts', JSON.stringify(serverAccounts)); } catch {}
+      } else {
+        // Still proceed; backend requires a non-empty SelectedAccountNum due to validation
+        setSelectedAccountNum('AUTO');
+      }
       setStep('verify');
       startResendCooldown();
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || t('otpSendError')
-      );
+      const apiMsg = err?.response?.data?.message || err?.message || err?.Message;
+      setError(apiMsg || t('otpSendError'));
       console.error('Request OTP Error:', err);
     } finally {
       setLoading(false);
@@ -144,14 +156,14 @@ const OTPLogin: React.FC = () => {
     setLoading(true);
 
     try {
-      const response: { message: string; token?: string } = await authService.loginWithOtp(phoneNumber, otp);
+      const sel = selectedAccountNum || 'AUTO';
+      const response: { message: string; token?: string } = await authService.loginWithOtp(phoneNumber, otp, sel);
       setMessage(response.message || t('loginSuccessful'));
       setPhone(phoneNumber);
       navigate('/customer/dashboard'); // Redirect to the customer dashboard
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || t('invalidOtp')
-      );
+      const apiMsg = err?.response?.data?.message || err?.message || err?.Message;
+      setError(apiMsg || t('invalidOtp'));
       console.error('Login with OTP Error:', err);
     } finally {
       setLoading(false);

@@ -11,9 +11,10 @@ import {
 
 export default function FundTransfer() {
   const { phone, user } = useAuth();
+  const API_BASE_URL = 'http://localhost:5268/api';
   const [formData, setFormData] = useState({
-    debitAccountNumber: '',
-    debitAccountName: '',
+    debitAccountNumber: localStorage.getItem('ft_debitAccountNumber') || '',
+    debitAccountName: localStorage.getItem('ft_debitAccountName') || '',
     amount: '',
     creditAccountNumber: '',
     creditAccountName: '',
@@ -26,36 +27,86 @@ export default function FundTransfer() {
   // Auto-fill debit account from user accounts (like CashDeposit)
   useEffect(() => {
     const fetchAccounts = async () => {
-      let resp;
       try {
-        if (phone) {
-          // Customer flow (OTPLogin)
-          resp = await fetch(`/api/Accounts/by-phone/${phone}`);
-        } else if (user && user.role && user.role.toLowerCase() !== 'customer') {
-          // Staff/Admin flow (StaffLogin)
-          resp = await fetch(`/api/Accounts/my-accounts`);
-        } else {
+        // 1) Prefer cached accounts from OTP login
+        const cached = localStorage.getItem('customerAccounts');
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const normalized = parsed.map((acc: any) => ({
+                accountNumber: acc.accountNumber || acc.AccountNumber,
+                accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
+              }));
+              const valid = normalized.filter(a => !!a.accountNumber);
+              if (valid.length > 0) {
+                setAccounts(valid);
+                if (valid.length === 1) {
+                  const a = valid[0];
+                  setFormData(prev => ({
+                    ...prev,
+                    debitAccountNumber: a.accountNumber,
+                    debitAccountName: a.accountHolderName || ''
+                  }));
+                  localStorage.setItem('ft_debitAccountNumber', a.accountNumber);
+                  localStorage.setItem('ft_debitAccountName', a.accountHolderName || '');
+                  setAccountDropdown(false);
+                } else {
+                  setAccountDropdown(true);
+                  // Try to preselect from persisted
+                  const persisted = localStorage.getItem('ft_debitAccountNumber') || '';
+                  const pre = valid.find(v => v.accountNumber === persisted);
+                  if (pre) {
+                    setFormData(prev => ({
+                      ...prev,
+                      debitAccountNumber: pre.accountNumber,
+                      debitAccountName: pre.accountHolderName || ''
+                    }));
+                  } else {
+                    setFormData(prev => ({ ...prev, debitAccountNumber: '', debitAccountName: '' }));
+                  }
+                }
+                return;
+              }
+            }
+          } catch {}
+        }
+
+        // 2) Fallback to backend by phone
+        if (!phone) {
           setAccounts([]);
           setAccountDropdown(false);
           return;
         }
+        const resp = await fetch(`${API_BASE_URL}/Accounts/by-phone/${phone}`);
         if (resp.status === 200) {
-          const data = await resp.json();
-          setAccounts(data);
-          if (data.length === 1) {
-            setFormData((prev) => ({
+          const payload = await resp.json();
+          const data = payload.data ?? payload;
+          const normalized = (data || []).map((acc: any) => ({
+            accountNumber: acc.accountNumber || acc.AccountNumber,
+            accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
+          }));
+          const valid = normalized.filter((a: any) => !!a.accountNumber);
+          setAccounts(valid);
+          if (valid.length === 1) {
+            const a = valid[0];
+            setFormData(prev => ({
               ...prev,
-              debitAccountNumber: data[0].accountNumber,
-              debitAccountName: data[0].accountHolderName || data[0].name || ''
+              debitAccountNumber: a.accountNumber,
+              debitAccountName: a.accountHolderName || ''
             }));
+            localStorage.setItem('ft_debitAccountNumber', a.accountNumber);
+            localStorage.setItem('ft_debitAccountName', a.accountHolderName || '');
             setAccountDropdown(false);
-          } else if (data.length > 1) {
+          } else if (valid.length > 1) {
             setAccountDropdown(true);
-            setFormData((prev) => ({
-              ...prev,
-              debitAccountNumber: '',
-              debitAccountName: ''
-            }));
+            const persisted = localStorage.getItem('ft_debitAccountNumber') || '';
+            const pre = valid.find(v => v.accountNumber === persisted);
+            if (pre) {
+              setFormData(prev => ({ ...prev, debitAccountNumber: pre.accountNumber, debitAccountName: pre.accountHolderName || '' }));
+            } else {
+              setFormData(prev => ({ ...prev, debitAccountNumber: '', debitAccountName: '' }));
+            }
           }
         } else {
           setAccounts([]);
@@ -76,8 +127,8 @@ export default function FundTransfer() {
 
   // Auto-fill branch info from QR/link (as per FSD)
   const branchInfo = {
-    name: 'Main Branch',
-    id: 'BR1001',
+    name: 'Abiy Branch',
+    id: 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6',
     date: new Date().toLocaleDateString()
   }
 
@@ -109,9 +160,17 @@ export default function FundTransfer() {
     setIsLoading(true)
     setErrors({})
     try {
-      const resp = await fetch(`/api/Accounts/AccountNumExist/${formData.creditAccountNumber}`);
+      // Ensure beneficiary differs from sender
+      if (formData.debitAccountNumber && formData.creditAccountNumber === formData.debitAccountNumber) {
+        setFormData(prev => ({ ...prev, creditAccountName: '' }));
+        setErrors((e: any) => ({ ...e, creditAccountNumber: 'Beneficiary account must be different from sender account.' }));
+        setIsLoading(false);
+        return;
+      }
+      const resp = await fetch(`${API_BASE_URL}/Accounts/AccountNumExist/${formData.creditAccountNumber}`);
       if (resp.status === 200) {
-        const account = await resp.json();
+        const payload = await resp.json();
+        const account = payload.data ?? payload;
         setFormData(prev => ({ ...prev, creditAccountName: account.accountHolderName || account.name || '' }));
         setErrors((e: any) => ({ ...e, creditAccountNumber: undefined }));
       } else if (resp.status === 404) {
@@ -155,25 +214,14 @@ export default function FundTransfer() {
     setIsLoading(false);
   }
 
-  const verifyOTP = async () => {
-    if (formData.otp.length !== 6) {
-      setErrors((e: any) => ({ ...e, otp: 'OTP must be 6 digits' }));
+  const verifyOTP = () => {
+    if (formData.otp.length !== 6 || !/^\d{6}$/.test(formData.otp)) {
+      setErrors((e: any) => ({ ...e, otp: 'OTP must be a valid 6-digit code' }));
       return;
     }
-    setIsLoading(true);
+    // Do not call backend verify here to avoid consuming OTP before submission
     setErrors({});
-    try {
-      if (!phone) {
-        setErrors((e: any) => ({ ...e, otp: 'Phone number not found in session.' }));
-        setIsLoading(false);
-        return;
-      }
-      await verifyFundTransferOTP(phone, formData.otp);
-      setStep(3); // Go directly to confirmation step
-    } catch (err: any) {
-      setErrors((e: any) => ({ ...e, otp: err?.response?.data?.message || 'OTP verification failed' }));
-    }
-    setIsLoading(false);
+    setStep(3);
   }
 
   // Placeholder for selfie capture (should use real camera capture in production)
@@ -184,27 +232,24 @@ export default function FundTransfer() {
     setErrors({})
     try {
       const payload = {
+        phoneNumber: (phone || '') as string,
         branchId: branchInfo.id,
-        branchName: branchInfo.name,
-        date: branchInfo.date,
         debitAccountNumber: formData.debitAccountNumber,
-        debitAccountName: formData.debitAccountName,
         amount: formData.amount,
         creditAccountNumber: formData.creditAccountNumber,
-        creditAccountName: formData.creditAccountName,
         remark: formData.remark,
         otp: formData.otp
       };
       const res = await submitFundTransfer(payload)
       navigate('/fund-transfer-confirmation', {
         state: {
-          referenceId: res.referenceId || `FT-${Date.now()}`,
+          referenceId: res?.referenceId || `FT-${Date.now()}`,
           debitAccount: formData.debitAccountNumber.replace(/.(?=.{4})/g, 'X'),
           creditAccount: formData.creditAccountNumber.replace(/.(?=.{4})/g, 'X'),
           amount: formData.amount,
           branch: branchInfo.name,
-          token: res.token || Math.floor(1000 + Math.random() * 9000),
-          window: res.window || Math.floor(1 + Math.random() * 5)
+          token: (res?.tokenNumber || res?.TokenNumber) || Math.floor(1000 + Math.random() * 9000),
+          window: (res?.windowNumber || res?.QueueNumber) || Math.floor(1 + Math.random() * 5)
         }
       })
     } catch (err: any) {
@@ -267,17 +312,20 @@ export default function FundTransfer() {
                         value={formData.debitAccountNumber}
                         onChange={e => {
                           const value = e.target.value;
+                          const selected = accounts.find((acc: any) => acc.accountNumber === value);
                           setFormData(prev => ({
                             ...prev,
                             debitAccountNumber: value,
-                            debitAccountName: accounts.find(acc => acc.accountNumber === value)?.accountHolderName || ''
+                            debitAccountName: selected?.accountHolderName || ''
                           }));
+                          localStorage.setItem('ft_debitAccountNumber', value);
+                          localStorage.setItem('ft_debitAccountName', selected?.accountHolderName || '');
                         }}
                         className="flex-1 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 p-3"
                       >
                         <option value="">Select account</option>
-                        {accounts.map(acc => (
-                          <option key={acc.accountNumber} value={acc.accountNumber}>
+                        {accounts.map((acc: any, idx: number) => (
+                          <option key={(acc.accountNumber || idx).toString()} value={acc.accountNumber}>
                             {acc.accountNumber} - {acc.accountHolderName || acc.name}
                           </option>
                         ))}

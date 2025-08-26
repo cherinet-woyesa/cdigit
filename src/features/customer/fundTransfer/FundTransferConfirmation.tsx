@@ -8,9 +8,9 @@ export default function FundTransferConfirmation() {
   const confirmationData = state || {
     referenceId: 'FT-87654321',
     debitAccount: '1000XXXXXX4567',
-    creditAccount: '2000XXXXXX8910',
+    creditAccount: '1000XXXXXX8910',
     amount: '15,000.00 ETB',
-    branch: 'Main Branch',
+    branch: 'Abiy Branch',
     token: '4826',
     window: '2'
   }
@@ -25,7 +25,7 @@ export default function FundTransferConfirmation() {
           </div>
           <CheckBadgeIcon className="h-16 w-16 mx-auto text-fuchsia-200" />
           <h1 className="text-2xl font-bold mt-4">Transfer Request Confirmed!</h1>
-          <p className="text-fuchsia-100 mt-2">Your token number is ready</p>
+          <p className="text-fuchsia-100 mt-2">{state?.message || 'Your token number is ready'}</p>
         </div>
 
         {/* Confirmation Details */}

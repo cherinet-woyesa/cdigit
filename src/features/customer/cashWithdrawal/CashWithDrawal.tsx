@@ -1,10 +1,12 @@
 // If you use windowService here, use type-only import for Window
 // import type { Window as WindowType } from '../../../services/windowService';
 import React, { useState, useEffect } from 'react';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+// import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import authService from '../../../services/authService';
+
+const API_BASE_URL = 'http://localhost:5268/api';
 import { submitWithdrawal } from '../../../services/withdrawalService';
 
 
@@ -95,27 +97,31 @@ export default function CashWithdrawalForm() {
           setAccountDropdown(false);
           return;
         }
-        if (resp.status === 200) {
-          const data = await resp.json();
-          setAccounts(data);
-          if (data.length === 1) {
+        if (resp?.status === 200) {
+          const payload = await resp.json();
+          const data = payload.data ?? payload;
+          const normalized = (data || []).map((acc: any) => ({
+            accountNumber: acc.accountNumber || acc.AccountNumber,
+            accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
+          }));
+          setAccounts(normalized);
+          if (normalized.length === 1) {
+            const a = normalized[0];
             setFormData((prev) => {
               const updated = {
                 ...prev,
-                accountNumber: data[0].accountNumber,
-                accountHolderName: data[0].accountHolderName || data[0].name || '',
+                accountNumber: a.accountNumber,
+                accountHolderName: a.accountHolderName || '',
                 telephoneNumber: phone || ''
               };
-              // Persist
               localStorage.setItem('cw_accountNumber', updated.accountNumber);
               localStorage.setItem('cw_accountHolderName', updated.accountHolderName);
               localStorage.setItem('cw_telephoneNumber', updated.telephoneNumber);
               return updated;
             });
             setAccountDropdown(false);
-          } else if (data.length > 1) {
+          } else if (normalized.length > 1) {
             setAccountDropdown(true);
-            // Optionally clear fields until user selects
             setFormData((prev) => {
               const updated = {
                 ...prev,
@@ -123,7 +129,6 @@ export default function CashWithdrawalForm() {
                 accountHolderName: '',
                 telephoneNumber: phone || ''
               };
-              // Clear persisted fields until selection
               localStorage.setItem('cw_accountNumber', '');
               localStorage.setItem('cw_accountHolderName', '');
               localStorage.setItem('cw_telephoneNumber', updated.telephoneNumber);
@@ -131,8 +136,60 @@ export default function CashWithdrawalForm() {
             });
           }
         } else {
-          setAccounts([]);
-          setAccountDropdown(false);
+          // 1) Try localStorage accounts from OTP login
+          const cached = localStorage.getItem('customerAccounts');
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              const normalized = (parsed || []).map((acc: any) => ({
+                accountNumber: acc.accountNumber || acc.AccountNumber,
+                accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
+              }));
+              setAccounts(normalized);
+              if (normalized.length === 1) {
+                const a = normalized[0];
+                setFormData((prev) => ({
+                  ...prev,
+                  accountNumber: a.accountNumber,
+                  accountHolderName: a.accountHolderName || '',
+                  telephoneNumber: phone || ''
+                }));
+                setAccountDropdown(false);
+              } else if (normalized.length > 1) {
+                setAccountDropdown(true);
+              }
+              return;
+            } catch {}
+          }
+
+          // 2) Fallback absolute URL fetch
+          if (phone) {
+            const resp2 = await fetch(`${API_BASE_URL}/Accounts/by-phone/${phone}`);
+            if (resp2.status === 200) {
+              const payload2 = await resp2.json();
+              const data2 = payload2.data ?? payload2;
+              const normalized2 = (data2 || []).map((acc: any) => ({
+                accountNumber: acc.accountNumber || acc.AccountNumber,
+                accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
+              }));
+              setAccounts(normalized2);
+              if (normalized2.length === 1) {
+                const a = normalized2[0];
+                setFormData((prev) => ({
+                  ...prev,
+                  accountNumber: a.accountNumber,
+                  accountHolderName: a.accountHolderName || '',
+                  telephoneNumber: phone || ''
+                }));
+                setAccountDropdown(false);
+              } else if (normalized2.length > 1) {
+                setAccountDropdown(true);
+              }
+            }
+          } else {
+            setAccounts([]);
+            setAccountDropdown(false);
+          }
         }
       } catch (err) {
         console.error('Error fetching accounts:', err);
@@ -177,22 +234,7 @@ export default function CashWithdrawalForm() {
   const isDigitsOnly = (value: string) => /^\d+$/.test(value);
   const isValidEthiopianMobile = (value: string) => /^09\d{8}$|^\+2519\d{8}$/.test(value);
 
-  const validateAccount = () => {
-    if (!formData.accountNumber) {
-      setErrors({ accountNumber: 'Account number is required' });
-      return false;
-    }
-    if (!isDigitsOnly(formData.accountNumber)) {
-      setErrors({ accountNumber: 'Account number must contain only digits' });
-      return false;
-    }
-    if (formData.accountNumber.length < 7) {
-      setErrors({ accountNumber: 'Account number must be at least 7 digits' });
-      return false;
-    }
-    setErrors((prev) => ({ ...prev, accountNumber: undefined }));
-    return true;
-  };
+  // Removed manual account validation/search; we rely on fetched accounts
 
   const sendOTP = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -272,7 +314,7 @@ export default function CashWithdrawalForm() {
     }
   };
 
-  const verifyOTP = async (e?: React.FormEvent) => {
+  const verifyOTP = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!formData.otp) {
       setErrors({ otp: 'OTP is required' });
@@ -282,27 +324,9 @@ export default function CashWithdrawalForm() {
       setErrors({ otp: 'Please enter a valid 6-digit OTP' });
       return;
     }
-    setIsLoading(true);
+    // Do not call backend verify here to avoid consuming OTP before submission
     setErrors({});
-    try {
-      const targetPhone = phone || formData.telephoneNumber;
-      if (!targetPhone) {
-        setErrors({ otp: 'No phone number available for OTP verification.' });
-        setIsLoading(false);
-        return;
-      }
-      const verification = await authService.verifyOtp(targetPhone, formData.otp);
-      if (verification && verification.verified) {
-        setStep('confirm');
-      } else {
-        setErrors({ otp: verification?.message || 'OTP verification failed' });
-      }
-    } catch (err: any) {
-      const errorMsg = err?.response?.data?.message || err?.message || 'OTP verification failed';
-      setErrors({ otp: errorMsg });
-    } finally {
-      setIsLoading(false);
-    }
+    setStep('confirm');
   };
 
   const handleSubmitWithdrawal = async (e?: React.FormEvent) => {
@@ -354,11 +378,13 @@ export default function CashWithdrawalForm() {
       // Prepare request for backend (aligns with WithdrawalRequestDto)
       const withdrawalReq = {
         phoneNumber: (phone || formData.telephoneNumber) as string,
+        branchId: ABIY_BRANCH_ID,
         accountNumber: parseInt(formData.accountNumber, 10),
-        withdrawa_Amount: Number(formData.amount),
+        accountHolderName: formData.accountHolderName,
+        withdrawal_Amount: Number(formData.amount),
         remark: '',
         code: parseInt(formData.otp, 10),
-      } as any;
+      };
       // Immediately navigate to confirmation, and let that screen submit to backend
       // Clear persisted fields now
       localStorage.removeItem('cw_accountNumber');
@@ -449,24 +475,15 @@ export default function CashWithdrawalForm() {
                             ))}
                           </select>
                         ) : (
-                          <div className="flex">
-                            <input
-                              type="text"
-                              name="accountNumber"
-                              value={formData.accountNumber}
-                              onChange={handleChange}
-                              className="flex-1 rounded-l-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
-                              placeholder="Enter account number"
-                            />
-                            <button
-                              type="button"
-                              onClick={validateAccount}
-                              disabled={!formData.accountNumber}
-                              className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 rounded-r-lg transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : 'Search'}
-                            </button>
-                          </div>
+                          <input
+                            type="text"
+                            name="accountNumber"
+                            value={formData.accountNumber}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
+                            placeholder="Account number"
+                            readOnly={accounts.length === 1}
+                          />
                         )}
                         {errors.accountNumber && (
                           <p className="mt-1 text-sm text-red-600">{errors.accountNumber}</p>

@@ -1,20 +1,25 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5268/api'; // Adjust this to your API base URL
+const API_BASE_URL = 'http://localhost:5268/api';
+
+// Generic backend API response shape
+type ApiResponse<T> = {
+    success: boolean;
+    message: string;
+    data: T;
+};
 
 interface LoginResponse {
     message: string;
     token?: string;
-    role?: string; // Added role property to LoginResponse
+    role?: string;
 }
 
-interface RegisterResponse {
-    // Define properties based on your API response for registration
-}
+interface RegisterResponse {}
 
 interface RequestOtpResponse {
-    otp: string;
     message: string;
+    accounts?: any[];
 }
 
 interface VerifyOtpResponse {
@@ -24,22 +29,18 @@ interface VerifyOtpResponse {
 }
 
 interface AuthService {
-    loginWithOtp(phoneNumber: string, otp: string): Promise<LoginResponse>;
-    // Customer Authentication
+    loginWithOtp(phoneNumber: string, otp: string, selectedAccountNum?: string): Promise<LoginResponse>;
     customerLogin: (email: string, password: string) => Promise<LoginResponse>;
     registerCustomer: (email: string, password: string, phoneNumber: string) => Promise<RegisterResponse>;
     requestOtp: (phoneNumber: string) => Promise<RequestOtpResponse>;
     verifyOtp: (phoneNumber: string, otp: string) => Promise<VerifyOtpResponse>;
 
-    // Staff Authentication
     staffLogin: (email: string, password: string) => Promise<LoginResponse>;
     registerStaff: (staffData: any, token: string) => Promise<RegisterResponse>;
 
-    // Window Assignments
     getWindowAssignments: (token: string) => Promise<any>;
     assignMakerToWindow: (makerId: string, windowId: string, token: string) => Promise<any>;
 
-    // Branches
     getBranches: () => Promise<any>;
 }
 
@@ -72,29 +73,28 @@ const authService: AuthService = {
     // Request OTP for customer
     requestOtp: async (phoneNumber: string) => {
         try {
-            const response = await axios.post<RequestOtpResponse>(`${API_BASE_URL}/auth/request-otp`, { phoneNumber });
-            return response.data;
+            const response = await axios.post<ApiResponse<{ accounts: any[] }>>(`${API_BASE_URL}/auth/request-otp`, { phoneNumber });
+            return {
+                message: response.data.message,
+                accounts: response.data.data?.accounts,
+            };
         } catch (error: any) {
-            console.error("Error requesting OTP:", error);
-            throw error;
+            console.error("Error requesting OTP:", error.response?.data || error.message);
+            throw error.response?.data || { message: "Failed to request OTP" };
         }
     },
 
     // Verify OTP for customer
     verifyOtp: async (phoneNumber: string, otp: string) => {
         try {
-            // Backend expects PascalCase for verify-otp
-            const response = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/verify-otp`, { PhoneNumber: phoneNumber, OtpCode: otp });
-            if (response.data.token) {
-                localStorage.setItem('userToken', response.data.token);
-            }
+            const response = await axios.post<ApiResponse<boolean>>(`${API_BASE_URL}/auth/verify-otp`, { PhoneNumber: phoneNumber, OtpCode: otp });
             return {
-                verified: true,
-                message: response.data.message || 'OTP verified successfully',
-                token: response.data.token,
+                verified: response.data.data === true,
+                message: response.data.message || 'OTP verification result',
+                token: undefined,
             };
         } catch (error: any) {
-            console.error("Error verifying OTP:", error);
+            console.error("Error verifying OTP:", error.response?.data || error.message);
             return {
                 verified: false,
                 message: error.response?.data?.message || error.response?.data?.errors?.OtpCode?.[0] || 'OTP verification failed',
@@ -157,13 +157,20 @@ const authService: AuthService = {
     },
 
     // Login with OTP
-    loginWithOtp: async (phoneNumber: string, otp: string) => {
+    loginWithOtp: async (phoneNumber: string, otp: string, selectedAccountNum?: string) => {
         try {
-            const response = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/login-with-otp`, { phoneNumber, otp });
-            if (response.data.token) {
-                localStorage.setItem('userToken', response.data.token);
+            const response = await axios.post<ApiResponse<{ token: string; expiration: string; accounts: any[] }>>(
+                `${API_BASE_URL}/auth/login-with-otp`,
+                selectedAccountNum ? { phoneNumber, otp, selectedAccountNum } : { phoneNumber, otp }
+            );
+            const token = response.data.data?.token;
+            if (token) {
+                localStorage.setItem('userToken', token);
             }
-            return response.data;
+            return {
+                message: response.data.message || 'Login successful',
+                token,
+            };
         } catch (error: any) {
             console.error("Login with OTP error:", error.response?.data || error.message);
             throw error.response?.data?.message || "Login with OTP failed";
