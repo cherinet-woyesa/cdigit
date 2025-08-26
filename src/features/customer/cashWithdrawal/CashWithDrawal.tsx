@@ -394,12 +394,7 @@ export default function CashWithdrawalForm() {
         remark: '',
         code: parseInt(formData.otp, 10),
       };
-      // Immediately navigate to confirmation, and let that screen submit to backend
-      // Clear persisted fields now
-      localStorage.removeItem('cw_accountNumber');
-      localStorage.removeItem('cw_accountHolderName');
-      localStorage.removeItem('cw_telephoneNumber');
-
+      // Do NOT clear persisted fields here; keep them until transaction is fully complete
       navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', {
         state: {
           pending: true,
@@ -571,12 +566,28 @@ export default function CashWithdrawalForm() {
                   )}
 
                   {step === 'verify' && (
-                    <div className="space-y-5 animate-fadeIn">
-                      <div className="bg-fuchsia-50 p-4 rounded-lg border border-fuchsia-100">
-                        <p className="text-sm text-fuchsia-600">OTP Sent to your registered phone</p>
-                        <p className="font-medium">•••• {phone || formData.telephoneNumber?.slice(-3) || '•••'}</p>
-                        {otpMessage && <p className="text-sm text-green-600 mt-1">{otpMessage}</p>}
-                        <div className="mt-2 flex justify-between items-center">
+                    <div className="space-y-6 animate-fadeIn">
+                      <div className="bg-fuchsia-50 p-6 rounded-xl border border-fuchsia-100 text-center">
+                        <div className="mb-2 text-fuchsia-700 font-semibold text-lg">OTP Verification</div>
+                        <div className="mb-2 text-sm text-fuchsia-600 flex flex-col items-center">
+                          <span>We sent a 6-digit code to your phone:</span>
+                          <span className="font-mono text-base mt-1 bg-fuchsia-100 px-3 py-1 rounded-lg tracking-widest">
+                            {(() => {
+                              const raw = phone || formData.telephoneNumber || '';
+                              if (!raw) return '••••••••••';
+                              // Show first 2 and last 2 digits, mask the rest
+                              if (raw.length >= 7) {
+                                return raw.slice(0, 2) + '••••••' + raw.slice(-2);
+                              } else if (raw.length >= 4) {
+                                return raw.slice(0, 2) + '••' + raw.slice(-2);
+                              } else {
+                                return '••••';
+                              }
+                            })()}
+                          </span>
+                        </div>
+                        {otpMessage && <p className="text-green-600 text-sm mb-2">{otpMessage}</p>}
+                        <div className="flex justify-center gap-2 mt-2">
                           <button
                             type="button"
                             onClick={handleResendOtp}
@@ -585,6 +596,7 @@ export default function CashWithdrawalForm() {
                           >
                             {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
                           </button>
+                          <span className="text-gray-300">|</span>
                           <button
                             type="button"
                             onClick={() => setStep('request')}
@@ -596,9 +608,9 @@ export default function CashWithdrawalForm() {
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-fuchsia-700 mb-2">
-                          Enter 6-digit OTP *
+                      <div className="flex flex-col items-center space-y-2">
+                        <label className="block text-sm font-medium text-fuchsia-700 mb-1">
+                          Enter 6-digit OTP
                         </label>
                         <input
                           type="text"
@@ -606,7 +618,7 @@ export default function CashWithdrawalForm() {
                           value={formData.otp}
                           onChange={handleChange}
                           maxLength={6}
-                          className={`w-full rounded-lg border focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest ${errors.otp ? 'border-red-500' : 'border-fuchsia-300'}`}
+                          className={`w-40 rounded-lg border focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-2xl tracking-widest ${errors.otp ? 'border-red-500' : 'border-fuchsia-300'}`}
                           placeholder="------"
                           inputMode="numeric"
                           pattern="^[0-9]{6}$"
@@ -615,25 +627,17 @@ export default function CashWithdrawalForm() {
                           aria-describedby={errors.otp ? 'otp-error' : undefined}
                         />
                         {errors.otp && (
-                          <p className="mt-1 text-sm text-red-600" id="otp-error">{errors.otp}</p>
+                          <p className="text-sm text-red-600" id="otp-error">{errors.otp}</p>
                         )}
                       </div>
 
-                      <div className="flex justify-between items-center">
-                        <button
-                          onClick={() => setStep('request')}
-                          className="text-fuchsia-600 hover:text-fuchsia-800 text-sm font-medium"
-                        >
-                          Back
-                        </button>
-                        <button
-                          onClick={verifyOTP}
-                          disabled={isLoading || !formData.otp || !/^[0-9]{6}$/.test(formData.otp)}
-                          className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition disabled:opacity-50 flex items-center justify-center min-w-24"
-                        >
-                          Verify OTP
-                        </button>
-                      </div>
+                      <button
+                        onClick={verifyOTP}
+                        disabled={isLoading || !formData.otp || !/^[0-9]{6}$/.test(formData.otp)}
+                        className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-medium py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50 flex items-center justify-center min-w-24 mt-2"
+                      >
+                        Verify OTP
+                      </button>
                     </div>
                   )}
 
