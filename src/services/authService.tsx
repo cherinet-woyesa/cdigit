@@ -7,6 +7,15 @@ interface LoginResponse {
     token?: string;
     role?: string; // Added role property to LoginResponse
 }
+interface NewLoginResponse {
+    success: boolean;
+    message: string;
+    data: {
+        token: string;
+        role?: string;       // role can be extracted from token claims or backend may include it later
+        expiration: string;
+    };
+}
 
 interface RegisterResponse {
     // Define properties based on your API response for registration
@@ -106,12 +115,25 @@ const authService: AuthService = {
     // Staff login
     staffLogin: async (email: string, password: string) => {
         try {
-            const response = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/staff-login`, { email, password });
-            if (response.data.token) {
-                localStorage.setItem('userToken', response.data.token);
+            const response = await axios.post<NewLoginResponse>(`${API_BASE_URL}/auth/staff-login`, { email, password });
+            const apiResponse = response.data;
+            if (apiResponse.success && apiResponse.data?.token) {
+                localStorage.setItem('userToken', apiResponse.data.token);
+                console.log("at Staff login method, successful, token:", apiResponse.data.token);
+
+                // Map new backend structure to existing LoginResponse format
+                return {
+                    // success: apiResponse.success,
+                    message: apiResponse.message,
+                    token: apiResponse.data.token,
+                    // role: apiResponse.data.role,         // if backend includes role inside token claims
+                    // expiration: apiResponse.data.expiration,
+                } as LoginResponse;
             }
-            return response.data;
-        } catch (error: any) {
+            
+            throw new Error(apiResponse.message || "Staff login failed");
+        }
+        catch (error: any) {
             console.error("Staff login error:", error.response?.data || error.message);
             throw error.response?.data?.message || "Staff login failed";
         }

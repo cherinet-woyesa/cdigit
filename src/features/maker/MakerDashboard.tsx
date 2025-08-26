@@ -1,489 +1,518 @@
-// src/components/dashboards/MakerDashboard.tsx
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import makerService from '../../services/makerService';
+import React, { useEffect, useMemo, useState } from 'react';
+// import { jwtDecode } from 'jwt-decode';
+import { jwtDecode } from "jwt-decode";
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSpinner, faCheckCircle, faTimesCircle, faArrowRight, faDoorOpen } from '@fortawesome/free-solid-svg-icons';
+import {
+  faDoorOpen,
+  faSpinner,
+  faCheckCircle,
+  faTimesCircle,
+  faUserClock,
+  faMoneyBillWave,
+  faShuffle,
+  faSackDollar,
+} from '@fortawesome/free-solid-svg-icons';
+
+import makerService, {
+  type ApiResponse,
+  type CustomerQueueItem,
+  type NextCustomerResponse,
+  type TransactionType,
+} from '../../services/makerService';
+
+import { useAuth } from '../../context/AuthContext';
 import DenominationModal from '../../models/DenominationModal';
 
-// Define common types for all forms
-interface BaseForm {
-    id: string;
-    formKey: string;
-    queueNumber: number;
-    customerFullName?: string; // Add this for consistency, though it may not be on all types
-    submittedAt: string;
-    status: string;
-}
-
-// Specific types for each form
-interface DepositForm extends BaseForm {
-    type: 'Deposit';
-    accountHolderName: string;
-    accountNumber: string;
-    amount: number;
-    // Add all other specific fields for deposit here
-}
-
-interface WithdrawalForm extends BaseForm {
-    type: 'Withdrawal';
-    accountHolderName: string;
-    accountNumber: string;
-    withdrawalAmount: number;
-    // Add all other specific fields for withdrawal here
-}
-
-interface FundTransferForm extends BaseForm {
-    type: 'FundTransfer';
-    sourceAccountNumber: string;
-    destinationAccountNumber: string;
-    amount: number;
-    // Add all other specific fields for fund transfer here
-}
-
-type QueuedForm = DepositForm | WithdrawalForm | FundTransferForm;
-
-// Interface for the minimal response from the initial 'CallNextCustomer' API
-interface NextCustomerResponse {
-    id: string;
-    formKey: string;
-    queueNumber: number;
-    transactionType: 'Deposit' | 'Withdrawal' | 'FundTransfer';
-    message: string;
-}
-
-interface Window {
-    id: string;
-    windowNumber: number;
-    branchId: string;
-}
-
-const MakerDashboard: React.FC = () => {
-    const { user, token, logout, updateAssignedWindow } = useAuth();
-    const [forms, setForms] = useState<QueuedForm[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [selectedForm, setSelectedForm] = useState<DepositForm | null>(null); // This is for denominations
-    const [isDenominationModalOpen, setIsDenominationModalOpen] = useState(false);
-    
-    const [assignedWindowId, setAssignedWindowId] = useState<string | null>(user?.assignedWindow?.id || null);
-    const [assignedWindowNumber, setAssignedWindowNumber] = useState<number | null>(user?.assignedWindow?.windowNumber || null);
-    const [windows, setWindows] = useState<Window[]>([]);
-    const [showWindowModal, setShowWindowModal] = useState(false);
-    const [selectedWindowForAssignment, setSelectedWindowForAssignment] = useState<string | null>(null);
-    const [message, setMessage] = useState('');
-    const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
-
-    // State to hold the full details of the customer currently being served
-    const [currentCustomer, setCurrentCustomer] = useState<QueuedForm | null>(null);
-    // State to track finishing status
-    const [finishing, setFinishing] = useState(false);
-
-    const fetchForms = useCallback(async () => {
-        if (!token || !assignedWindowId) return;
-        setLoading(true);
-        setError('');
-        try {
-            const fetchedForms = await makerService.getFormsForWindow(assignedWindowId, token);
-            setForms(fetchedForms);
-        } catch (err: any) {
-            setError(err.response?.data?.Message || 'Failed to fetch forms.');
-            console.error('Fetch forms error:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, [token, assignedWindowId]);
-
-    // Initial check for a window assignment
-    useEffect(() => {
-        const checkWindowAssignment = async () => {
-            if (!user || user.role !== 'Maker' || !token) {
-                setLoading(false);
-                return;
-            }
-
-            try {
-                const assignedWindow = await makerService.getAssignedWindowForMaker(user.id, token);
-                console.log('Assigned Window for maker:', assignedWindow);
-                if (assignedWindow) {
-                    updateAssignedWindow(assignedWindow);
-                    setAssignedWindowId(assignedWindow.id);
-                    setAssignedWindowNumber(assignedWindow.windowNumber);
-                    setShowWindowModal(false);
-                } else {
-                    setShowWindowModal(true);
-                }
-            } catch (err) {
-                console.error('Failed to check window assignment:', err);
-                setError('Failed to load window information.');
-            } finally {
-                setLoading(false);
-            }
-        };
-        
-        if (!assignedWindowId && user && token) {
-            checkWindowAssignment();
-        }
-    }, [user, token, assignedWindowId, updateAssignedWindow]);
-
-    useEffect(() => {
-        if (assignedWindowId) {
-            fetchForms();
-        }
-    }, [assignedWindowId, fetchForms]);
-
-    useEffect(() => {
-        const fetchWindowsForModal = async () => {
-            console.log('Fetching windows for modal:', showWindowModal, user?.branchId, token);
-            if (showWindowModal && user?.branchId && token) {
-                try {
-                    const branchWindows = await makerService.getWindowsByBranchId(user.branchId, token);
-                    console.log('Fetched windows for modal:', branchWindows);
-                    setWindows(branchWindows);
-                } catch (err) {
-                    console.error('Failed to fetch windows for modal:', err);
-                }
-            }
-        };
-        fetchWindowsForModal();
-    }, [showWindowModal, user, token]);
-
-
-    const handleAssignWindow = async () => {
-        if (!selectedWindowForAssignment || !user || !token) return;
-        
-        setMessage('');
-        setMessageType('');
-
-        try {
-            const response = await makerService.selectWindow(selectedWindowForAssignment, user.id, token);
-            
-            const assignedWindow = windows.find(w => w.id === selectedWindowForAssignment);
-            
-            if (assignedWindow) {
-                updateAssignedWindow(assignedWindow);
-                setAssignedWindowId(assignedWindow.id);
-                setAssignedWindowNumber(assignedWindow.windowNumber);
-            }
-            
-            setMessage(response.message || 'Window assigned successfully!');
-            setMessageType('success');
-            
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Failed to assign window. Please try again.';
-            setMessage(errorMessage);
-            setMessageType('error');
-        } finally {
-            setTimeout(() => {
-                setShowWindowModal(false);
-                setMessage('');
-                setMessageType('');
-            }, 5000);
-        }
-    };
-   
-    const handleUpdateDenominations = (form: DepositForm) => {
-        setSelectedForm(form);
-        setIsDenominationModalOpen(true);
-    };
-
-    
-
-    // Unified finish/mark as served for all transaction types
-    const handleFinishServing = async (form: QueuedForm) => {
-        if (!token || !user) return;
-        setFinishing(true);
-        setError('');
-        try {
-            if (form.type === 'Deposit') {
-                await makerService.markDepositAsDeposited(form.formKey, user.id, token);
-            } else if (form.type === 'Withdrawal') {
-                await makerService.markWithdrawalAsServed(form.formKey, user.id, token);
-            } else if (form.type === 'FundTransfer') {
-                await makerService.markFundTransferAsServed(form.formKey, user.id, token);
-            }
-            setCurrentCustomer(null); // Clear current customer after finishing
-            fetchForms();
-        } catch (err: any) {
-            setError(err.response?.data?.Message || 'Failed to update status.');
-            console.error('Finish serving error:', err);
-        } finally {
-            setFinishing(false);
-        }
-    };
-
-    // MODIFIED function to handle the two-step API call process
-    const handleCallNextCustomer = async () => {
-        if (!assignedWindowId || !token || !user || !user.branchId) {
-            setError('Missing required user or window information.');
-            return;
-        }
-
-        setLoading(true);
-        setError('');
-        setCurrentCustomer(null); // Clear previous customer data
-
-        try {
-            // Step 1: Call the general API to get the next customer's basic info
-            const nextCustomerResponse: NextCustomerResponse = await makerService.callNextCustomer(user.id, assignedWindowId, user.branchId, token);
-
-            if (!nextCustomerResponse || !nextCustomerResponse.id) {
-                setError(nextCustomerResponse.message || 'No pending customers in queue.');
-                return;
-            }
-
-            // Step 2: Use the transactionType to call the specific API for full form data
-            let fullFormDetails;
-            switch (nextCustomerResponse.transactionType) {
-                case 'Deposit':
-                    fullFormDetails = await makerService.getDepositById(nextCustomerResponse.id, token);
-                    break;
-                case 'Withdrawal':
-                    fullFormDetails = await makerService.getWithdrawalById(nextCustomerResponse.id, token);
-                    break;
-                case 'FundTransfer':
-                    fullFormDetails = await makerService.getFundTransferById(nextCustomerResponse.id, token);
-                    break;
-                default:
-                    throw new Error('Unknown transaction type received.');
-            }
-
-            if (fullFormDetails) {
-                setCurrentCustomer({ ...fullFormDetails, type: nextCustomerResponse.transactionType });
-                // Now, remove this customer from the pending list if it exists.
-                setForms(prevForms => prevForms.filter(f => f.id !== fullFormDetails.id));
-            } else {
-                setError('Failed to fetch full customer details.');
-            }
-
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Failed to call next customer.';
-            setError(errorMessage);
-            console.error('Call next customer error:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // --- Conditional Rendering for the main content ---
-    if (!user || loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <FontAwesomeIcon icon={faSpinner} spin size="2x" className="text-fuchsia-600" />
-            </div>
-        );
-    }
-
-    // Show either the detailed view for the current customer or the queue list
-    const renderMainContent = () => {
-        if (currentCustomer) {
-            return (
-                <div className="bg-white rounded-lg shadow-md p-8">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                        Serving Customer: {currentCustomer.customerFullName}
-                    </h2>
-                    <p className="text-sm text-gray-600">Queue No: <span className="font-bold">{currentCustomer.queueNumber}</span></p>
-                    <p className="text-sm text-gray-600">Form Key: <span className="font-mono">{currentCustomer.formKey}</span></p>
-                    <span className="font-mono">Current form type: {currentCustomer.type}</span>
-                    <div className="mt-6 border-t border-gray-200 pt-6">
-                        {currentCustomer.type === 'Deposit' && (
-                            <>
-                                <DepositDetailView
-                                    form={currentCustomer as DepositForm}
-                                    onUpdateDenominationsClick={handleUpdateDenominations}
-                                />
-                                <button
-                                    onClick={() => handleFinishServing(currentCustomer)}
-                                    disabled={finishing}
-                                    className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                                >
-                                    {finishing ? 'Finishing...' : 'Finish Serving'}
-                                </button>
-                            </>
-                        )}
-                        {currentCustomer.type === 'Withdrawal' && (
-                            <>
-                                <WithdrawalDetailView form={currentCustomer as WithdrawalForm} />
-                                <button
-                                    onClick={() => handleFinishServing(currentCustomer)}
-                                    disabled={finishing}
-                                    className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                                >
-                                    {finishing ? 'Finishing...' : 'Finish Serving'}
-                                </button>
-                            </>
-                        )}
-                        {currentCustomer.type === 'FundTransfer' && (
-                            <>
-                                <FundTransferDetailView form={currentCustomer as FundTransferForm} />
-                                <button
-                                    onClick={() => handleFinishServing(currentCustomer)}
-                                    disabled={finishing}
-                                    className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                                >
-                                    {finishing ? 'Finishing...' : 'Finish Serving'}
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-        // If no customer is being served, render the standard queue list
-        return (
-            <>
-                <div className="flex justify-center space-x-4 mb-6">
-                    <button
-                        onClick={handleCallNextCustomer}
-                        disabled={loading}
-                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-150 ease-in-out disabled:opacity-50 flex items-center"
-                    >
-                        <FontAwesomeIcon icon={faDoorOpen} className="mr-2" />
-                        Call Next Customer
-                    </button>
-                </div>
-                {forms.length === 0 && !loading && (
-                    <div className="text-center py-20 text-gray-500">
-                        <p className="text-2xl font-semibold">No pending forms in your queue.</p>
-                        <p className="mt-2">Click the button above to call the next customer.</p>
-                    </div>
-                )}
-                {forms.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {forms.map((form) => (
-                            <div key={form.formKey} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                                <div className="flex justify-between items-start mb-4">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${form.type === 'Deposit' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                        {form.type}
-                                    </span>
-                                    <span className="text-sm text-gray-500">Queue: {form.queueNumber}</span>
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-800 mb-2">{form.customerFullName}</h3>
-                                <p className="text-sm text-gray-600">Account No: <span className="font-mono">{(form as DepositForm).accountNumber || (form as WithdrawalForm).accountNumber || (form as FundTransferForm).sourceAccountNumber}</span></p>
-                                <p className="text-2xl font-bold text-gray-900 mt-4">
-                                    ETB {(form as DepositForm).amount?.toFixed(2) || (form as WithdrawalForm).withdrawalAmount?.toFixed(2) || (form as FundTransferForm).amount?.toFixed(2)}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </>
-        );
-    };
-
-    return (
-        <div className="min-h-screen bg-gray-100">
-            {/* Header */}
-            <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg">
-                <div className="max-w-6xl mx-auto flex justify-between items-center">
-                    <h1 className="text-3xl font-bold">Maker Dashboard</h1>
-                    {user && (
-                        <p className="text-sm bg-fuchsia-800 px-3 py-1 rounded-full">
-                            Welcome, {user.firstName} {user.lastName} ({user.role})
-                        </p>
-                    )}
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="max-w-6xl mx-auto px-4 py-10">
-                {/* Welcome Banner */}
-                <div className="bg-fuchsia-700 text-white p-6 rounded-xl mb-8 shadow-lg">
-                    <h2 className="text-2xl font-bold mb-2">Manage Transactions</h2>
-                    <p className="opacity-90">View and process customer transactions efficiently.</p>
-                </div>
-
-                {/* Transaction Queue or Current Customer */}
-                <div className="bg-white p-8 rounded-lg shadow-lg">
-                    {error && <p className="text-red-600 mb-4 font-medium text-center">{error}</p>}
-                    {renderMainContent()}
-                </div>
-            </main>
-
-            {/* Denomination Modal */}
-            <DenominationModal
-                isOpen={isDenominationModalOpen}
-                onClose={() => setIsDenominationModalOpen(false)}
-                form={selectedForm}
-                onSave={() => {
-                    fetchForms();
-                }}
-            />
-
-            {/* Window Selection Modal */}
-            {showWindowModal && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                        <h2 className="text-2xl font-bold mb-4">Select Your Window</h2>
-                        {message && (
-                            <div className={`p-3 rounded-md mb-4 ${messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {message}
-                            </div>
-                        )}
-                        <p className="text-gray-600 mb-6">Please select an available window to start serving customers.</p>
-                        <select
-                            value={selectedWindowForAssignment || ''}
-                            onChange={(e) => setSelectedWindowForAssignment(e.target.value)}
-                            className="block w-full p-2 border rounded-md mb-4"
-                        >
-                            <option value="">Choose a Window</option>
-                            {windows.map(window => (
-                                <option key={window.id} value={window.id}>Window No. {window.windowNumber}</option>
-                            ))}
-                        </select>
-                        <div className="flex justify-end space-x-2">
-                            <button
-                                onClick={handleAssignWindow}
-                                disabled={!selectedWindowForAssignment}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-                            >
-                                Assign and Continue
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+/** Token claims we need */
+type DecodedToken = {
+  BranchId: string;
+  nameid: string;        // makerId
+  role?: string;
+  unique_name?: string;
+  email?: string;
+  exp?: number;
+  iss?: string;
+  aud?: string;
 };
 
-// Helper components for displaying detailed views
-const DepositDetailView = ({ form, onUpdateDenominationsClick }: { form: DepositForm, onUpdateDenominationsClick: (form: DepositForm) => void }) => (
-    <div className="space-y-4">
-        <div><span className="font-semibold">Account Number:</span> {form.accountNumber}</div>
-        <div><span className="font-semibold">Account Holder:</span> {form.accountHolderName}</div>
-        <div><span className="font-semibold">Amount:</span> ETB {form.amount.toFixed(2)}</div>
-        {/* ... other deposit-specific fields ... */}
+type WindowDto = {
+  id: string;
+  branchId: string;
+  branchName?: string | null;
+  branchCode?: string | null;
+  windowNumber: number;
+  description?: string | null;
+  windowType?: string | null;
+  status?: string | null;
+  currentTellerId?: string | null;
+  currentTellerFullName?: string | null;
+  lastServedQueueNumber?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
 
-        {/* NEW BUTTON for denominations */}
-        {((form.status === 'OnQueue') ||(form.status === 'In Progress')) && ( // Only show button for pending forms
+const statIconMap: Record<TransactionType, any> = {
+  Deposit: faMoneyBillWave,
+  Withdrawal: faSackDollar,
+  FundTransfer: faShuffle,
+};
+
+const MakerDashboard: React.FC = () => {
+  const { token, user, logout } = useAuth(); // assuming token is stored in context (as in your app)
+  const [decoded, setDecoded] = useState<DecodedToken | null>(null);
+
+  // Window selection
+  const [assignedWindow, setAssignedWindow] = useState<WindowDto | null>(null);
+  const [windows, setWindows] = useState<WindowDto[]>([]);
+  const [showWindowModal, setShowWindowModal] = useState<boolean>(false);
+  const [selectedWindowId, setSelectedWindowId] = useState<string>('');
+
+  // Queue stats & list
+  const [queue, setQueue] = useState<CustomerQueueItem[]>([]);
+  const [loadingQueue, setLoadingQueue] = useState<boolean>(false);
+  const [queueError, setQueueError] = useState<string>('');
+
+  // Current serving
+  const [current, setCurrent] = useState<NextCustomerResponse | null>(null);
+  const [busyAction, setBusyAction] = useState<'calling' | 'completing' | 'canceling' | null>(null);
+  const [actionMessage, setActionMessage] = useState<string>('');
+
+  // Denomination modal (for deposits)
+  const [showDenomModal, setShowDenomModal] = useState<boolean>(false);
+  const [denomForm, setDenomForm] = useState<{ formReferenceId: string; amount: number } | null>(null);
+
+  /** Decode token & bootstrap */
+  useEffect(() => {
+    if (!token) return;
+    try {
+      const d = jwtDecode<DecodedToken>(token);
+      setDecoded(d);
+    } catch {
+      // invalid token → logout
+      logout();
+    }
+  }, [token, logout]);
+
+  /** Load assigned window; if none, force modal and load windows by branch */
+  useEffect(() => {
+    const initWindows = async () => {
+      if (!token || !decoded?.nameid) return;
+
+      try {
+        const w = await makerService.getAssignedWindowForMaker(decoded.nameid, token);
+        if (w && w.id) {
+          setAssignedWindow(w);
+          setShowWindowModal(false);
+        } else if (decoded.BranchId) {
+          const list = await makerService.getWindowsByBranchId(decoded.BranchId, token);
+          setWindows(list);
+          setShowWindowModal(true);
+        }
+      } catch (e) {
+        if (decoded?.BranchId) {
+          const list = await makerService.getWindowsByBranchId(decoded.BranchId, token);
+          setWindows(list);
+          setShowWindowModal(true);
+        }
+      }
+    };
+    if (decoded?.nameid) {
+      void initWindows();
+    }
+  }, [decoded, token]);
+
+  /** Load queue summary for stats cards */
+  const refreshQueue = async () => {
+    if (!token || !decoded?.BranchId) return;
+    setLoadingQueue(true);
+    setQueueError('');
+    try {
+      const res = await makerService.getAllCustomersOnQueueByBranch(decoded.BranchId, token);
+      if (res.success) {
+        setQueue(res.data || []);
+      } else {
+        setQueue([]);
+        setQueueError(res.message || 'No customers in queue.');
+      }
+    } catch (err: any) {
+      setQueue([]);
+      setQueueError(err?.response?.data?.message || 'Failed to load queue.');
+    } finally {
+      setLoadingQueue(false);
+    }
+  };
+
+  useEffect(() => {
+    if (decoded?.BranchId) {
+      void refreshQueue();
+    }
+  }, [decoded?.BranchId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Stats */
+  const stats = useMemo(() => {
+    const totals = {
+      Deposit: 0,
+      Withdrawal: 0,
+      FundTransfer: 0,
+    } as Record<TransactionType, number>;
+    queue.forEach((q) => {
+      totals[q.transactionType as TransactionType] += 1;
+    });
+    const total = queue.length;
+    return { ...totals, total };
+  }, [queue]);
+
+  /** Assign window */
+  const handleAssignWindow = async () => {
+    if (!token || !decoded?.nameid || !selectedWindowId) return;
+    try {
+      const res = await makerService.assignMakerToWindow(selectedWindowId, decoded.nameid, token);
+      setActionMessage(res.message || 'Assigned Successfully');
+      // set assigned
+      const found = windows.find((w) => w.id === selectedWindowId) || null;
+      setAssignedWindow(found);
+      setShowWindowModal(false);
+    } catch (err: any) {
+      setActionMessage(err?.response?.data?.message || 'Assignment failed.');
+    } finally {
+      setTimeout(() => setActionMessage(''), 4000);
+    }
+  };
+
+  /** Call next */
+  const handleCallNext = async () => {
+    if (!token || !decoded?.nameid || !assignedWindow?.id || !decoded?.BranchId) return;
+    setBusyAction('calling');
+    setActionMessage('');
+    try {
+      const res = await makerService.callNextCustomer(decoded.nameid, assignedWindow.id, decoded.BranchId, token);
+      console.log("Call next response data:", res);
+      if (!res.success || !res.data) {
+        setCurrent(null);
+        setActionMessage(res.message || 'No customer in the queue.');
+        return;
+      }
+      setCurrent(res.data);
+      // refresh stats (one moved to OnProgress)
+      await refreshQueue();
+    } catch (err: any) {
+      setActionMessage(err?.response?.data?.message || 'Failed to call next.');
+    } finally {
+      setBusyAction(null);
+      setTimeout(() => setActionMessage(''), 4000);
+    }
+  };
+
+  /** Complete */
+  const handleComplete = async () => {
+    if (!token || !current?.id) return;
+    setBusyAction('completing');
+    setActionMessage('');
+    try {
+      const res = await makerService.completeTransaction(current.id, token);
+      setActionMessage(res.message || 'Completed.');
+      setCurrent(null);
+      await refreshQueue();
+    } catch (err: any) {
+      setActionMessage(err?.response?.data?.message || 'Failed to complete.');
+    } finally {
+      setBusyAction(null);
+      setTimeout(() => setActionMessage(''), 4000);
+    }
+  };
+
+  /** Cancel */
+  const handleCancel = async () => {
+    if (!token || !current?.id) return;
+    setBusyAction('canceling');
+    setActionMessage('');
+    try {
+      const res = await makerService.cancelTransaction(current.id, token);
+      setActionMessage(res.message || 'Canceled.');
+      setCurrent(null);
+      await refreshQueue();
+    } catch (err: any) {
+      setActionMessage(err?.response?.data?.message || 'Failed to cancel.');
+    } finally {
+      setBusyAction(null);
+      setTimeout(() => setActionMessage(''), 4000);
+    }
+  };
+
+  /** Denominations (Deposit only) */
+  const openDenom = () => {
+    if (!current) return;
+    // for deposits, use amount = transferAmount? withdrawal? deposit?
+    let amount = 0;
+    if (current.transactionType === 'Deposit') {
+      amount = Number(current.amount ?? current.depositAmount ?? current.TransferAmount ?? 0);
+    }
+    setDenomForm({ formReferenceId: current.formReferenceId, amount });
+    setShowDenomModal(true);
+  };
+
+  /** RENDER */
+  if (!token || !decoded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <FontAwesomeIcon icon={faSpinner} spin className="text-fuchsia-700 text-3xl" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#faf6fe]">
+      {/* Header */}
+      <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-wide">Maker Dashboard</h1>
+            <p className="text-white/80 text-sm">
+              Branch: <span className="font-semibold">{decoded.BranchId}</span>
+              {assignedWindow && (
+                <span className="ml-3">
+                  • Window <span className="font-semibold">{assignedWindow.windowNumber}</span>
+                </span>
+              )}
+            </p>
+          </div>
           <button
-            onClick={() => onUpdateDenominationsClick(form)}
-            className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+            onClick={handleCallNext}
+            disabled={!assignedWindow || busyAction === 'calling'}
+            className="bg-white text-fuchsia-700 font-semibold px-4 py-2 rounded-xl shadow hover:bg-white/90 disabled:opacity-60 flex items-center"
           >
-            Update Denominations
+            <FontAwesomeIcon icon={faDoorOpen} className="mr-2" />
+            {busyAction === 'calling' ? 'Calling…' : 'Call Next'}
           </button>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        {/* Alert / Action message */}
+        {actionMessage && (
+          <div className="bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-900 px-4 py-3 rounded-xl">
+            {actionMessage}
+          </div>
         )}
+
+        {/* Stats Cards */}
+        <section>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard title="Deposits" value={stats.Deposit} icon={statIconMap.Deposit} />
+            <StatCard title="Withdrawals" value={stats.Withdrawal} icon={statIconMap.Withdrawal} />
+            <StatCard title="Transfers" value={stats.FundTransfer} icon={statIconMap.FundTransfer} />
+            <StatCard title="Total Requests" value={stats.total} icon={faUserClock} />
+          </div>
+          {loadingQueue && (
+            <div className="mt-3 text-sm text-gray-500 flex items-center">
+              <FontAwesomeIcon icon={faSpinner} spin className="mr-2" /> refreshing…
+            </div>
+          )}
+          {queueError && !loadingQueue && (
+            <div className="mt-3 text-sm text-red-600">{queueError}</div>
+          )}
+        </section>
+
+        {/* Current Customer Panel */}
+        <section className="bg-white rounded-2xl shadow p-6">
+          {!current ? (
+            <div className="text-center text-gray-500 py-8">
+              <p className="text-lg">No active customer. Click <span className="font-semibold">Call Next</span> to start.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">
+                    Serving: {current.accountHolderName || 'Customer'}
+                  </h2>
+                  <p className="text-gray-500">
+                    Queue No: <span className="font-semibold">{current.queueNumber}</span> • Type:{' '}
+                    <span className="font-semibold">{current.transactionType}</span> 
+                  </p>
+                </div>
+                <div className="text-right">
+                  {current.tokenNumber && (
+                    <p className="text-gray-500">Token: <span className="font-mono">{current.tokenNumber}</span></p>
+                  )}
+                  <p className="text-gray-500">
+                    Form Ref: <span className="font-mono">{current.formReferenceId}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="grid md:grid-cols-3 gap-4">
+                {current.accountNumber && (
+                  <InfoTile label="Account Number" value={String(current.accountNumber)} />
+                )}
+                {current.sourceAccountNumber && (
+                  <InfoTile label="Source Account" value={String(current.sourceAccountNumber)} />
+                )}
+                {current.destinationAccountNumber && (
+                  <InfoTile label="Destination Account" value={String(current.destinationAccountNumber)} />
+                )}
+
+                {/* Amounts by type */}
+                {current.transactionType === 'Deposit' && (
+                  <InfoTile label="Amount" value={String(current.amount ?? current.depositAmount ?? 0)} />
+                )}
+                {current.transactionType === 'Withdrawal' && (
+                  <InfoTile
+                    label="Withdrawal Amount"
+                    value={String(current.withdrawal_Amount ?? current.withdrawa_Amount ?? 0)}
+                  />
+                )}
+                {current.transactionType === 'FundTransfer' && (
+                  <InfoTile label="Transfer Amount" value={String(current.transferAmount ?? 0)} />
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-wrap gap-3 pt-2">
+                {current.transactionType === 'Deposit' && (
+                  <button
+                    onClick={openDenom}
+                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Update Denominations
+                  </button>
+                )}
+
+                <button
+                  onClick={handleComplete}
+                  disabled={busyAction === 'completing'}
+                  className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-60 flex items-center"
+                >
+                  <FontAwesomeIcon icon={faCheckCircle} className="mr-2" />
+                  {busyAction === 'completing' ? 'Completing…' : 'Complete'}
+                </button>
+
+                <button
+                  onClick={handleCancel}
+                  disabled={busyAction === 'canceling'}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 flex items-center"
+                >
+                  <FontAwesomeIcon icon={faTimesCircle} className="mr-2" />
+                  {busyAction === 'canceling' ? 'Canceling…' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Queue Preview (today, still on queue) */}
+        <section>
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Waiting Queue (Today)</h3>
+          {queue.length === 0 ? (
+            <div className="bg-white rounded-xl p-6 text-center text-gray-500 shadow">
+              No customers in queue.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {queue.map((q) => (
+                <div key={q.id} className="bg-white rounded-xl shadow p-4 border border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        q.transactionType === 'Deposit'
+                          ? 'bg-blue-50 text-blue-700'
+                          : q.transactionType === 'Withdrawal'
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'bg-purple-50 text-purple-700'
+                      }`}
+                    >
+                      {q.transactionType}
+                    </span>
+                    <span className="text-sm text-gray-500">Q#{q.queueNumber}</span>
+                  </div>
+                  <div className="font-semibold text-gray-800">{q.accountHolderName}</div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    ETB {Number(q.amount).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">
+                    {new Date(q.submittedAt).toLocaleTimeString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+
+      {/* Window selection modal */}
+      {showWindowModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-2">Select Your Window</h2>
+            <p className="text-gray-500 mb-4">
+              Choose an available window to start serving customers.
+            </p>
+
+            <select
+              className="w-full border rounded-lg p-2 mb-4"
+              value={selectedWindowId}
+              onChange={(e) => setSelectedWindowId(e.target.value)}
+            >
+              <option value="">-- Choose a window --</option>
+              {windows.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {`Window ${w.windowNumber} — ${w.description || 'Transaction'}`}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleAssignWindow}
+              disabled={!selectedWindowId}
+              className="w-full bg-fuchsia-700 text-white py-2 rounded-lg hover:bg-fuchsia-800 disabled:opacity-60"
+            >
+              Assign & Continue
+            </button>
+
+            {actionMessage && (
+              <div className="mt-3 text-sm text-fuchsia-700 bg-fuchsia-50 border border-fuchsia-200 rounded-lg px-3 py-2">
+                {actionMessage}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Denominations Modal (your existing component) */}
+      <DenominationModal
+        isOpen={showDenomModal}
+        onClose={() => setShowDenomModal(false)}
+        onSave={() => {
+          // After saving denominations, nothing else needed immediately
+        }}
+        form={denomForm}
+      />
     </div>
+  );
+};
+
+/** Small helper components */
+const StatCard = ({ title, value, icon }: { title: string; value: number; icon: any }) => (
+  <div className="bg-white rounded-2xl shadow p-5 border border-gray-100">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-gray-500">{title}</p>
+        <p className="text-2xl font-extrabold text-gray-800">{value}</p>
+      </div>
+      <div className="p-3 rounded-xl bg-fuchsia-50">
+        <FontAwesomeIcon icon={icon} className="text-fuchsia-700" />
+      </div>
+    </div>
+  </div>
 );
 
-
-const WithdrawalDetailView = ({ form }: { form: WithdrawalForm }) => (
-    <div className="space-y-4">
-        <div><span className="font-semibold">Account Number:</span> {form.accountNumber}</div>
-        <div><span className="font-semibold">Account Holder:</span> {form.accountHolderName}</div>
-        <div><span className="font-semibold">Withdrawal Amount:</span> ETB {form.withdrawalAmount.toFixed(2)}</div>
-        {/* Add more Withdrawal-specific fields here */}
-    </div>
-);
-
-const FundTransferDetailView = ({ form }: { form: FundTransferForm }) => (
-    <div className="space-y-4">
-        <div><span className="font-semibold">Source Account:</span> {form.sourceAccountNumber}</div>
-        <div><span className="font-semibold">Destination Account:</span> {form.destinationAccountNumber}</div>
-        <div><span className="font-semibold">Amount:</span> ETB {form.amount.toFixed(2)}</div>
-        {/* Add more FundTransfer-specific fields here */}
-    </div>
+const InfoTile = ({ label, value }: { label: string; value: string }) => (
+  <div className="bg-gray-50 rounded-xl p-4">
+    <div className="text-xs text-gray-500">{label}</div>
+    <div className="font-semibold text-gray-800 break-all">{value}</div>
+  </div>
 );
 
 export default MakerDashboard;

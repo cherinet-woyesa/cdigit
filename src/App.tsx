@@ -44,7 +44,7 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
 
 const DashboardRouter: React.FC = () => {
   const { user } = useAuth();
-
+console.log('DashboardRouter - User:', user); // Log user info
   if (user?.role === 'Admin') {
     return <AdminDashboard />;
   }

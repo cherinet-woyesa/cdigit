@@ -157,6 +157,7 @@ const OTPLogin: React.FC = () => {
     try {
       const normalized = normalizePhone(phoneNumber);
       const response: { message: string; token?: string } = await authService.loginWithOtp(normalized, otp);
+      console.log('Login with OTP Response:', message);
       setMessage(response.message || t('loginSuccessful'));
       setPhone(normalized);
       navigate('/customer/dashboard'); // Redirect to the customer dashboard
