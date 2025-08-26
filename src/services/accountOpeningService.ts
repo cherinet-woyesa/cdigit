@@ -27,8 +27,10 @@ const api = axios.create({
  */
 export const getSavedForm = async (phoneNumber: string): Promise<FormSummary | null> => {
     try {
-        const response = await api.get<FormSummary>(`/status?phoneNumber=${phoneNumber}`);
-        return response.data;
+        const response = await api.get<FormSummary>(`/form-summary/${encodeURIComponent(phoneNumber)}`);
+        // Backend may wrap in { success, message, data }
+        const payload: any = response.data as any;
+        return (payload && 'data' in payload) ? payload.data as FormSummary : (response.data as any);
     } catch (error) {
         // If it's an Axios error and the status is 404, it means no form was found.
         // Return null to indicate this specific scenario.
@@ -49,9 +51,9 @@ export const getSavedForm = async (phoneNumber: string): Promise<FormSummary | n
  * @returns A promise that resolves to the saved details with the generated ID.
  */
 export const savePersonalDetails = async (data: PersonalDetail, phoneNumber: string): Promise<IdResponse> => {
-    // Pass the phone number as a query parameter
-    const response = await api.post<IdResponse>(`/personal-details?phoneNumber=${phoneNumber}`, data);
-    return response.data;
+    const response = await api.post<IdResponse>(`/personal-details/${encodeURIComponent(phoneNumber)}`, data);
+    const payload: any = response.data as any;
+    return (payload && 'data' in payload) ? payload.data as IdResponse : (response.data as any);
 };
 
 /**
@@ -68,7 +70,8 @@ export const saveAddressDetails = async (data: any): Promise<IdResponse> => {
     };
     console.log("Address payload CustomerId:", payload.CustomerId);
     const response = await api.post<IdResponse>(`/address-details`, payload);
-    return response.data;
+    const body: any = response.data as any;
+    return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
 
 /**
@@ -78,7 +81,8 @@ export const saveAddressDetails = async (data: any): Promise<IdResponse> => {
  */
 export const saveFinancialDetails = async (data: FinancialDetail): Promise<IdResponse> => {
     const response = await api.post<IdResponse>(`/financial-details`, data);
-    return response.data;
+    const body: any = response.data as any;
+    return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
 
 /**
@@ -88,7 +92,8 @@ export const saveFinancialDetails = async (data: FinancialDetail): Promise<IdRes
  */
 export const saveOtherDetails = async (data: OtherDetail): Promise<IdResponse> => {
     const response = await api.post<IdResponse>(`/other-details`, data);
-    return response.data;
+    const body: any = response.data as any;
+    return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
 
 /**
@@ -99,12 +104,13 @@ export const saveOtherDetails = async (data: OtherDetail): Promise<IdResponse> =
 export const uploadDocumentPhoto = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await api.post<{ url: string }>(`/upload-document-photo`, formData, {
+    const response = await api.post<any>(`/upload-file`, formData, {
         headers: {
             "Content-Type": "multipart/form-data",
         },
     });
-    return response.data.url;
+    const body: any = response.data as any;
+    return body?.data?.url || body?.url || body?.data || '';
 };
 
 /**
@@ -114,7 +120,8 @@ export const uploadDocumentPhoto = async (file: File): Promise<string> => {
  */
 export const saveDocumentDetails = async (data: DocumentDetail): Promise<IdResponse> => {
     const response = await api.post<IdResponse>(`/document-details`, data);
-    return response.data;
+    const body: any = response.data as any;
+    return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
 
 /**
@@ -127,8 +134,9 @@ export const saveEPaymentService = async (data: any): Promise<IdResponse> => {
         ...data,
         CustomerId: data?.CustomerId ?? data?.customerId,
     };
-    const response = await api.post<IdResponse>(`/e-payment-service`, payload);
-    return response.data;
+    const response = await api.post<IdResponse>(`/epayment-service`, payload);
+    const body: any = response.data as any;
+    return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
 
 /**
@@ -141,8 +149,9 @@ export const savePassbookMudayRequest = async (data: any): Promise<IdResponse> =
         ...data,
         CustomerId: data?.CustomerId ?? data?.customerId,
     };
-    const response = await api.post<IdResponse>(`/passbook-muday-request`, payload);
-    return response.data;
+    const response = await api.post<IdResponse>(`/passbook-muday`, payload);
+    const body: any = response.data as any;
+    return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
 
 /**
@@ -153,12 +162,13 @@ export const savePassbookMudayRequest = async (data: any): Promise<IdResponse> =
 export const uploadDigitalSignature = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await api.post<{ url: string }>(`/upload-digital-signature`, formData, {
+    const response = await api.post<any>(`/upload-file`, formData, {
         headers: {
             "Content-Type": "multipart/form-data",
         },
     });
-    return response.data.url;
+    const body: any = response.data as any;
+    return body?.data?.url || body?.url || body?.data || '';
 };
 
 /**
@@ -172,5 +182,6 @@ export const saveDigitalSignature = async (data: any): Promise<IdResponse> => {
         CustomerId: data?.CustomerId ?? data?.customerId,
     };
     const response = await api.post<IdResponse>(`/digital-signature`, payload);
-    return response.data;
+    const body: any = response.data as any;
+    return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };

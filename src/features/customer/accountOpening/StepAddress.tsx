@@ -8,12 +8,13 @@ type StepAddressProps = {
     data: AddressDetail;
     setData: (d: AddressDetail) => void;
     errors: Errors<AddressDetail>;
+    setErrors?: (e: Errors<AddressDetail>) => void; // Optional, for parent error state
     onNext: () => void;
     onBack: () => void;
     submitting: boolean;
 };
 
-export function StepAddress({ data, setData, errors, onNext, onBack, submitting }: StepAddressProps) {
+export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, submitting }: StepAddressProps) {
     const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
     const [zones, setZones] = useState<{ id: number; name: string; regionId: number }[]>([]);
     const [woredas, setWoredas] = useState<{ id: number; name: string; zoneId: number }[]>([]);
@@ -27,7 +28,7 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
     useEffect(() => {
         setRegionLoading(true);
         getRegions()
-            .then(setRegions)
+            .then(res => setRegions(Array.isArray(res) ? res : (res.data || [])))
             .catch(() => setRegionError("Failed to load regions"))
             .finally(() => setRegionLoading(false));
     }, []);
@@ -46,7 +47,7 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
             return;
         }
         getZones(selectedRegion.id)
-            .then(setZones)
+            .then(res => setZones(Array.isArray(res) ? res : (res.data || [])))
             .catch(() => setZoneError("Failed to load zones"))
             .finally(() => setZoneLoading(false));
     }, [data.regionCityAdministration, regions]);
@@ -65,7 +66,7 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
             return;
         }
         getWoredas(selectedZone.id)
-            .then(setWoredas)
+            .then(res => setWoredas(Array.isArray(res) ? res : (res.data || [])))
             .catch(() => setWoredaError("Failed to load woredas"))
             .finally(() => setWoredaLoading(false));
     }, [data.zone, zones]);
@@ -74,6 +75,7 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
         const { name, value } = e.target;
         setData({ ...data, [name]: value });
     };
+
 
     // Email and phone validation helpers
     function isValidEmail(email: string) {
@@ -89,17 +91,48 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
         return /^\+251\d{8,9}$/.test(phone);
     }
 
-    // Custom validation for email and phone
+    // Only validate mobilePhone live (for required/format), others on Next
     const localErrors: Partial<typeof errors> = { ...errors };
-    if (data.emailAddress && !isValidEmail(data.emailAddress)) {
-        localErrors.emailAddress = "Invalid email format";
-    }
     if (data.mobilePhone && !isValidPhone(data.mobilePhone)) {
         localErrors.mobilePhone = "Invalid Ethiopian phone number";
     }
-    if (data.officePhone && !isValidOfficePhone(data.officePhone)) {
-        localErrors.officePhone = "Office phone must start with +251 and be numeric (e.g., +251112345678)";
+
+    // Validate officePhone and emailAddress only on Next
+    const [touchedNext, setTouchedNext] = useState(false);
+
+    function validateOnNext() {
+        const nextErrors: Partial<typeof errors> = { ...errors };
+        if (data.emailAddress && !isValidEmail(data.emailAddress)) {
+            nextErrors.emailAddress = "Invalid email format";
+        } else {
+            delete nextErrors.emailAddress;
+        }
+        if (data.officePhone && !isValidOfficePhone(data.officePhone)) {
+            nextErrors.officePhone = "Office phone must start with +251 and be numeric (e.g., +251112345678)";
+        } else {
+            delete nextErrors.officePhone;
+        }
+        // Required checks (if not already handled by parent)
+        if (!data.emailAddress) {
+            nextErrors.emailAddress = "Email is required";
+        }
+        if (!data.mobilePhone) {
+            nextErrors.mobilePhone = "Mobile phone is required";
+        }
+        // Add other required checks as needed
+        return nextErrors;
     }
+
+    const handleNext = () => {
+        setTouchedNext(true);
+        const nextErrors = validateOnNext();
+        if (setErrors) setErrors(nextErrors as Errors<AddressDetail>);
+        // Only proceed if no errors
+        const hasError = Object.values(nextErrors).some(Boolean);
+        if (!hasError) {
+            onNext();
+        }
+    };
 
     return (
         <>
@@ -114,7 +147,7 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
                         <select
                             className="form-select w-full p-2 rounded border"
                             name="regionCityAdministration"
-                            value={data.regionCityAdministration}
+                            value={data.regionCityAdministration || ""}
                             onChange={handleChange}
                             required
                         >
@@ -191,7 +224,7 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
                         required
                     />
                 </Field>
-                <Field label="Office Phone" error={localErrors.officePhone}>
+                <Field label="Office Phone" error={touchedNext ? errors.officePhone : undefined}>
                     <input
                         type="tel"
                         name="officePhone"
@@ -200,7 +233,7 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
                         onChange={handleChange}
                     />
                 </Field>
-                <Field label="Email Address" required error={localErrors.emailAddress}>
+                <Field label="Email Address" required error={touchedNext ? errors.emailAddress : undefined}>
                     <input
                         type="email"
                         name="emailAddress"
@@ -222,7 +255,7 @@ export function StepAddress({ data, setData, errors, onNext, onBack, submitting 
                 <button
                     type="button"
                     className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
-                    onClick={onNext}
+                    onClick={handleNext}
                     disabled={submitting}
                 >
                     Next

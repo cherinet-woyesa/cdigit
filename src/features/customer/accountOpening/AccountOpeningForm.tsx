@@ -76,6 +76,8 @@ export function AccountOpeningForm() {
                 };
             }
         });
+        // Clear errors for this section when user edits
+        setErrors((prev) => ({ ...prev, [section]: {} }));
     };
 
     const validateStep = (data: any, stepIndex: number): Errors<any> => {
@@ -308,6 +310,11 @@ export function AccountOpeningForm() {
 };
 
     const handleBack = () => {
+        // Clear errors for the previous step when going back
+        const prevStep = currentStep - 1;
+        if (prevStep >= 0) {
+            setErrors((prev) => ({ ...prev, [stepKeys[prevStep]]: {} }));
+        }
         setCurrentStep(prev => prev - 1);
     };
 
@@ -485,6 +492,7 @@ export function AccountOpeningForm() {
                         data={formData.addressDetails}
                         setData={(d) => updateSectionData("addressDetails", d)}
                         errors={errors.addressDetails}
+                        setErrors={(e) => setErrors((prev) => ({ ...prev, addressDetails: e }))}
                         onNext={handleNext}
                         onBack={handleBack}
                         submitting={submitting}
@@ -580,7 +588,7 @@ export function AccountOpeningForm() {
                         <p className="text-lg text-gray-700 mb-6">
                             Thank you for completing your account opening application.
                             We've received your details and will process them shortly.
-                            Your application reference ID is: <span className="font-semibold text-fuchsia-700">{formData.personalDetails.id}</span>
+                            Your application reference ID is: <span className="font-semibold text-fuchsia-700">{formData.customerId}</span>
                         </p>
 
                         <div className="text-left bg-gray-50 p-6 rounded-lg shadow-inner max-h-96 overflow-y-auto mb-6">

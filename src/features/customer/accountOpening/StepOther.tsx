@@ -1,5 +1,5 @@
 // src/components/accountOpening/StepOther.tsx
-import React from "react";
+import React, { useState } from "react";
 import { Field } from "./FormElements";
 import type { OtherDetail, Errors } from "./formTypes";
 
@@ -33,22 +33,35 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
         setData({ ...data, [name]: type === "checkbox" ? checked : value } as OtherDetail);
     };
 
-    // Local conditional validation to mirror parent rules and provide instant feedback
-    const localErrors: Partial<Errors<OtherDetail>> = {};
-    if (data.hasBeenConvicted && !data.convictionReason) {
-        localErrors.convictionReason = 'Reason for conviction is required';
+
+    // Show errors only after Next is clicked
+    const [touchedNext, setTouchedNext] = useState(false);
+    const [localErrors, setLocalErrors] = useState<Partial<Errors<OtherDetail>>>({});
+
+    function validateAll() {
+        const errs: Partial<Errors<OtherDetail>> = {};
+        if (data.hasBeenConvicted && !data.convictionReason) {
+            errs.convictionReason = 'Reason for conviction is required';
+        }
+        if (data.isPoliticallyExposed && !data.pepPosition) {
+            errs.pepPosition = 'PEP Position is required';
+        }
+        if (!data.sourceOfFund) {
+            errs.sourceOfFund = 'Source of Fund is required';
+        }
+        if (data.sourceOfFund === 'Other' && !data.otherSourceOfFund) {
+            errs.otherSourceOfFund = 'Please specify other source of fund';
+        }
+        return errs;
     }
-    if (data.isPoliticallyExposed && !data.pepPosition) {
-        localErrors.pepPosition = 'PEP Position is required';
-    }
-    if (!data.sourceOfFund) {
-        localErrors.sourceOfFund = 'Source of Fund is required';
-    }
-    if (data.sourceOfFund === 'Other' && !data.otherSourceOfFund) {
-        localErrors.otherSourceOfFund = 'Please specify other source of fund';
-    }
-    const mergedErrors: Errors<OtherDetail> = { ...(errors || {}), ...(localErrors as Errors<OtherDetail>) };
-    const hasLocalErrors = Object.values(localErrors).some(Boolean);
+
+    const handleNext = () => {
+        setTouchedNext(true);
+        const errs = validateAll();
+        setLocalErrors(errs);
+        if (Object.values(errs).some(Boolean)) return;
+        onNext();
+    };
 
     return (
         <>
@@ -59,31 +72,34 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                         <label className="flex items-center space-x-1">
                             <input
                                 type="radio"
-                                name="hasBeenConvicted" // Changed to camelCase
+                                name="hasBeenConvicted"
                                 checked={data.hasBeenConvicted === true}
                                 onChange={() => setData({ ...data, hasBeenConvicted: true })}
+                                aria-label="Convicted Yes"
                             />
                             <span>Yes</span>
                         </label>
                         <label className="flex items-center space-x-1">
                             <input
                                 type="radio"
-                                name="hasBeenConvicted" // Changed to camelCase
+                                name="hasBeenConvicted"
                                 checked={data.hasBeenConvicted === false}
                                 onChange={() => setData({ ...data, hasBeenConvicted: false, convictionReason: '' })}
+                                aria-label="Convicted No"
                             />
                             <span>No</span>
                         </label>
                     </div>
                 </Field>
                 {data.hasBeenConvicted && (
-                    <Field label="Reason for Conviction" required error={mergedErrors.convictionReason}>
+                    <Field label="Reason for Conviction" required error={touchedNext ? localErrors.convictionReason : undefined}>
                         <input
                             type="text"
-                            name="convictionReason" // Changed to camelCase
-                            className="form-input w-full p-2 rounded border"
+                            name="convictionReason"
+                            className="form-input w-full p-2 rounded border focus:ring-2 focus:ring-fuchsia-500"
                             value={data.convictionReason || ""}
                             onChange={handleChange}
+                            aria-label="Reason for Conviction"
                         />
                     </Field>
                 )}
@@ -92,40 +108,44 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                         <label className="flex items-center space-x-1">
                             <input
                                 type="radio"
-                                name="isPoliticallyExposed" // Changed to camelCase
+                                name="isPoliticallyExposed"
                                 checked={data.isPoliticallyExposed === true}
                                 onChange={() => setData({ ...data, isPoliticallyExposed: true })}
+                                aria-label="PEP Yes"
                             />
                             <span>Yes</span>
                         </label>
                         <label className="flex items-center space-x-1">
                             <input
                                 type="radio"
-                                name="isPoliticallyExposed" // Changed to camelCase
+                                name="isPoliticallyExposed"
                                 checked={data.isPoliticallyExposed === false}
                                 onChange={() => setData({ ...data, isPoliticallyExposed: false, pepPosition: '' })}
+                                aria-label="PEP No"
                             />
                             <span>No</span>
                         </label>
                     </div>
                 </Field>
                 {data.isPoliticallyExposed && (
-                    <Field label="PEP Position" required error={mergedErrors.pepPosition}>
+                    <Field label="PEP Position" required error={touchedNext ? localErrors.pepPosition : undefined}>
                         <input
                             type="text"
-                            name="pepPosition" // Changed to camelCase
-                            className="form-input w-full p-2 rounded border"
+                            name="pepPosition"
+                            className="form-input w-full p-2 rounded border focus:ring-2 focus:ring-fuchsia-500"
                             value={data.pepPosition || ""}
                             onChange={handleChange}
+                            aria-label="PEP Position"
                         />
                     </Field>
                 )}
-                <Field label="Source of Fund" required error={mergedErrors.sourceOfFund}>
+                <Field label="Source of Fund" required error={touchedNext ? localErrors.sourceOfFund : undefined}>
                     <select
-                        className="form-select w-full p-2 rounded border"
-                        name="sourceOfFund" // Changed to camelCase
+                        className="form-select w-full p-2 rounded border focus:ring-2 focus:ring-fuchsia-500"
+                        name="sourceOfFund"
                         value={data.sourceOfFund}
                         onChange={handleChange}
+                        aria-label="Source of Fund"
                     >
                         <option value="">Select</option>
                         <option value="Salary">Salary</option>
@@ -138,13 +158,14 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                     </select>
                 </Field>
                 {data.sourceOfFund === "Other" && (
-                    <Field label="Specify Other Source of Fund" required error={mergedErrors.otherSourceOfFund}>
+                    <Field label="Specify Other Source of Fund" required error={touchedNext ? localErrors.otherSourceOfFund : undefined}>
                         <input
                             type="text"
-                            name="otherSourceOfFund" // Changed to camelCase
-                            className="form-input w-full p-2 rounded border"
+                            name="otherSourceOfFund"
+                            className="form-input w-full p-2 rounded border focus:ring-2 focus:ring-fuchsia-500"
                             value={data.otherSourceOfFund || ""}
                             onChange={handleChange}
+                            aria-label="Other Source of Fund"
                         />
                     </Field>
                 )}
@@ -159,9 +180,10 @@ export function StepOther({ data, setData, errors, onNext, onBack, submitting }:
                 </button>
                 <button
                     type="button"
-                    className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
-                    onClick={onNext}
-                    disabled={submitting || hasLocalErrors}
+                    className={`bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={handleNext}
+                    disabled={submitting}
+                    aria-disabled={submitting}
                 >
                     Next
                 </button>

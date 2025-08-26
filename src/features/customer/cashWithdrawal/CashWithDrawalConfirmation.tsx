@@ -29,6 +29,10 @@ export default function WithdrawalConfirmation() {
     ? `${Number(amountValueRaw).toLocaleString()}.00 ETB`
     : (state?.ui?.amount || confirmationData.amount)
 
+  // Fix: get referenceId and branch from all possible sources, including state.ui
+  const referenceId = serverData?.referenceId || state?.referenceId || state?.ui?.referenceId || confirmationData.referenceId;
+  const branch = serverData?.branch || state?.branch || state?.ui?.branch || confirmationData.branch;
+
   useEffect(() => {
     const runSubmit = async () => {
       if (!state?.pending || !state?.requestPayload) return
@@ -83,11 +87,11 @@ export default function WithdrawalConfirmation() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-fuchsia-600">Reference ID:</p>
-                <p className="font-medium break-all">{serverData?.referenceId || confirmationData.referenceId}</p>
+                <p className="font-medium break-all">{referenceId}</p>
               </div>
               <div>
                 <p className="text-sm text-fuchsia-600">Branch:</p>
-                <p className="font-medium">{confirmationData.branch}</p>
+                <p className="font-medium">{branch}</p>
               </div>
               <div>
                 <p className="text-sm text-fuchsia-600">Account Number:</p>

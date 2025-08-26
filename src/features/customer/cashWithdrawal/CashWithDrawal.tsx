@@ -1,13 +1,14 @@
 // If you use windowService here, use type-only import for Window
 // import type { Window as WindowType } from '../../../services/windowService';
-import React, { useState, useEffect } from 'react';
-// import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
+
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import authService from '../../../services/authService';
 
 const API_BASE_URL = 'http://localhost:5268/api';
-import { submitWithdrawal } from '../../../services/withdrawalService';
+
 
 
 
@@ -24,6 +25,7 @@ export default function CashWithdrawalForm() {
   // For account selection
   const [accounts, setAccounts] = useState<any[]>([]);
   const [accountDropdown, setAccountDropdown] = useState(false);
+  const errorRefs = useRef<{ [key: string]: HTMLInputElement | HTMLSelectElement | null }>({});
   
   const [formData, setFormData] = useState<{
     accountNumber: string;
@@ -210,7 +212,6 @@ export default function CashWithdrawalForm() {
       }
       return updated;
     });
-    
     // If accountNumber is changed via dropdown, update holder name
     if (name === "accountNumber" && accounts.length > 0) {
       const selected = accounts.find(acc => acc.accountNumber === value);
@@ -229,6 +230,14 @@ export default function CashWithdrawalForm() {
       }
     }
   }
+  // Scroll to first error field when errors change
+  useEffect(() => {
+    const firstErrorKey = (Object.keys(errors) as Array<keyof typeof errors>).find(k => errors[k]);
+    if (firstErrorKey && errorRefs.current[firstErrorKey]) {
+      errorRefs.current[firstErrorKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      errorRefs.current[firstErrorKey]?.focus();
+    }
+  }, [errors]);
 
   // Simple validators
   const isDigitsOnly = (value: string) => /^\d+$/.test(value);
@@ -395,6 +404,8 @@ export default function CashWithdrawalForm() {
         state: {
           pending: true,
           requestPayload: withdrawalReq,
+          branch: branchInfo.name,
+          // referenceId will be set by backend response, but pass UI branch for fallback
           ui: {
             accountNumber: formData.accountNumber,
             amount: `${Number(formData.amount).toLocaleString()}.00 ETB`,
@@ -465,7 +476,10 @@ export default function CashWithdrawalForm() {
                             name="accountNumber"
                             value={formData.accountNumber}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
+                            className={`w-full rounded-lg border focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 ${errors.accountNumber ? 'border-red-500' : 'border-fuchsia-300'}`}
+                            ref={el => { errorRefs.current.accountNumber = el; }}
+                            aria-invalid={!!errors.accountNumber}
+                            aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
                           >
                             <option value="">Select an account</option>
                             {accounts.map((account) => (
@@ -480,13 +494,16 @@ export default function CashWithdrawalForm() {
                             name="accountNumber"
                             value={formData.accountNumber}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
+                            className={`w-full rounded-lg border focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 ${errors.accountNumber ? 'border-red-500' : 'border-fuchsia-300'}`}
                             placeholder="Account number"
                             readOnly={accounts.length === 1}
+                            ref={el => { errorRefs.current.accountNumber = el; }}
+                            aria-invalid={!!errors.accountNumber}
+                            aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
                           />
                         )}
                         {errors.accountNumber && (
-                          <p className="mt-1 text-sm text-red-600">{errors.accountNumber}</p>
+                          <p className="mt-1 text-sm text-red-600" id="accountNumber-error">{errors.accountNumber}</p>
                         )}
                       </div>
 
@@ -505,14 +522,41 @@ export default function CashWithdrawalForm() {
                           type="number"
                           name="amount"
                           value={formData.amount}
-                          onChange={handleChange}
-                          className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
+                          onChange={e => {
+                            handleChange(e);
+                            const value = e.target.value;
+                            let errorMsg = undefined;
+                            if (!value) {
+                              errorMsg = 'Please enter withdrawal amount';
+                            } else if (Number(value) <= 0) {
+                              errorMsg = 'Amount must be greater than zero';
+                            } else if (Number(value) > 50000) {
+                              errorMsg = 'Daily withdrawal limit is ETB 50,000';
+                            }
+                            setErrors(prev => ({ ...prev, amount: errorMsg }));
+                          }}
+                          onBlur={e => {
+                            const value = e.target.value;
+                            let errorMsg = undefined;
+                            if (!value) {
+                              errorMsg = 'Please enter withdrawal amount';
+                            } else if (Number(value) <= 0) {
+                              errorMsg = 'Amount must be greater than zero';
+                            } else if (Number(value) > 50000) {
+                              errorMsg = 'Daily withdrawal limit is ETB 50,000';
+                            }
+                            setErrors(prev => ({ ...prev, amount: errorMsg }));
+                          }}
+                          className={`w-full rounded-lg border focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 ${errors.amount ? 'border-red-500' : 'border-fuchsia-300'}`}
                           placeholder="Enter amount"
                           min={0}
                           step={1}
+                          ref={el => { errorRefs.current.amount = el; }}
+                          aria-invalid={!!errors.amount}
+                          aria-describedby={errors.amount ? 'amount-error' : undefined}
                         />
                         {errors.amount && (
-                          <p className="mt-1 text-sm text-red-600">{errors.amount}</p>
+                          <p className="mt-1 text-sm text-red-600" id="amount-error">{errors.amount}</p>
                         )}
                       </div>
 
@@ -562,13 +606,16 @@ export default function CashWithdrawalForm() {
                           value={formData.otp}
                           onChange={handleChange}
                           maxLength={6}
-                          className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest"
+                          className={`w-full rounded-lg border focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 text-center text-xl tracking-widest ${errors.otp ? 'border-red-500' : 'border-fuchsia-300'}`}
                           placeholder="------"
                           inputMode="numeric"
                           pattern="^[0-9]{6}$"
+                          ref={el => { errorRefs.current.otp = el; }}
+                          aria-invalid={!!errors.otp}
+                          aria-describedby={errors.otp ? 'otp-error' : undefined}
                         />
                         {errors.otp && (
-                          <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
+                          <p className="mt-1 text-sm text-red-600" id="otp-error">{errors.otp}</p>
                         )}
                       </div>
 
@@ -639,7 +686,7 @@ export default function CashWithdrawalForm() {
                     </div>
                   )}
         </div>
-      </div>
+  </div>
     </div>
     </div>
     );

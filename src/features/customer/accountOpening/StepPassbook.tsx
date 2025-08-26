@@ -1,5 +1,5 @@
 // src/components/accountOpening/StepPassbook.tsx
-import React from "react";
+import React, { useState } from "react";
 import { Field } from "./FormElements";
 import type { PassbookMudayRequest, Errors } from "./formTypes";
 
@@ -29,13 +29,26 @@ export function StepPassbook({ data, setData, errors, onNext, onBack, submitting
         setData({ ...data, [name]: value });
     };
 
-    // Local conditional validation
-    const localErrors: Partial<Errors<PassbookMudayRequest>> = {};
-    if (data.needsMudayBox && !data.mudayBoxDeliveryBranch) {
-        localErrors.mudayBoxDeliveryBranch = "Muday Box Delivery Branch is required";
+
+    // Show errors only after Next is clicked
+    const [touchedNext, setTouchedNext] = useState(false);
+    const [localErrors, setLocalErrors] = useState<Partial<Errors<PassbookMudayRequest>>>({});
+
+    function validateAll() {
+        const errs: Partial<Errors<PassbookMudayRequest>> = {};
+        if (data.needsMudayBox && !data.mudayBoxDeliveryBranch) {
+            errs.mudayBoxDeliveryBranch = "Muday Box Delivery Branch is required";
+        }
+        return errs;
     }
-    const mergedErrors: Errors<PassbookMudayRequest> = { ...(errors || {}), ...(localErrors as Errors<PassbookMudayRequest>) };
-    const hasLocalErrors = Object.values(localErrors).some(Boolean);
+
+    const handleNext = () => {
+        setTouchedNext(true);
+        const errs = validateAll();
+        setLocalErrors(errs);
+        if (Object.values(errs).some(Boolean)) return;
+        onNext();
+    };
 
     return (
         <>
@@ -44,27 +57,30 @@ export function StepPassbook({ data, setData, errors, onNext, onBack, submitting
                 <Field label="Request Passbook" error={errors.needsPassbook}>
                     <input
                         type="checkbox"
-                        name="needsPassbook" // Changed to camelCase
+                        name="needsPassbook"
                         checked={data.needsPassbook}
                         onChange={handleChange}
+                        aria-label="Request Passbook"
                     />
                 </Field>
                 <Field label="Request Muday Box" error={errors.needsMudayBox}>
                     <input
                         type="checkbox"
-                        name="needsMudayBox" // Changed to camelCase
+                        name="needsMudayBox"
                         checked={data.needsMudayBox}
                         onChange={handleChange}
+                        aria-label="Request Muday Box"
                     />
                 </Field>
                 {data.needsMudayBox && (
-                    <Field label="Muday Box Delivery Branch" required error={mergedErrors.mudayBoxDeliveryBranch}>
+                    <Field label="Muday Box Delivery Branch" required error={touchedNext ? localErrors.mudayBoxDeliveryBranch : undefined}>
                         <input
                             type="text"
-                            name="mudayBoxDeliveryBranch" // Changed to camelCase
-                            className="form-input w-full p-2 rounded border"
+                            name="mudayBoxDeliveryBranch"
+                            className="form-input w-full p-2 rounded border focus:ring-2 focus:ring-fuchsia-500"
                             value={data.mudayBoxDeliveryBranch || ""}
                             onChange={handleTextChange}
+                            aria-label="Muday Box Delivery Branch"
                         />
                     </Field>
                 )}
@@ -79,9 +95,10 @@ export function StepPassbook({ data, setData, errors, onNext, onBack, submitting
                 </button>
                 <button
                     type="button"
-                    className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
-                    onClick={onNext}
-                    disabled={submitting || hasLocalErrors}
+                    className={`bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={handleNext}
+                    disabled={submitting}
+                    aria-disabled={submitting}
                 >
                     Next
                 </button>
