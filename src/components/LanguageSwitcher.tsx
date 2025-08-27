@@ -21,6 +21,8 @@ const LanguageSwitcher = () => {
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -28,12 +30,15 @@ const LanguageSwitcher = () => {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
-  const handleChange = (lng: string) => {
-    i18n.changeLanguage(lng);
-    localStorage.setItem('i18nextLng', lng);
+  const handleChange = async (lng: string) => {
+    // The i18next-browser-languagedetector plugin, if configured,
+    // will automatically handle persisting the language.
+    await i18n.changeLanguage(lng);
     setIsOpen(false);
   };
 
