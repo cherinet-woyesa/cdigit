@@ -38,7 +38,7 @@ const StaffLogin: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-4">
       <div className="w-full max-w-lg bg-white shadow-2xl rounded-2xl p-10 space-y-8">
-        {/* ... (Your existing UI for the login page, but updated to use email/password) ... */}
+
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-semibold text-gray-900 uppercase">
             Commercial Bank of Ethiopia

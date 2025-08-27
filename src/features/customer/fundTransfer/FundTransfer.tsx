@@ -1,4 +1,20 @@
 import { useState, useEffect } from 'react';
+
+// Helper: simple number to words (English, for demo)
+function numberToWords(num: number): string {
+  const a = [
+    '', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+    'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+    'seventeen', 'eighteen', 'nineteen'
+  ];
+  const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  if (isNaN(num) || num === 0) return '';
+  if (num < 20) return a[num];
+  if (num < 100) return b[Math.floor(num / 10)] + (num % 10 ? ' ' + a[num % 10] : '');
+  if (num < 1000) return a[Math.floor(num / 100)] + ' hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
+  if (num < 1000000) return numberToWords(Math.floor(num / 1000)) + ' thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
+  return num.toString();
+}
 import { useNavigate } from 'react-router-dom';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../context/AuthContext';
@@ -16,12 +32,12 @@ export default function FundTransfer() {
     debitAccountNumber: localStorage.getItem('ft_debitAccountNumber') || '',
     debitAccountName: localStorage.getItem('ft_debitAccountName') || '',
     amount: '',
+    amountInWords: '',
     creditAccountNumber: '',
     creditAccountName: '',
     remark: '',
     otp: '',
-  // selfie: null as string | null
-  })
+  });
   const [accounts, setAccounts] = useState<any[]>([]);
   const [accountDropdown, setAccountDropdown] = useState(false);
   // Auto-fill debit account from user accounts (like CashDeposit)
@@ -133,8 +149,14 @@ export default function FundTransfer() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    const { name, value } = e.target;
+    setFormData(prev => {
+      let updated = { ...prev, [name]: value };
+      if (name === 'amount') {
+        updated.amountInWords = numberToWords(Number(value));
+      }
+      return updated;
+    });
   }
 
   const validateDebitAccount = async () => {
@@ -260,7 +282,7 @@ export default function FundTransfer() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-fuchsia-50 to-white p-4 md:p-8">
-      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-fuchsia-100">
+  <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-fuchsia-100">
         {/* Form Header */}
         <div className="bg-gradient-to-r from-fuchsia-700 to-fuchsia-600 p-6 text-white text-center">
           <h1 className="text-2xl font-bold">Fund Transfer</h1>
@@ -415,6 +437,19 @@ export default function FundTransfer() {
                     onChange={handleChange}
                     className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3"
                     placeholder="Enter amount"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-fuchsia-700 mb-1">
+                    Amount in Words
+                  </label>
+                  <input
+                    type="text"
+                    name="amountInWords"
+                    value={formData.amountInWords}
+                    readOnly
+                    className="w-full rounded-lg border border-fuchsia-200 bg-fuchsia-50 p-3 text-gray-700"
+                    placeholder="Auto-filled"
                   />
                 </div>
 

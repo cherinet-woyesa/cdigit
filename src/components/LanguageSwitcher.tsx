@@ -7,9 +7,7 @@ const LANGUAGES = [
   { code: 'en', name: 'English', flag: '🇬🇧' },
   { code: 'am', name: 'አማርኛ', flag: '🇪🇹' },
   // Add more languages here as needed
-  // Example:
-  // { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  // { code: 'es', name: 'Español', flag: '🇪🇸' },
+
 ];
 
 const LanguageSwitcher = () => {

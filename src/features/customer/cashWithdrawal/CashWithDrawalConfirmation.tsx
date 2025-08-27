@@ -1,3 +1,4 @@
+
 import { useLocation } from 'react-router-dom';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { useEffect, useState } from 'react';
@@ -8,6 +9,7 @@ export default function WithdrawalConfirmation() {
   const [serverData, setServerData] = useState<any>(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
 
   // Default values in case of direct access (shouldn't happen in normal flow)
   const confirmationData = state || {
@@ -20,16 +22,20 @@ export default function WithdrawalConfirmation() {
     message: 'Withdrawal submitted successfully.'
   };
 
-  // Compose values from all possible sources
-  const referenceId = serverData?.referenceId || state?.referenceId || state?.ui?.referenceId || confirmationData.referenceId;
-  const branch = serverData?.branch || state?.branch || state?.ui?.branch || confirmationData.branch;
-  const accountNumber = (serverData?.accountNumber || state?.ui?.accountNumber || confirmationData.accountNumber || '').toString();
-  const amountValueRaw = serverData ? (serverData.Withdrawal_Amount ?? serverData.withdrawa_Amount) : undefined;
+
+  // Compose values from all possible sources, prioritizing backend response (including .data)
+  const data = serverData?.data || serverData || {};
+  const referenceId = data.formReferenceId || data.referenceId || data.ReferenceId || state?.referenceId || state?.ui?.referenceId || confirmationData.referenceId;
+  const branch = serverData?.branch || serverData?.Branch || state?.branch || state?.ui?.branch || confirmationData.branch;
+  const accountNumber = (data.accountNumber || data.AccountNumber || state?.ui?.accountNumber || confirmationData.accountNumber || '').toString();
+  const accountHolderName = data.accountHolderName || data.accountHolderName || '';
+  const amountValueRaw = data.Withdrawal_Amount ?? data.withdrawa_Amount ?? data.amount ?? data.Amount;
   const amount = (amountValueRaw !== undefined && !isNaN(Number(amountValueRaw)) && Number(amountValueRaw) > 0)
     ? `${Number(amountValueRaw).toLocaleString()}.00 ETB`
     : (state?.ui?.amount || confirmationData.amount);
-  const token = (serverData?.TokenNumber || serverData?.tokenNumber || state?.token || confirmationData.token) as string;
-  const windowValue = (serverData?.windowNumber || serverData?.QueueNumber || state?.window || confirmationData.window) as string | number;
+  const token = (data.tokenNumber || data.TokenNumber || data.token || data.Token || state?.token || confirmationData.token) as string;
+  const queueNumber = data.queueNumber || data.QueueNumber;
+  const windowValue = (data.windowNumber || data.WindowNumber || state?.window || confirmationData.window) as string | number;
 
   useEffect(() => {
     const runSubmit = async () => {
@@ -64,7 +70,7 @@ export default function WithdrawalConfirmation() {
             <h2 className="text-lg font-semibold text-fuchsia-800 border-b border-fuchsia-100 pb-2">
               Transaction Details
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-fuchsia-600">Reference ID:</p>
                 <p className="font-medium">{referenceId}</p>
@@ -78,20 +84,31 @@ export default function WithdrawalConfirmation() {
                 <p className="font-medium">{accountNumber}</p>
               </div>
               <div>
+                <p className="text-sm text-fuchsia-600">Account Holder Name:</p>
+                <p className="font-medium">{data.accountHolderName || data.AccountHolderName || ''}</p>
+              </div>
+              <div>
                 <p className="text-sm text-fuchsia-600">Amount:</p>
                 <p className="font-medium">{amount}</p>
               </div>
             </div>
           </div>
 
-          {/* Token Display */}
-          <div className="bg-fuchsia-50 rounded-lg p-4 border border-fuchsia-100">
-            <div className="text-center">
+          {/* Queue Number & Token Display */}
+          <div className="flex flex-col md:flex-row gap-4 mt-2">
+            {/* On mobile, stack vertically. On desktop, side by side. */}
+            <div className="flex-1 bg-fuchsia-50 rounded-lg p-4 border border-fuchsia-100 flex flex-col items-center justify-center">
+              <p className="text-sm text-fuchsia-600">Your Queue Number</p>
+              <p className="text-6xl font-extrabold text-fuchsia-700 my-2 tracking-widest drop-shadow-lg">{queueNumber ?? 'N/A'}</p>
+            </div>
+            <div className="flex-1 bg-fuchsia-50 rounded-lg p-4 border border-fuchsia-100 flex flex-col items-center justify-center">
               <p className="text-sm text-fuchsia-600">Your Token Number</p>
-              <p className="text-4xl font-bold text-fuchsia-700 my-2">{token}</p>
-              <p className="text-fuchsia-700 font-medium">
-                Proceed to Window: <span className="text-2xl">{windowValue ?? 'N/A'}</span>
-              </p>
+              <p className="text-base font-bold text-fuchsia-700 my-2">{token}</p>
+              {windowValue && windowValue !== 'N/A' && (
+                <p className="text-fuchsia-700 font-medium">
+                  Proceed to Window: <span className="text-2xl">{windowValue}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -106,7 +123,7 @@ export default function WithdrawalConfirmation() {
             </ul>
           </div>
 
-          {/* Actions */}
+          {/* Backend Raw Data (for debugging/confirmation) */}
           <div className="pt-4">
             <button
               onClick={() => window.print()}
@@ -115,8 +132,14 @@ export default function WithdrawalConfirmation() {
               Print Confirmation
             </button>
             <p className="text-center text-xs text-gray-500 mt-4">
-              Thank you for banking with Commercial Bank of Ethiopia
+              Thank you for choosing Commercial Bank of Ethiopia
             </p>
+            {serverData?.data && (
+              <div className="mt-6 bg-gray-50 border border-gray-200 rounded p-3 text-xs text-gray-700 break-all">
+                <div className="mb-1 font-semibold text-fuchsia-700">Backend Response:</div>
+                <pre className="whitespace-pre-wrap">{JSON.stringify(serverData.data, null, 2)}</pre>
+              </div>
+            )}
           </div>
         </div>
       </div>

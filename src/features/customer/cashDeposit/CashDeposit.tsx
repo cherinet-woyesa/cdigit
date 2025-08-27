@@ -360,6 +360,8 @@ type Errors = Partial<Record<keyof FormData, string>>;
 
             navigate('/form/cash-deposit/cashdepositconfirmation', {
                 state: {
+                    serverData: response,
+                    // Optionally, keep UI fallback fields if needed:
                     formType: 'Cash Deposit',
                     referenceId: response.depositId ? `CD-${response.depositId}` : `CD-${Date.now()}`,
                     accountNumber: formData.accountNumber,

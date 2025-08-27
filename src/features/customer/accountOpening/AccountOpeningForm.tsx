@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as accountOpeningService from "../../../services/accountOpeningService";
+import { checkAccountExistsByPhone } from "../../../services/accountsService";
 import { ProgressBar, Field } from "./FormElements";
 import type {
     Errors,
@@ -331,6 +332,14 @@ export function AccountOpeningForm() {
         setPhoneCheckLoading(true);
 
         try {
+            // Check if an account already exists for this phone number
+            const accountExists = await checkAccountExistsByPhone(phoneNumberInput.trim());
+            if (accountExists) {
+                setPhoneInputError("An account already exists for this phone number. Please log in or use a different number.");
+                setPhoneCheckLoading(false);
+                return;
+            }
+
             const savedFormData: FormSummary | null = await accountOpeningService.getSavedForm(phoneNumberInput);
 
             if (savedFormData) {

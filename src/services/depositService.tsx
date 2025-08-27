@@ -69,7 +69,7 @@ const depositService = {
         }
     },
 
-    getDepositById: async (id: number): Promise<any> => {
+    getDepositById: async (id: string): Promise<any> => {
         try {
             const response = await fetch(`${API_BASE_URL}/${id}`, {
                 method: 'GET',
@@ -79,6 +79,7 @@ const depositService = {
             });
 
             if (response.ok) {
+                // Expecting { success, message, data }
                 return await response.json();
             } else {
                 const errorData: ErrorResponse = await response.json();

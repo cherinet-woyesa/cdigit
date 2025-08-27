@@ -3,6 +3,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
+// Helper: simple number to words (English, for demo)
+function numberToWords(num: number): string {
+  const a = [
+    '', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+    'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+    'seventeen', 'eighteen', 'nineteen'
+  ];
+  const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  if (isNaN(num) || num === 0) return '';
+  if (num < 20) return a[num];
+  if (num < 100) return b[Math.floor(num / 10)] + (num % 10 ? ' ' + a[num % 10] : '');
+  if (num < 1000) return a[Math.floor(num / 100)] + ' hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
+  if (num < 1000000) return numberToWords(Math.floor(num / 1000)) + ' thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
+  return num.toString();
+}
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import authService from '../../../services/authService';
@@ -27,19 +42,21 @@ export default function CashWithdrawalForm() {
   const [accountDropdown, setAccountDropdown] = useState(false);
   const errorRefs = useRef<{ [key: string]: HTMLInputElement | HTMLSelectElement | null }>({});
   
-  const [formData, setFormData] = useState<{
-    accountNumber: string;
-    accountHolderName: string;
-    amount: string;
-    otp: string;
-    telephoneNumber: string;
-  }>({
-    accountNumber: persistedAccountNumber,
-    accountHolderName: persistedAccountHolderName,
-    amount: '',
-    otp: '',
-    telephoneNumber: persistedTelephoneNumber
-  });
+    const [formData, setFormData] = useState<{
+      accountNumber: string;
+      accountHolderName: string;
+      amount: string;
+      amountInWords: string;
+      otp: string;
+      telephoneNumber: string;
+    }>({
+      accountNumber: persistedAccountNumber,
+      accountHolderName: persistedAccountHolderName,
+      amount: '',
+      amountInWords: '',
+      otp: '',
+      telephoneNumber: persistedTelephoneNumber
+    });
   const [errors, setErrors] = useState<{
     accountNumber?: string;
     amount?: string;
@@ -53,6 +70,7 @@ export default function CashWithdrawalForm() {
   const navigate = useNavigate();
 
   // Auto-fill branch info from QR/link (as per FSD)
+  const [amountInWords, setAmountInWords] = useState<string>('');
   // For now, always use Abiy Branch for demo, but this can be dynamic
   const ABIY_BRANCH_ID = 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6';
   const branchInfo = {
@@ -205,10 +223,14 @@ export default function CashWithdrawalForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => {
-      const updated = { ...prev, [name]: value };
+      let updated = { ...prev, [name]: value };
       // Persist relevant fields
       if (["accountNumber", "accountHolderName", "telephoneNumber"].includes(name)) {
         localStorage.setItem(`cw_${name}`, value);
+      }
+      // Always update amountInWords if amount changes
+      if (name === "amount") {
+        updated.amountInWords = numberToWords(Number(value));
       }
       return updated;
     });
@@ -423,7 +445,7 @@ export default function CashWithdrawalForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-fuchsia-50 to-white p-4 md:p-8">
-      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-fuchsia-100">
+  <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden border border-fuchsia-200">
         {/* Form Header */}
         <div className="bg-gradient-to-r from-fuchsia-700 to-fuchsia-600 p-6 text-white text-center">
           <h1 className="text-2xl font-bold">Cash Withdrawal</h1>
@@ -509,50 +531,65 @@ export default function CashWithdrawalForm() {
                         </div>
                       )}
 
-                      <div>
-                        <label className="block text-sm font-medium text-fuchsia-700 mb-2">
-                          Withdrawal Amount (ETB) *
-                        </label>
-                        <input
-                          type="number"
-                          name="amount"
-                          value={formData.amount}
-                          onChange={e => {
-                            handleChange(e);
-                            const value = e.target.value;
-                            let errorMsg = undefined;
-                            if (!value) {
-                              errorMsg = 'Please enter withdrawal amount';
-                            } else if (Number(value) <= 0) {
-                              errorMsg = 'Amount must be greater than zero';
-                            } else if (Number(value) > 50000) {
-                              errorMsg = 'Daily withdrawal limit is ETB 50,000';
-                            }
-                            setErrors(prev => ({ ...prev, amount: errorMsg }));
-                          }}
-                          onBlur={e => {
-                            const value = e.target.value;
-                            let errorMsg = undefined;
-                            if (!value) {
-                              errorMsg = 'Please enter withdrawal amount';
-                            } else if (Number(value) <= 0) {
-                              errorMsg = 'Amount must be greater than zero';
-                            } else if (Number(value) > 50000) {
-                              errorMsg = 'Daily withdrawal limit is ETB 50,000';
-                            }
-                            setErrors(prev => ({ ...prev, amount: errorMsg }));
-                          }}
-                          className={`w-full rounded-lg border focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 p-3 ${errors.amount ? 'border-red-500' : 'border-fuchsia-300'}`}
-                          placeholder="Enter amount"
-                          min={0}
-                          step={1}
-                          ref={el => { errorRefs.current.amount = el; }}
-                          aria-invalid={!!errors.amount}
-                          aria-describedby={errors.amount ? 'amount-error' : undefined}
-                        />
-                        {errors.amount && (
-                          <p className="mt-1 text-sm text-red-600" id="amount-error">{errors.amount}</p>
-                        )}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-fuchsia-700 mb-1">
+                            Amount in Figure <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            name="amount"
+                            value={formData.amount}
+                            onChange={e => {
+                              handleChange(e);
+                              const value = e.target.value;
+                              let errorMsg = undefined;
+                              if (!value) {
+                                errorMsg = 'Please enter withdrawal amount';
+                              } else if (Number(value) <= 0) {
+                                errorMsg = 'Amount must be greater than zero';
+                              } else if (Number(value) > 50000) {
+                                errorMsg = 'Daily withdrawal limit is ETB 50,000';
+                              }
+                              setErrors(prev => ({ ...prev, amount: errorMsg }));
+                            }}
+                            onBlur={e => {
+                              const value = e.target.value;
+                              let errorMsg = undefined;
+                              if (!value) {
+                                errorMsg = 'Please enter withdrawal amount';
+                              } else if (Number(value) <= 0) {
+                                errorMsg = 'Amount must be greater than zero';
+                              } else if (Number(value) > 50000) {
+                                errorMsg = 'Daily withdrawal limit is ETB 50,000';
+                              }
+                              setErrors(prev => ({ ...prev, amount: errorMsg }));
+                            }}
+                            className={`w-full rounded-lg border ${errors.amount ? "border-red-400" : "border-fuchsia-300"} focus:ring-2 focus:ring-fuchsia-500 p-2`}
+                            placeholder="Enter amount"
+                            ref={el => { errorRefs.current.amount = el; }}
+                            aria-invalid={!!errors.amount}
+                            aria-describedby={errors.amount ? 'amount-error' : undefined}
+                          />
+                          {errors.amount && (
+                            <p className="mt-1 text-xs text-red-600" id="amount-error">{errors.amount}</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-fuchsia-700 mb-1">
+                            Amount in Words
+                          </label>
+                          <input
+                            type="text"
+                            name="amountInWords"
+                            value={formData.amountInWords}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 p-2"
+                            placeholder="Auto-filled"
+                            readOnly
+                          />
+                        </div>
                       </div>
 
                       <button
