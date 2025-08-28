@@ -1,199 +1,153 @@
+import axios from 'axios';
 
-import axios, { AxiosError } from 'axios';
+const API_BASE_URL = 'http://localhost:5268/api';
 
-const API_BASE_URL = 'https://localhost:5268/api';
-
-
-interface NextCustomerResponse {
-    id: string;
-    formKey: string;
-    queueNumber: number;
-    transactionType: 'Deposit' | 'Withdrawal' | 'FundTransfer';
-    message: string;
+/** Unified API response wrapper */
+export interface ApiResponse<T> {
+  success: boolean;
+  message?: string | null;
+  data?: T | null;
 }
-interface DepositDenominationsUpdateDto {
-  formkey: string;
-  frontMakerId: string;
+
+/** Queue item (from Teller/All_Customer_On_Queue) */
+export type TransactionType = 'Deposit' | 'Withdrawal' | 'FundTransfer';
+
+export interface CustomerQueueItem {
+  id: string;
+  formReferenceId: string;
+  queueNumber: number;
+  accountHolderName: string;
+  amount: number;
+  transactionType: TransactionType;
+  status: number | string;
+  submittedAt: string;
+}
+
+/** "Next customer" payload can be any of the mapped DTOs; include common fields + indexer for extras */
+export interface NextCustomerData {
+  id: string;
+  formReferenceId: string;
+  queueNumber: number;
+  transactionType: TransactionType;
+  accountNumber?: string | number;
+  accountHolderName?: string;
+  sourceAccountNumber?: string | number;
+  destinationAccountNumber?: string | number;
+  withdrawal_Amount?: number;         // server spelled "withdrawa_Amount" in sample; keep both
+  withdrawa_Amount?: number;
+  transferAmount?: number;
+  tokenNumber?: string;
+  [key: string]: any;
+}
+
+/** Update denominations DTO */
+export interface DepositDenominationsUpdateDto {
+  formReferenceId: string;            // (We’ll pass the same formReferenceId here)
+  frontMakerId: string;       // maker GUID from token (nameid)
   denominations: { [key: string]: number };
 }
 
+const authHeader = (token: string) => ({
+  headers: { Authorization: `Bearer ${token}` },
+});
 
 const makerService = {
-  // Mark a withdrawal as served
-  markWithdrawalAsServed: async (formkey: string, makerId: string, token: string) => {
-    try {
-      const updateDto = { formkey, frontMakerId: makerId };
-      const response = await axios.put(`${API_BASE_URL}/withdrawal/mark-as-served`, updateDto, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to mark withdrawal as served:', error);
-      throw error;
-    }
-  },
-
-  // Mark a fund transfer as served
-  markFundTransferAsServed: async (formkey: string, makerId: string, token: string) => {
-    try {
-      const updateDto = { formkey, frontMakerId: makerId };
-      const response = await axios.put(`${API_BASE_URL}/fundTransfer/mark-as-served`, updateDto, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to mark fund transfer as served:', error);
-      throw error;
-    }
-  },
-  // Fetch a list of pending forms for the maker's branch and assigned window
-  getFormsForWindow: async (windowId: string, token: string) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/forms/pending-forms-for-window/${windowId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // Return an empty array if no forms are found for the window, which is a clean state.
-        console.warn(`No pending forms found for window ID: ${windowId}. Returning empty array.`);
-        return [];
-      }
-      // Re-throw other errors (e.g., 500, network issues)
-      console.error('Failed to fetch forms:', error);
-      throw error;
-    }
-  },
-
-  // Assign a maker to a window
-  selectWindow: async (windowId: string, makerId: string, token: string) => {
-    try {
-      const response = await axios.put(`${API_BASE_URL}/window/${windowId}/select-window/${makerId}`, {}, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to assign maker to window:', error);
-      throw error;
-    }
-  },
-
-  // Get a list of all windows for a given branch
+  /** WINDOWS */
   getWindowsByBranchId: async (branchId: string, token: string) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/window/bybranch/${branchId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // Return an empty array if no windows are found for the branch.
-        console.warn(`No windows found for branch ID: ${branchId}. Returning empty array.`);
-        return [];
-      }
-      console.error('Failed to fetch windows by branch ID:', error);
-      throw error;
-    }
-  },
-
-  // Update deposit denominations
-  updateDepositDenominations: async (formkey: string, updateDto: DepositDenominationsUpdateDto, token: string): Promise<{ message: string }> => {
-    try {
-      const response = await axios.put(`${API_BASE_URL}/deposits/denominations/${formkey}`, updateDto, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to update denominations:', error);
-      throw error;
-    }
-  },
-
-
-
-  // Mark a deposit as submitted to CBS
-  markDepositAsDeposited: async (formkey: string, makerId: string, token: string) => {
-    try {
-      const updateDto = { formkey, frontMakerId: makerId };
-      const response = await axios.put(`${API_BASE_URL}/deposits/mark-as-deposited`, updateDto, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to mark deposit as deposited:', error);
-      throw error;
-    }
+    const res = await axios.get(`${API_BASE_URL}/Window/bybranch/${branchId}`, authHeader(token));
+    return res.data as any[]; // plain array
   },
 
   getAssignedWindowForMaker: async (makerId: string, token: string) => {
-    console.log('get Assigned window called:', { makerId });
+    const res = await axios.get(`${API_BASE_URL}/Window/assigned-to-maker/${makerId}`, authHeader(token));
+    return res.data || null; // plain object or null
+  },
 
-    try {
-      const response = await axios.get(`${API_BASE_URL}/window/assigned-to-maker/${makerId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      console.log('Assigned window response:', response.data);
-      return response.data; // This will return the window object on success (200 OK)
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // This is the expected case when no window is assigned.
-        console.warn('No assigned window found (404). Returning null.');
-        return null;
+  assignMakerToWindow: async (windowId: string, makerId: string, token: string) => {
+    const res = await axios.put(
+      `${API_BASE_URL}/Window/${windowId}/assign-maker/${makerId}`,
+      {},
+      authHeader(token)
+    );
+    return res.data as { message: string };
+  },
+
+  /** QUEUE & TELLER */
+  getAllCustomersOnQueueByBranch: async (branchId: string, token: string) => {
+    const res = await axios.get<ApiResponse<CustomerQueueItem[]>>(
+      `${API_BASE_URL}/Teller/All_Customer_On_Queue/${branchId}`,
+      authHeader(token)
+    );
+    return res.data; // ApiResponse<List>
+  },
+
+  callNextCustomer: async (makerId: string, windowId: string, branchId: string, token: string) => {
+    const res = await axios.get<ApiResponse<NextCustomerData>>(
+      `${API_BASE_URL}/Teller/Next/${makerId}/${windowId}/${branchId}`,
+      authHeader(token)
+    );
+    return res.data; // ApiResponse<object>
+  },
+
+  completeTransaction: async (id: string, token: string) => {
+    const res = await axios.post<ApiResponse<null>>(
+      `${API_BASE_URL}/Teller/Complete`,
+      null,
+      { ...authHeader(token), params: { id } }
+    );
+    return res.data;
+  },
+
+  cancelTransaction: async (id: string, token: string) => {
+    const res = await axios.post<ApiResponse<null>>(
+      `${API_BASE_URL}/Teller/Cancel`,
+      null,
+      { ...authHeader(token), params: { id } }
+    );
+    return res.data;
+  },
+
+  /** DEPOSIT */
+  updateDepositDenominations: async (
+    formReferenceId: string,
+    updateDto: DepositDenominationsUpdateDto,
+    token: string
+  ) => {
+    const res = await axios.put<ApiResponse<object>>(
+       `${API_BASE_URL}/Deposits/denominations/${formReferenceId}`,
+
+      updateDto,
+      {
+        ...authHeader(token),
+        headers: {
+          ...authHeader(token).headers,
+          'Content-Type': 'application/json',
+        },
       }
-      // For any other error (e.g., 500, network error), re-throw the error
-      console.error('An unexpected error occurred:', error);
-      throw error;
-    }
+    );
+    return res.data;
   },
-  callNextCustomer: async (makerId: string, windowId: string, branchId: string, token: string): Promise<NextCustomerResponse> => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/queue/call-next-customer/${makerId}/${windowId}/${branchId}`, {}, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to call next customer:', error);
-      throw error;
-    }
-  },
-  getDepositById: async (id: string, token: string) => {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/deposits/${id}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Failed to fetch deposit by ID:', error);
-        throw error;
-    }
+
+  //get total served by current logged in maker
+  getTotalServed: async (makerId: string, token: string) => {
+  const res = await axios.get<ApiResponse<number>>(
+    `${API_BASE_URL}/Teller/TotalServed/${makerId}`,
+    authHeader(token)
+  );
+  return res.data;
 },
 
-getWithdrawalById: async (id: string, token: string) => {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/withdrawal/${id}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Failed to fetch withdrawal by ID:', error);
-        throw error;
-    }
+//get by form reference id
+searchCustomerByFormReferenceId: async (formReferenceId: string, token: string) => {
+  const res = await axios.get<ApiResponse<NextCustomerData>>(
+    `${API_BASE_URL}/Teller/SearchByFormReference/${formReferenceId}`,
+    authHeader(token)
+  );
+  return res.data;
 },
 
-getFundTransferById: async (id: string, token: string) => {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/fundTransfer/${id}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Failed to fetch fund transfer by ID:', error);
-        throw error;
-    }
-},
+
 };
 
 export default makerService;
+export type { NextCustomerData as NextCustomerResponse };

@@ -204,9 +204,9 @@ type Errors = Partial<Record<keyof FormData, string>>;
 
 
     // For now, always use Abiy Branch for demo, but this can be dynamic
-    const ABIY_BRANCH_ID = 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6';
+    const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
     const branchInfo = {
-        name: 'Abiy Branch',
+        name: 'Ayer Tena',
         id: 'AB-1',
         date: new Date().toLocaleDateString(),
     };

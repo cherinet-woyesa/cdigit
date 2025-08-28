@@ -28,6 +28,20 @@ interface VerifyOtpResponse {
     token?: string;
 }
 
+interface NewLoginResponse {
+    success: boolean;
+    message: string;
+    data: {
+        token: string;
+        role?: string;       // role can be extracted from token claims or backend may include it later
+        expiration: string;
+    };
+}
+
+
+
+
+/////////////////////////////////////
 interface AuthService {
     loginWithOtp(phoneNumber: string, otp: string, selectedAccountNum?: string): Promise<LoginResponse>;
     customerLogin: (email: string, password: string) => Promise<LoginResponse>;
@@ -36,12 +50,17 @@ interface AuthService {
     verifyOtp: (phoneNumber: string, otp: string) => Promise<VerifyOtpResponse>;
 
     staffLogin: (email: string, password: string) => Promise<LoginResponse>;
+    
     registerStaff: (staffData: any, token: string) => Promise<RegisterResponse>;
 
     getWindowAssignments: (token: string) => Promise<any>;
     assignMakerToWindow: (makerId: string, windowId: string, token: string) => Promise<any>;
 
     getBranches: () => Promise<any>;
+
+
+    // Branches
+    
 }
 
 const authService: AuthService = {
@@ -103,19 +122,35 @@ const authService: AuthService = {
         }
     },
 
-    // Staff login
+
+
+     // Staff login
     staffLogin: async (email: string, password: string) => {
         try {
-            const response = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/staff-login`, { email, password });
-            if (response.data.token) {
-                localStorage.setItem('userToken', response.data.token);
+            const response = await axios.post<NewLoginResponse>(`${API_BASE_URL}/auth/staff-login`, { email, password });
+            const apiResponse = response.data;
+            if (apiResponse.success && apiResponse.data?.token) {
+                localStorage.setItem('userToken', apiResponse.data.token);
+                console.log("at Staff login method, successful, token:", apiResponse.data.token);
+
+                // Map new backend structure to existing LoginResponse format
+                return {
+                    // success: apiResponse.success,
+                    message: apiResponse.message,
+                    token: apiResponse.data.token,
+                    // role: apiResponse.data.role,         // if backend includes role inside token claims
+                    // expiration: apiResponse.data.expiration,
+                } as LoginResponse;
             }
-            return response.data;
-        } catch (error: any) {
+            
+            throw new Error(apiResponse.message || "Staff login failed");
+        }
+        catch (error: any) {
             console.error("Staff login error:", error.response?.data || error.message);
             throw error.response?.data?.message || "Staff login failed";
         }
     },
+
 
     // Staff registration
     registerStaff: async (staffData: any, token: string) => {

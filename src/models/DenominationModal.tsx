@@ -9,7 +9,7 @@ interface DenominationModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: () => void;
-    form: { formKey: string; amount: number; } | null;
+    form: { formReferenceId: string; amount: number; } | null;
 }
 
 const denominationsList = [200, 100, 50, 10, 1];
@@ -63,12 +63,12 @@ const handleSave = async () => {
 
         // CORRECTED: Convert user.id from string to number
         const updateDto = {
-            formkey: form.formKey,
+            formReferenceId: form.formReferenceId,
             frontMakerId: user.id, // This is the change
             denominations: filteredDenominations,
         };
 
-        await makerService.updateDepositDenominations(form.formKey, updateDto, token);
+        await makerService.updateDepositDenominations(form.formReferenceId, updateDto, token);
         
         onSave();
         onClose();
