@@ -1,5 +1,9 @@
 // src/components/accountOpening/StepAddress.tsx
 import React, { useEffect, useState } from "react";
+// Helper to get the phone number the user started with from localStorage
+function getStartedPhoneNumber() {
+    return localStorage.getItem("accountOpeningPhoneNumberInput") || "";
+}
 import { getRegions, getZones, getWoredas } from "../../../services/addressService";
 import { Field } from "./FormElements";
 import type { AddressDetail, Errors } from "./formTypes";
@@ -15,6 +19,14 @@ type StepAddressProps = {
 };
 
 export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, submitting }: StepAddressProps) {
+
+    // Autofill mobilePhone with the started phone number if empty
+    useEffect(() => {
+        const startedPhone = getStartedPhoneNumber();
+        if (!data.mobilePhone && startedPhone) {
+            setData({ ...data, mobilePhone: startedPhone });
+        }
+    }, []); // Only on mount
     const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
     const [zones, setZones] = useState<{ id: number; name: string; regionId: number }[]>([]);
     const [woredas, setWoredas] = useState<{ id: number; name: string; zoneId: number }[]>([]);

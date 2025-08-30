@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import OTPLogin from './features/customer/OTPLogin';
+import OTPLogin from './features/auth/OTPLogin';
 import StaffLogin from './components/StaffLogin';
 import CashDeposit from './features/customer/cashDeposit/CashDeposit';
 import CashDepositConfirmation from './features/customer/cashDeposit/CashDepositConfirmation';
@@ -15,8 +15,8 @@ import './i18n';
 import CreateBranch from './features/admin/CreateBranch';
 import CreateUser from './features/admin/CreateUser';
 import ManageAccountTypes from './features/admin/ManageAccountTypes';
-import AssignMaker from './features/manager/AssignMaker';
-import CreateUserManager from './features/manager/CreateUser';
+import AssignMakerRoute from './features/manager/AssignMakerRoute';
+import CreateUserManagerRoute from './features/manager/CreateStaffRoute';
 import AdminDashboard from './features/admin/AdminDashboard';
 import ManagerDashboard from './features/manager/ManagerDashboard';
 import MakerDashboard from './features/maker/MakerDashboard';
@@ -130,12 +130,12 @@ function App() {
         {/* Added routes for manager actions */}
         <Route path="/manager/create-user" element={
           <ProtectedRoute role="Manager">
-            <CreateUserManager />
+            <CreateUserManagerRoute />
           </ProtectedRoute>
         } />
         <Route path="/manager/assign-maker" element={
           <ProtectedRoute role="Manager">
-            <AssignMaker />
+            <AssignMakerRoute />
           </ProtectedRoute>
         } />
 

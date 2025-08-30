@@ -107,26 +107,37 @@ const MakerDashboard: React.FC = () => {
     /** Load assigned window; if none, force modal and load windows by branch */
     useEffect(() => {
         const initWindows = async () => {
-            if (!token || !decoded?.nameid) return;
+    if (!token || !decoded?.nameid) return;
 
-            try {
-                const w = await makerService.getAssignedWindowForMaker(decoded.nameid, token);
-                if (w && w.id) {
-                    setAssignedWindow(w);
-                    setShowWindowModal(false);
-                } else if (decoded.BranchId) {
-                    const list = await makerService.getWindowsByBranchId(decoded.BranchId, token);
-                    setWindows(list);
-                    setShowWindowModal(true);
-                }
-            } catch (e) {
-                if (decoded?.BranchId) {
-                    const list = await makerService.getWindowsByBranchId(decoded.BranchId, token);
-                    setWindows(list);
-                    setShowWindowModal(true);
-                }
+    try {
+        const w = await makerService.getAssignedWindowForMaker(decoded.nameid, token);
+        if (w && w.id) {
+            setAssignedWindow(w);
+            setShowWindowModal(false);
+        } else if (decoded.BranchId) {
+            const list = await makerService.getWindowsByBranchId(decoded.BranchId, token);
+            if (Array.isArray(list)) {
+                setWindows(list); // Ensure list is an array
+            } else {
+                console.error("Expected an array from getWindowsByBranchId", list);
+                setWindows([]); // Set to empty array on error
             }
-        };
+            setShowWindowModal(true);
+        }
+    } catch (e) {
+        console.error("Error fetching windows:", e);
+        if (decoded?.BranchId) {
+            const list = await makerService.getWindowsByBranchId(decoded.BranchId, token);
+            if (Array.isArray(list)) {
+                setWindows(list); // Ensure list is an array
+            } else {
+                console.error("Expected an array from getWindowsByBranchId", list);
+                setWindows([]); // Set to empty array on error
+            }
+            setShowWindowModal(true);
+        }
+    }
+};
         if (decoded?.nameid) {
             void initWindows();
         }

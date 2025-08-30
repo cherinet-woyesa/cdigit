@@ -117,7 +117,7 @@ export default function FundTransfer() {
           } else if (valid.length > 1) {
             setAccountDropdown(true);
             const persisted = localStorage.getItem('ft_debitAccountNumber') || '';
-            const pre = valid.find(v => v.accountNumber === persisted);
+            const pre = valid.find((v: any) => v.accountNumber === persisted);
             if (pre) {
               setFormData(prev => ({ ...prev, debitAccountNumber: pre.accountNumber, debitAccountName: pre.accountHolderName || '' }));
             } else {

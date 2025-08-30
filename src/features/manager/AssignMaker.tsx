@@ -1,65 +1,99 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from "react";
+import managerService from "../../services/managerService";
+import { Button } from "../../components/ui/button";
+import toast from "react-hot-toast";
 
-const AssignMaker: React.FC = () => {
-  const [makerId, setMakerId] = useState('');
-  const [windowId, setWindowId] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+export default function AssignMaker({ branchId }: { branchId: string }) {
+  const [users, setUsers] = useState<any[]>([]);
+  const [windows, setWindows] = useState<any[]>([]);
+  const [selectedWindow, setSelectedWindow] = useState("");
+  const [selectedUser, setSelectedUser] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setMessage('');
-    setError('');
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const resUsers = await managerService.getUsersByBranch(branchId);
+        const makers = resUsers.filter((u: any) => u.roles.includes("Maker"));
+        setUsers(makers);
 
-    try {
-      // Simulate API call
-      setMessage('Maker assigned to window successfully!');
-      setMakerId('');
-      setWindowId('');
-    } catch (err) {
-      setError('Failed to assign maker to window.');
+        const resWindows = await managerService.getWindowsByBranch(branchId);
+        setWindows(resWindows);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to load users or windows");
+      }
+    };
+
+    if (branchId) load();
+  }, [branchId]);
+
+  const handleAssign = async () => {
+  if (!selectedWindow || !selectedUser) {
+    toast.error("Please select both window and maker.");
+    return;
+  }
+
+  try {
+    const res = await managerService.assignMakerToWindow(selectedWindow, selectedUser);
+    if (res?.success) {
+      toast.success(res.message || "Assigned Successfully");
+
+      // Reset selections
+      setSelectedWindow("");
+      setSelectedUser("");
+
+      // Refresh windows
+      const resWindows = await managerService.getWindowsByBranch(branchId);
+      setWindows(resWindows);
+    } else {
+      toast.error(res?.message || "Failed to assign maker");
     }
-  };
+  } catch (error: any) {
+    toast.error(error.message || "Failed to assign maker");
+  }
+};
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h1 className="text-2xl font-bold text-fuchsia-700 mb-6">Assign Maker to Window</h1>
-        {message && <p className="text-green-600 mb-4">{message}</p>}
-        {error && <p className="text-red-600 mb-4">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="makerId" className="block text-sm font-medium text-gray-700">Maker ID</label>
-            <input
-              type="text"
-              id="makerId"
-              value={makerId}
-              onChange={(e) => setMakerId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-fuchsia-500 focus:border-fuchsia-500"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="windowId" className="block text-sm font-medium text-gray-700">Window ID</label>
-            <input
-              type="text"
-              id="windowId"
-              value={windowId}
-              onChange={(e) => setWindowId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-fuchsia-500 focus:border-fuchsia-500"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-fuchsia-600 text-white py-2 px-4 rounded-md hover:bg-fuchsia-700"
-          >
-            Assign Maker
-          </button>
-        </form>
+    <div>
+      <h2 className="text-lg font-semibold mb-2 text-purple-900">
+        🔗 Assign Maker to Window
+      </h2>
+      <div className="flex gap-2">
+        <select
+          value={selectedWindow}
+          onChange={(e) => setSelectedWindow(e.target.value)}
+          className="border border-purple-900 rounded px-2"
+        >
+          <option value="">Select Window</option>
+          {windows.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.description} #{w.windowNumber}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={selectedUser}
+          onChange={(e) => setSelectedUser(e.target.value)}
+          className="border border-purple-900 rounded px-2"
+        >
+          <option value="">Select Maker</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.firstName} {u.lastName}
+            </option>
+          ))}
+        </select>
+
+        <Button
+          onClick={handleAssign}
+          className="bg-purple-900 text-white hover:bg-purple-800"
+        >
+          Assign
+        </Button>
       </div>
     </div>
   );
-};
+}
 
-export default AssignMaker;
+// http://localhost:5268/api/simulatedadusers/bybranch/a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c
+// http://localhost:5268/api/users/by-branch/a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c

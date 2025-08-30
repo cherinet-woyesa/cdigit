@@ -209,7 +209,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
             <div className="text-xl font-bold mb-3 text-fuchsia-800">Document Details</div>
             {errorList.length > 0 && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded text-red-700" role="alert" aria-live="assertive">
-                    <strong className="block mb-1">Please fix the following errors:</strong>
+                    <strong className="block mb-1">Please fill the following:</strong>
                     <ul className="list-disc list-inside text-sm">
                         {errorList.map((err, i) => <li key={i}>{err}</li>)}
                     </ul>
