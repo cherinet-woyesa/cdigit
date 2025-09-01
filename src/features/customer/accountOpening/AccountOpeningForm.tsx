@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as accountOpeningService from "../../../services/accountOpeningService";
 import { checkAccountExistsByPhone } from "../../../services/accountsService";
@@ -32,14 +32,8 @@ const steps = [
 
 export function AccountOpeningForm() {
     const navigate = useNavigate();
-    const [formData, setFormData] = useState<FormData>(() => {
-        const saved = localStorage.getItem("accountOpeningFormData");
-        return saved ? JSON.parse(saved) : INITIAL_DATA;
-    });
-    const [currentStep, setCurrentStep] = useState(() => {
-        const saved = localStorage.getItem("accountOpeningCurrentStep");
-        return saved ? parseInt(saved, 10) : 0;
-    });
+    const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
+    const [currentStep, setCurrentStep] = useState(0);
     const [errors, setErrors] = useState<FormErrors>({
         personalDetails: {},
         addressDetails: {},
@@ -52,26 +46,8 @@ export function AccountOpeningForm() {
         apiError: undefined,
     });
     const [submitting, setSubmitting] = useState(false);
-    const [phoneNumberScreenActive, setPhoneNumberScreenActive] = useState(() => {
-        const saved = localStorage.getItem("accountOpeningPhoneScreenActive");
-        return saved ? JSON.parse(saved) : true;
-    });
-    const [phoneNumberInput, setPhoneNumberInput] = useState(() => {
-        return localStorage.getItem("accountOpeningPhoneNumberInput") || "";
-    });
-    // Persist currentStep, phoneNumberScreenActive, phoneNumberInput, and formData to localStorage
-    useEffect(() => {
-        localStorage.setItem("accountOpeningCurrentStep", String(currentStep));
-    }, [currentStep]);
-    useEffect(() => {
-        localStorage.setItem("accountOpeningPhoneScreenActive", JSON.stringify(phoneNumberScreenActive));
-    }, [phoneNumberScreenActive]);
-    useEffect(() => {
-        localStorage.setItem("accountOpeningPhoneNumberInput", phoneNumberInput);
-    }, [phoneNumberInput]);
-    useEffect(() => {
-        localStorage.setItem("accountOpeningFormData", JSON.stringify(formData));
-    }, [formData]);
+    const [phoneNumberScreenActive, setPhoneNumberScreenActive] = useState(true);
+    const [phoneNumberInput, setPhoneNumberInput] = useState("");
     const [phoneCheckLoading, setPhoneCheckLoading] = useState(false);
     const [phoneInputError, setPhoneInputError] = useState<string | undefined>(undefined);
 
@@ -89,20 +65,17 @@ export function AccountOpeningForm() {
     const updateSectionData = <K extends keyof FormData>(section: K, data: Partial<FormData[K]>) => {
         setFormData((prev) => {
             const prevSectionData = prev[section];
-            let updated;
             if (typeof prevSectionData === 'object' && prevSectionData !== null && !Array.isArray(prevSectionData)) {
-                updated = {
+                return {
                     ...prev,
                     [section]: { ...prevSectionData, ...data },
                 };
             } else {
-                updated = {
+                return {
                     ...prev,
                     [section]: data,
                 };
             }
-            localStorage.setItem("accountOpeningFormData", JSON.stringify(updated));
-            return updated;
         });
         // Clear errors for this section when user edits
         setErrors((prev) => ({ ...prev, [section]: {} }));
@@ -320,15 +293,11 @@ export function AccountOpeningForm() {
         }
 
            // --- Always update both section data and customerId in state (in case customerId changes)
-        setFormData(prev => {
-            const updated = {
-                ...prev,
-                ...updatedCustomerData,
-                customerId: nextCustomerId,
-            };
-            localStorage.setItem("accountOpeningFormData", JSON.stringify(updated));
-            return updated;
-        });
+        setFormData(prev => ({
+            ...prev,
+            ...updatedCustomerData,
+            customerId: nextCustomerId,
+        }));
         setCurrentStep(prev => prev + 1);
     } catch (error) {
         console.error("Error saving form data:", error);
@@ -406,13 +375,10 @@ export function AccountOpeningForm() {
                 if (savedFormData.passbookMudayRequest?.id) lastFilledStep = Math.max(lastFilledStep, 6);
                 if (savedFormData.digitalSignature?.id) lastFilledStep = Math.max(lastFilledStep, 7);
 
-            setCurrentStep(lastFilledStep);
-            // Persist last step and phone screen state
-            localStorage.setItem("accountOpeningCurrentStep", String(lastFilledStep));
-            localStorage.setItem("accountOpeningPhoneScreenActive", JSON.stringify(false));
+                setCurrentStep(lastFilledStep);
             } else {
                 // No form found, start a new form and autofill phone
-                const newFormData = {
+                setFormData({
                     ...INITIAL_DATA,
                     addressDetails: {
                         ...INITIAL_DATA.addressDetails,
@@ -422,14 +388,10 @@ export function AccountOpeningForm() {
                         ...INITIAL_DATA.documentDetails,
                         mobilePhoneNo: phoneNumberInput
                     }
-                };
-                setFormData(newFormData);
-                localStorage.setItem("accountOpeningFormData", JSON.stringify(newFormData));
+                });
                 setCurrentStep(0);
-                localStorage.setItem("accountOpeningCurrentStep", "0");
             }
             setPhoneNumberScreenActive(false);
-            localStorage.setItem("accountOpeningPhoneScreenActive", JSON.stringify(false));
         } catch (error: any) {
             console.error("Error checking phone number:", error);
             if (error.response && error.response.data && error.response.data.errors) {
@@ -446,10 +408,8 @@ export function AccountOpeningForm() {
 
     const handleUpdateApplication = () => { // Renamed from handleStartNewApplication
         // Keep existing formData, just navigate back to the first step of the form
-    setCurrentStep(0);
-    setPhoneNumberScreenActive(false); // Ensure form steps are active
-    localStorage.setItem("accountOpeningCurrentStep", "0");
-    localStorage.setItem("accountOpeningPhoneScreenActive", JSON.stringify(false));
+        setCurrentStep(0);
+        setPhoneNumberScreenActive(false); // Ensure form steps are active
         setPhoneInputError(undefined); // Clear any errors
     };
 
@@ -478,10 +438,7 @@ export function AccountOpeningForm() {
                                 name="phoneNumberInput"
                                 className={`form-input w-full p-3 pl-12 rounded border text-center text-lg transition focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 ${phoneNumberInput ? (isValid ? 'border-green-500' : 'border-red-500') : ''}`}
                                 value={phoneNumberInput}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    setPhoneNumberInput(e.target.value);
-                                    localStorage.setItem("accountOpeningPhoneNumberInput", e.target.value);
-                                }}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhoneNumberInput(e.target.value)}
                                 placeholder="09XXXXXXXX or +2519XXXXXXXX"
                                 autoFocus
                                 inputMode="tel"
@@ -721,52 +678,23 @@ export function AccountOpeningForm() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-4 sm:p-8 bg-white shadow-2xl rounded-2xl">
-            {/* Modern Stepper */}
-
-            {/* Stepper: Desktop shows full, Mobile shows only current step name in brand color header */}
+        <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
+            {/* Desktop: show full progress bar, Mobile: show only current step title */}
             {!phoneNumberScreenActive && currentStep < steps.length && (
                 <>
-                    {/* Desktop stepper */}
-                    <div className="hidden sm:block mb-8">
-                        <div className="flex items-center justify-between">
-                            {steps.map((title, idx) => (
-                                <div key={title} className="flex-1 flex flex-col items-center relative">
-                                    <div
-                                        className={`w-9 h-9 flex items-center justify-center rounded-full border-2 transition-all duration-300
-                                            ${idx < currentStep ? 'bg-fuchsia-700 border-fuchsia-700 text-white' :
-                                                idx === currentStep ? 'bg-white border-fuchsia-700 text-fuchsia-700 font-bold shadow-lg' :
-                                                'bg-gray-200 border-gray-300 text-gray-400'}
-                                        `}
-                                    >
-                                        {idx < currentStep ? (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                        ) : (
-                                            idx + 1
-                                        )}
-                                    </div>
-                                    <span className={`mt-2 text-xs sm:text-sm text-center ${idx === currentStep ? 'text-fuchsia-700 font-semibold' : 'text-gray-500'}`}>{title}</span>
-                                    {idx < steps.length - 1 && (
-                                        <div className={`absolute top-4 right-0 left-1/2 h-0.5 ${idx < currentStep ? 'bg-fuchsia-700' : 'bg-gray-300'} z-0`} style={{ width: '100%' }}></div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                    <div className="hidden sm:block">
+                        <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />
                     </div>
-                    {/* Mobile header */}
-                    <div className="block sm:hidden mb-6">
-                        <div className="w-full py-4 px-4 rounded-t-xl text-white text-lg font-bold text-center shadow-md" style={{ background: '#a21caf' }}>
-                            {steps[currentStep]}
+                    <div className="block sm:hidden mb-4">
+                        <div className="text-lg font-semibold text-fuchsia-700 bg-fuchsia-50 rounded px-4 py-2 border border-fuchsia-100 text-center">
+                            {steps[currentStep]} Details
                         </div>
                     </div>
                 </>
             )}
-
-            {/* Card Layout for Each Step */}
+            <hr className="my-6" />
             <form onSubmit={(e) => e.preventDefault()}>
-                <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8 mb-4 border border-fuchsia-100">
-                    {renderStep()}
-                </div>
+                {renderStep()}
             </form>
         </div>
     );
