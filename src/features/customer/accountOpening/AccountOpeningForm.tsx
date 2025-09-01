@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import * as accountOpeningService from "../../../services/accountOpeningService";
 import { checkAccountExistsByPhone } from "../../../services/accountsService";
@@ -30,10 +30,17 @@ const steps = [
     "Signature",
 ];
 
-export function AccountOpeningForm() {
+function AccountOpeningForm() {
     const navigate = useNavigate();
-    const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
-    const [currentStep, setCurrentStep] = useState(0);
+    // Load from localStorage if available
+    const [formData, setFormData] = useState<FormData>(() => {
+        const saved = localStorage.getItem("accountOpeningFormData");
+        return saved ? JSON.parse(saved) : INITIAL_DATA;
+    });
+    const [currentStep, setCurrentStep] = useState(() => {
+        const saved = localStorage.getItem("accountOpeningCurrentStep");
+        return saved ? parseInt(saved, 10) : 0;
+    });
     const [errors, setErrors] = useState<FormErrors>({
         personalDetails: {},
         addressDetails: {},
@@ -46,8 +53,25 @@ export function AccountOpeningForm() {
         apiError: undefined,
     });
     const [submitting, setSubmitting] = useState(false);
-    const [phoneNumberScreenActive, setPhoneNumberScreenActive] = useState(true);
-    const [phoneNumberInput, setPhoneNumberInput] = useState("");
+    const [phoneNumberScreenActive, setPhoneNumberScreenActive] = useState(() => {
+        // Only show phone input if no saved progress
+        const savedStep = localStorage.getItem("accountOpeningCurrentStep");
+        return !savedStep;
+    });
+    const [phoneNumberInput, setPhoneNumberInput] = useState(() => {
+        return localStorage.getItem("accountOpeningPhoneNumberInput") || "";
+    });
+    // Persist progress on step/data change
+    useEffect(() => {
+        localStorage.setItem("accountOpeningFormData", JSON.stringify(formData));
+    }, [formData]);
+    useEffect(() => {
+        localStorage.setItem("accountOpeningCurrentStep", String(currentStep));
+    }, [currentStep]);
+    useEffect(() => {
+        localStorage.setItem("accountOpeningPhoneNumberInput", phoneNumberInput);
+    }, [phoneNumberInput]);
+
     const [phoneCheckLoading, setPhoneCheckLoading] = useState(false);
     const [phoneInputError, setPhoneInputError] = useState<string | undefined>(undefined);
 
@@ -109,23 +133,23 @@ export function AccountOpeningForm() {
             if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required"; 
             if (!data.subCity) newErrors.subCity = "Sub-City is required";
             if (!data.weredaKebele) newErrors.weredaKebele = "Wereda / Kebele is required";
-            if (!data.houseNumber) newErrors.houseNumber = "House Number is required";
-            if (!data.emailAddress) newErrors.emailAddress = "Email Address is required";
+            //if (!data.houseNumber) newErrors.houseNumber = "House Number is required";
+            //if (!data.emailAddress) newErrors.emailAddress = "Email Address is required";
             if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required"; 
             // Do not require officePhone, only validate if present (handled in StepAddress)
         } else if (stepIndex === 2) { // Financial Details
             if (!data.typeOfWork) newErrors.typeOfWork = "Type of Work is required";
             if (data.typeOfWork === "Private") {
                 if (!data.businessSector) newErrors.businessSector = "Business Sector is required";
-                if (!data.incomeDetails_Private) newErrors.incomeDetails_Private = "Income Details are required";
+               // if (!data.incomeDetails_Private) newErrors.incomeDetails_Private = "Income Details are required";
                 // Require at least one income frequency
                 if (!data.incomeFrequencyAnnual_Private && !data.incomeFrequencyMonthly_Private && !data.incomeFrequencyDaily_Private) {
                     newErrors.incomeFrequencyAnnual_Private = "Select an income frequency";
                 }
             } else if (data.typeOfWork === "Employee") {
-                if (!data.sectorOfEmployer) newErrors.sectorOfEmployer = "Sector of Employer is required";
-                if (!data.jobPosition) newErrors.jobPosition = "Job Position is required";
-                if (!data.incomeDetails_Employee) newErrors.incomeDetails_Employee = "Income Details are required";
+                //if (!data.sectorOfEmployer) newErrors.sectorOfEmployer = "Sector of Employer is required";
+                // if (!data.jobPosition) newErrors.jobPosition = "Job Position is required";
+                // if (!data.incomeDetails_Employee) newErrors.incomeDetails_Employee = "Income Details are required";
                 // Require at least one income frequency
                 if (!data.incomeFrequencyAnnual_Employee && !data.incomeFrequencyMonthly_Employee && !data.incomeFrequencyDaily_Employee) {
                     newErrors.incomeFrequencyAnnual_Employee = "Select an income frequency";
@@ -161,6 +185,44 @@ export function AccountOpeningForm() {
     };
 
     function isValidPhoneNumber(phone: string) {
+    // Handle phone number submit and restore progress if available
+    const handlePhoneNumberSubmit = async () => {
+        if (!phoneNumberInput.trim()) {
+            setPhoneInputError("Mobile phone number is required.");
+            return;
+        }
+        if (!isValidPhoneNumber(phoneNumberInput.trim())) {
+            setPhoneInputError("Please enter a valid Ethiopian mobile phone number.");
+            return;
+        }
+        setPhoneInputError(undefined);
+        setPhoneCheckLoading(true);
+        try {
+            // Check if an account already exists for this phone number
+            const accountExists = await checkAccountExistsByPhone(phoneNumberInput.trim());
+            if (accountExists) {
+                setPhoneInputError("An account already exists for this phone number. Please log in or use a different number.");
+                setPhoneCheckLoading(false);
+                return;
+            }
+            // Try to restore progress
+            const savedFormData = localStorage.getItem("accountOpeningFormData");
+            const savedStep = localStorage.getItem("accountOpeningCurrentStep");
+            if (savedFormData && savedStep) {
+                setFormData(JSON.parse(savedFormData));
+                setCurrentStep(parseInt(savedStep, 10));
+            } else {
+                // Start new
+                setFormData({ ...INITIAL_DATA, addressDetails: { ...INITIAL_DATA.addressDetails, mobilePhone: phoneNumberInput }, documentDetails: { ...INITIAL_DATA.documentDetails, mobilePhoneNo: phoneNumberInput } });
+                setCurrentStep(0);
+            }
+            setPhoneNumberScreenActive(false);
+        } catch (error: any) {
+            setPhoneInputError("An error occurred. Please try again.");
+        } finally {
+            setPhoneCheckLoading(false);
+        }
+    };
         // Ethiopian mobile: starts with 09 or +2519, 10 digits
         return /^09\d{8}$|^\+2519\d{8}$/.test(phone);
     }
@@ -679,24 +741,89 @@ export function AccountOpeningForm() {
 
     return (
         <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
-            {/* Desktop: show full progress bar, Mobile: show only current step title */}
-            {!phoneNumberScreenActive && currentStep < steps.length && (
-                <>
-                    <div className="hidden sm:block">
-                        <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />
-                    </div>
-                    <div className="block sm:hidden mb-4">
-                        <div className="text-lg font-semibold text-fuchsia-700 bg-fuchsia-50 rounded px-4 py-2 border border-fuchsia-100 text-center">
-                            {steps[currentStep]} Details
+            {phoneNumberScreenActive ? (
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                    <h2 className="text-2xl font-bold mb-4 text-fuchsia-800">Welcome!</h2>
+                    <p className="mb-6 text-gray-700 text-center">
+                        Enter your <b>mobile phone number</b> to begin.
+                    </p>
+                    <Field label="Mobile Phone Number" error={undefined}>
+                        <div className="relative w-full">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-fuchsia-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0-1.243 1.007-2.25 2.25-2.25h2.386c.51 0 .994.192 1.366.54l1.32 1.22a2.25 2.25 0 0 1 .728 1.66v2.09c0 .621-.504 1.125-1.125 1.125H6.75A2.25 2.25 0 0 1 4.5 9.75V6.75zM21.75 17.25c0 1.243-1.007 2.25-2.25 2.25h-2.386a2.25 2.25 0 0 1-1.366-.54l-1.32-1.22a2.25 2.25 0 0 1-.728-1.66v-2.09c0-.621.504-1.125 1.125-1.125h2.25a2.25 2.25 0 0 1 2.25 2.25v3z" />
+                                </svg>
+                            </span>
+                            <input
+                                type="tel"
+                                name="phoneNumberInput"
+                                className={`form-input w-full p-3 pl-12 rounded border text-center text-lg transition focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 ${phoneNumberInput ? (isValidPhoneNumber(phoneNumberInput) ? 'border-green-500' : 'border-red-500') : ''}`}
+                                value={phoneNumberInput}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhoneNumberInput(e.target.value)}
+                                placeholder="09XXXXXXXX or +2519XXXXXXXX"
+                                autoFocus
+                                inputMode="tel"
+                                pattern="^09\d{8}$|^\+2519\d{8}$"
+                                aria-invalid={!!phoneInputError || (!!phoneNumberInput && !isValidPhoneNumber(phoneNumberInput)) ? "true" : undefined}
+                                aria-describedby="phone-error-text"
+                                onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                    if (e.key === 'Enter') {
+                                        handlePhoneNumberSubmit();
+                                    }
+                                }}
+                            />
+                            {phoneNumberInput && (
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    {isValidPhoneNumber(phoneNumberInput) ? (
+                                        <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                    ) : (
+                                        <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    )}
+                                </span>
+                            )}
                         </div>
-                    </div>
+                        <div id="phone-helper-text" className="text-xs text-gray-500 mt-1 text-center">
+                            <span className="sr-only">Format: 09XXXXXXXX or +2519XXXXXXXX (Ethiopian mobile)</span>
+                        </div>
+                    </Field>
+                    {phoneInputError && (
+                        <div id="phone-error-text" className="text-sm text-red-600 text-center mt-2 font-medium flex items-center justify-center gap-2" aria-live="assertive">
+                            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <span>{phoneInputError}</span>
+                        </div>
+                    )}
+                    <button
+                        type="button"
+                        className="bg-fuchsia-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition disabled:opacity-50 text-lg font-semibold mt-6 w-full max-w-xs"
+                        onClick={handlePhoneNumberSubmit}
+                        disabled={phoneCheckLoading || !isValidPhoneNumber(phoneNumberInput)}
+                    >
+                        {phoneCheckLoading ? "Checking..." : "Continue"}
+                    </button>
+                </div>
+            ) : (
+                <>
+                    {/* Desktop: show full progress bar, Mobile: show only current step title */}
+                    {currentStep < steps.length && (
+                        <>
+                            <div className="hidden sm:block">
+                                <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />
+                            </div>
+                            <div className="block sm:hidden mb-4">
+                                <div className="text-lg font-semibold text-fuchsia-700 bg-fuchsia-50 rounded px-4 py-2 border border-fuchsia-100 text-center">
+                                    {steps[currentStep]} Details
+                                </div>
+                            </div>
+                        </>
+                    )}
+                    <hr className="my-6" />
+                    <form onSubmit={(e) => e.preventDefault()}>
+                        {renderStep()}
+                    </form>
                 </>
             )}
-            <hr className="my-6" />
-            <form onSubmit={(e) => e.preventDefault()}>
-                {renderStep()}
-            </form>
         </div>
     );
+
 }
 export default AccountOpeningForm;

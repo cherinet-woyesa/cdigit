@@ -27,6 +27,7 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
             setData({ ...data, mobilePhone: startedPhone });
         }
     }, []); // Only on mount
+
     const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
     const [zones, setZones] = useState<{ id: number; name: string; regionId: number }[]>([]);
     const [woredas, setWoredas] = useState<{ id: number; name: string; zoneId: number }[]>([]);
@@ -88,50 +89,49 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
         setData({ ...data, [name]: value });
     };
 
-
     // Email and phone validation helpers
-    function isValidEmail(email: string) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
+    // function isValidEmail(email: string) {
+    //     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    // }
     function isValidPhone(phone: string) {
         // Ethiopian mobile: starts with 09 or +2519, 10 digits
         return /^09\d{8}$|^\+2519\d{8}$/.test(phone);
     }
-    function isValidOfficePhone(phone: string) {
-        // Allow empty, or must start with +251 and be numeric (Ethiopian format)
-        if (!phone) return true;
-        return /^\+251\d{8,9}$/.test(phone);
-    }
+    // function isValidOfficePhone(phone: string) {
+    //     // Allow empty, or must start with +251 and be numeric (Ethiopian format)
+    //     if (!phone) return true;
+    //     return /^\+251\d{8,9}$/.test(phone);
+    // }
 
-    // Only validate mobilePhone live (for required/format), others on Next
-    const localErrors: Partial<typeof errors> = { ...errors };
-    if (data.mobilePhone && !isValidPhone(data.mobilePhone)) {
-        localErrors.mobilePhone = "Invalid Ethiopian phone number";
-    }
-
-    // Validate officePhone and emailAddress only on Next
     const [touchedNext, setTouchedNext] = useState(false);
 
     function validateOnNext() {
         const nextErrors: Partial<typeof errors> = { ...errors };
-        if (data.emailAddress && !isValidEmail(data.emailAddress)) {
-            nextErrors.emailAddress = "Invalid email format";
-        } else {
-            delete nextErrors.emailAddress;
+
+        // Conditional validation for email and office phone
+        // if (data.emailAddress && !isValidEmail(data.emailAddress)) {
+        //     nextErrors.emailAddress = "Invalid email format";
+        // } else {
+        //     delete nextErrors.emailAddress;
+        // }
+
+        // if (data.officePhone && !isValidOfficePhone(data.officePhone)) {
+        //     nextErrors.officePhone = "Office phone must start with +251 and be numeric";
+        // } else {
+        //     delete nextErrors.officePhone;
+        // }
+
+        // Required field checks
+        if (!data.regionCityAdministration) { nextErrors.regionCityAdministration = "Region is required"; }
+        if (!data.subCity) { nextErrors.subCity = "Sub-City is required"; }
+        if (!data.weredaKebele) { nextErrors.weredaKebele = "Wereda/Kebele is required"; }
+        if (!data.mobilePhone) { nextErrors.mobilePhone = "Mobile phone is required"; }
+        
+        // No longer required: emailAddress, houseNumber
+        if (data.mobilePhone && !isValidPhone(data.mobilePhone)) {
+            nextErrors.mobilePhone = "Invalid Ethiopian mobile phone number";
         }
-        if (data.officePhone && !isValidOfficePhone(data.officePhone)) {
-            nextErrors.officePhone = "Office phone must start with +251 and be numeric (e.g., +251112345678)";
-        } else {
-            delete nextErrors.officePhone;
-        }
-        // Required checks (if not already handled by parent)
-        if (!data.emailAddress) {
-            nextErrors.emailAddress = "Email is required";
-        }
-        if (!data.mobilePhone) {
-            nextErrors.mobilePhone = "Mobile phone is required";
-        }
-        // Add other required checks as needed
+
         return nextErrors;
     }
 
@@ -139,7 +139,6 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
         setTouchedNext(true);
         const nextErrors = validateOnNext();
         if (setErrors) setErrors(nextErrors as Errors<AddressDetail>);
-        // Only proceed if no errors
         const hasError = Object.values(nextErrors).some(Boolean);
         if (!hasError) {
             onNext();
@@ -147,132 +146,151 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
     };
 
     return (
-        <>
-            <div className="text-xl font-bold mb-3 text-fuchsia-800">Address Details</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="container mx-auto px-3 py-6 max-w-4xl">
+            
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                {/* Region Field */}
                 <Field label="Region / City Administration" required error={errors.regionCityAdministration}>
                     {regionLoading ? (
-                        <div className="text-sm text-gray-500">Loading...</div>
+                        <div className="text-sm text-gray-500 animate-pulse">Mapping out regions...</div>
                     ) : regionError ? (
                         <div className="text-sm text-red-600">{regionError}</div>
                     ) : (
                         <select
-                            className="form-select w-full p-2 rounded border"
+                            className="form-select w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
                             name="regionCityAdministration"
                             value={data.regionCityAdministration || ""}
                             onChange={handleChange}
-                            required
                         >
-                            <option value="">Select</option>
+                            <option value="">Select your region</option>
                             {regions.map(r => (
                                 <option key={r.id} value={r.name}>{r.name}</option>
                             ))}
                         </select>
                     )}
                 </Field>
+
+                {/* Zone Field */}
                 <Field label="Zone" error={errors.zone || zoneError || undefined}>
                     {zoneLoading ? (
-                        <div className="text-sm text-gray-500">Loading...</div>
+                        <div className="text-sm text-gray-500 animate-pulse">Charting zones...</div>
                     ) : (
                         <select
-                            className="form-select w-full p-2 rounded border"
+                            className="form-select w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
                             name="zone"
                             value={data.zone || ""}
                             onChange={handleChange}
                             disabled={!data.regionCityAdministration || zoneLoading || zones.length === 0}
                         >
-                            <option value="">Select</option>
+                            <option value="">Select your zone</option>
                             {zones.map(z => (
                                 <option key={z.id} value={z.name}>{z.name}</option>
                             ))}
                         </select>
                     )}
                 </Field>
-                <Field label="Sub-City" required error={errors.subCity}>
+
+                {/* Sub-City Field */}
+                {/* <Field label="Sub-City" required error={errors.subCity}>
                     <input
                         type="text"
                         name="subCity"
-                        className="form-input w-full p-2 rounded border"
+                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
                         value={data.subCity || ""}
                         onChange={handleChange}
-                        required
+                        placeholder="e.g., Arada"
                     />
-                </Field>
+                </Field> */}
+
+                {/* Wereda / Kebele Field */}
                 <Field label="Wereda / Kebele" required error={errors.weredaKebele || woredaError || undefined}>
                     {woredaLoading ? (
-                        <div className="text-sm text-gray-500">Loading...</div>
+                        <div className="text-sm text-gray-500 animate-pulse">Finding woredas...</div>
                     ) : (
                         <select
-                            className="form-select w-full p-2 rounded border"
+                            className="form-select w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
                             name="weredaKebele"
                             value={data.weredaKebele || ""}
                             onChange={handleChange}
                             disabled={!data.zone || woredaLoading || woredas.length === 0}
                         >
-                            <option value="">Select</option>
+                            <option value="">Select your woreda</option>
                             {woredas.map(w => (
                                 <option key={w.id} value={w.name}>{w.name}</option>
                             ))}
                         </select>
                     )}
                 </Field>
-                <Field label="House Number" required error={errors.houseNumber}>
+
+                {/* House Number Field (Now OPTIONAL) */}
+                {/* <Field label="House Number" error={errors.houseNumber}>
                     <input
                         type="text"
                         name="houseNumber"
-                        className="form-input w-full p-2 rounded border"
+                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
                         value={data.houseNumber || ""}
                         onChange={handleChange}
-                        required
+                        placeholder="Optional"
                     />
-                </Field>
-                <Field label="Mobile Phone" required error={localErrors.mobilePhone}>
+                </Field> */}
+
+                {/* Mobile Phone Field */}
+                <Field label="Mobile Phone" required error={errors.mobilePhone}>
                     <input
                         type="tel"
                         name="mobilePhone"
-                        className="form-input w-full p-2 rounded border"
+                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
                         value={data.mobilePhone}
                         onChange={handleChange}
-                        required
+                        placeholder="e.g., 0912345678"
                     />
                 </Field>
-                <Field label="Office Phone" error={touchedNext ? errors.officePhone : undefined}>
+
+                {/* Office Phone Field */}
+                {/* <Field label="Office Phone" error={touchedNext ? errors.officePhone : undefined}>
                     <input
                         type="tel"
                         name="officePhone"
-                        className="form-input w-full p-2 rounded border"
+                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
                         value={data.officePhone || ""}
                         onChange={handleChange}
+                        placeholder="Optional"
                     />
-                </Field>
-                <Field label="Email Address" required error={touchedNext ? errors.emailAddress : undefined}>
+                </Field> */}
+
+                {/* Email Address Field (Now OPTIONAL) */}
+                {/* <Field label="Email Address" error={errors.emailAddress}>
                     <input
                         type="email"
                         name="emailAddress"
-                        className="form-input w-full p-2 rounded border"
+                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
                         value={data.emailAddress || ""}
                         onChange={handleChange}
-                        required
+                        placeholder="Optional"
                     />
-                </Field>
+                </Field> */}
             </div>
-            <div className="flex justify-between mt-6">
-                <button
-                    type="button"
-                    className="bg-gray-300 text-fuchsia-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition"
-                    onClick={onBack}
-                >
-                    Back
-                </button>
-                <button
-                    type="button"
-                    className="bg-fuchsia-700 text-white px-6 py-2 rounded shadow hover:bg-fuchsia-800 transition"
-                    onClick={handleNext}
-                    disabled={submitting}
-                >
-                    Next
-                </button>
-            </div>
-        </>
+
+            <div className="flex flex-col md:flex-row md:justify-between gap-4 mt-10">
+  <button
+    type="button"
+    className="w-full md:w-auto px-6 py-2 rounded-lg font-semibold border-2 border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors duration-200"
+    onClick={onBack}
+  >
+    <span className="mr-2">⬅️</span> Go Back
+  </button>
+  <button
+    type="button"
+    className={`w-full md:w-auto px-6 py-2 rounded-lg font-semibold shadow-lg transition transform duration-200 
+      ${submitting ? 'bg-fuchsia-300 cursor-not-allowed' : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
+    onClick={handleNext}
+    disabled={submitting}
+  >
+    {submitting ? 'Moving to next step...' : 'Confirm Location'}
+  </button>
+</div>
+
+        </div>
     );
 }
