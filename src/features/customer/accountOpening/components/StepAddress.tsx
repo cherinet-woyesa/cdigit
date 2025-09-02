@@ -4,16 +4,27 @@ import React, { useEffect, useState } from "react";
 function getStartedPhoneNumber() {
     return localStorage.getItem("accountOpeningPhoneNumberInput") || "";
 }
-import { getRegions, getZones, getWoredas } from "../../../services/addressService";
+import { getRegions, getZones, getWoredas } from "../../../../services/addressService";
 import { Field } from "./FormElements";
-import type { AddressDetail, Errors } from "./formTypes";
+import type { AddressDetail, Errors } from "../types/formTypes";
+
+export const validate = (data: AddressDetail): Errors<AddressDetail> => {
+    const newErrors: Errors<AddressDetail> = {};
+    if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required"; 
+    // if (!data.subCity) newErrors.subCity = "Sub-City is required";
+    if (!data.weredaKebele) newErrors.weredaKebele = "Wereda / Kebele is required";
+    // if (!data.houseNumber) newErrors.houseNumber = "House Number is required";
+    // if (!data.emailAddress) newErrors.emailAddress = "Email Address is required";
+    if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required";
+    return newErrors;
+};
 
 type StepAddressProps = {
     data: AddressDetail;
     setData: (d: AddressDetail) => void;
     errors: Errors<AddressDetail>;
     setErrors?: (e: Errors<AddressDetail>) => void; // Optional, for parent error state
-    onNext: () => void;
+    onNext: (errors: Errors<AddressDetail>) => void;
     onBack: () => void;
     submitting: boolean;
 };
@@ -95,7 +106,7 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
     // }
     function isValidPhone(phone: string) {
         // Ethiopian mobile: starts with 09 or +2519, 10 digits
-        return /^09\d{8}$|^\+2519\d{8}$/.test(phone);
+        return /^09\d{8}$|^07\d{8}$|^\+2519\d{8}$|^2519\d{8}$|^9\d{8}$/.test(phone);
     }
     // function isValidOfficePhone(phone: string) {
     //     // Allow empty, or must start with +251 and be numeric (Ethiopian format)
@@ -136,13 +147,8 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
     }
 
     const handleNext = () => {
-        setTouchedNext(true);
-        const nextErrors = validateOnNext();
-        if (setErrors) setErrors(nextErrors as Errors<AddressDetail>);
-        const hasError = Object.values(nextErrors).some(Boolean);
-        if (!hasError) {
-            onNext();
-        }
+        const validationErrors = validate(data);
+        onNext(validationErrors);
     };
 
     return (

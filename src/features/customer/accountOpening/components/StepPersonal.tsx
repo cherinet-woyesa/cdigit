@@ -1,14 +1,40 @@
 // src/components/accountOpening/StepPersonal.tsx
 import React, { useEffect, useState } from "react";
 import { Field } from "./FormElements";
-import { getAccountTypes } from "../../../services/accountTypeService";
-import type { PersonalDetail, Errors } from "./formTypes"; // Ensure types are correct
+import { getAccountTypes } from "../../../../services/accountTypeService";
+import type { PersonalDetail, Errors } from "../types/formTypes"; // Ensure types are correct
+
+export const validate = (data: PersonalDetail): Errors<PersonalDetail> => {
+    const newErrors: Errors<PersonalDetail> = {};
+    if (!data.accountType) newErrors.accountType = "Account Type is required";
+    if (!data.title) newErrors.title = "Title is required";
+    if (!data.firstName) newErrors.firstName = "First Name is required";
+    if (!data.grandfatherName) newErrors.grandfatherName = "Grandfather's Name is required";
+    if (!data.sex) newErrors.sex = "Sex is required";
+    if (!data.dateOfBirth) {
+        newErrors.dateOfBirth = "Date of Birth is required";
+    } else {
+        // Check if user is at least 18 years old
+        const dob = new Date(data.dateOfBirth);
+        const today = new Date();
+        const age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        const d = today.getDate() - dob.getDate();
+        let is18 = age > 18 || (age === 18 && (m > 0 || (m === 0 && d >= 0)));
+        if (!is18) {
+            newErrors.dateOfBirth = "You must be at least 18 years old to open an account.";
+        }
+    }
+    if (!data.maritalStatus) newErrors.maritalStatus = "Marital Status is required";
+    if (!data.nationality) newErrors.nationality = "Nationality is required";
+    return newErrors;
+};
 
 type StepPersonalProps = {
     data: PersonalDetail;
     setData: (d: PersonalDetail) => void;
     errors: Errors<PersonalDetail>;
-    onNext: () => void;
+    onNext: (errors: Errors<PersonalDetail>) => void;
     submitting: boolean;
 };
 
@@ -46,6 +72,11 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
             })
             .finally(() => setLoading(false));
     }, []);
+
+    const handleNext = () => {
+        const validationErrors = validate(data);
+        onNext(validationErrors);
+    };
 
     return (
         <div className="container mx-auto px-2 py-6 max-w-4xl">
@@ -262,7 +293,7 @@ export function StepPersonal({ data, setData, errors, onNext, submitting }: Step
                     type="button"
                     className={`w-full md:w-auto px-10 py-3 rounded-lg font-semibold shadow-lg transition transform duration-200 
                         ${submitting ? 'bg-fuchsia-300 cursor-not-allowed' : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
-                    onClick={onNext}
+                    onClick={handleNext}
                     disabled={submitting}
                 >
                     {submitting ? 'Preparing...' : 'Next'}

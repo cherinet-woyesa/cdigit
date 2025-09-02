@@ -185,3 +185,12 @@ export const saveDigitalSignature = async (data: any): Promise<IdResponse> => {
     const body: any = response.data as any;
     return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
+
+/**
+ * Submits the entire application after all steps are completed.
+ * @param customerId The ID of the customer application to submit.
+ * @returns A promise that resolves on successful submission.
+ */
+export const submitApplication = async (customerId: number): Promise<void> => {
+    await api.post(`/submit/${customerId}`);
+};

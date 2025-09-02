@@ -28,7 +28,7 @@ type ProgressBarProps = {
 
 export function ProgressBar({ currentStep, totalSteps, stepTitles }: ProgressBarProps) {
   return (
-    <div className="flex justify-between items-center mb-6">
+    <div className="flex justify-between items-start mb-6">
       {Array.from({ length: totalSteps }).map((_, index) => (
         <React.Fragment key={index}>
           <div className="flex flex-col items-center flex-1">
@@ -40,8 +40,8 @@ export function ProgressBar({ currentStep, totalSteps, stepTitles }: ProgressBar
               {index + 1}
             </div>
             <div
-              className={`text-xs mt-1 text-center ${
-                index <= currentStep ? "text-fuchsia-700" : "text-gray-500"
+              className={`text-xs mt-1 text-center break-words ${
+                index <= currentStep ? "text-fuchsia-700 font-semibold" : "text-gray-500"
               }`}
             >
               {stepTitles[index]}
@@ -49,7 +49,7 @@ export function ProgressBar({ currentStep, totalSteps, stepTitles }: ProgressBar
           </div>
           {index < totalSteps - 1 && (
             <div
-              className={`flex-1 h-1 ${
+              className={`flex-1 h-1 mt-4 ${
                 index < currentStep ? "bg-fuchsia-600" : "bg-gray-300"
               }`}
             />
