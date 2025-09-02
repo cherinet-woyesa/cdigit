@@ -31,7 +31,8 @@
     "react-dom": "^19.1.1",
     "react-hot-toast": "^2.6.0",
     "react-i18next": "^15.6.1",
-    "react-router-dom": "^7.6.3"
+    "react-router-dom": "^7.6.3",
+    "react-to-print": "^3.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

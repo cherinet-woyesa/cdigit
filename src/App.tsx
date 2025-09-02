@@ -21,6 +21,7 @@ import AdminDashboard from './features/admin/AdminDashboard';
 import ManagerDashboard from './features/manager/ManagerDashboard';
 import MakerDashboard from './features/maker/MakerDashboard';
 import Dashboard from './features/customer/Dashboard';
+import TransactionHistory from './features/customer/TransactionHistory';
 
 // A simple protected route component
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
@@ -109,7 +110,11 @@ function App() {
             <FundTransferConfirmation />
           </ProtectedRoute>
         } />
-
+        <Route path="/customer/transaction-history" element={
+          <ProtectedRoute>
+            <TransactionHistory />
+          </ProtectedRoute>
+        } />
         {/* Added routes for admin actions */}
         <Route path="/admin/create-branch" element={
           <ProtectedRoute role="Admin">

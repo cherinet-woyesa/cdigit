@@ -1,148 +1,119 @@
-
-import { useLocation } from 'react-router-dom';
-import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
 import { submitWithdrawal } from '../../../services/withdrawalService';
+import { CheckCircleIcon, PrinterIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
+import { useReactToPrint } from 'react-to-print';
 
 export default function WithdrawalConfirmation() {
-  const { state } = useLocation() as { state?: any };
-  const [serverData, setServerData] = useState<any>(null);
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+    const { state } = useLocation() as { state?: any };
+    const navigate = useNavigate();
+    const [serverData, setServerData] = useState<any>(null);
+    const [error, setError] = useState('');
+    const [submitting, setSubmitting] = useState(true); // Start in submitting state
 
+    useEffect(() => {
+        const runSubmit = async () => {
+            if (!state?.pending || !state?.requestPayload) {
+                setError('Invalid request state. Please start over.');
+                setSubmitting(false);
+                return;
+            }
+            try {
+                const res = await submitWithdrawal(state.requestPayload);
+                setServerData(res);
+            } catch (e: any) {
+                setError(e?.message || 'Failed to submit withdrawal. Please try again.');
+            } finally {
+                setSubmitting(false);
+            }
+        };
+        runSubmit();
+    }, [state]);
 
-  // Default values in case of direct access (shouldn't happen in normal flow)
-  const confirmationData = state || {
-    referenceId: 'WD-87654321',
-    accountNumber: '2000XXXXXX8910',
-    amount: '25,000.00 ETB',
-    branch: 'Abiy Branch',
-    token: '7319',
-    window: '5',
-    message: 'Withdrawal submitted successfully.'
-  };
+    const componentToPrintRef = useRef(null);
+    const handlePrint = useReactToPrint({
+        // @ts-ignore
+        content: () => componentToPrintRef.current,
+    });
 
+    if (submitting) {
+        return (
+            <div className="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4 text-center">
+                <ArrowPathIcon className="h-16 w-16 mx-auto text-fuchsia-600 animate-spin" />
+                <h1 className="text-2xl font-bold text-fuchsia-800 mt-4">Processing Withdrawal...</h1>
+                <p className="text-gray-600 mt-2">Please wait a moment.</p>
+            </div>
+        );
+    }
 
-  // Compose values from all possible sources, prioritizing backend response (including .data)
-  const data = serverData?.data || serverData || {};
-  const referenceId = data.formReferenceId || data.referenceId || data.ReferenceId || state?.referenceId || state?.ui?.referenceId || confirmationData.referenceId;
-  const branch = serverData?.branch || serverData?.Branch || state?.branch || state?.ui?.branch || confirmationData.branch;
-  const accountNumber = (data.accountNumber || data.AccountNumber || state?.ui?.accountNumber || confirmationData.accountNumber || '').toString();
-  const accountHolderName = data.accountHolderName || data.accountHolderName || '';
-  const amountValueRaw = data.Withdrawal_Amount ?? data.withdrawa_Amount ?? data.amount ?? data.Amount;
-  const amount = (amountValueRaw !== undefined && !isNaN(Number(amountValueRaw)) && Number(amountValueRaw) > 0)
-    ? `${Number(amountValueRaw).toLocaleString()}.00 ETB`
-    : (state?.ui?.amount || confirmationData.amount);
-  const token = (data.tokenNumber || data.TokenNumber || data.token || data.Token || state?.token || confirmationData.token) as string;
-  const queueNumber = data.queueNumber || data.QueueNumber;
-  const windowValue = (data.windowNumber || data.WindowNumber || state?.window || confirmationData.window) as string | number;
+    if (error) {
+        return (
+            <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+                <div className="max-w-2xl w-full bg-white p-8 rounded-2xl shadow-lg text-center">
+                    <ExclamationTriangleIcon className="h-20 w-20 mx-auto text-red-500" />
+                    <h1 className="text-3xl font-extrabold text-red-700 mt-4">Submission Failed</h1>
+                    <p className="text-gray-600 mt-2">{error}</p>
+                    <div className="mt-8">
+                        <button onClick={() => navigate('/form/cash-withdrawal')} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-fuchsia-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition">
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
-  useEffect(() => {
-    const runSubmit = async () => {
-      if (!state?.pending || !state?.requestPayload) return;
-      setSubmitting(true);
-      setError('');
-      try {
-        const res = await submitWithdrawal(state.requestPayload);
-        setServerData(res);
-      } catch (e: any) {
-        setError(e?.message || 'Failed to submit withdrawal.');
-      } finally {
-        setSubmitting(false);
-      }
-    };
-    runSubmit();
-  }, [state]);
+    const data = serverData?.data || {};
+    const uiData = state?.ui || {};
+    const referenceId = data.formReferenceId || data.referenceId || uiData.referenceId || 'N/A';
+    const branch = data.branch || uiData.branch || 'N/A';
+    const accountNumber = data.accountNumber || uiData.accountNumber || 'N/A';
+    const accountHolderName = data.accountHolderName || uiData.accountHolderName || 'N/A';
+    const amount = uiData.amount || (data.withdrawal_Amount ? `${Number(data.withdrawal_Amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB` : 'N/A');
+    const token = (data.tokenNumber || data.TokenNumber)?.toString() || 'N/A';
+    const queueNumber = (data.queueNumber || data.QueueNumber)?.toString() || 'N/A';
 
-  return (
-    <div className="min-h-screen bg-[#f5f0ff] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-fuchsia-200">
-        {/* Header */}
-        <div className="bg-fuchsia-700 p-6 text-center text-white">
-          <CheckCircleIcon className="h-16 w-16 mx-auto text-fuchsia-200" />
-          <h1 className="text-2xl font-bold mt-4">Withdrawal Submitted Successfully!</h1>
-          <p className="text-fuchsia-100 mt-2">{serverData?.message || confirmationData.message || 'Please proceed to the counter with your token'}</p>
+    return (
+        <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+            <div ref={componentToPrintRef} className="max-w-2xl w-full bg-white p-8 rounded-2xl shadow-lg text-center">
+                <CheckCircleIcon className="h-20 w-20 mx-auto text-green-500" />
+                <h1 className="text-3xl font-extrabold text-fuchsia-800 mt-4">Success!</h1>
+                <p className="text-gray-600 mt-2">Your withdrawal has been submitted. Please see your token and queue number below.</p>
+
+                <div className="my-8 flex flex-col md:flex-row gap-4 justify-center text-white">
+                    <div className="flex-1 bg-fuchsia-700 p-6 rounded-xl shadow-lg text-center">
+                        <p className="text-lg font-semibold text-fuchsia-100">Queue Number</p>
+                        <p className="text-7xl font-bold tracking-wider">{queueNumber}</p>
+                    </div>
+                    <div className="flex-1 bg-fuchsia-600 p-6 rounded-xl shadow-lg text-center">
+                        <p className="text-lg font-semibold text-fuchsia-100">Token</p>
+                        <p className="text-7xl font-bold tracking-wider">{token}</p>
+                    </div>
+                </div>
+
+                <div className="text-left bg-gray-50 p-6 rounded-lg shadow-inner">
+                    <h3 className="text-xl font-bold text-fuchsia-700 mb-4">Summary</h3>
+                    <div className="space-y-2 text-gray-700">
+                        <div className="flex justify-between"><strong className="font-medium">Reference ID:</strong> <span>{referenceId}</span></div>
+                        <div className="flex justify-between"><strong className="font-medium">Account:</strong> <span>{accountHolderName} ({accountNumber})</span></div>
+                        <div className="flex justify-between"><strong className="font-medium">Amount:</strong> <span className="font-bold text-fuchsia-800">{amount}</span></div>
+                        <div className="flex justify-between"><strong className="font-medium">Branch:</strong> <span>{branch}</span></div>
+                    </div>
+                </div>
+
+                <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                    <button onClick={() => navigate('/form/cash-withdrawal')} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-fuchsia-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition transform hover:scale-105">
+                        <ArrowPathIcon className="h-5 w-5" />
+                        New Withdrawal
+                    </button>
+                    <button onClick={handlePrint} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-gray-200 text-fuchsia-800 px-8 py-3 rounded-lg shadow-md hover:bg-gray-300 transition transform hover:scale-105">
+                        <PrinterIcon className="h-5 w-5" />
+                        Print
+                    </button>
+                </div>
+
+                <p className="text-sm text-gray-500 mt-6">Thank you for banking with us!</p>
+            </div>
         </div>
-
-        {/* Confirmation Details */}
-        <div className="p-6 space-y-6">
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-fuchsia-800 border-b border-fuchsia-100 pb-2">
-              Transaction Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-fuchsia-600">Reference ID:</p>
-                <p className="font-medium">{referenceId}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">Branch:</p>
-                <p className="font-medium">{branch}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">Account Number:</p>
-                <p className="font-medium">{accountNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">Account Holder Name:</p>
-                <p className="font-medium">{data.accountHolderName || data.AccountHolderName || ''}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">Amount:</p>
-                <p className="font-medium">{amount}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Queue Number & Token Display */}
-          <div className="flex flex-col md:flex-row gap-4 mt-2">
-            {/* On mobile, stack vertically. On desktop, side by side. */}
-            <div className="flex-1 bg-fuchsia-50 rounded-lg p-4 border border-fuchsia-100 flex flex-col items-center justify-center">
-              <p className="text-sm text-fuchsia-600">Your Queue Number</p>
-              <p className="text-6xl font-extrabold text-fuchsia-700 my-2 tracking-widest drop-shadow-lg">{queueNumber ?? 'N/A'}</p>
-            </div>
-            <div className="flex-1 bg-fuchsia-50 rounded-lg p-4 border border-fuchsia-100 flex flex-col items-center justify-center">
-              <p className="text-sm text-fuchsia-600">Your Token Number</p>
-              <p className="text-base font-bold text-fuchsia-700 my-2">{token}</p>
-              {windowValue && windowValue !== 'N/A' && (
-                <p className="text-fuchsia-700 font-medium">
-                  Proceed to Window: <span className="text-2xl">{windowValue}</span>
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Important Notes */}
-          <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Important:</h3>
-            <ul className="text-xs text-yellow-700 space-y-1 list-disc list-inside">
-              <li>This is not a transaction receipt</li>
-              <li>Please present your ID at the counter</li>
-              <li>Token expires in 30 minutes</li>
-              <li>You will receive SMS confirmation after processing</li>
-            </ul>
-          </div>
-
-          {/* Backend Raw Data (for debugging/confirmation) */}
-          <div className="pt-4">
-            <button
-              onClick={() => window.print()}
-              className="w-full bg-white border border-fuchsia-600 text-fuchsia-700 font-medium py-2 px-4 rounded-lg hover:bg-fuchsia-50 transition"
-            >
-              Print Confirmation
-            </button>
-            <p className="text-center text-xs text-gray-500 mt-4">
-              Thank you for choosing Commercial Bank of Ethiopia
-            </p>
-            {serverData?.data && (
-              <div className="mt-6 bg-gray-50 border border-gray-200 rounded p-3 text-xs text-gray-700 break-all">
-                <div className="mb-1 font-semibold text-fuchsia-700">Backend Response:</div>
-                <pre className="whitespace-pre-wrap">{JSON.stringify(serverData.data, null, 2)}</pre>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }

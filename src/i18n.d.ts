@@ -91,6 +91,7 @@ declare module 'i18next' {
           atmCard: string;
           cbeBirr: string;
           otherForms: string;
+          history: string;
         };
         account: {
           personalDetailsTitle: string;

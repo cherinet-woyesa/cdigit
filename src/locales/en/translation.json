@@ -44,7 +44,8 @@
     "mobileBanking": "Mobile Banking Registration",
     "atmCard": "ATM Card Request",
     "cbeBirr": "CBE-Birr Registration",
-    "otherForms": "Other Forms"
+    "otherForms": "Other Forms",
+    "history": "Transaction History"
   },
 
   "select": "Select",

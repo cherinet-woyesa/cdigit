@@ -1,125 +1,69 @@
-
-import { useLocation } from 'react-router-dom';
-import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { useReactToPrint } from 'react-to-print';
+import { useRef } from 'react';
 
 export default function FundTransferConfirmation() {
-  const { state } = useLocation() as { state?: any };
-  const [serverData] = useState<any>(null);
+    const { state } = useLocation() as { state?: any };
+    const navigate = useNavigate();
+    const componentToPrintRef = useRef(null);
 
-  // Compose values from all possible sources, prioritizing backend response (including .data)
-  const data = serverData?.data || serverData || state?.data || state || {};
-  const referenceId = data.formReferenceId || data.referenceId || data.ReferenceId || state?.referenceId || 'FT-87654321';
-  const debitAccountNumber = data.debitAccountNumber || data.debitAccount || data.fromAccount || state?.debitAccount || '1000XXXXXX4567';
-  const debitAccountName = data.debitAccountName || data.debitAccountHolderName || data.accountHolderName || '';
-  const beneficiaryAccountNumber = data.beneficiaryAccountNumber || data.creditAccount || data.toAccount || state?.creditAccount || '1000XXXXXX8910';
-  const beneficiaryName = data.beneficiaryName || data.creditAccountName || '';
-  const amountValueRaw = data.transferAmount ?? data.amount ?? data.Amount;
-  const amount = (amountValueRaw !== undefined && !isNaN(Number(amountValueRaw)) && Number(amountValueRaw) > 0)
-    ? `${Number(amountValueRaw).toLocaleString()}.00 ETB`
-    : (state?.amount || '15,000.00 ETB');
-  const token = data.tokenNumber || data.token || state?.token || '4826';
-  const queueNumber = data.queueNumber || data.QueueNumber || null;
-  const branch = data.branch || state?.branch || 'Abiy Branch';
-  const reason = data.reason || data.remark || '';
+    const data = state || {};
+    const referenceId = data.referenceId || `FT-${Date.now()}`;
+    const debitAccount = data.debitAccountNumber || 'N/A';
+    const creditAccount = data.creditAccountNumber || 'N/A';
+    const amount = data.amount ? `${Number(data.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB` : 'N/A';
+    const branch = data.branch || 'Ayer Tena Branch';
+    const token = data.token?.toString() || 'N/A';
+    const queueNumber = data.window?.toString() || 'N/A';
 
-  return (
-    <div className="min-h-screen bg-[#f5f0ff] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-fuchsia-200">
-        {/* Header */}
-        <div className="bg-fuchsia-700 p-6 text-center text-white">
-          <CheckCircleIcon className="h-16 w-16 mx-auto text-fuchsia-200" />
-          <h1 className="text-2xl font-bold mt-4">Fund Transfer Submitted Successfully!</h1>
-          <p className="text-fuchsia-100 mt-2">{serverData?.message || state?.message || 'Please proceed to the counter with your token'}</p>
-        </div>
+    const handlePrint = useReactToPrint({
+        // @ts-ignore
+        content: () => componentToPrintRef.current,
+    });
 
-        {/* Confirmation Details */}
-        <div className="p-6 space-y-6">
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-fuchsia-800 border-b border-fuchsia-100 pb-2">
-              Transaction Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-fuchsia-600">Reference ID:</p>
-                <p className="font-medium">{referenceId}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">Branch:</p>
-                <p className="font-medium">{branch}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">From Account:</p>
-                <p className="font-medium">{debitAccountNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">Account Holder Name:</p>
-                <p className="font-medium">{debitAccountName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">To Account:</p>
-                <p className="font-medium">{beneficiaryAccountNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">Beneficiary Name:</p>
-                <p className="font-medium">{beneficiaryName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-fuchsia-600">Amount:</p>
-                <p className="font-medium">{amount}</p>
-              </div>
-              {reason && (
-                <div>
-                  <p className="text-sm text-fuchsia-600">Remark:</p>
-                  <p className="font-medium">{reason}</p>
+    return (
+        <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+            <div ref={componentToPrintRef} className="max-w-2xl w-full bg-white p-8 rounded-2xl shadow-lg text-center">
+                <CheckCircleIcon className="h-20 w-20 mx-auto text-green-500" />
+                <h1 className="text-3xl font-extrabold text-fuchsia-800 mt-4">Success!</h1>
+                <p className="text-gray-600 mt-2">Your fund transfer has been submitted successfully.</p>
+
+                <div className="my-8 flex flex-col md:flex-row gap-4 justify-center text-white">
+                    <div className="flex-1 bg-fuchsia-700 p-6 rounded-xl shadow-lg text-center">
+                        <p className="text-lg font-semibold text-fuchsia-100">Queue Number</p>
+                        <p className="text-7xl font-bold tracking-wider">{queueNumber}</p>
+                    </div>
+                    <div className="flex-1 bg-fuchsia-600 p-6 rounded-xl shadow-lg text-center">
+                        <p className="text-lg font-semibold text-fuchsia-100">Token</p>
+                        <p className="text-7xl font-bold tracking-wider">{token}</p>
+                    </div>
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* Queue Number & Token Display */}
-          <div className="flex flex-col md:flex-row gap-4 mt-2">
-            <div className="flex-1 bg-fuchsia-50 rounded-lg p-4 border border-fuchsia-100 flex flex-col items-center justify-center">
-              <p className="text-sm text-fuchsia-600">Your Queue Number</p>
-              <p className="text-6xl font-extrabold text-fuchsia-700 my-2 tracking-widest drop-shadow-lg">{queueNumber ?? 'N/A'}</p>
-            </div>
-            <div className="flex-1 bg-fuchsia-50 rounded-lg p-4 border border-fuchsia-100 flex flex-col items-center justify-center">
-              <p className="text-sm text-fuchsia-600">Your Token Number</p>
-              <p className="text-base font-bold text-fuchsia-700 my-2">{token}</p>
-            </div>
-          </div>
+                <div className="text-left bg-gray-50 p-6 rounded-lg shadow-inner">
+                    <h3 className="text-xl font-bold text-fuchsia-700 mb-4">Summary</h3>
+                    <div className="space-y-2 text-gray-700">
+                        <div className="flex justify-between"><strong className="font-medium">Reference ID:</strong> <span>{referenceId}</span></div>
+                        <div className="flex justify-between"><strong className="font-medium">From Account:</strong> <span>{debitAccount}</span></div>
+                        <div className="flex justify-between"><strong className="font-medium">To Account:</strong> <span>{creditAccount}</span></div>
+                        <div className="flex justify-between"><strong className="font-medium">Amount:</strong> <span className="font-bold text-fuchsia-800">{amount}</span></div>
+                        <div className="flex justify-between"><strong className="font-medium">Branch:</strong> <span>{branch}</span></div>
+                    </div>
+                </div>
 
-          {/* Important Notes */}
-          <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Important:</h3>
-            <ul className="text-xs text-yellow-700 space-y-1 list-disc list-inside">
-              <li>This is not a transaction receipt</li>
-              <li>Please present your ID at the counter</li>
-              <li>Token expires in 30 minutes</li>
-              <li>You will receive SMS confirmation after processing</li>
-            </ul>
-          </div>
+                <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                    <button onClick={() => navigate('/fund-transfer')} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-fuchsia-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition transform hover:scale-105">
+                        <ArrowPathIcon className="h-5 w-5" />
+                        New Transfer
+                    </button>
+                    <button onClick={handlePrint} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-gray-200 text-fuchsia-800 px-8 py-3 rounded-lg shadow-md hover:bg-gray-300 transition transform hover:scale-105">
+                        <PrinterIcon className="h-5 w-5" />
+                        Print
+                    </button>
+                </div>
 
-          {/* Backend Raw Data (for debugging/confirmation) */}
-          <div className="pt-4">
-            <button
-              onClick={() => window.print()}
-              className="w-full bg-white border border-fuchsia-600 text-fuchsia-700 font-medium py-2 px-4 rounded-lg hover:bg-fuchsia-50 transition"
-            >
-              Print Confirmation
-            </button>
-            <p className="text-center text-xs text-gray-500 mt-4">
-              Thank you for banking with Commercial Bank of Ethiopia
-            </p>
-            {serverData?.data && (
-              <div className="mt-6 bg-gray-50 border border-gray-200 rounded p-3 text-xs text-gray-700 break-all">
-                <div className="mb-1 font-semibold text-fuchsia-700">Backend Response:</div>
-                <pre className="whitespace-pre-wrap">{JSON.stringify(serverData.data, null, 2)}</pre>
-              </div>
-            )}
-          </div>
+                <p className="text-sm text-gray-500 mt-6">Thank you for banking with us!</p>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }
