@@ -4,6 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { Field } from '../accountOpening/components/FormElements';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { validateAccountWithCBS, sendFundTransferOTP, submitFundTransfer } from '../../../services/fundTransferService';
+import { useUserAccounts } from '../../../hooks/useUserAccounts'; // Import the new hook
 
 const API_BASE_URL = 'http://localhost:5268/api';
 
@@ -16,10 +17,11 @@ function numberToWords(num: number): string {
 export default function FundTransfer() {
     const { phone } = useAuth();
     const navigate = useNavigate();
+    const { accounts, accountDropdown, loadingAccounts, errorAccounts } = useUserAccounts();
 
     const [formData, setFormData] = useState({
-        debitAccountNumber: localStorage.getItem('ft_debitAccountNumber') || '',
-        debitAccountName: localStorage.getItem('ft_debitAccountName') || '',
+        debitAccountNumber: '',
+        debitAccountName: '',
         amount: '',
         amountInWords: '',
         creditAccountNumber: '',
@@ -27,8 +29,6 @@ export default function FundTransfer() {
         remark: '',
         otp: '',
     });
-    const [accounts, setAccounts] = useState<any[]>([]);
-    const [accountDropdown, setAccountDropdown] = useState(false);
     const [errors, setErrors] = useState<any>({});
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState(1);
@@ -36,30 +36,16 @@ export default function FundTransfer() {
     const branchInfo = { name: 'Ayer Tena Branch', id: 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6', date: new Date().toLocaleDateString() };
 
     useEffect(() => {
-        const fetchAccounts = async () => {
-            try {
-                const cached = localStorage.getItem('customerAccounts');
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        setAccounts(parsed.map((acc: any) => ({ ...acc, accountNumber: acc.accountNumber || acc.AccountNumber, accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name })))
-                        setAccountDropdown(parsed.length > 1);
-                        return;
-                    }
-                }
-                if (phone) {
-                    const resp = await fetch(`${API_BASE_URL}/Accounts/by-phone/${phone}`);
-                    if (resp.ok) {
-                        const payload = await resp.json();
-                        const data = payload.data ?? payload;
-                        setAccounts(data || []);
-                        setAccountDropdown(data.length > 1);
-                    }
-                }
-            } catch (err) { console.error("Failed to fetch accounts", err); }
-        };
-        fetchAccounts();
-    }, [phone]);
+        if (!loadingAccounts && accounts.length > 0) {
+            if (accounts.length === 1) {
+                setFormData(prev => ({
+                    ...prev,
+                    debitAccountNumber: accounts[0].accountNumber,
+                    debitAccountName: accounts[0].accountHolderName,
+                }));
+            }
+        }
+    }, [accounts, loadingAccounts]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -141,6 +127,9 @@ export default function FundTransfer() {
                         <input type="text" value={formData.debitAccountNumber} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100" />
                     )}
                 </Field>
+                <Field label="Account Holder Name" required error={errors.debitAccountName}>
+                    <input type="text" name="debitAccountName" value={formData.debitAccountName} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" />
+                </Field>
             </div>
             <div className="p-4 border rounded-lg shadow-sm">
                 <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">To Account</h2>
@@ -157,12 +146,12 @@ export default function FundTransfer() {
                 <Field label="Amount" required error={errors.amount}>
                     <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" />
                 </Field>
-                <Field label="Amount in Words">
+                {/* <Field label="Amount in Words">
                     <input type="text" name="amountInWords" value={formData.amountInWords} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100" />
-                </Field>
-                <Field label="Remark (Optional)">
+                </Field> */}
+                {/* <Field label="Remark (Optional)">
                     <textarea name="remark" value={formData.remark} onChange={handleChange} rows={2} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" />
-                </Field>
+                </Field> */}
             </div>
             <button onClick={handleStep1Next} disabled={isLoading || !formData.creditAccountName} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">
                 {isLoading ? 'Verifying...' : 'Continue'}

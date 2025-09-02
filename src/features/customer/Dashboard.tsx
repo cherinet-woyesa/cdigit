@@ -72,7 +72,7 @@ export default function Dashboard() {
       </div>
     </div>
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-4">
       {filteredForms.map((form) => (
         <div
           key={form.name}
@@ -85,7 +85,7 @@ export default function Dashboard() {
             <h3 className="text-base sm:text-lg font-semibold text-gray-800 group-hover:text-white">
               {t(`forms.${form.name}` as const)}
             </h3>
-            <p className="text-sm text-gray-500 mt-1 group-hover:text-white">{form.description}</p>
+            
             <div className="mt-2 sm:mt-4 text-fuchsia-600 font-semibold flex items-center gap-1 sm:gap-2 group-hover:gap-3 transition-all group-hover:text-white">
                 <span>{form.name === 'history' ? 'View History' : t('startForm')}</span>
                 <ArrowRightIcon className="h-3 w-3 sm:h-4 sm:w-4" />

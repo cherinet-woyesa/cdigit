@@ -4,6 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import depositService from '../../../services/depositService';
 import { getAccountTypes, type AccountType } from '../../../services/accountTypeService';
 import { Field } from '../accountOpening/components/FormElements'; // Adjusted path
+import { useUserAccounts } from '../../../hooks/useUserAccounts'; // Import the new hook
 import { fetchWindowsByBranch } from '../../../services/windowService';
 import type { Window as WindowType } from '../../../services/windowService';
 
@@ -33,14 +34,14 @@ export default function CashDepositForm() {
     const { phone, user } = useAuth();
     const navigate = useNavigate();
 
+    const { accounts, accountDropdown, loadingAccounts, errorAccounts } = useUserAccounts();
+
     const [formData, setFormData] = useState<FormData>({
-        accountNumber: localStorage.getItem('cd_accountNumber') || '',
-        accountHolderName: localStorage.getItem('cd_accountHolderName') || '',
+        accountNumber: '',
+        accountHolderName: '',
         amount: '',
     });
 
-    const [accounts, setAccounts] = useState<any[]>([]);
-    const [accountDropdown, setAccountDropdown] = useState(false);
     // const [accountTypes, setAccountTypes] = useState<AccountType[]>([]); // Commented out
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,49 +50,16 @@ export default function CashDepositForm() {
     const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
 
     useEffect(() => {
-        const fetchInitialData = async () => {
-            // Fetch accounts
-            try {
-                const cached = localStorage.getItem('customerAccounts');
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        setAccounts(parsed.map((acc: any) => ({ ...acc, accountNumber: acc.accountNumber || acc.AccountNumber, accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name, typeOfAccount: acc.typeOfAccount || acc.TypeOfAccount })));
-                        setAccountDropdown(parsed.length > 1);
-                        return;
-                    }
-                }
-                if (phone) {
-                    const resp = await fetch(`${API_BASE_URL}/Accounts/by-phone/${phone}`);
-                    if (resp.ok) {
-                        const payload = await resp.json();
-                        const data = payload.data ?? payload;
-                        setAccounts(data || []);
-                        setAccountDropdown(data.length > 1);
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to fetch accounts", err);
+        if (!loadingAccounts && accounts.length > 0) {
+            if (accounts.length === 1) {
+                setFormData(prev => ({
+                    ...prev,
+                    accountNumber: accounts[0].accountNumber,
+                    accountHolderName: accounts[0].accountHolderName,
+                }));
             }
-
-            // Fetch account types // Commented out
-            // try {
-            //     const types = await getAccountTypes();
-            //     setAccountTypes(types);
-            // } catch (err) {
-            //     console.error("Failed to fetch account types", err);
-            // }
-
-            // Fetch windows // Commented out
-            // try {
-            //     const windows = await fetchWindowsByBranch(ABIY_BRANCH_ID);
-            //     if (windows && windows.length > 0) setWindowNumber(windows[0].windowNumber.toString());
-            // } catch (err) {
-            //     console.error("Failed to fetch windows", err);
-            // }
-        };
-        fetchInitialData();
-    }, [phone]);
+        }
+    }, [accounts, loadingAccounts]);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
