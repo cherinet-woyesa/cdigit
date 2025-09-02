@@ -207,13 +207,27 @@ export function AccountOpeningForm() {
     };
 
     const handleFinalSubmit = async () => {
+        if (!formData.customerId) {
+            setErrors((prev) => ({
+                ...prev,
+                apiError: "Could not submit application: Customer ID is missing.",
+            }));
+            return;
+        }
         setSubmitting(true);
-        // Here you could add a final API call to mark the application as complete
-        // For now, we'll just proceed to the success screen.
-        console.log("Finalizing application...");
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate final API call
-        setSubmitting(false);
-        next(); // Go to success screen
+        try {
+            await accountOpeningService.submitApplication(formData.customerId);
+            console.log("Application submitted successfully!");
+            next(); // Go to success screen
+        } catch (error) {
+            console.error("Failed to submit application:", error);
+            setErrors((prev) => ({
+                ...prev,
+                apiError: "Failed to submit the application. Please try again.",
+            }));
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleBack = () => {
