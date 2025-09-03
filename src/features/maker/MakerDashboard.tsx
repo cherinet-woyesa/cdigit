@@ -22,7 +22,7 @@ import makerService, {
 } from '../../services/makerService';
 
 import { useAuth } from '../../context/AuthContext';
-import DenominationModal from '../../models/DenominationModal';
+import DenominationModal from '../../modals/DenominationModal';
 
 /** Token claims we need */
 type DecodedToken = {
