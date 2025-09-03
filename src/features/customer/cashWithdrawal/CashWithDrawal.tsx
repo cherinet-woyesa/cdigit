@@ -23,11 +23,10 @@ export default function CashWithdrawalForm() {
         accountNumber: '',
         accountHolderName: '',
         amount: '',
+        // amountInWords: '', // Optional, commented out
     });
-
     const [errors, setErrors] = useState<Errors>({});
     const [isLoading, setIsLoading] = useState(false);
-
     const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
 
     useEffect(() => {
@@ -45,7 +44,6 @@ export default function CashWithdrawalForm() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         const newFormData = { ...formData, [name]: value };
-
         if (name === "accountNumber") {
             const selected = accounts.find(acc => acc.accountNumber === value);
             if (selected) {
@@ -67,7 +65,6 @@ export default function CashWithdrawalForm() {
     const handleSubmitWithdrawal = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateAll()) return;
-
         setIsLoading(true);
         setErrors({});
         try {
@@ -92,7 +89,6 @@ export default function CashWithdrawalForm() {
                 <h1 className="text-3xl font-extrabold text-white">Cash Withdrawal</h1>
                 <p className="text-white mt-1">Ayer Tena Branch</p>
             </div>
-
             <form onSubmit={handleSubmitWithdrawal} className="space-y-6">
                 <div className="p-4 border rounded-lg shadow-sm">
                     <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Account Information</h2>
@@ -112,19 +108,14 @@ export default function CashWithdrawalForm() {
                         </Field>
                     </div>
                 </div>
-
                 <div className="p-4 border rounded-lg shadow-sm">
                     <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Amount Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Field label="Amount" required error={errors.amount}>
                             <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" />
                         </Field>
-                        {/* <Field label="Amount in Words"> // Commented out
-                            <input type="text" name="amountInWords" value={formData.amountInWords} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" /> // Commented out
-                        </Field> // Commented out */}
                     </div>
                 </div>
-
                 <div className="pt-4">
                     <button type="submit" disabled={isLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50">
                         {isLoading ? 'Processing...' : 'Submit Withdrawal'}

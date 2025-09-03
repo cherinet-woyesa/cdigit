@@ -24,19 +24,24 @@ export function useUserAccounts() {
             setErrorAccounts(null);
             try {
                 const cached = localStorage.getItem('customerAccounts');
+                let mappedAccounts: Account[] = [];
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     if (Array.isArray(parsed) && parsed.length > 0) {
-                        const mappedAccounts = parsed.map((acc: any) => ({
+                        // Filter cached accounts by current phone number
+                        const filtered = parsed.filter((acc: any) => acc.phoneNumber === phone);
+                        mappedAccounts = filtered.map((acc: any) => ({
                             ...acc,
                             accountNumber: acc.accountNumber || acc.AccountNumber,
                             accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
                             typeOfAccount: acc.typeOfAccount || acc.TypeOfAccount
                         }));
-                        setAccounts(mappedAccounts);
-                        setAccountDropdown(mappedAccounts.length > 1);
-                        setLoadingAccounts(false);
-                        return;
+                        if (mappedAccounts.length > 0) {
+                            setAccounts(mappedAccounts);
+                            setAccountDropdown(mappedAccounts.length > 1);
+                            setLoadingAccounts(false);
+                            return;
+                        }
                     }
                 }
 
@@ -45,14 +50,16 @@ export function useUserAccounts() {
                     if (resp.ok) {
                         const payload = await resp.json();
                         const data = payload.data ?? payload;
-                        const mappedAccounts = (data || []).map((acc: any) => ({
+                        mappedAccounts = (data || []).map((acc: any) => ({
                             ...acc,
                             accountNumber: acc.accountNumber || acc.AccountNumber,
                             accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name,
-                            typeOfAccount: acc.typeOfAccount || acc.TypeOfAccount
+                            typeOfAccount: acc.typeOfAccount || acc.TypeOfAccount,
+                            phoneNumber: acc.phoneNumber // Ensure phoneNumber is present for caching
                         }));
                         setAccounts(mappedAccounts);
                         setAccountDropdown(mappedAccounts.length > 1);
+                        // Only cache accounts for the current phone number
                         localStorage.setItem('customerAccounts', JSON.stringify(mappedAccounts));
                     } else {
                         setErrorAccounts(`Failed to fetch accounts: ${resp.statusText}`);

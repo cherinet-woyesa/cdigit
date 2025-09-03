@@ -31,22 +31,22 @@ type FormData = {
 type Errors = Partial<Record<keyof FormData, string>>;
 
 export default function CashDepositForm() {
-    const { phone, user } = useAuth();
+    const { phone } = useAuth();
     const navigate = useNavigate();
-
     const { accounts, accountDropdown, loadingAccounts, errorAccounts } = useUserAccounts();
 
     const [formData, setFormData] = useState<FormData>({
         accountNumber: '',
         accountHolderName: '',
         amount: '',
+        // accountType: '', // Optional, commented out
+        // depositedBy: '', // Optional, commented out
+        // telephoneNumber: '', // Optional, commented out
+        // sourceOfProceeds: '', // Optional, commented out
+        // amountInWords: '', // Optional, commented out
     });
-
-    // const [accountTypes, setAccountTypes] = useState<AccountType[]>([]); // Commented out
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    // const [windowNumber, setWindowNumber] = useState<string>(''); // Commented out
-
     const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
 
     useEffect(() => {
@@ -64,25 +64,13 @@ export default function CashDepositForm() {
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         const newFormData = { ...formData, [name]: value };
-
-        // if (name === 'amount') { // Commented out
-        //     newFormData.amountInWords = numberToWords(Number(value)); // Commented out
-        // } // Commented out
-
         if (name === "accountNumber") {
             const selected = accounts.find(acc => acc.accountNumber === value);
             if (selected) {
                 newFormData.accountHolderName = selected.accountHolderName || selected.name || '';
-                // newFormData.accountType = selected.typeOfAccount || selected.TypeOfAccount || formData.accountType; // Commented out
-                // newFormData.depositedBy = selected.accountHolderName || selected.name || ''; // Commented out
             }
         }
-
         setFormData(newFormData);
-
-        // if (["accountNumber", "accountHolderName", "depositedBy", "telephoneNumber"].includes(name)) { // Commented out
-        //     localStorage.setItem(`cd_${name}`, newFormData[name as keyof FormData]); // Commented out
-        // } // Commented out
     };
 
     const validateAll = (): boolean => {
@@ -90,9 +78,6 @@ export default function CashDepositForm() {
         if (!formData.accountNumber) errs.accountNumber = "Account number is required.";
         if (!formData.accountHolderName) errs.accountHolderName = "Account holder name is required.";
         if (!formData.amount || Number(formData.amount) <= 0) errs.amount = "A valid amount is required.";
-        // if (!formData.sourceOfProceeds) errs.sourceOfProceeds = "Source of proceeds is required."; // Commented out
-        // if (!formData.depositedBy) errs.depositedBy = "Depositor name is required."; // Commented out
-        // if (!formData.telephoneNumber) errs.telephoneNumber = "Phone number is required."; // Commented out
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -100,23 +85,15 @@ export default function CashDepositForm() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!validateAll()) return;
-
         setIsSubmitting(true);
-
         try {
             const depositData = {
                 formKey: Date.now().toString(),
                 branchId: ABIY_BRANCH_ID,
                 accountHolderName: formData.accountHolderName,
                 accountNumber: formData.accountNumber,
-                // typeOfAccount: formData.accountType, // Commented out
                 amount: Number(formData.amount),
-                // amountInWords: formData.amountInWords, // Commented out
-                // DepositedBy: formData.depositedBy, // Commented out
-                // sourceOfProceeds: formData.sourceOfProceeds, // Commented out
-                // telephoneNumber: formData.telephoneNumber, // Commented out
             };
-
             const response = await depositService.submitDeposit(depositData);
             navigate('/form/cash-deposit/cashdepositconfirmation', { state: { serverData: response, ...formData, branchName: "Ayer Tena Branch" } });
         } catch (error: any) {
@@ -132,7 +109,6 @@ export default function CashDepositForm() {
                 <h1 className="text-3xl font-extrabold text-white">Cash Deposit</h1>
                 <p className="text-white mt-1">Ayer Tena Branch</p>
             </div>
-
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="p-4 border rounded-lg shadow-sm">
                     <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Account Information</h2>
@@ -150,41 +126,16 @@ export default function CashDepositForm() {
                         <Field label="Account Holder Name" required error={errors.accountHolderName}>
                             <input type="text" name="accountHolderName" value={formData.accountHolderName} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" />
                         </Field>
-                        {/* <Field label="Type of Account" required error={errors.accountType}> // Commented out
-                            <select name="accountType" value={formData.accountType} onChange={handleChange} className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"> // Commented out
-                                {accountTypes.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)} // Commented out
-                            </select> // Commented out
-                        </Field> */}
                     </div>
                 </div>
-
                 <div className="p-4 border rounded-lg shadow-sm">
                     <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Amount Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Field label="Amount" required error={errors.amount}>
                             <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" />
                         </Field>
-                        {/* <Field label="Amount in Words"> // Commented out
-                            <input type="text" name="amountInWords" value={formData.amountInWords} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" /> // Commented out
-                        </Field> // Commented out
-                        <Field label="Source of Proceeds" required error={errors.sourceOfProceeds}> // Commented out
-                            <input type="text" name="sourceOfProceeds" value={formData.sourceOfProceeds} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" /> // Commented out
-                        </Field> // Commented out */}
                     </div>
                 </div>
-
-                {/* <div className="p-4 border rounded-lg shadow-sm"> // Commented out
-                    <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Depositor Information</h2> // Commented out
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> // Commented out
-                        <Field label="Deposited By" required error={errors.depositedBy}> // Commented out
-                            <input type="text" name="depositedBy" value={formData.depositedBy} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" /> // Commented out
-                        </Field> // Commented out
-                        <Field label="Telephone Number" required error={errors.telephoneNumber}> // Commented out
-                            <input type="tel" name="telephoneNumber" value={formData.telephoneNumber} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" /> // Commented out
-                        </Field> // Commented out
-                    </div> // Commented out
-                </div> // Commented out */}
-
                 <div className="pt-4">
                     <button type="submit" disabled={isSubmitting} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50">
                         {isSubmitting ? 'Processing...' : 'Submit Deposit'}
