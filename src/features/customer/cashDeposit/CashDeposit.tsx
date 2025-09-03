@@ -118,8 +118,8 @@ export default function CashDepositForm() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
-            <div className="text-center mb-8 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg">
+        <div className="max-w-4xl mx-auto p-1 bg-white shadow-lg rounded-lg">
+            <div className="text-center mb-1 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg">
                 <h1 className="text-3xl font-extrabold text-white">Cash Deposit</h1>
                 <p className="text-white mt-1">Ayer Tena Branch</p>
             </div>
@@ -142,7 +142,7 @@ export default function CashDepositForm() {
                         </Field>
                     </div>
                 </div>
-                <div className="p-4 border rounded-lg shadow-sm">
+                <div className="p-1 border rounded-lg shadow-sm">
                     <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Amount Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Field label="Amount" required error={errors.amount}>

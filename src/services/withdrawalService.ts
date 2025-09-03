@@ -1,6 +1,7 @@
 // src/services/withdrawalService.ts
 
-// Align request with backend WithdrawalRequestDto
+const API_BASE_URL = 'http://localhost:5268/api/Withdrawal';
+
 export interface WithdrawalRequest {
   phoneNumber: string;
   branchId: string; // Guid as string
@@ -12,15 +13,21 @@ export interface WithdrawalRequest {
 }
 
 export interface WithdrawalResponse {
-  referenceId?: string;
-  accountNumber?: string | number;
-  Withdrawal_Amount?: number;
-  withdrawa_Amount?: number;
-  TokenNumber?: string;
-  tokenNumber?: string;
-  QueueNumber?: number;
-  windowNumber?: number;
-  message?: string;
+  success: boolean;
+  message: string;
+  data?: {
+    id: string;
+    branchId: string;
+    formReferenceId: string;
+    accountNumber: string;
+    accountHolderName?: string;
+    withdrawal_Amount: number;
+    tokenNumber: string;
+    queueNumber: number;
+    remark?: string;
+    transactionType: string;
+    status: string;
+  };
 }
 
 export async function submitWithdrawal(data: WithdrawalRequest): Promise<WithdrawalResponse> {
@@ -35,7 +42,7 @@ export async function submitWithdrawal(data: WithdrawalRequest): Promise<Withdra
     OtpCode: data.OtpCode,
   };
 
-  const response = await fetch('http://localhost:5268/api/Withdrawal/Submit', {
+  const response = await fetch(`${API_BASE_URL}/Submit`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -63,11 +70,31 @@ export async function submitWithdrawal(data: WithdrawalRequest): Promise<Withdra
     }
   }
 
-  return json as WithdrawalResponse;
+  return {
+    success: true,
+    message: 'Withdrawal submitted successfully',
+    data: json
+  };
 }
 
-export async function cancelWithdrawalByCustomer(id: string): Promise<any> {
-  const response = await fetch(`http://localhost:5268/api/Withdrawal/cancel-by-customer/${id}`, {
+export async function getWithdrawalById(id: string): Promise<WithdrawalResponse> {
+  const response = await fetch(`${API_BASE_URL}/${id}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData?.message || 'Failed to fetch withdrawal details');
+  }
+
+  return response.json();
+}
+
+export async function cancelWithdrawalByCustomer(id: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/cancel-by-customer/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
