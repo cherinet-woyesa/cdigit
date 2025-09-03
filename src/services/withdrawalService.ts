@@ -4,11 +4,11 @@
 export interface WithdrawalRequest {
   phoneNumber: string;
   branchId: string; // Guid as string
-  accountNumber: number; // long on backend
+  accountNumber: string | number; // long on backend
   accountHolderName: string;
   withdrawal_Amount: number; // will map to Withdrawal_Amount
   remark?: string;
-  code: number; // int on backend
+  OtpCode: string;
 }
 
 export interface WithdrawalResponse {
@@ -32,7 +32,7 @@ export async function submitWithdrawal(data: WithdrawalRequest): Promise<Withdra
     AccountHolderName: data.accountHolderName,
     Withdrawal_Amount: data.withdrawal_Amount,
     Remark: data.remark ?? '',
-    Code: data.code,
+    OtpCode: data.OtpCode,
   };
 
   const response = await fetch('http://localhost:5268/api/Withdrawal/Submit', {

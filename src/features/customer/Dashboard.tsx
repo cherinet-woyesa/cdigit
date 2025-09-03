@@ -3,7 +3,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlassIcon, ArrowRightIcon, DocumentTextIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, ArrowsRightLeftIcon, ClockIcon, DevicePhoneMobileIcon, CreditCardIcon, CurrencyDollarIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
-
+import { HubConnectionBuilder } from '@microsoft/signalr';
+import QueueNotifyModal from '../../modals/QueueNotifyModal';
 type FormName = 'accountOpening' | 'cashDeposit' | 'cashWithdrawal' | 'fundTransfer' | 'history' | 'mobileBanking' | 'atmCard' | 'cbeBirr' | 'otherForms';
 
 interface Form {
@@ -39,10 +40,42 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!phone) navigate('/');
-  }, [phone, navigate]);
 
+     // Setup SignalR connection
+    const connection = new HubConnectionBuilder()
+      .withUrl('http://localhost:5268/hub/queueHub') // adjust backend URL
+      .withAutomaticReconnect()
+      .build();
+
+    connection.start().then(() => {
+      console.log('Connected to SignalR hub');
+
+      // Join group with phone number
+      connection.invoke('JoinQueueGroup', phone);
+
+      // Listen for messages
+      connection.on('CustomerCalled', (data) => {
+        setQueueNotifyModalTitle('You Are Being Called');
+        setQueueNotifyModalMessage(${data.message} Window ${data.windowId});
+        setIsQueueNotifyModalOpen(true);
+      });
+    });
+
+    return () => {
+      connection.stop();
+    };
+
+  }, [phone, navigate]);
+ 
   return (
     <div className="min-h-screen bg-gray-50">
+       {/* QueueNotifyModal */}
+      <QueueNotifyModal
+        isOpen={isQueueNotifyModalOpen}
+        onClose={() => setIsQueueNotifyModalOpen(false)}
+        title={QueueNotifyModalTitle}
+        message={QueueNotifyModalMessage}
+      />
       <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
