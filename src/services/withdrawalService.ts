@@ -65,3 +65,18 @@ export async function submitWithdrawal(data: WithdrawalRequest): Promise<Withdra
 
   return json as WithdrawalResponse;
 }
+
+export async function cancelWithdrawalByCustomer(id: string): Promise<any> {
+  const response = await fetch(`http://localhost:5268/api/Withdrawal/cancel-by-customer/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData?.message || 'Failed to cancel withdrawal.';
+    throw new Error(errorMessage);
+  }
+  return response.json();
+}

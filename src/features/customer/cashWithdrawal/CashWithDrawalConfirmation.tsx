@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { submitWithdrawal } from '../../../services/withdrawalService';
+import { submitWithdrawal, cancelWithdrawalByCustomer } from '../../../services/withdrawalService';
 import { CheckCircleIcon, PrinterIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { useReactToPrint } from 'react-to-print';
 
@@ -109,6 +109,41 @@ export default function WithdrawalConfirmation() {
                     <button onClick={handlePrint} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-gray-200 text-fuchsia-800 px-8 py-3 rounded-lg shadow-md hover:bg-gray-300 transition transform hover:scale-105">
                         <PrinterIcon className="h-5 w-5" />
                         Print
+                    </button>
+                    <button
+                        onClick={async () => {
+                            setSubmitting(true);
+                            setError('');
+                            try {
+                                navigate('/form/cash-withdrawal', { state: { updateId: data.id || data.Id } });
+                            } catch (e: any) {
+                                setError(e?.message || 'Failed to update withdrawal.');
+                            } finally {
+                                setSubmitting(false);
+                            }
+                        }}
+                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-yellow-500 text-white px-8 py-3 rounded-lg shadow-md hover:bg-yellow-600 transition transform hover:scale-105"
+                        disabled={submitting}
+                    >
+                        Update
+                    </button>
+                    <button
+                        onClick={async () => {
+                            setSubmitting(true);
+                            setError('');
+                            try {
+                                await cancelWithdrawalByCustomer(data.id || data.Id);
+                                navigate('/form/cash-withdrawal', { state: { cancelled: true } });
+                            } catch (e: any) {
+                                setError(e?.message || 'Failed to cancel withdrawal.');
+                            } finally {
+                                setSubmitting(false);
+                            }
+                        }}
+                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-red-600 text-white px-8 py-3 rounded-lg shadow-md hover:bg-red-700 transition transform hover:scale-105"
+                        disabled={submitting}
+                    >
+                        Cancel
                     </button>
                 </div>
 

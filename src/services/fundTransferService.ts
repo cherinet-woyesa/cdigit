@@ -22,21 +22,26 @@ export const verifyFundTransferOTP = async (phone: string, otp: string) => {
 export const submitFundTransfer = async (data: {
   phoneNumber: string;
   branchId: string;
-  debitAccountNumber: string | number;
-  amount: string | number;
-  creditAccountNumber: string | number;
+  debitAccountNumber: string;
+  amount: string;
+  creditAccountNumber: string;
   remark?: string;
-  otp: string | number;
+  otp: string;
 }) => {
   const payload = {
     PhoneNumber: data.phoneNumber,
     BranchId: data.branchId,
-    DebitAccountNumber: Number(data.debitAccountNumber),
-    BeneficiaryAccountNumber: Number(data.creditAccountNumber),
-    TransferAmount: Number(data.amount),
+    DebitAccountNumber: data.debitAccountNumber,
+    BeneficiaryAccountNumber: data.creditAccountNumber,
+    TransferAmount: data.amount,
     Reason: data.remark ?? '',
-    OtpCode: Number(data.otp),
+    OtpCode: data.otp,
   };
   const res = await axios.post(`${API_BASE_URL}/FundTransfer/Submit`, payload);
   return res.data?.data ?? res.data;
+};
+
+export const cancelFundTransferByCustomer = async (id: string): Promise<any> => {
+  const res = await axios.put(`${API_BASE_URL}/FundTransfer/cancel-by-customer/${id}`);
+  return res.data;
 };

@@ -28,6 +28,11 @@ export default function FundTransfer() {
     const [errors, setErrors] = useState<any>({});
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState(1);
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpMessage, setOtpMessage] = useState('');
+    const [otpError, setOtpError] = useState('');
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
 
     const branchInfo = { name: 'Ayer Tena Branch', id: 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6', date: new Date().toLocaleDateString() };
 
@@ -82,6 +87,7 @@ export default function FundTransfer() {
         return Object.keys(errs).length === 0;
     };
 
+    // Step 1: Request OTP from backend
     const handleStep1Next = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!validateAll()) return;
@@ -89,19 +95,44 @@ export default function FundTransfer() {
             await validateCreditAccount();
         }
         if (formData.debitAccountNumber && formData.creditAccountNumber && formData.amount && formData.creditAccountName) {
-            setIsLoading(true);
+            setOtpError('');
+            setOtpMessage('');
+            setOtpLoading(true);
+            setErrors({});
+            if (!phone) {
+                setOtpError('Phone number is missing. Please log in again.');
+                setOtpLoading(false);
+                return;
+            }
             try {
-                await sendFundTransferOTP(phone || '');
+                const response = await sendFundTransferOTP(phone);
+                setOtpMessage(response.message || 'OTP sent to your phone.');
                 setStep(2);
-            } catch (err: any) { setErrors({ otp: err?.response?.data?.message || 'Failed to send OTP' }); }
-            setIsLoading(false);
+                // Start resend cooldown
+                setResendCooldown(30);
+                const timer = setInterval(() => {
+                    setResendCooldown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                setResendTimer(timer);
+            } catch (err: any) {
+                setOtpError(err?.response?.data?.message || 'Failed to send OTP.');
+            } finally {
+                setOtpLoading(false);
+            }
         }
     };
 
+    // Step 2: Proceed to confirmation after entering OTP (no frontend validation)
     const verifyOTP = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (formData.otp.length !== 6) {
-            setErrors({ otp: 'OTP must be 6 digits.' });
+        if (!formData.otp || formData.otp.length !== 6) {
+            setErrors({ otp: 'Please enter the 6-digit OTP sent to your phone.' });
             return;
         }
         setErrors({});
@@ -180,19 +211,64 @@ export default function FundTransfer() {
     );
 
     const renderStep2 = () => (
-        <form onSubmit={verifyOTP} className="text-center space-y-6">
-            <p className="text-gray-600">An OTP has been sent to your registered phone number: <strong className="text-fuchsia-800">{phone}</strong></p>
-            <Field label="Enter 6-Digit OTP" required error={errors.otp}>
-                <input type="text" name="otp" value={formData.otp} onChange={handleChange} maxLength={6} className="form-input w-full p-4 text-center text-2xl tracking-widest rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" />
-            </Field>
-            <div className="flex gap-4">
+        <form onSubmit={verifyOTP} className="space-y-6 text-center">
+            <div className="p-4 border rounded-lg shadow-sm">
+                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">OTP Verification</h2>
+                <p className="text-gray-600 mb-2">An OTP has been sent to your phone number: <strong className="text-fuchsia-800">{phone}</strong></p>
+                {otpMessage && <p className="text-green-600 mb-2">{otpMessage}</p>}
+                {otpError && <p className="text-red-600 mb-2">{otpError}</p>}
+                <Field label="Enter OTP" required error={errors.otp}>
+                    <input type="text" name="otp" value={formData.otp} onChange={handleChange} maxLength={6} className="form-input w-full p-4 text-center text-2xl tracking-widest rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" />
+                </Field>
+            </div>
+            <div className="flex gap-4 items-center justify-between">
                 <button type="button" onClick={() => setStep(1)} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">Back</button>
-                <button type="submit" disabled={formData.otp.length !== 6} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">
-                    Verify & Proceed
+                <button type="button"
+                    onClick={async () => {
+                        if (resendCooldown === 0) {
+                            setOtpError('');
+                            setOtpMessage('');
+                            setOtpLoading(true);
+                            try {
+                                if (!phone) {
+                                    setOtpError('Phone number is missing. Please log in again.');
+                                    setOtpLoading(false);
+                                    return;
+                                }
+                                const response = await sendFundTransferOTP(phone);
+                                setOtpMessage(response.message || 'OTP resent.');
+                                setResendCooldown(30);
+                                const timer = setInterval(() => {
+                                    setResendCooldown(prev => {
+                                        if (prev <= 1) {
+                                            clearInterval(timer);
+                                            return 0;
+                                        }
+                                        return prev - 1;
+                                    });
+                                }, 1000);
+                                setResendTimer(timer);
+                            } catch (err: any) {
+                                setOtpError(err?.response?.data?.message || 'Failed to resend OTP.');
+                            } finally {
+                                setOtpLoading(false);
+                            }
+                        }
+                    }}
+                    disabled={resendCooldown > 0 || otpLoading}
+                    className="w-full bg-fuchsia-100 text-fuchsia-700 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-fuchsia-200 transition disabled:opacity-50">
+                    {resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : 'Resend OTP'}
                 </button>
+                <button type="submit" disabled={formData.otp.length !== 6 || otpLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">Verify & Proceed</button>
             </div>
         </form>
     );
+    // Clean up timer on unmount
+    useEffect(() => {
+        return () => {
+            if (resendTimer) clearInterval(resendTimer);
+        };
+    }, [resendTimer]);
 
     const renderStep3 = () => (
         <form onSubmit={submitTransfer} className="space-y-6">

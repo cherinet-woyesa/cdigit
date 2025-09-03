@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { useReactToPrint } from 'react-to-print';
 import { useRef } from 'react';
+import { cancelFundTransferByCustomer } from '../../../services/fundTransferService';
 
 export default function FundTransferConfirmation() {
     const { state } = useLocation() as { state?: any };
@@ -59,6 +60,29 @@ export default function FundTransferConfirmation() {
                     <button onClick={handlePrint} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-gray-200 text-fuchsia-800 px-8 py-3 rounded-lg shadow-md hover:bg-gray-300 transition transform hover:scale-105">
                         <PrinterIcon className="h-5 w-5" />
                         Print
+                    </button>
+                    <button
+                        onClick={async () => {
+                            // You may want to show a modal or navigate to an update form instead
+                            navigate('/fund-transfer', { state: { updateId: data.id || data.Id } });
+                        }}
+                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-yellow-500 text-white px-8 py-3 rounded-lg shadow-md hover:bg-yellow-600 transition transform hover:scale-105"
+                    >
+                        Update
+                    </button>
+                    <button
+                        onClick={async () => {
+                            try {
+                                // You need to implement cancelFundTransferByCustomer in fundTransferService
+                                await cancelFundTransferByCustomer(data.id || data.Id);
+                                navigate('/fund-transfer', { state: { cancelled: true } });
+                            } catch (e: any) {
+                                alert(e?.message || 'Failed to cancel fund transfer.');
+                            }
+                        }}
+                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-red-600 text-white px-8 py-3 rounded-lg shadow-md hover:bg-red-700 transition transform hover:scale-105"
+                    >
+                        Cancel
                     </button>
                 </div>
 

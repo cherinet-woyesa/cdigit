@@ -93,9 +93,23 @@ export default function CashDepositForm() {
                 accountHolderName: formData.accountHolderName,
                 accountNumber: formData.accountNumber,
                 amount: Number(formData.amount),
+                telephoneNumber: phone || '',
             };
             const response = await depositService.submitDeposit(depositData);
-            navigate('/form/cash-deposit/cashdepositconfirmation', { state: { serverData: response, ...formData, branchName: "Ayer Tena Branch" } });
+            // Ensure we're passing the complete server response to the confirmation page
+            navigate('/form/cash-deposit/cashdepositconfirmation', { 
+                state: { 
+                    serverData: response,
+                    branchName: "Ayer Tena Branch",
+                    // Include form data as fallback
+                    ui: {
+                        accountNumber: formData.accountNumber,
+                        accountHolderName: formData.accountHolderName,
+                        amount: formData.amount,
+                        telephoneNumber: phone || ''
+                    }
+                } 
+            });
         } catch (error: any) {
             alert(error?.message || 'Submission failed. Please try again.');
         } finally {

@@ -16,9 +16,25 @@ export type DepositFormFields = {
     telephoneNumber?: string;
 };
 
+type DepositResponseData = {
+    id: string;
+    formReferenceId: string;
+    queueNumber?: number;
+    accountHolderName: string;
+    accountNumber: string;
+    amount: number;
+    amountInWords: string | null;
+    depositedBy: string | null;
+    telephoneNumber: string;
+    tokenNumber: string;
+    transactionType: string;
+    status: string;
+};
+
 type SubmitDepositResponse = {
+    success: boolean;
     message: string;
-    depositId?: string;
+    data: DepositResponseData;
 };
 
 type ErrorResponse = {
@@ -30,49 +46,40 @@ const depositService = {
     /**
      * Submits a new cash deposit form to the backend.
      * @param data The deposit data from the frontend form.
-     * @returns A promise that resolves with the backend's response message and depositId.
+     * @returns A promise that resolves with the backend's response.
      * @throws An error if the submission fails.
      */
-    submitDeposit: async (data: DepositFormFields): Promise<SubmitDepositResponse> => {
-    try {
-        const response = await fetch(API_BASE_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                // 'Authorization': `Bearer ${YOUR_AUTH_TOKEN}`,
-            },
-            body: JSON.stringify(data), // <-- send raw fields, not wrapped!
-        });
-
-        if (response.ok) {
-            // Backend responds with { success, message, data } so adapt accordingly
-            const responseData = await response.json();
-            // Extract message and depositId from data
-            return {
-                message: responseData.message ?? 'Submission successful.',
-                depositId: responseData.data?.id, // Access data.id instead of Deposit.Id
-            };
-        } else {
-            const errorData: ErrorResponse = await response.json();
-            let errorMessage = errorData.Message || 'Failed to submit deposit.';
-            if (errorData.errors) {
-                const validationErrors = Object.values(errorData.errors).flat().join('; ');
-                if (validationErrors) {
-                    errorMessage += ` Details: ${validationErrors}`;
-                }
-            }
-            throw new Error(errorMessage);
-        }
-    } catch (error) {
-        console.error('Error submitting deposit:', error);
-        throw error;
-    }
-},
-
-    getDepositById: async (id: string): Promise<any> => {
+    async submitDeposit(data: DepositFormFields): Promise<SubmitDepositResponse> {
         try {
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
 
-            console.log(`at customer's Fetching deposit by ID: ${id}`);
+            if (!response.ok) {
+                const errorData: ErrorResponse = await response.json();
+                let errorMessage = errorData.Message || 'Failed to submit deposit.';
+                if (errorData.errors) {
+                    const validationErrors = Object.values(errorData.errors).flat().join('; ');
+                    if (validationErrors) {
+                        errorMessage += ` Details: ${validationErrors}`;
+                    }
+                }
+                throw new Error(errorMessage);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error submitting deposit:', error);
+            throw error;
+        }
+    },
+
+    async getDepositById(id: string): Promise<SubmitDepositResponse> {
+        try {
             const response = await fetch(`${API_BASE_URL}/${id}`, {
                 method: 'GET',
                 headers: {
@@ -80,21 +87,20 @@ const depositService = {
                 },
             });
 
-            if (response.ok) {
-                // Expecting { success, message, data }
-                return await response.json();
-            } else {
+            if (!response.ok) {
                 const errorData: ErrorResponse = await response.json();
                 const errorMessage = errorData.Message || 'Deposit not found.';
                 throw new Error(errorMessage);
             }
+
+            return await response.json();
         } catch (error) {
             console.error(`Error fetching deposit by ID ${id}:`, error);
             throw error;
         }
     },
 
-    getAllDeposits: async (): Promise<any[]> => {
+    async getAllDeposits(): Promise<SubmitDepositResponse[]> {
         try {
             const response = await fetch(API_BASE_URL, {
                 method: 'GET',
@@ -103,15 +109,37 @@ const depositService = {
                 },
             });
 
-            if (response.ok) {
-                return await response.json();
-            } else {
+            if (!response.ok) {
                 const errorData: ErrorResponse = await response.json();
                 const errorMessage = errorData.Message || 'Failed to fetch all deposits.';
                 throw new Error(errorMessage);
             }
+
+            return await response.json();
         } catch (error) {
             console.error('Error fetching all deposits:', error);
+            throw error;
+        }
+    },
+
+    async cancelDepositByCustomer(id: string): Promise<{ success: boolean; message: string }> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/cancel-by-customer/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData: ErrorResponse = await response.json();
+                const errorMessage = errorData.Message || 'Failed to cancel deposit.';
+                throw new Error(errorMessage);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error cancelling deposit:', error);
             throw error;
         }
     },

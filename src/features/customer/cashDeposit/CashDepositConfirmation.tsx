@@ -4,63 +4,134 @@ import depositService from '../../../services/depositService';
 import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { useReactToPrint } from 'react-to-print';
 
+type DepositData = {
+    id?: string;
+    formReferenceId?: string;
+    referenceId?: string;
+    ReferenceId?: string;
+    accountNumber?: string;
+    accountHolderName?: string;
+    amount?: number;
+    tokenNumber?: string;
+    queueNumber?: number;
+    [key: string]: any; // For any additional properties
+};
+
 export default function DepositConfirmation() {
     const { state } = useLocation() as { state?: any };
     const navigate = useNavigate();
     const [serverData, setServerData] = useState<any>(state?.serverData || null);
+    const [localData, setLocalData] = useState<DepositData>(state?.serverData?.data || {});
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    // Memoize the data object to prevent re-creation on every render, fixing the infinite loop.
     const data = useMemo(() => {
-        // Prioritize serverData.data if available, otherwise use serverData directly
-        if (serverData?.data) return serverData.data;
-        if (serverData) return serverData;
-        // Fallback to state if serverData is not yet set (e.g., initial render)
-        if (state?.serverData?.data) return state.serverData.data;
-        if (state?.serverData) return state.serverData;
+        // Correctly handle the nested 'data' key from the API response
+        if (serverData?.data) {
+            return serverData.data;
+        }
+        // Fallback to state if serverData is not set, checking for the nested data first
+        if (state?.serverData?.data) {
+            return state.serverData.data;
+        }
         return {};
     }, [serverData, state]);
 
     useEffect(() => {
         const fetchDeposit = async () => {
             // Don't fetch if we already have data or an error
-            if (data.id || error) return; // Check for data.id instead of serverData
+            if (data.id || error) return;
             
-            const refId = data.formReferenceId || data.referenceId || data.ReferenceId;
+            const refId = data.formReferenceId || data.referenceId || data.ReferenceId || state?.serverData?.data?.id;
             if (!refId) return;
 
             setSubmitting(true);
             setError('');
             try {
+                console.log('Fetching deposit details for ID:', refId);
                 const res = await depositService.getDepositById(refId);
-                setServerData(res); // Update serverData state with fetched data
+                console.log('Received deposit details:', res);
+                setServerData(res);
+                
+                // If we have the data directly in the response, update the local state
+                if (res?.data) {
+                    setLocalData(prev => ({
+                        ...prev,
+                        ...res.data,
+                        id: res.data.id || prev.id,
+                        formReferenceId: res.data.formReferenceId || prev.formReferenceId,
+                        tokenNumber: res.data.tokenNumber || prev.tokenNumber,
+                        queueNumber: res.data.queueNumber ?? prev.queueNumber
+                    }));
+                }
             } catch (e: any) {
+                console.error('Error fetching deposit:', e);
                 setError(e?.message || 'Failed to fetch deposit confirmation.');
             } finally {
                 setSubmitting(false);
             }
         };
 
-        // Only fetch if data.id is not available (meaning serverData was not initially set or was empty)
-        if (!data.id) {
+        // If we have server data in the state, use it directly
+        if (state?.serverData?.data) {
+            setServerData(state.serverData);
+            setLocalData(prev => ({
+                ...prev,
+                ...state.serverData.data,
+                tokenNumber: state.serverData.data.tokenNumber || prev.tokenNumber,
+                queueNumber: state.serverData.data.queueNumber ?? prev.queueNumber
+            }));
+        }
+        // Otherwise, fetch the data if we have a reference ID
+        else if (state?.pending || !serverData) {
             fetchDeposit();
         }
-    }, [data, error]); // Now `data` is stable thanks to useMemo
+    }, [state, serverData, error, data.id]);
 
-    const branchName = state?.branchName || 'N/A'; // Get branch name from state
-    const accountNumber = (data.accountNumber || data.AccountNumber || state?.accountNumber || 'N/A').toString();
-    const accountHolderName = data.accountHolderName || data.AccountHolderName || state?.accountHolderName || 'N/A';
-    const amountValueRaw = data.amount ?? data.Amount ?? state?.amount;
-    const amount = !isNaN(Number(amountValueRaw)) ? `${Number(amountValueRaw).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` : String(amountValueRaw || '0.00');
-    const token = (data.tokenNumber || data.TokenNumber || data.token || data.Token || 'N/A')?.toString();
-    const queueNumber = (data.queueNumber || data.QueueNumber || 'N/A')?.toString();
+    // Get the effective data, preferring localData over data from useMemo
+    const effectiveData = localData?.id ? localData : (data || {});
+    
+    // Extract data from server response with proper fallbacks
+    const accountNumber = effectiveData?.accountNumber || state?.ui?.accountNumber || 'N/A';
+    const accountHolderName = effectiveData?.accountHolderName || state?.ui?.accountHolderName || 'N/A';
+    const branchName = state?.branchName || 'Ayer Tena Branch';
+    
+    // Format amount with proper fallback
+    const amountValue = effectiveData?.amount ?? state?.ui?.amount;
+    const amount = amountValue !== undefined && amountValue !== null
+        ? `${Number(amountValue).toLocaleString('en-US', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+          })} ETB`
+        : '0.00 ETB';
+    
+    // Get token and queue number from server response with proper fallbacks
+    const token = effectiveData?.tokenNumber || serverData?.data?.tokenNumber || 'N/A';
+    const queueNumber = effectiveData?.queueNumber?.toString() || serverData?.data?.queueNumber?.toString() || 'N/A';
+    
+    // Status information for display (commented out as not currently used in UI)
+    // const status = data?.status || 'Pending';
+    // const transactionType = data?.transactionType || 'Deposit';
 
-    const componentToPrintRef = useRef(null);
+    const componentToPrintRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
-        // @ts-ignore
         content: () => componentToPrintRef.current,
-    });
+        documentTitle: 'Deposit Confirmation',
+        onAfterPrint: () => console.log('Print completed'),
+        removeAfterPrint: true,
+        pageStyle: `
+            @page { 
+                size: auto; 
+                margin: 10mm 10mm 10mm 10mm; 
+            }
+            @media print { 
+                body { 
+                    -webkit-print-color-adjust: exact; 
+                } 
+            }
+        `,
+        // @ts-ignore - Ignore the type error for the content property
+    } as any);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -77,21 +148,33 @@ export default function DepositConfirmation() {
                 <div className="my-8 flex flex-col md:flex-row gap-4 justify-center text-white">
                     <div className="flex-1 bg-fuchsia-700 p-6 rounded-xl shadow-lg text-center">
                         <p className="text-lg font-semibold text-fuchsia-100">Queue Number</p>
-                        <p className="text-7xl font-bold tracking-wider">{data.queueNumber || '-'}</p>
+                        <p className="text-7xl font-bold tracking-wider">{queueNumber}</p>
                     </div>
                     <div className="flex-1 bg-fuchsia-600 p-6 rounded-xl shadow-lg text-center">
                         <p className="text-lg font-semibold text-fuchsia-100">Token</p>
-                        <p className="text-7xl font-bold tracking-wider">{data.tokenNumber || '-'}</p>
+                        <p className="text-7xl font-bold tracking-wider">{token}</p>
                     </div>
                 </div>
 
                 <div className="text-left bg-gray-50 p-6 rounded-lg shadow-inner">
-                    <h3 className="text-xl font-bold text-fuchsia-700 mb-4">Summary</h3>
-                    <div className="space-y-2 text-gray-700">
-                        {/* <div className="flex justify-between"><strong className="font-medium">Reference ID:</strong> <span>{referenceId}</span></div> */}
-                        <div className="flex justify-between"><strong className="font-medium">Account:</strong> <span>{accountHolderName} ({accountNumber})</span></div>
-                        <div className="flex justify-between"><strong className="font-medium">Amount:</strong> <span className="font-bold text-fuchsia-800">{amount}</span></div>
-                        <div className="flex justify-between"><strong className="font-medium">Branch:</strong> <span>{branchName}</span></div>
+                    <h3 className="text-xl font-bold text-fuchsia-700 mb-4">Transaction Summary</h3>
+                    <div className="space-y-3 text-gray-700">
+                        <div className="flex justify-between">
+                            <strong className="font-medium">Account Holder:</strong> 
+                            <span className="text-right">{accountHolderName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <strong className="font-medium">Account Number:</strong> 
+                            <span>{accountNumber}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <strong className="font-medium">Amount:</strong> 
+                            <span className="font-bold text-fuchsia-800">{amount}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <strong className="font-medium">Branch:</strong> 
+                            <span>{branchName}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -104,10 +187,46 @@ export default function DepositConfirmation() {
                         <PrinterIcon className="h-5 w-5" />
                         Print
                     </button>
+                    <button
+                        onClick={async () => {
+                            setSubmitting(true);
+                            setError('');
+                            try {
+                                navigate('/form/cash-deposit', { state: { updateId: data.id } });
+                            } catch (e: any) {
+                                setError(e?.message || 'Failed to update deposit.');
+                            } finally {
+                                setSubmitting(false);
+                            }
+                        }}
+                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-yellow-500 text-white px-8 py-3 rounded-lg shadow-md hover:bg-yellow-600 transition transform hover:scale-105"
+                        disabled={submitting}
+                    >
+                        Update
+                    </button>
+                    <button
+                        onClick={async () => {
+                            setSubmitting(true);
+                            setError('');
+                            try {
+                                await depositService.cancelDepositByCustomer(data.id);
+                                navigate('/form/cash-deposit', { state: { cancelled: true } });
+                            } catch (e: any) {
+                                setError(e?.message || 'Failed to cancel deposit.');
+                            } finally {
+                                setSubmitting(false);
+                            }
+                        }}
+                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-red-600 text-white px-8 py-3 rounded-lg shadow-md hover:bg-red-700 transition transform hover:scale-105"
+                        disabled={submitting}
+                    >
+                        Cancel
+                    </button>
                 </div>
-
+                {error && <div className="text-red-500 mt-4">{error}</div>}
                 <p className="text-sm text-gray-500 mt-6">Thank you for banking with us!</p>
             </div>
         </div>
     );
 }
+

@@ -107,7 +107,7 @@ export default function CashWithdrawalForm() {
         }
     };
 
-    // Step 2: Proceed to confirmation after entering OTP (no frontend validation)
+    // Step 2: Just check OTP format and proceed to confirmation
     const handleStep2Next = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.otp || formData.otp.length !== 6) {
