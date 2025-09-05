@@ -15,9 +15,9 @@ import EBankingApplication from './features/customer/forms/EBankingApplication/E
 import CbeBirrRegistration from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistration';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import './i18n';
-import CreateBranch from './features/admin/CreateBranch';
-import CreateUser from './features/admin/CreateUser';
-import ManageAccountTypes from './features/admin/ManageAccountTypes';
+import CreateBranch from './features/admin/CreateBranchModal';
+import CreateUser from './features/admin/CreateUserModal';
+import ManageAccountTypes from './features/admin/ManageAccountTypesModal';
 import AssignMakerRoute from './features/manager/AssignMakerRoute';
 import CreateUserManagerRoute from './features/manager/CreateStaffRoute';
 import AdminDashboard from './features/admin/AdminDashboard';
@@ -154,7 +154,7 @@ function App() {
           </ProtectedRoute>
         } />
         {/* Added routes for admin actions */}
-        <Route path="/admin/create-branch" element={
+        {/* <Route path="/admin/create-branch" element={
           <ProtectedRoute role="Admin">
             <CreateBranch />
           </ProtectedRoute>
@@ -168,7 +168,7 @@ function App() {
           <ProtectedRoute role="Admin">
             <ManageAccountTypes />
           </ProtectedRoute>
-        } />
+        } /> */}
 
         {/* Added routes for manager actions */}
         <Route path="/manager/create-user" element={

@@ -2,26 +2,39 @@ import { useEffect, useState } from "react";
 import managerService from "../../services/managerService";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { Card, CardContent } from "../../components/ui/card";
-import { useAuth } from "../../context/AuthContext";
-import toast from "react-hot-toast"; // Importing react-hot-toast directly
 import { Label } from "../../components/ui/label";
+import DataTable from "react-data-table-component";
 
 type WindowsProps = { branchId: string };
 
-export default function Windows({ branchId }: WindowsProps) {
+interface Window {
+  windowId: string;
+  description: string;
+  windowType: string;
+  windowNumber: number;
+  status: string;
+}
 
-  const [windows, setWindows] = useState<any[]>([]);
+export default function Windows({ branchId }: WindowsProps) {
+  const [windows, setWindows] = useState<Window[]>([]);
   const [form, setForm] = useState({
     description: "",
     windowType: "Transaction",
   });
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const load = async () => {
     if (!branchId) return;
-    const data = await managerService.getWindowsByBranch(branchId);
-    setWindows(data);
+    setLoading(true);
+    try {
+      const data = await managerService.getWindowsByBranch(branchId);
+      setWindows(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -36,18 +49,51 @@ export default function Windows({ branchId }: WindowsProps) {
       const res = await managerService.createWindow({ ...form, branchId });
       if (res?.success) {
         setMessage({ type: "success", text: res.message || "Window created successfully." });
-        toast.success(res.message || "Window added.");
         setForm({ description: "", windowType: "Transaction" });
         load();
       } else {
         setMessage({ type: "error", text: res?.message || "Failed to create window." });
-        toast.error(res?.message || "Something went wrong.");
       }
     } catch (err: any) {
       setMessage({ type: "error", text: err.message || "Unexpected error." });
-      toast.error(err.message || "Unexpected error.");
     }
   };
+
+  const columns = [
+    {
+      name: "Description",
+      selector: (row: Window) => row.description,
+      sortable: true,
+    },
+    {
+      name: "Type",
+      selector: (row: Window) => row.windowType,
+      sortable: true,
+    },
+    {
+      name: "Number",
+      selector: (row: Window) => row.windowNumber,
+      sortable: true,
+    },
+    {
+      name: "Status",
+      selector: (row: Window) => row.status,
+      cell: (row: Window) => {
+        const bgColor =
+          row.status.toLowerCase() === "active"
+            ? "bg-green-500"
+            : row.status.toLowerCase() === "inactive"
+            ? "bg-red-500"
+            : "bg-gray-500";
+        return (
+          <span className={`px-2 py-1 rounded text-white font-semibold text-sm ${bgColor}`}>
+            {row.status}
+          </span>
+        );
+      },
+      sortable: true,
+    },
+  ];
 
   return (
     <div>
@@ -89,20 +135,66 @@ export default function Windows({ branchId }: WindowsProps) {
         </p>
       )}
 
-      <div className="grid gap-2">
-        {windows.map((w) => (
-          <Card key={w.windowId} className="bg-blackbase text-gold">
-            <CardContent className="p-2 flex justify-between">
-              <span>
-                {w.description} ({w.windowType})
-              </span>
-              <span className="text-sm text-gray-300">
-                #{w.windowNumber} -- {w.status}
-              </span>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* DataTable for windows */}
+      <DataTable
+        title="Branch Windows"
+        columns={columns}
+        data={windows}
+        progressPending={loading}
+        pagination
+        highlightOnHover
+        striped
+        responsive
+        persistTableHead
+        customStyles={{
+          table: {
+            style: {
+              borderRadius: "12px",
+              overflow: "hidden",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            },
+          },
+          headCells: {
+            style: {
+              fontWeight: "bold",
+              fontSize: "14px",
+              background: "linear-gradient(90deg, #6B21A8, #9333EA)",
+              color: "white",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+            },
+          },
+          rows: {
+            style: {
+              minHeight: "55px",
+              borderRadius: "8px",
+              margin: "4px 0",
+              transition: "all 0.3s",
+            },
+          },
+          cells: {
+            style: {
+              paddingLeft: "16px",
+              paddingRight: "16px",
+            },
+          },
+        }}
+        conditionalRowStyles={[
+          {
+            when: () => true,
+            style: {
+              cursor: "pointer",
+              transition: "all 0.2s",
+              "&:hover": {
+                backgroundColor: "#A78BFA",
+                color: "#fff",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                transform: "translateY(-2px)",
+              },
+            } as any,
+          },
+        ]}
+      />
     </div>
   );
 }

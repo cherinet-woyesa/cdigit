@@ -55,12 +55,17 @@ const makerService = {
   /** WINDOWS */
   getWindowsByBranchId: async (branchId: string, token: string) => {
     const res = await axios.get(`${API_BASE_URL}/Window/bybranch/${branchId}`, authHeader(token));
-    return res.data as any[]; // plain array
+    //return res.data as any[]; // plain array
+    return res.data?.data as any[]; // <-- pick .data
+
   },
 
   getAssignedWindowForMaker: async (makerId: string, token: string) => {
     const res = await axios.get(`${API_BASE_URL}/Window/assigned-to-maker/${makerId}`, authHeader(token));
-    return res.data || null; // plain object or null
+    // return res.data || null; // plain object or null
+    return res.data?.data || null; // <-- pick .data
+
+    
   },
 
   assignMakerToWindow: async (windowId: string, makerId: string, token: string) => {

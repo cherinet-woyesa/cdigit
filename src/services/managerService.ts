@@ -6,6 +6,18 @@ const authHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 });
 
+
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return { headers: { Authorization: `Bearer ${token}` } };
+};
+
+
+ 
+
+
+
 const managerService = {
   // --- AD USERS ---
   getAdUsersByBranch: async (branchId: string) => {
@@ -52,7 +64,37 @@ const managerService = {
     return res.data || null; // return created window object
   },
 
-  
+  //branch related
+   async getBranchByManagerId(managerId: string) {
+    const res = await axios.get(`${API_BASE_URL}/branches/manager/${managerId}`, getAuthHeaders());
+    return res.data;
+  },
+
+  // async createBranch(branch: { name: string; code: string; latitude: number; longitude: number; location?: string }) {
+  //   const res = await axios.post(`${API_BASE_URL}/branches`, branch, getAuthHeaders());
+  //   return res.data;
+  // },
+
+  async createBranch(branch: { name: string; code: string; latitude: number; longitude: number; location?: string }) {
+  const token = localStorage.getItem("token");
+  let managerId = "";
+  if (token) {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    managerId = payload.nameid; // Use 'id' property from token
+      console.log("at frontend: createBranch called with manager id:", managerId);
+
+  }
+
+  const branchWithManager = {
+    ...branch,
+    managerId: managerId, // include managerId in request
+  };
+
+  const res = await axios.post(`${API_BASE_URL}/branches`, branchWithManager, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+},
 
   assignMakerToWindow: async (windowId: string, makerId: string) => {
     const res = await axios.put(
