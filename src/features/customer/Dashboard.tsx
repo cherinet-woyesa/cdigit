@@ -68,9 +68,10 @@ export default function Dashboard() {
   const filteredForms = useMemo(() => {
     if (!searchQuery.trim()) return forms;
     const query = searchQuery.toLowerCase().trim();
-    return forms.filter((form) =>
-      t(`forms.${form.name}` as const).toLowerCase().includes(query)
-    );
+    return forms.filter((form) => {
+      const label = t('forms.' + form.name as string) as string;
+      return label.toLowerCase().includes(query);
+    });
   }, [searchQuery, t]);
 
   useEffect(() => {
@@ -155,7 +156,7 @@ export default function Dashboard() {
                   <form.icon className="h-5 w-5 sm:h-6 sm:w-6 text-fuchsia-700 group-hover:text-white" />
                 </div>
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 group-hover:text-white">
-                  {t(`forms.${form.name}` as const)}
+                  {t('forms.' + form.name as string) as string}
                 </h3>
 
                 <div className="mt-2 sm:mt-4 text-fuchsia-600 font-semibold flex items-center gap-1 sm:gap-2 group-hover:gap-3 transition-all group-hover:text-white">

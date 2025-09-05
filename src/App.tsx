@@ -25,6 +25,9 @@ import ManagerDashboard from './features/manager/ManagerDashboard';
 import MakerDashboard from './features/maker/MakerDashboard';
 import Dashboard from './features/customer/Dashboard';
 import TransactionHistory from './features/customer/TransactionHistory';
+import CbeBirrRegistrationConfirmation from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistrationConfirmation';
+import RTGSTransferConfirmation from './features/customer/forms/RTGSTransfer/RTGSTransferConfirmation';
+import EBankingConfirmation from './features/customer/forms/EBankingApplication/EBankingConfirmation';
 
 // A simple protected route component
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
