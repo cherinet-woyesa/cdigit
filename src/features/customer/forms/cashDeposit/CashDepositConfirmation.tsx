@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useMemo, useRef } from 'react';
-import depositService from '../../../services/depositService';
+import depositService from '../../../../services/depositService';
 import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { useReactToPrint } from 'react-to-print';
 

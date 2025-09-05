@@ -1,7 +1,7 @@
 // src/components/accountOpening/StepDocument.tsx
 import React, { useState } from "react";
-import { Field } from "./FormElements";
-import type { DocumentDetail, Errors } from "../types/formTypes";
+import Field from '../../../../../components/Field';
+import type { DocumentDetail, Errors } from "../../../../../types/formTypes";
 
 export const validate = (data: DocumentDetail): Errors<DocumentDetail> => {
     const newErrors: Errors<DocumentDetail> = {};

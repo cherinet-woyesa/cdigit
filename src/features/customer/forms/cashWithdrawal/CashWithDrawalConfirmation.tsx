@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { submitWithdrawal, getWithdrawalById, type WithdrawalResponse } from '../../../services/withdrawalService';
+import { submitWithdrawal, getWithdrawalById, type WithdrawalResponse } from '../../../../services/withdrawalService';
 import { CheckCircleIcon, PrinterIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { useReactToPrint } from 'react-to-print';
 
@@ -171,11 +171,11 @@ export default function WithdrawalConfirmation() {
     const accountHolderName = effectiveData?.accountHolderName || 
                              (serverData as any)?.accountHolderName || 
                              'N/A';
-    const referenceId = effectiveData?.formReferenceId || 
-                       effectiveData?.referenceId || 
-                       (serverData as any)?.formReferenceId || 
-                       (serverData as any)?.referenceId || 
-                       'N/A';
+    // const referenceId = effectiveData?.formReferenceId || 
+    //                    effectiveData?.referenceId || 
+    //                    (serverData as any)?.formReferenceId || 
+    //                    (serverData as any)?.referenceId || 
+    //                    'N/A';
 
     // If we have server data, show the success message
     if (serverData || withdrawalData.id) {

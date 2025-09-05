@@ -1,15 +1,16 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import * as accountOpeningService from "../../../services/accountOpeningService";
-import { checkAccountExistsByPhone } from "../../../services/accountsService";
-import { ProgressBar, Field } from "./components/FormElements";
+import * as accountOpeningService from "../../../../services/accountOpeningService";
+import { checkAccountExistsByPhone } from "../../../../services/accountsService";
+import ProgressBar from '../../../../components/ProgressBar';
+import Field from '../../../../components/Field';
 import type {
     Errors,
     FormData,
     FormErrors,
     FormSummary,
-} from "./types/formTypes";
-import { INITIAL_DATA } from "./types/formTypes";
+} from "../../../../types/formTypes";
+import { INITIAL_DATA } from "../../../../types/formTypes";
 import { StepPersonal, validate as validatePersonalDetail } from "./components/StepPersonal";
 import { StepAddress, validate as validateAddressDetail } from "./components/StepAddress";
 import { StepFinancial, validate as validateFinancialDetail } from "./components/StepFinancial";
@@ -19,7 +20,7 @@ import { StepEPayment, validate as validateEPaymentDetail } from "./components/S
 import { StepPassbook, validate as validatePassbookDetail } from "./components/StepPassbook";
 import { StepSignature, validate as validateSignatureDetail } from "./components/StepSignature";
 import { StepReview } from "./components/StepReview"; // Import the new review step
-import { useMultiStepForm } from "../../../hooks/useMultiStepForm";
+import { useMultiStepForm } from '../../../../hooks/useMultiStepForm';
 
 const steps = [
     "Personal",

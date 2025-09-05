@@ -1,5 +1,5 @@
 import React from 'react';
-import type { FormData } from './types/formTypes';
+import type { FormData } from '../../../../../types/formTypes';
 
 // Helper to format display labels from camelCase
 const formatLabel = (key: string) => {

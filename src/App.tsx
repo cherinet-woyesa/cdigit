@@ -3,13 +3,16 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import OTPLogin from './features/auth/OTPLogin';
 import StaffLogin from './components/StaffLogin';
-import CashDeposit from './features/customer/cashDeposit/CashDeposit';
-import CashDepositConfirmation from './features/customer/cashDeposit/CashDepositConfirmation';
-import CashWithdrawal from './features/customer/cashWithdrawal/CashWithDrawal';
-import CashWithDrawalConfirmation from './features/customer/cashWithdrawal/CashWithDrawalConfirmation';
-import FundTransfer from './features/customer/fundTransfer/FundTransfer';
-import FundTransferConfirmation from './features/customer/fundTransfer/FundTransferConfirmation';
-import AccountOpeningForm from './features/customer/accountOpening/AccountOpeningForm';
+import CashDeposit from './features/customer/forms/cashDeposit/CashDeposit';
+import CashDepositConfirmation from './features/customer/forms/cashDeposit/CashDepositConfirmation';
+import CashWithdrawal from './features/customer/forms/cashWithdrawal/CashWithDrawal';
+import CashWithDrawalConfirmation from './features/customer/forms/cashWithdrawal/CashWithDrawalConfirmation';
+import FundTransfer from './features/customer/forms/fundTransfer/FundTransfer';
+import FundTransferConfirmation from './features/customer/forms/fundTransfer/FundTransferConfirmation';
+import AccountOpeningForm from './features/customer/forms/accountOpening/AccountOpeningForm';
+import RTGSTransfer from './features/customer/forms/RTGSTransfer/RTGSTransfer';
+import EBankingApplication from './features/customer/forms/EBankingApplication/EBankingApplication';
+import CbeBirrRegistration from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistration';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import './i18n';
 import CreateBranch from './features/admin/CreateBranch';
@@ -71,7 +74,10 @@ function App() {
         <Route path="/" element={<Navigate to="/otp-login" replace />} /> {/* Redirect to OTP Login */}
         <Route path="/otp-login" element={<OTPLogin />} />
         <Route path="/staff-login" element={<StaffLogin />} />
-        <Route path="/form/account-opening" element={<AccountOpeningForm />} />
+  <Route path="/form/account-opening" element={<AccountOpeningForm />} />
+  <Route path="/form/rtgs-transfer" element={<RTGSTransfer />} />
+  <Route path="/form/ebanking" element={<EBankingApplication />} />
+  <Route path="/form/cbe-birr" element={<CbeBirrRegistration />} />
 
         <Route path="/dashboard" element={
           <ProtectedRoute>

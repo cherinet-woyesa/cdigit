@@ -1,7 +1,7 @@
 // src/components/accountOpening/StepEPayment.tsx
 import React from "react";
-import { Field } from "./FormElements";
-import type { EPaymentService, Errors } from "../types/formTypes";
+import Field from '../../../../../components/Field';
+import type { EPaymentService, Errors } from "../../../../../types/formTypes";
 
 export const validate = (data: EPaymentService): Errors<EPaymentService> => {
     const newErrors: Errors<EPaymentService> = {};

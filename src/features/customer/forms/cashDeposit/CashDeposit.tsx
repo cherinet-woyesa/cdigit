@@ -1,12 +1,12 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
-import depositService from '../../../services/depositService';
-import { getAccountTypes, type AccountType } from '../../../services/accountTypeService';
-import { Field } from '../accountOpening/components/FormElements'; // Adjusted path
-import { useUserAccounts } from '../../../hooks/useUserAccounts'; // Import the new hook
-import { fetchWindowsByBranch } from '../../../services/windowService';
-import type { Window as WindowType } from '../../../services/windowService';
+import { useAuth } from '../../../../context/AuthContext';
+import depositService from '../../../../services/depositService';
+import { getAccountTypes, type AccountType } from '../../../../services/accountTypeService';
+import Field from '../../../../components/Field';
+import { useUserAccounts } from '../../../../hooks/useUserAccounts';
+import { fetchWindowsByBranch } from '../../../../services/windowService';
+import type { Window as WindowType } from '../../../../services/windowService';
 
 const API_BASE_URL = 'http://localhost:5268/api';
 

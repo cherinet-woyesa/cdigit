@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
-import { Field } from '../accountOpening/components/FormElements';
+import { useAuth } from '../../../../context/AuthContext';
+import Field from '../../../../components/Field';
 // Removed duplicate import
-import { useUserAccounts } from '../../../hooks/useUserAccounts'; // Import the new hook
-import authService from '../../../services/authService';
+import { useUserAccounts } from '../../../../hooks/useUserAccounts';
+import authService from '../../../../services/authService';
 
 // Removed unused API_BASE_URL
 

@@ -4,9 +4,9 @@ import React, { useEffect, useState } from "react";
 function getStartedPhoneNumber() {
     return localStorage.getItem("accountOpeningPhoneNumberInput") || "";
 }
-import { getRegions, getZones, getWoredas } from "../../../../services/addressService";
-import { Field } from "./FormElements";
-import type { AddressDetail, Errors } from "../types/formTypes";
+import { getRegions, getZones, getWoredas } from "../../../../../services/addressService";
+import Field from '../../../../../components/Field';
+import type { AddressDetail, Errors } from "../../../../../types/formTypes";
 
 export const validate = (data: AddressDetail): Errors<AddressDetail> => {
     const newErrors: Errors<AddressDetail> = {};

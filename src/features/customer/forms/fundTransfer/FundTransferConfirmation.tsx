@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { useReactToPrint } from 'react-to-print';
 import { useRef } from 'react';
-import { cancelFundTransferByCustomer } from '../../../services/fundTransferService';
+import { cancelFundTransferByCustomer } from '../../../../services/fundTransferService';
 
 export default function FundTransferConfirmation() {
     const { state } = useLocation() as { state?: any };

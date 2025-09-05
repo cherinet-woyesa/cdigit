@@ -90,7 +90,7 @@ export const AccountOpeningProvider: React.FC<{ children: React.ReactNode }> = (
       }
       if (savedCompletedSteps) {
         const steps = new Set(JSON.parse(savedCompletedSteps).map(Number));
-        steps.forEach(step => dispatch({ type: 'MARK_STEP_COMPLETED', payload: step }));
+  (Array.from(steps) as number[]).forEach(step => dispatch({ type: 'MARK_STEP_COMPLETED', payload: step }));
       }
     } catch (error) {
       console.error('Failed to load saved form data:', error);

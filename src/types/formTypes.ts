@@ -1,99 +1,235 @@
 // src/types/formTypes.ts
 
-// Backend DTO Names (These now directly mirror your C# DTO property names)
-export type AccountOpeningFormData = {
-  PersonalDetails: PersonalDetail;
-  AddressDetails: AddressDetail;
-  FinancialDetails: FinancialDetail;
-  OtherDetails: OtherDetail;
-  DocumentDetails: DocumentDetail;
-  EPaymentServices: EPaymentService;
-  PassbookMudayRequest: PassbookMudayRequest;
-  DigitalSignature: DigitalSignature;
+export interface PersonalDetail {
+    id?: number; // Changed to camelCase
+    accountType: string; // Changed to camelCase
+    title: string; // Changed to camelCase
+    firstName: string; // Changed to camelCase
+    middleName?: string; // Changed to camelCase
+    grandfatherName: string; // Changed to camelCase
+    motherFullName?: string; // Changed to camelCase
+    sex: string; // Changed to camelCase
+    dateOfBirth: string; // Changed to camelCase
+    placeOfBirth?: string; // Changed to camelCase
+    maritalStatus: string; // Changed to camelCase
+    educationQualification?: string; // Changed to camelCase
+    nationality: string; // Changed to camelCase
+}
+
+export interface AddressDetail {
+    id?: number; // Changed to camelCase
+    customerId?: number; // Changed to camelCase
+    regionCityAdministration: string; // Changed to camelCase
+    zone?: string; // Changed to camelCase
+    subCity?: string; // Changed to camelCase
+    weredaKebele?: string; // Changed to camelCase
+    houseNumber?: string; // Changed to camelCase
+    mobilePhone: string; // Changed to camelCase
+    officePhone?: string; // Changed to camelCase
+    emailAddress?: string; // Changed to camelCase
+}
+
+export interface FinancialDetail {
+    id?: number; // Changed to camelCase
+    customerId?: number; // Changed to camelCase
+    typeOfWork: "Private" | "Employee"; // Changed to camelCase
+    businessSector?: string; // Changed to camelCase
+    incomeFrequencyAnnual_Private?: boolean; // Changed to camelCase
+    incomeFrequencyMonthly_Private?: boolean; // Changed to camelCase
+    incomeFrequencyDaily_Private?: boolean; // Changed to camelCase
+    incomeDetails_Private?: string; // Changed to camelCase
+    otherIncome?: string; // Changed to camelCase
+    sectorOfEmployer?: string; // Changed to camelCase
+    jobPosition?: string; // Changed to camelCase
+    incomeFrequencyAnnual_Employee?: boolean; // Changed to camelCase
+    incomeFrequencyMonthly_Employee?: boolean; // Changed to camelCase
+    incomeFrequencyDaily_Employee?: boolean; // Changed to camelCase
+    incomeDetails_Employee?: string; // Changed to camelCase
+}
+
+export interface OtherDetail {
+    id?: number; // Changed to camelCase
+    customerId?: number; // Changed to camelCase
+    hasBeenConvicted?: boolean; // Changed to camelCase
+    convictionReason?: string; // Changed to camelCase
+    isPoliticallyExposed?: boolean; // Changed to camelCase
+    pepPosition?: string; // Changed to camelCase
+    sourceOfFund: string; // Changed to camelCase
+    otherSourceOfFund?: string; // Changed to camelCase
+}
+
+export interface DocumentDetail {
+    id?: number; // Changed to camelCase
+    customerId?: number; // Changed to camelCase
+    docRegionCitySubCity?: string; // Changed to camelCase
+    docZone?: string; // Added to separate Zone from Woreda
+    docWeredaKebele?: string; // Changed to camelCase
+    docHouseNumber?: string; // Changed to camelCase
+    docEmail?: string; // Changed to camelCase
+    docOfficeTelephone?: string; // Changed to camelCase
+    idType: string; // Changed to camelCase
+    idPassportNo: string; // Changed to camelCase
+    issuedBy: string; // Changed to camelCase
+    issueDate: string; // Changed to camelCase
+    expiryDate: string; // Changed to camelCase
+    mobilePhoneNo: string; // Changed to camelCase
+    photoIdFile?: File; // Keep as is, this is a File object, not a JSON property
+    docPhotoUrl?: string; // Changed to camelCase
+}
+
+export interface EPaymentService {
+    id?: number; // Changed to camelCase
+    customerId?: number; // Changed to camelCase
+    hasAtmCard: boolean; // Changed to camelCase
+    atmCardType?: string; // Changed to camelCase
+    atmCardDeliveryBranch?: string; // Changed to camelCase
+    hasMobileBanking: boolean; // Changed to camelCase
+    hasInternetBanking: boolean; // Changed to camelCase
+    hasCbeBirr: boolean; // Changed to camelCase
+    hasSmsBanking: boolean; // Changed to camelCase
+}
+
+export interface PassbookMudayRequest {
+    id?: number; // Changed to camelCase
+    customerId?: number; // Changed to camelCase
+    needsPassbook: boolean; // Changed to camelCase
+    needsMudayBox: boolean; // Changed to camelCase
+    mudayBoxDeliveryBranch?: string; // Changed to camelCase
+}
+
+export interface DigitalSignature {
+    id?: number; // Changed to camelCase
+    customerId?: number; // Changed to camelCase
+    signatureFile?: File; // Keep as is, this is a File object
+    signatureUrl: string; // Changed to camelCase
+    termsAccepted: boolean; // Changed to camelCase
+}
+
+// Interface for the comprehensive form summary from the backend
+export interface FormSummary {
+    customerId: number; // Stays camelCase as it's from backend response
+    personalDetails: PersonalDetail;
+    addressDetails: AddressDetail;
+    financialDetails: FinancialDetail;
+    otherDetails: OtherDetail;
+    documentDetails: DocumentDetail;
+    ePaymentService: EPaymentService;
+    passbookMudayRequest: PassbookMudayRequest;
+    digitalSignature: DigitalSignature;
+}
+
+// Define the full form state on the frontend
+export type FormData = {
+    customerId?: number; // Stays camelCase
+    personalDetails: PersonalDetail;
+    addressDetails: AddressDetail;
+    financialDetails: FinancialDetail;
+    otherDetails: OtherDetail;
+    documentDetails: DocumentDetail;
+    ePaymentService: EPaymentService;
+    passbookMudayRequest: PassbookMudayRequest;
+    digitalSignature: DigitalSignature;
 };
 
-// Frontend Step Data Types (All properties are now PascalCase)
-// --- Step 1: Personal Details ---
-export type PersonalDetail = {
-  AccountType: "Savings" | "Current" | "IFB" | "";
-  Title: "Mr." | "Mrs." | "Miss" | "Ms." | "Dr." | "";
-  YourName: string; // Changed from 'name'
-  FatherName: string;
-  GrandfatherName: string;
-  MotherFullName: string;
-  Sex: "Male" | "Female" | "";
-  DateOfBirth: string; // Changed from 'dob' - YYYY-MM-DD format
-  PlaceOfBirth: string;
-  MaritalStatus: "Single" | "Married" | "Divorced" | "Widowed" | "";
-  EducationQualification: string; // Changed from 'education'
-  Nationality: "Ethiopian" | "Foreign National" | "";
+// Generic errors type for individual step data
+export type Errors<T> = {
+    [K in keyof T]?: string;
 };
 
-// --- Step 2: Address Details ---
-export type AddressDetail = {
-  RegionCityAdministration: string;
-  Zone: string;
-  SubCity: string;
-  WeredaKebele: string;
-  HouseNumber: string;
-  MobilePhone: string;
-  OfficePhone: string;
-  EmailAddress: string; // Changed from 'email'
+// Define a new type for the full errors state
+export type FormErrors = {
+    personalDetails: Errors<PersonalDetail>;
+    addressDetails: Errors<AddressDetail>;
+    financialDetails: Errors<FinancialDetail>;
+    otherDetails: Errors<OtherDetail>;
+    documentDetails: Errors<DocumentDetail>;
+    ePaymentService: Errors<EPaymentService>;
+    passbookMudayRequest: Errors<PassbookMudayRequest>;
+    digitalSignature: Errors<DigitalSignature>;
+    apiError?: string;
 };
 
-// --- Step 3: Financial Details ---
-export type FinancialDetail = {
-  TypeOfWork: "Private" | "Employee" | ""; // Changed from 'workType'
-  BusinessSector: string;
-  IncomeFrequency: "Annual" | "Monthly" | "Daily" | "";
-  IncomeAmount: string;
-  OtherIncome: string;
-  SectorOfEmployer: string; // Changed from 'employerSector'
-  JobPosition: string;
+// Initial data for the entire form (ensure all properties are initialized with camelCase)
+export const INITIAL_DATA: FormData = {
+    customerId: undefined,
+    personalDetails: {
+        accountType: "", // Changed to camelCase
+        title: "", // Changed to camelCase
+        firstName: "", // Changed to camelCase
+        grandfatherName: "", // Changed to camelCase
+        sex: "", // Changed to camelCase
+        dateOfBirth: "", // Changed to camelCase
+        maritalStatus: "", // Changed to camelCase
+        nationality: "" // Changed to camelCase
+    },
+    addressDetails: {
+        regionCityAdministration: "", // Changed to camelCase
+        mobilePhone: "", // Changed to camelCase
+        zone: "", // Changed to camelCase
+        subCity: "", // Changed to camelCase
+        weredaKebele: "", // Changed to camelCase
+        houseNumber: "", // Changed to camelCase
+        officePhone: "", // Changed to camelCase
+        emailAddress: "", // Changed to camelCase
+    },
+    financialDetails: {
+        typeOfWork: "Private", // Changed to camelCase
+        businessSector: "", // Changed to camelCase
+        incomeFrequencyAnnual_Private: false, // Changed to camelCase
+        incomeFrequencyMonthly_Private: false, // Changed to camelCase
+        incomeFrequencyDaily_Private: false, // Changed to camelCase
+        incomeDetails_Private: "", // Changed to camelCase
+        otherIncome: "", // Changed to camelCase
+        sectorOfEmployer: "", // Changed to camelCase
+        jobPosition: "", // Changed to camelCase
+        incomeFrequencyAnnual_Employee: false, // Changed to camelCase
+        incomeFrequencyMonthly_Employee: false, // Changed to camelCase
+        incomeFrequencyDaily_Employee: false, // Changed to camelCase
+        incomeDetails_Employee: "", // Changed to camelCase
+    },
+    otherDetails: {
+        sourceOfFund: "", // Changed to camelCase
+        hasBeenConvicted: false, // Changed to camelCase
+        convictionReason: "", // Changed to camelCase
+        isPoliticallyExposed: false, // Changed to camelCase
+        pepPosition: "", // Changed to camelCase
+        otherSourceOfFund: "", // Changed to camelCase
+    },
+    documentDetails: {
+        idType: "", // Changed to camelCase
+        idPassportNo: "", // Changed to camelCase
+        issuedBy: "", // Changed to camelCase
+        issueDate: "", // Changed to camelCase
+        expiryDate: "", // Changed to camelCase
+        mobilePhoneNo: "", // Changed to camelCase
+        docPhotoUrl: "", // Changed to camelCase
+        docRegionCitySubCity: "", // Changed to camelCase
+        docZone: "", // Added default for zone
+        docWeredaKebele: "", // Changed to camelCase
+        docHouseNumber: "", // Changed to camelCase
+        docEmail: "", // Changed to camelCase
+        docOfficeTelephone: "", // Changed to camelCase
+    },
+    ePaymentService: {
+        hasAtmCard: false, // Changed to camelCase
+        atmCardType: "", // Changed to camelCase
+        atmCardDeliveryBranch: "", // Changed to camelCase
+        hasMobileBanking: false, // Changed to camelCase
+        hasInternetBanking: false, // Changed to camelCase
+        hasCbeBirr: false, // Changed to camelCase
+        hasSmsBanking: false, // Changed to camelCase
+    },
+    passbookMudayRequest: {
+        needsPassbook: false, // Changed to camelCase
+        needsMudayBox: false, // Changed to camelCase
+        mudayBoxDeliveryBranch: "", // Changed to camelCase
+    },
+    digitalSignature: {
+        termsAccepted: false, // Changed to camelCase
+        signatureUrl: "", // Changed to camelCase
+    },
 };
 
-// --- Step 4: Other Details ---
-export type OtherDetail = {
-  HasBeenConvicted: boolean; // Changed from 'hasBeenConvicted'
-  ConvictionReason: string;
-  IsPoliticallyExposed: boolean; // Changed from 'isPoliticallyExposed'
-  PepPosition: string;
-  SourceOfFund: "Salary" | "Business Income" | "Gift" | "Inheritance" | "Loan" | "Pension" | "Other" | "";
-  OtherSourceOfFund: string;
-};
-
-// --- Step 5: Document Details ---
-export type DocumentDetail = {
-  IdType: "National ID" | "Passport" | "Driver's License" | "Resident Permit" | ""; // Changed from 'idType'
-  IdPassportNo: string; // Changed from 'idPassportNo'
-  IdIssueDate: string; // Changed from 'idIssueDate' - YYYY-MM-DD format
-  IdExpiryDate: string; // Changed from 'idExpiryDate' - YYYY-MM-DD format
-  IdIssuePlace: string; // Changed from 'idIssuePlace'
-  PhotoIdFile: File | null; // Changed from 'photoIdFile'
-};
-
-// --- Step 6: E-Payment Services ---
-export type EPaymentService = {
-  HasAtmCard: boolean; // Changed from 'hasAtmCard'
-  AtmCardType: "Visa" | "MasterCard" | "UnionPay" | ""; // Changed from 'atmCardType'
-  AtmCardDeliveryBranch: string; // Changed from 'atmCardDeliveryBranch'
-  HasMobileBanking: boolean; // Changed from 'hasMobileBanking'
-  HasInternetBanking: boolean; // Changed from 'hasInternetBanking'
-  HasSmsBanking: boolean; // Changed from 'hasSmsBanking'
-};
-
-// --- Step 7: Passbook & Muday Box Request ---
-export type PassbookMudayRequest = {
-  NeedsPassbook: boolean; // Changed from 'needsPassbook'
-  NeedsMudayBox: boolean; // Changed from 'needsMudayBox'
-  MudayBoxDeliveryBranch: string; // Changed from 'mudayBoxDeliveryBranch'
-};
-
-// --- Step 8: Digital Signature & Submission ---
-export type DigitalSignature = {
-  TermsAccepted: boolean; // Changed from 'termsAccepted'
-  PhotoFile: File | null; // Changed from 'photoFile'
-};
-
-// Utility type for errors (keys will now be PascalCase)
-export type Errors<T> = Partial<Record<keyof T, string>>;
+export interface IdResponse {
+    id: number; // Stays camelCase
+}

@@ -1,8 +1,8 @@
 // src/components/accountOpening/StepPersonal.tsx
 import React, { useEffect, useState } from "react";
-import { Field } from "./FormElements";
-import { getAccountTypes } from "../../../../services/accountTypeService";
-import type { PersonalDetail, Errors } from "../types/formTypes"; // Ensure types are correct
+import Field from '../../../../../components/Field';
+import { getAccountTypes } from "../../../../../services/accountTypeService";
+import type { PersonalDetail, Errors } from "../../../../../types/formTypes"; // Ensure types are correct
 
 export const validate = (data: PersonalDetail): Errors<PersonalDetail> => {
     const newErrors: Errors<PersonalDetail> = {};

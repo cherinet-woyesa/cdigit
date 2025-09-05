@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Field } from "./FormElements";
-import type { DigitalSignature, Errors } from "../types/formTypes";
+import Field from '../../../../../components/Field';
+import type { DigitalSignature, Errors } from "../../../../../types/formTypes";
 
 export const validate = (data: DigitalSignature): Errors<DigitalSignature> => {
     const newErrors: Errors<DigitalSignature> = {};

@@ -27,6 +27,10 @@ type FormName =
   | 'mobileBanking'
   | 'atmCard'
   | 'cbeBirr'
+  | 'rtgsTransfer'
+  | 'ebankingApplication'
+  | 'otherServices'
+  | 'cbeBirrRegistration'
   | 'otherForms';
 
 interface Form {
@@ -41,11 +45,13 @@ const forms: Form[] = [
   { name: 'cashDeposit', route: '/form/cash-deposit', icon: ArrowDownTrayIcon, description: 'Deposit cash to an account.' },
   { name: 'cashWithdrawal', route: '/form/cash-withdrawal', icon: ArrowUpTrayIcon, description: 'Withdraw cash from your account.' },
   { name: 'fundTransfer', route: '/form/fund-transfer', icon: ArrowsRightLeftIcon, description: 'Transfer funds between accounts.' },
-  { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, description: 'View your transaction history.' },
+  { name: 'rtgsTransfer', route: '/form/rtgs-transfer', icon: ArrowsRightLeftIcon, description: 'RTGS Customer Transfer Order.' },
+  { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, description: 'Apply for E-Banking services.' },
+  { name: 'cbeBirrRegistration', route: '/form/cbe-birr', icon: CurrencyDollarIcon, description: 'Register for CBE-Birr.' },
   { name: 'mobileBanking', route: '/form/mobile-banking', icon: DevicePhoneMobileIcon, description: 'Manage your accounts on the go.' },
   { name: 'atmCard', route: '/form/atm-card', icon: CreditCardIcon, description: 'Request or manage your ATM card.' },
-  { name: 'cbeBirr', route: '/form/cbe-birr', icon: CurrencyDollarIcon, description: 'Access mobile money services.' },
   { name: 'otherForms', route: '/form/other-forms', icon: Squares2X2Icon, description: 'Explore other banking services.' },
+   { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, description: 'View your transaction history.' },
 ];
 
 export default function Dashboard() {

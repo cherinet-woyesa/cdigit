@@ -1,7 +1,7 @@
 // src/components/accountOpening/StepPassbook.tsx
 import React from "react";
-import { Field } from "./FormElements";
-import type { PassbookMudayRequest, Errors } from "../types/formTypes";
+import Field from '../../../../../components/Field';
+import type { PassbookMudayRequest, Errors } from "../../../../../types/formTypes";
 
 export const validate = (data: PassbookMudayRequest): Errors<PassbookMudayRequest> => {
     const newErrors: Errors<PassbookMudayRequest> = {};

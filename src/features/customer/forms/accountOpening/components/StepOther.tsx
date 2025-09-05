@@ -1,7 +1,7 @@
 // src/components/accountOpening/StepOther.tsx
 import React from "react";
-import { Field } from "./FormElements";
-import type { OtherDetail, Errors } from "../types/formTypes";
+import Field from '../../../../../components/Field';
+import type { OtherDetail, Errors } from "../../../../../types/formTypes";
 
 export const validate = (data: OtherDetail): Errors<OtherDetail> => {
     const newErrors: Errors<OtherDetail> = {};
