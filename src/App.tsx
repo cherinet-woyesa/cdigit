@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import OTPLogin from './features/auth/OTPLogin';
-import StaffLogin from './components/StaffLogin';
+import StaffLogin from './features/auth/StaffLogin';
 import CashDeposit from './features/customer/forms/cashDeposit/CashDeposit';
 import CashDepositConfirmation from './features/customer/forms/cashDeposit/CashDepositConfirmation';
 import CashWithdrawal from './features/customer/forms/cashWithdrawal/CashWithDrawal';
@@ -75,7 +75,36 @@ function App() {
         <Route path="/otp-login" element={<OTPLogin />} />
         <Route path="/staff-login" element={<StaffLogin />} />
   <Route path="/form/account-opening" element={<AccountOpeningForm />} />
-  <Route path="/form/rtgs-transfer" element={<RTGSTransfer />} />
+        <Route path="/form/cbe-birr" element={
+          <ProtectedRoute>
+            <CbeBirrRegistration />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/cbe-birr/confirmation" element={
+          <ProtectedRoute>
+            <CbeBirrRegistrationConfirmation />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/rtgs-transfer" element={
+          <ProtectedRoute>
+            <RTGSTransfer />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/rtgs-transfer/confirmation" element={
+          <ProtectedRoute>
+            <RTGSTransferConfirmation />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/ebanking" element={
+          <ProtectedRoute>
+            <EBankingApplication />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/ebanking/confirmation" element={
+          <ProtectedRoute>
+            <EBankingConfirmation />
+          </ProtectedRoute>
+        } />  <Route path="/form/rtgs-transfer" element={<RTGSTransfer />} />
   <Route path="/form/ebanking" element={<EBankingApplication />} />
   <Route path="/form/cbe-birr" element={<CbeBirrRegistration />} />
 
