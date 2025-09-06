@@ -100,12 +100,12 @@ export default function BranchAdUsers({ branchId }: { branchId: string }) {
   return (
     <div>
       <h2 className="text-lg font-semibold mb-2 text-cbe-primary">
-        👥 AD Users in Branch
+        👥 AD Users in Your Branch
       </h2>
 
       <div className="mt-4">
         <DataTable
-          title="Branch AD Users"
+          // title="Branch AD Users"
           columns={columns}
           data={users}
           progressPending={loading}

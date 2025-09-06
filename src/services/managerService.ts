@@ -96,6 +96,31 @@ const managerService = {
   return res.data;
 },
 
+
+async updateBranch(
+    id: string,
+    branch: {
+      name: string;
+      code: string;
+      location?: string;
+      latitude?: number;
+      longitude?: number;
+      status?: string;
+    }
+  ) {
+    const res = await axios.put(`${API_BASE_URL}/branches/${id}`, branch, getAuthHeaders());
+    return res.data;
+  },
+  
+updateWindowStatus: async (id: string, status: string) => {
+  const res = await axios.put(
+    `${API_BASE_URL}/Window/${id}/status`,
+    { status },
+    authHeader()
+  );
+  return res.data; // ApiResponse { success, message, data }
+},
+
   assignMakerToWindow: async (windowId: string, makerId: string) => {
     const res = await axios.put(
       `${API_BASE_URL}/Window/${windowId}/assign-maker/${makerId}`,
