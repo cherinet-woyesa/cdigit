@@ -1,5 +1,7 @@
 import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState, useMemo } from 'react';
+import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
@@ -64,6 +66,9 @@ export default function Dashboard() {
   const [isQueueNotifyModalOpen, setIsQueueNotifyModalOpen] = useState(false);
   const [QueueNotifyModalMessage, setQueueNotifyModalMessage] = useState('');
   const [QueueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
+  const [QueueNotifyModalWindowNumber, setQueueNotifyModalWindowNumber] = useState('');
+  const [QueueNotifyModalTellerName, setQueueNotifyModalTellerName] = useState('');
+
 
   const filteredForms = useMemo(() => {
     if (!searchQuery.trim()) return forms;
@@ -95,7 +100,9 @@ export default function Dashboard() {
       // Listen for messages
       connection.on('CustomerCalled', (data) => {
         setQueueNotifyModalTitle('You Are Being Called');
-        setQueueNotifyModalMessage(`${data.message} Window ${data.windowId}`);
+        setQueueNotifyModalMessage(`${data.message} `);
+        setQueueNotifyModalWindowNumber(data.windowNumber);
+        setQueueNotifyModalTellerName(data.tellerName);
         setIsQueueNotifyModalOpen(true);
       });
     });
@@ -113,6 +120,8 @@ export default function Dashboard() {
         onClose={() => setIsQueueNotifyModalOpen(false)}
         title={QueueNotifyModalTitle}
         message={QueueNotifyModalMessage}
+        QueueNotifyModalWindowNumber={QueueNotifyModalWindowNumber}
+        QueueNotifyModalTellerName={QueueNotifyModalTellerName}
       />
       <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">

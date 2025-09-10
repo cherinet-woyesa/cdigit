@@ -45,6 +45,8 @@ const adminService = {
       latitude?: number;
       longitude?: number;
       status?: string;
+      managerId?: string | null;
+      isApproved?: boolean;
     }
   ) {
     const res = await axios.put(`${API_BASE_URL}/branches/${id}`, branch, getAuthHeaders());

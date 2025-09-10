@@ -11,12 +11,18 @@ interface Props {
   setBranches: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
+
 const EditBranchModal: React.FC<Props> = ({ open, onClose, branch, branches, setBranches }) => {
+
+  console.log("Editing branch:", branch);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [location, setLocation] = useState("");
   const [latitude, setLatitude] = useState<number | "">("");
   const [longitude, setLongitude] = useState<number | "">("");
+  const [status, setStatus] = useState("active");
+  const [managerId, setManagerId] = useState<string | null>(null);
+  const [isApproved, setIsApproved] = useState(false);
 
   useEffect(() => {
     if (branch) {
@@ -25,6 +31,9 @@ const EditBranchModal: React.FC<Props> = ({ open, onClose, branch, branches, set
       setLocation(branch.location || "");
       setLatitude(branch.latitude ?? "");
       setLongitude(branch.longitude ?? "");
+      setStatus(branch.status || "active");
+      setManagerId(branch.managerId || null);
+      setIsApproved(branch.isApproved || false);
     }
   }, [branch]);
 
@@ -39,6 +48,9 @@ const EditBranchModal: React.FC<Props> = ({ open, onClose, branch, branches, set
         location,
         latitude: latitude === "" ? undefined : latitude,
         longitude: longitude === "" ? undefined : longitude,
+        status,
+        managerId,
+        isApproved,
       });
       toast.success(res.message || "Branch updated!");
 

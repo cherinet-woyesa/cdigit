@@ -65,7 +65,7 @@ const makerService = {
     // return res.data || null; // plain object or null
     return res.data?.data || null; // <-- pick .data
 
-    
+
   },
 
   assignMakerToWindow: async (windowId: string, makerId: string, token: string) => {
@@ -74,8 +74,23 @@ const makerService = {
       {},
       authHeader(token)
     );
-    return res.data as { message: string };
+    // return res.data as { message: string };
+    return res.data ;
+
   },
+
+  changeMakerToWindow: async (windowId: string, makerId: string, token: string) => {
+    console.log("makerService.changeMakerToWindow called with:", { windowId, makerId });
+    const res = await axios.put(
+      `${API_BASE_URL}/Window/${windowId}/change-window/${makerId}`,
+      {},
+      authHeader(token)
+    );
+    // return res.data as { message: string };
+        return res.data;
+
+  },
+
 
   /** QUEUE & TELLER */
   getAllCustomersOnQueueByBranch: async (branchId: string, token: string) => {
@@ -119,7 +134,7 @@ const makerService = {
     token: string
   ) => {
     const res = await axios.put<ApiResponse<object>>(
-       `${API_BASE_URL}/Deposits/denominations/${formReferenceId}`,
+      `${API_BASE_URL}/Deposits/denominations/${formReferenceId}`,
 
       updateDto,
       {
@@ -135,22 +150,30 @@ const makerService = {
 
   //get total served by current logged in maker
   getTotalServed: async (makerId: string, token: string) => {
-  const res = await axios.get<ApiResponse<number>>(
-    `${API_BASE_URL}/Teller/TotalServed/${makerId}`,
-    authHeader(token)
-  );
-  return res.data;
-},
+    const res = await axios.get<ApiResponse<number>>(
+      `${API_BASE_URL}/Teller/TotalServed/${makerId}`,
+      authHeader(token)
+    );
+    return res.data;
+  },
 
-//get by form reference id
-searchCustomerByFormReferenceId: async (formReferenceId: string, token: string) => {
-  const res = await axios.get<ApiResponse<NextCustomerData>>(
-    `${API_BASE_URL}/Teller/SearchByFormReference/${formReferenceId}`,
-    authHeader(token)
-  );
-  return res.data;
-},
+  //get by form reference id
+  searchCustomerByFormReferenceId: async (formReferenceId: string, token: string) => {
+    const res = await axios.get<ApiResponse<NextCustomerData>>(
+      `${API_BASE_URL}/Teller/SearchByFormReference/${formReferenceId}`,
+      authHeader(token)
+    );
+    return res.data;
+  },
 
+  //get branch info
+  getBranchById: async (branchId: string, token: string) => {
+    const res = await axios.get<ApiResponse<any>>(
+      `${API_BASE_URL}/branches/${branchId}`,
+      authHeader(token)
+    );
+    return res.data;
+  },
 
 };
 
