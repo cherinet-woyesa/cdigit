@@ -281,7 +281,7 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
             <div className="flex flex-col md:flex-row md:justify-between gap-4 mt-10">
   <button
     type="button"
-    className="w-full md:w-auto px-6 py-2 rounded-lg font-semibold border-2 border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors duration-200"
+    className="px-6 py-2 rounded-lg font-semibold border-2 border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors duration-200"
     onClick={onBack}
   >
     <span className="mr-2">⬅️</span> Go Back

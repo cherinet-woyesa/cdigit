@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import Field from '../../../../components/Field';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import { validateAccountWithCBS, sendFundTransferOTP, submitFundTransfer } from '../../../../services/fundTransferService';
+import { sendFundTransferOTP, submitFundTransfer } from '../../../../services/fundTransferService';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 
 const API_BASE_URL = 'http://localhost:5268/api';
@@ -13,7 +13,7 @@ const API_BASE_URL = 'http://localhost:5268/api';
 export default function FundTransfer() {
     const { phone } = useAuth();
     const navigate = useNavigate();
-    const { accounts, accountDropdown, loadingAccounts, errorAccounts } = useUserAccounts();
+    const { accounts, accountDropdown, loadingAccounts } = useUserAccounts();
 
     const [formData, setFormData] = useState({
         debitAccountNumber: '',
@@ -38,6 +38,20 @@ export default function FundTransfer() {
 
     useEffect(() => {
         if (!loadingAccounts && accounts.length > 0) {
+            // Try to restore from localStorage
+            const saved = localStorage.getItem('selectedDebitAccount');
+            if (saved) {
+                const acc = accounts.find(a => a.accountNumber === saved);
+                if (acc) {
+                    setFormData(prev => ({
+                        ...prev,
+                        debitAccountNumber: acc.accountNumber,
+                        debitAccountName: acc.accountHolderName,
+                    }));
+                    return;
+                }
+            }
+            // Default: auto-select if only one account
             if (accounts.length === 1) {
                 setFormData(prev => ({
                     ...prev,
@@ -53,7 +67,10 @@ export default function FundTransfer() {
         let updated = { ...formData, [name]: value };
         if (name === 'debitAccountNumber') {
             const selected = accounts.find(acc => acc.accountNumber === value);
-            if (selected) updated.debitAccountName = selected.accountHolderName || '';
+            if (selected) {
+                updated.debitAccountName = selected.accountHolderName || '';
+                localStorage.setItem('selectedDebitAccount', value);
+            }
         }
         setFormData(updated);
     };
@@ -152,58 +169,56 @@ export default function FundTransfer() {
     };
 
     const renderStep1 = () => (
-        <form onSubmit={handleStep1Next} className="space-y-6">
-            <div className="p-4 border rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Account Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form onSubmit={handleStep1Next} className="space-y-4">
+            <div className="p-3 border rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold text-fuchsia-700 mb-3">Account Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field label="Account Number" required error={errors.debitAccountNumber}>
                         {accountDropdown ? (
-                            <select name="debitAccountNumber" value={formData.debitAccountNumber} onChange={handleChange} className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm">
+                            <select name="debitAccountNumber" value={formData.debitAccountNumber} onChange={handleChange} className="form-select w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm text-sm">
                                 <option value="">Select your account</option>
                                 {accounts.map(acc => <option key={acc.accountNumber} value={acc.accountNumber}>{acc.accountNumber} - {acc.accountHolderName}</option>)}
                             </select>
                         ) : (
-                            <input type="text" name="debitAccountNumber" value={formData.debitAccountNumber} onChange={handleChange} readOnly={accounts.length === 1} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" />
+                            <input type="text" name="debitAccountNumber" value={formData.debitAccountNumber} onChange={handleChange} readOnly={accounts.length === 1} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm text-sm" />
                         )}
                     </Field>
                     <Field label="Account Holder Name" required error={errors.debitAccountName}>
-                        <input type="text" name="debitAccountName" value={formData.debitAccountName} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" />
+                        <input type="text" name="debitAccountName" value={formData.debitAccountName} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed text-sm" />
                     </Field>
                 </div>
             </div>
-            <div className="p-4 border rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Beneficiary Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-3 border rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold text-fuchsia-700 mb-3">Beneficiary Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field label="Beneficiary Account Number" required error={errors.creditAccountNumber}>
                         <div className="flex">
-                            <input type="text" name="creditAccountNumber" value={formData.creditAccountNumber} onChange={handleChange} onBlur={validateCreditAccount} className="form-input w-full p-2 rounded-l-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" />
-                            <button type="button" onClick={validateCreditAccount} disabled={isLoading} className="bg-fuchsia-600 text-white px-4 rounded-r-lg hover:bg-fuchsia-700 disabled:bg-fuchsia-300">{isLoading ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : 'Verify'}</button>
+                            <input type="text" name="creditAccountNumber" value={formData.creditAccountNumber} onChange={handleChange} onBlur={validateCreditAccount} className="form-input w-full p-2 rounded-l-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 text-sm" />
+                            <button type="button" onClick={validateCreditAccount} disabled={isLoading} className="bg-fuchsia-600 text-white px-3 rounded-r-lg hover:bg-fuchsia-700 disabled:bg-fuchsia-300 text-sm">{isLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : 'Verify'}</button>
                         </div>
                     </Field>
                     <Field label="Beneficiary Name" required error={errors.creditAccountName}>
-                        <input type="text" name="creditAccountName" value={formData.creditAccountName} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" />
+                        <input type="text" name="creditAccountName" value={formData.creditAccountName} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed text-sm" />
                     </Field>
                 </div>
             </div>
-            <div className="p-4 border rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Amount Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <div className="p-3 border rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold text-fuchsia-700 mb-3">Amount Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field label="Amount" required error={errors.amount}>
-                        <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" />
+                        <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm text-sm" />
                     </Field>
-                    {/* <Field label="Amount in Words"> // Commented out
-                        <input type="text" name="amountInWords" value={formData.amountInWords} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" /> // Commented out
-                    </Field> // Commented out */}
                 </div>
             </div>
             {/* <div className="p-4 border rounded-lg shadow-sm"> // Commented out
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Remark</h2> // Commented out
+{{ ... }}
                 <Field label="Remark (Optional)"> // Commented out
                     <textarea name="remark" value={formData.remark} onChange={handleChange} rows={2} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" /> // Commented out
                 </Field> // Commented out
             </div> // Commented out */}
-            <div className="pt-4">
-                <button type="submit" disabled={isLoading || !formData.creditAccountName} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">
+            <div className="pt-2">
+                <button type="submit" disabled={isLoading || !formData.creditAccountName} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md transition disabled:opacity-50 text-sm">
                     {isLoading ? 'Verifying...' : 'Continue'}
                 </button>
             </div>
@@ -211,18 +226,18 @@ export default function FundTransfer() {
     );
 
     const renderStep2 = () => (
-        <form onSubmit={verifyOTP} className="space-y-6 text-center">
-            <div className="p-4 border rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">OTP Verification</h2>
-                <p className="text-gray-600 mb-2">An OTP has been sent to your phone number: <strong className="text-fuchsia-800">{phone}</strong></p>
-                {otpMessage && <p className="text-green-600 mb-2">{otpMessage}</p>}
-                {otpError && <p className="text-red-600 mb-2">{otpError}</p>}
+        <form onSubmit={verifyOTP} className="space-y-4 text-center">
+            <div className="p-3 border rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold text-fuchsia-700 mb-3">OTP Verification</h2>
+                <p className="text-gray-600 mb-2 text-sm">An OTP has been sent to your phone number: <strong className="text-fuchsia-800">{phone}</strong></p>
+                {otpMessage && <p className="text-green-600 mb-2 text-sm">{otpMessage}</p>}
+                {otpError && <p className="text-red-600 mb-2 text-sm">{otpError}</p>}
                 <Field label="Enter OTP" required error={errors.otp}>
-                    <input type="text" name="otp" value={formData.otp} onChange={handleChange} maxLength={6} className="form-input w-full p-4 text-center text-2xl tracking-widest rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" />
+                    <input type="text" name="otp" value={formData.otp} onChange={handleChange} maxLength={6} className="form-input w-full p-3 text-center text-xl tracking-widest rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" />
                 </Field>
             </div>
-            <div className="flex gap-4 items-center justify-between">
-                <button type="button" onClick={() => setStep(1)} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">Back</button>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button type="button" onClick={() => setStep(1)} className="w-full bg-gray-200 text-fuchsia-800 font-semibold py-2 px-3 rounded-lg shadow hover:bg-gray-300 transition text-sm">Back</button>
                 <button type="button"
                     onClick={async () => {
                         if (resendCooldown === 0) {
@@ -256,10 +271,10 @@ export default function FundTransfer() {
                         }
                     }}
                     disabled={resendCooldown > 0 || otpLoading}
-                    className="w-full bg-fuchsia-100 text-fuchsia-700 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-fuchsia-200 transition disabled:opacity-50">
-                    {resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : 'Resend OTP'}
+                    className="w-full bg-fuchsia-100 text-fuchsia-700 font-semibold py-2 px-3 rounded-lg shadow hover:bg-fuchsia-200 transition disabled:opacity-50 text-sm">
+                    {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend OTP'}
                 </button>
-                <button type="submit" disabled={formData.otp.length !== 6 || otpLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">Verify & Proceed</button>
+                <button type="submit" disabled={formData.otp.length !== 6 || otpLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition disabled:opacity-50 text-sm">Verify</button>
             </div>
         </form>
     );
@@ -271,28 +286,28 @@ export default function FundTransfer() {
     }, [resendTimer]);
 
     const renderStep3 = () => (
-        <form onSubmit={submitTransfer} className="space-y-6">
-            <h3 className="text-2xl font-bold text-fuchsia-800 text-center">Review Your Transfer</h3>
-            <div className="space-y-2 text-gray-700 bg-gray-50 p-4 rounded-lg shadow-inner">
+        <form onSubmit={submitTransfer} className="space-y-4">
+            <h3 className="text-xl font-bold text-fuchsia-800 text-center">Review Your Transfer</h3>
+            <div className="space-y-2 text-gray-700 bg-gray-50 p-3 rounded-lg shadow-inner">
                 <div className="flex justify-between"><strong className="font-medium">From:</strong> <span>{formData.debitAccountName} ({formData.debitAccountNumber})</span></div>
                 <div className="flex justify-between"><strong className="font-medium">To:</strong> <span>{formData.creditAccountName} ({formData.creditAccountNumber})</span></div>
-                <div className="flex justify-between items-center"><strong className="font-medium">Amount:</strong> <span className="font-bold text-2xl text-fuchsia-800">{Number(formData.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB</span></div>
+                <div className="flex justify-between items-center"><strong className="font-medium">Amount:</strong> <span className="font-bold text-xl text-fuchsia-800">{Number(formData.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB</span></div>
                 {/* Removed remark display as field is no longer present */}
             </div>
-            <div className="flex gap-4">
-                <button type="button" onClick={() => setStep(2)} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">Back</button>
-                <button type="submit" disabled={isLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">
-                    {isLoading ? <><ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />Processing...</> : 'Confirm & Transfer'}
+            <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setStep(2)} className="w-full bg-gray-200 text-fuchsia-800 font-semibold py-2 px-3 rounded-lg shadow hover:bg-gray-300 transition text-sm">Back</button>
+                <button type="submit" disabled={isLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition disabled:opacity-50 text-sm">
+                    {isLoading ? <><ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />Processing...</> : 'Confirm'}
                 </button>
             </div>
         </form>
     );
 
     return (
-        <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
-            <div className="text-center mb-8 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg">
-                <h1 className="text-3xl font-extrabold text-white">Fund Transfer</h1>
-                <p className="text-white mt-1">{branchInfo.name} - {branchInfo.date}</p>
+        <div className="max-w-3xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg">
+            <div className="text-center mb-4 bg-fuchsia-700 text-white p-3 rounded-lg shadow-lg">
+                <h1 className="text-2xl font-extrabold text-white">Fund Transfer</h1>
+                <p className="text-white mt-1 text-sm">{branchInfo.name} - {branchInfo.date}</p>
             </div>
             {errors.submit && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-center">{errors.submit}</div>}
             {step === 1 && renderStep1()}

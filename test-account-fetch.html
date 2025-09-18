@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Account Fetch</title>
+    <script>
+        async function testAccountFetch() {
+            const phone = prompt('Enter phone number to test (e.g., 0912345678):');
+            if (!phone) return;
+            
+            try {
+                const response = await fetch(`http://localhost:5268/api/Accounts/by-phone/${phone}`);
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                // Display the response in the page
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `
+                    <h3>API Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <h3>Response Headers:</h3>
+                    <pre>Status: ${response.status} ${response.statusText}</pre>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</head>
+<body>
+    <button onclick="testAccountFetch()">Test Account Fetch</button>
+    <div id="result" style="margin-top: 20px; white-space: pre-wrap; font-family: monospace;"></div>
+</body>
+</html>

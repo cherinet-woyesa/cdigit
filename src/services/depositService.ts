@@ -8,7 +8,7 @@ export type DepositFormFields = {
     branchId: string; // Guid as string
     accountHolderName: string;
     accountNumber: string;
-    typeOfAccount?: 'Savings' | 'Current' | 'Special Demand';
+    // typeOfAccount?: 'Savings' | 'Current' | 'Special Demand';
     amount: number;
     amountInWords?: string;
     DepositedBy?: string;

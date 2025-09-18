@@ -45,7 +45,10 @@
     "atmCard": "ATM Card Request",
     "cbeBirr": "CBE-Birr Registration",
     "otherForms": "Other Forms",
-    "history": "Transaction History"
+    "history": "Transaction History",
+    "rtgsTransfer": "RTGS Transfer",
+    "ebankingApplication": "E-Banking Application",
+    "cbeBirrRegistration": "CBE-Birr Registration"
   },
 
   "select": "Select",

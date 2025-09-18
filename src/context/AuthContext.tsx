@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
 interface User {
     id: string;
@@ -25,7 +25,7 @@ interface AuthContextType {
     loading: boolean;
     updateAssignedWindow: (window: Window | null) => void;
     phone: string | null;
-    setPhone: (phone: string | null) => void;
+    setPhone: (newPhone: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,21 +34,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [phone, setPhone] = useState<string | null>(null);
+    const [phone, setPhoneState] = useState<string | null>(null);
+
+    const setPhone = (newPhone: string | null) => {
+        if (newPhone) {
+            localStorage.setItem('phone', newPhone);
+        } else {
+            localStorage.removeItem('phone');
+        }
+        setPhoneState(newPhone);
+    };
 
     // Load user from local storage on initial mount
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
+        const storedPhone = localStorage.getItem('phone');
 
         if (storedToken && storedUser) {
             try {
                 const parsedUser = JSON.parse(storedUser);
                 setToken(storedToken);
                 setUser(parsedUser);
+                if (storedPhone) {
+                    setPhoneState(storedPhone);
+                }
             } catch (e) {
                 console.error("Failed to parse user from local storage", e);
-                localStorage.clear();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('phone');
             }
         }
         setLoading(false);
@@ -83,8 +98,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('phone');
         setToken(null);
         setUser(null);
+        setPhone(null);
     };
 
     const updateAssignedWindow = (window: Window | null) => {

@@ -134,31 +134,32 @@ export default function DepositConfirmation() {
     } as any);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-            <div ref={componentToPrintRef} className="max-w-2xl w-full bg-white p-8 rounded-2xl shadow-lg text-center">
-                <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg rounded-t-2xl -mt-8 -mx-8 mb-8">
-                    <div className="max-w-7xl mx-auto flex justify-between items-center">
-                        <h1 className="text-2xl font-bold text-white">Deposit Confirmation</h1>
-                    </div>
-                </header>
-                <CheckCircleIcon className="h-20 w-20 mx-auto text-green-500" />
-                <h1 className="text-3xl font-extrabold text-fuchsia-800 mt-4">Success!</h1>
-                <p className="text-gray-600 mt-2">Your deposit has been submitted. Please see your token and queue number below.</p>
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
+            <div ref={componentToPrintRef} className="max-w-2xl w-full bg-white p-4 sm:p-6 rounded-lg shadow-lg">
+                <div className="mb-6 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg text-center">
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Deposit Confirmation</h1>
+                </div>
+                
+                <div className="text-center mb-4">
+                    <CheckCircleIcon className="h-14 w-14 mx-auto text-green-500" />
+                    <h1 className="text-xl font-extrabold text-fuchsia-800 mt-2">Success!</h1>
+                    <p className="text-gray-600 text-sm">Your deposit has been submitted.</p>
+                </div>
 
-                <div className="my-8 flex flex-col md:flex-row gap-4 justify-center text-white">
-                    <div className="flex-1 bg-fuchsia-700 p-6 rounded-xl shadow-lg text-center">
-                        <p className="text-lg font-semibold text-fuchsia-100">Queue Number</p>
-                        <p className="text-7xl font-bold tracking-wider">{queueNumber}</p>
+                <div className="my-4 grid grid-cols-2 gap-3">
+                    <div className="bg-fuchsia-700 p-3 rounded-lg shadow text-center">
+                        <p className="text-xs font-medium text-fuchsia-100">Queue #</p>
+                        <p className="text-3xl font-bold">{queueNumber}</p>
                     </div>
-                    <div className="flex-1 bg-fuchsia-600 p-6 rounded-xl shadow-lg text-center">
-                        <p className="text-lg font-semibold text-fuchsia-100">Token</p>
-                        <p className="text-7xl font-bold tracking-wider">{token}</p>
+                    <div className="bg-fuchsia-600 p-3 rounded-lg shadow text-center">
+                        <p className="text-xs font-medium text-fuchsia-100">Token</p>
+                        <p className="text-3xl font-bold">{token}</p>
                     </div>
                 </div>
 
-                <div className="text-left bg-gray-50 p-6 rounded-lg shadow-inner">
-                    <h3 className="text-xl font-bold text-fuchsia-700 mb-4">Transaction Summary</h3>
-                    <div className="space-y-3 text-gray-700">
+                <div className="bg-gray-50 p-3 rounded-lg shadow-inner mb-4">
+                    <h3 className="text-base font-bold text-fuchsia-700 mb-2">Transaction Summary</h3>
+                    <div className="space-y-2 text-sm sm:text-base text-gray-700">
                         <div className="flex justify-between">
                             <strong className="font-medium">Account Holder:</strong> 
                             <span className="text-right">{accountHolderName}</span>
@@ -178,13 +179,19 @@ export default function DepositConfirmation() {
                     </div>
                 </div>
 
-                <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-                    <button onClick={() => navigate('/form/cash-deposit')} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-fuchsia-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition transform hover:scale-105">
-                        <ArrowPathIcon className="h-5 w-5" />
-                        New Deposit
+                <div className="grid grid-cols-2 gap-2">
+                    <button 
+                        onClick={() => navigate('/form/cash-deposit')} 
+                        className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition"
+                    >
+                        <ArrowPathIcon className="h-3.5 w-3.5" />
+                        New
                     </button>
-                    <button onClick={handlePrint} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-gray-200 text-fuchsia-800 px-8 py-3 rounded-lg shadow-md hover:bg-gray-300 transition transform hover:scale-105">
-                        <PrinterIcon className="h-5 w-5" />
+                    <button 
+                        onClick={handlePrint} 
+                        className="flex items-center justify-center gap-1 w-full bg-gray-200 text-fuchsia-800 text-sm px-2 py-1.5 rounded-md shadow hover:bg-gray-300 transition"
+                    >
+                        <PrinterIcon className="h-3.5 w-3.5" />
                         Print
                     </button>
                     <button

@@ -158,7 +158,18 @@ const OTPLogin: React.FC = () => {
       const normalized = normalizePhone(phoneNumber);
       const response: { message: string; token?: string } = await authService.loginWithOtp(normalized, otp);
       setMessage(response.message || t('loginSuccessful'));
-      setPhone(normalized);
+      
+      // Set the phone number in AuthContext and wait for it to be set
+      await new Promise<void>((resolve) => {
+        setPhone(normalized);
+        // Small delay to ensure state is updated
+        setTimeout(resolve, 100);
+      });
+      
+      // Store the phone number in localStorage as well
+      localStorage.setItem('phone', normalized);
+      
+      // Navigate after ensuring phone is set
       navigate('/customer/dashboard'); // Redirect to the customer dashboard
     } catch (err: any) {
       setError(
@@ -171,54 +182,120 @@ const OTPLogin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-4">
-      <div className="w-full max-w-2xl bg-white shadow-2xl rounded-2xl p-14 space-y-12">
-        {/* Brand Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-semibold text-gray-900 uppercase">
-            {t('bankName')}
-          </h1>
-          <div className="w-44 h-44 mx-auto">
-            <img
-              src={logo}
-              alt={t('logoAlt')}
-              className="h-40 w-40 object-contain mx-auto rounded-full border-2 border-fuchsia-200"
-            />
+    <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-2">
+      <div className="w-full max-w-sm bg-white shadow-xl rounded-xl p-4 sm:p-6 space-y-6">
+        <div>
+          {/* Brand Header */}
+          <div className="text-center space-y-2">
+            <h1 className="text-base font-semibold text-gray-900 uppercase">
+              {t('bankName')}
+            </h1>
+            <div className="w-20 h-20 mx-auto">
+              <img
+                src={logo}
+                alt={t('logoAlt')}
+                className="h-16 w-16 object-contain mx-auto rounded-full border-2 border-fuchsia-200"
+              />
+            </div>
+            <h2 className="text-2xl font-extrabold text-fuchsia-700">{t('welcome')}</h2>
+            <h2 className="text-base font-semibold text-gray-800">
+              {t('enterPhonePrompt')}
+            </h2>
           </div>
-          <h2 className="text-4xl font-extrabold text-fuchsia-700">{t('welcome')}</h2>
-          <h2 className="text-xl font-semibold text-gray-800">
-            {t('enterPhonePrompt')}
-          </h2>
-        </div>
 
-        {/* Message and Error Display */}
-        {message && <p className="text-green-600 text-center">{message}</p>}
-        {error && <p className="text-red-600 text-center">{error}</p>}
+          {/* Message and Error Display */}
+          {message && <p className="text-green-600 text-center text-sm">{message}</p>}
+          {error && <p className="text-red-600 text-center text-sm">{error}</p>}
 
-        {/* Step 1: Enter Phone Number */}
-        {step === 'request' && (
-          <>
-            <form onSubmit={handleRequestOtp} className="space-y-10">
-              <label className="block" htmlFor="phone-input">
-                <span className="text-gray-700 font-medium text-lg">
-                  {t('phoneNumber')}
+          {/* Step 1: Enter Phone Number */}
+          {step === 'request' && (
+            <>
+              <form onSubmit={handleRequestOtp} className="space-y-6">
+                <label className="block" htmlFor="phone-input">
+                  <span className="text-gray-700 font-medium text-base">
+                    {t('phoneNumber')}
+                  </span>
+                  <FormInput
+                    id="phone-input"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder={t('phonePlaceholder')}
+                    ariaLabel={t('phoneNumber')}
+                    ariaInvalid={!!error}
+                    ariaDescribedby="phone-error"
+                    autoFocus
+                    disabled={loading}
+                  />
+                </label>
+                <FormButton
+                  disabled={!phoneNumber || loading}
+                  ariaLabel={t('requestOtp')}
+                >
+                  {loading ? (
+                    <span className="flex items-center">
+                      <svg
+                        className="animate-spin h-5 w-5 mr-2 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8z"
+                        ></path>
+                      </svg>
+                      {t('sendingOtp')}
+                    </span>
+                  ) : (
+                    t('requestOtp')
+                  )}
+                </FormButton>
+              </form>
+              <div className="text-center mt-4">
+                <span className="text-gray-700 text-sm">{t('noAccount')}</span>
+                <Link
+                  to="/form/account-opening"
+                  className="ml-2 text-fuchsia-700 font-semibold hover:underline hover:text-fuchsia-800 transition-colors text-sm"
+                >
+                  {t('createAccount')}
+                </Link>
+              </div>
+            </>
+          )}
+
+          {/* Step 2: Enter OTP */}
+          {step === 'verify' && (
+            <form onSubmit={handleLoginWithOtp} className="space-y-6">
+              <label className="block" htmlFor="otp-input">
+                <span className="text-gray-700 font-medium text-base">
+                  {t('enterOtp')}
                 </span>
                 <FormInput
-                  id="phone-input"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder={t('phonePlaceholder')}
-                  ariaLabel={t('phoneNumber')}
+                  id="otp-input"
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder={t('otpPlaceholder')}
+                  ariaLabel={t('otpLabel')}
                   ariaInvalid={!!error}
-                  ariaDescribedby="phone-error"
+                  ariaDescribedby="otp-error"
                   autoFocus
                   disabled={loading}
                 />
               </label>
               <FormButton
-                disabled={!phoneNumber || loading}
-                ariaLabel={t('requestOtp')}
+                disabled={!otp || loading}
+                ariaLabel={t('verifyOtp')}
               >
                 {loading ? (
                   <span className="flex items-center">
@@ -242,103 +319,39 @@ const OTPLogin: React.FC = () => {
                         d="M4 12a8 8 0 018-8v8z"
                       ></path>
                     </svg>
-                    {t('sendingOtp')}
+                    {t('verifying')}
                   </span>
                 ) : (
-                  t('requestOtp')
+                  t('verifyOtp')
                 )}
               </FormButton>
+              <div className="flex justify-between items-center mt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep('request')}
+                  className="text-fuchsia-700 hover:underline text-xs font-medium"
+                  disabled={loading}
+                  aria-label={t('backToPhone')}
+                >
+                  &larr; {t('backToPhone')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (resendCooldown === 0) requestOtpDirect();
+                  }}
+                  disabled={resendCooldown > 0 || loading}
+                  className="text-fuchsia-700 hover:underline text-xs font-medium disabled:opacity-50"
+                  aria-label={t('resendOtp')}
+                >
+                  {resendCooldown > 0
+                    ? t('resendTimer', { seconds: resendCooldown })
+                    : t('resendOtp')}
+                </button>
+              </div>
             </form>
-            <div className="text-center mt-6">
-              <span className="text-gray-700">{t('noAccount')}</span>
-              <Link
-                to="/form/account-opening"
-                className="ml-2 text-fuchsia-700 font-semibold hover:underline hover:text-fuchsia-800 transition-colors"
-              >
-                {t('createAccount')}
-              </Link>
-            </div>
-          </>
-        )}
-
-        {/* Step 2: Enter OTP */}
-        {step === 'verify' && (
-          <form onSubmit={handleLoginWithOtp} className="space-y-10">
-            <label className="block" htmlFor="otp-input">
-              <span className="text-gray-700 font-medium text-lg">
-                {t('enterOtp')}
-              </span>
-              <FormInput
-                id="otp-input"
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder={t('otpPlaceholder')}
-                ariaLabel={t('otpLabel')}
-                ariaInvalid={!!error}
-                ariaDescribedby="otp-error"
-                autoFocus
-                disabled={loading}
-              />
-            </label>
-            <FormButton
-              disabled={!otp || loading}
-              ariaLabel={t('verifyOtp')}
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg
-                    className="animate-spin h-5 w-5 mr-2 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    ></path>
-                  </svg>
-                  {t('verifying')}
-                </span>
-              ) : (
-                t('verifyOtp')
-              )}
-            </FormButton>
-            <div className="flex justify-between items-center mt-2">
-              <button
-                type="button"
-                onClick={() => setStep('request')}
-                className="text-fuchsia-700 hover:underline text-sm font-medium"
-                disabled={loading}
-                aria-label={t('backToPhone')}
-              >
-                &larr; {t('backToPhone')}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (resendCooldown === 0) requestOtpDirect();
-                }}
-                disabled={resendCooldown > 0 || loading}
-                className="text-fuchsia-700 hover:underline text-sm font-medium disabled:opacity-50"
-                aria-label={t('resendOtp')}
-              >
-                {resendCooldown > 0
-                  ? t('resendTimer', { seconds: resendCooldown })
-                  : t('resendOtp')}
-              </button>
-            </div>
-          </form>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

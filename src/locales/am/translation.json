@@ -36,15 +36,18 @@
   "noResults": "ምንም ቅጾች አልተገኙም። ሌላ ቃል ይሞክሩ።",
   "startForm": "ይህን ቅጽ ይጀምሩ",
   "forms": {
-    "accountOpening": "መለያ መክፈቻ",
-    "cashDeposit": "ገንዘብ ማስገቢያ",
-    "cashWithdrawal": "ገንዘብ መውጫ",
-    "fundTransfer": "ገንዘብ ማስተላለፊያ",
-    "mobileBanking": "ሞባይል ባንኪንግ ምዝገባ",
-    "atmCard": "ኤቲኤም ካርድ ጥያቄ",
-    "cbeBirr": "ሲቢኢ-ብር ምዝገባ",
-    "otherForms": "ሌሎች ቅጾች",
-    "history": "የግብይት ታሪክ"
+  "accountOpening": "መለያ መክፈቻ",
+  "cashDeposit": "ገንዘብ ማስገቢያ",
+  "cashWithdrawal": "ገንዘብ መውጫ",
+  "fundTransfer": "ገንዘብ ማስተላለፊያ",
+  "mobileBanking": "ሞባይል ባንኪንግ ምዝገባ",
+  "atmCard": "ኤቲኤም ካርድ ጥያቄ",
+  "cbeBirr": "ሲቢኢ-ብር ምዝገባ",
+  "cbeBirrRegistration": "ሲቢኢ-ብር ምዝገባ",
+  "ebankingApplication": "ኢ-ባንኪንግ ማመልከቻ",
+  "otherForms": "ሌሎች ቅጾች",
+  "history": "የግብይት ታሪክ",
+  "rtgsTransfer": "በRTGS ማስተላለፊያ"
   },
   "select": "ይምረጡ",
   "next": "ቀጣይ",
@@ -63,7 +66,7 @@
       "Dr": "ዶ/ር"
     },
     "yourName": "ስምዎ",
-    "fullNamePlaceholder": "ሙሉ ስም",
+    "fullNamePlaceholder": "ሙሉ ስም",                                                                                                                                                                       
     "fatherName": "የአባት ስም",
     "grandfatherName": "የአያት ስም",
     "motherFullName": "የእናት ሙሉ ስም",
@@ -143,7 +146,17 @@
       "daily": "ዕለታዊ"
     }
   },
-  "back": "ወደ ኋላ"
+  "back": "ወደ ኋላ",
+  "accountInformation": "የመለያ መረጃ",
+  "amountInformation": "የመጠን መረጃ",
+  "submitDeposit": "ተቀማጭ አስገባ",
+  "processing": "በሂደት ላይ...",
+  "selectYourAccount": "መለያዎን ይምረጡ",
+  "accountNumberRequired": "የመለያ ቁጥር ያስፈልጋል።",
+  "accountHolderNameRequired": "የመለያ ባለቤት ስም ያስፈልጋል።",
+  "validAmountRequired": "ትክክለኛ መጠን ያስፈልጋል።",
+  "ayerTenaBranch": "አየር ተና ቅርንጫፍ",
+  "submissionFailed": "ማስገባት አልተሳካም። እባክዎ ደግመው ይሞክሩ።"
   
 }
   

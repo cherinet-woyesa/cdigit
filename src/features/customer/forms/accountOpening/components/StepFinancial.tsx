@@ -278,7 +278,7 @@ export function StepFinancial({ data, setData, errors, onNext, onBack, submittin
                 </button>
                 <button
                     type="button"
-                    className={`w-full md:w-auto px-10 py-3 rounded-lg font-semibold shadow-lg transition transform duration-200 
+                    className={` px-6 py-3 rounded-lg font-semibold shadow-lg transition transform duration-200 
                         ${submitting ? 'bg-fuchsia-300 cursor-not-allowed' : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
                     onClick={handleNext}
                     disabled={submitting}
