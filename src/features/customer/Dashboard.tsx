@@ -233,7 +233,7 @@ export default function Dashboard() {
 
           {/* Cards grid */}
           {!loading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {filteredForms.length === 0 ? (
                 <div className="col-span-full text-center text-gray-500 py-6">
                   {t('noFormsFound', 'No forms found for your search.')}
