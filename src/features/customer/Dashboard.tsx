@@ -76,20 +76,20 @@ const FormCard = React.forwardRef<HTMLDivElement, {
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={clsx(
-        'cursor-pointer group bg-white p-4 sm:p-6 rounded-xl shadow-lg border-2 border-transparent transition-all duration-300',
-        'hover:shadow-xl hover:border-fuchsia-500 transform hover:-translate-y-1 hover:bg-fuchsia-700',
+        'cursor-pointer group bg-white p-3 sm:p-5 rounded-xl shadow-lg border-2 border-transparent transition-all duration-300',
+        'hover:shadow-xl hover:border-fuchsia-500 hover:bg-fuchsia-700',
         isFocused && 'ring-2 ring-fuchsia-500',
         'focus:outline-none focus:ring-2 focus:ring-fuchsia-500'
       )}
       style={{ outline: isFocused ? '2px solid #a21caf' : undefined }}
     >
-      <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-fuchsia-100 mb-2 sm:mb-4">
+      <div className="flex items-center justify-center h-9 w-9 sm:h-11 sm:w-11 rounded-lg bg-fuchsia-100 mb-2 sm:mb-3">
         <form.icon className="h-5 w-5 sm:h-6 sm:w-6 text-fuchsia-700 group-hover:text-white" />
       </div>
-      <h3 className="text-base sm:text-lg font-semibold text-gray-800 group-hover:text-white">
+      <h3 className="text-sm sm:text-lg font-semibold text-gray-800 group-hover:text-white">
         {label}
       </h3>
-      <div className="mt-2 sm:mt-4 text-fuchsia-600 font-semibold flex items-center gap-1 sm:gap-2 group-hover:gap-3 transition-all group-hover:text-white">
+      <div className="mt-1.5 sm:mt-3 text-fuchsia-600 font-semibold flex items-center gap-1 sm:gap-2 group-hover:gap-3 transition-all group-hover:text-white text-sm">
         <span>
           {form.name === 'history' ? t('viewHistory', 'View History') : t('startForm')}
         </span>
@@ -187,34 +187,34 @@ export default function Dashboard() {
         title={QueueNotifyModalTitle}
         message={QueueNotifyModalMessage}
       />
-      <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg sticky top-0 z-10">
+      <header className="bg-fuchsia-700 text-white py-3 px-4 sm:py-5 sm:px-6 shadow-lg sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <h5 className="text-sm bg-fuchsia-800 px-3 py-1 rounded-full items-left">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
+          <h5 className="text-xs sm:text-sm bg-fuchsia-800 px-2.5 py-1 rounded-full items-left">
             {t('loggedInAs', { phone }) || `Logged in as: ${phone}`}
           </h5>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto py-4 sm:py-8 px-2">
-        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
-          <div className="bg-fuchsia-700 text-white p-4 sm:p-6 rounded-xl mb-4 sm:mb-8 shadow-lg">
-            <h2 className="text-2xl sm:text-3xl font-bold">{t('welcomeBanner')}</h2>
-            <p className="opacity-90 mt-1 text-sm sm:text-base">
+      <main className="max-w-4xl mx-auto py-3 sm:py-6 px-2">
+        <div className="bg-white p-3 sm:p-5 rounded-xl shadow-lg">
+          <div className="bg-fuchsia-700 text-white p-3 sm:p-5 rounded-xl mb-3 sm:mb-6 shadow-lg">
+            <h2 className="text-xl sm:text-2xl font-bold">{t('welcomeBanner')}</h2>
+            <p className="opacity-90 mt-1 text-xs sm:text-base">
               {t('welcomeSubtitle')}
             </p>
           </div>
 
-          <div className="mb-4 sm:mb-8">
+          <div className="mb-3 sm:mb-6">
             <div className="relative">
-              <MagnifyingGlassIcon className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 sm:left-4" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('searchPlaceholder')}
                 aria-label={t('searchPlaceholder')}
-                className="w-full pl-12 pr-4 py-2 sm:py-3 border-2 border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-base sm:text-lg"
+                className="w-full pl-10 pr-3 py-2 sm:py-3 border-2 border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-sm sm:text-lg"
               />
             </div>
           </div>
@@ -233,9 +233,9 @@ export default function Dashboard() {
 
           {/* Cards grid */}
           {!loading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {filteredForms.length === 0 ? (
-                <div className="col-span-full text-center text-gray-500 py-8">
+                <div className="col-span-full text-center text-gray-500 py-6">
                   {t('noFormsFound', 'No forms found for your search.')}
                 </div>
               ) : (

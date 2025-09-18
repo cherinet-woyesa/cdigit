@@ -42,18 +42,21 @@ const StepCustomerBeneficiary: React.FC<StepCustomerBeneficiaryProps> = ({
         {showAccountSelection && customerAccounts.length > 0 && (
           <div className="mb-3 md:col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-1">Select Account</label>
-            <div className="flex flex-col gap-1.5">
+            <select
+              className="block w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-fuchsia-700 focus:border-fuchsia-700"
+              value={formData.orderingAccountNumber || ''}
+              onChange={(e) => {
+                const acc = customerAccounts.find(a => a.accountNumber === e.target.value);
+                if (acc) onAccountSelect(acc);
+              }}
+            >
+              <option value="">Choose your account</option>
               {customerAccounts.map(acc => (
-                <button
-                  key={acc.accountNumber}
-                  type="button"
-                  className="px-2 py-1.5 border rounded bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-700 font-semibold text-sm"
-                  onClick={() => onAccountSelect(acc)}
-                >
+                <option key={acc.accountNumber} value={acc.accountNumber}>
                   {acc.accountNumber} - {acc.accountName}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
         )}
         <Field label="Account Number *" error={errors.orderingAccountNumber}>

@@ -6,6 +6,8 @@ import type { Window as WindowType } from '../../../../services/windowService';
 import StepCustomerBeneficiary from './StepCustomerBeneficiary';
 import StepSignature from './StepSignature';
 import StepReview from './StepReview';
+import { useAuth } from '../../../../context/AuthContext';
+import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 
 // List of Ethiopian banks (can be fetched from an API in production)
 const BANKS = [
@@ -50,6 +52,7 @@ type FormData = {
 type Errors = Partial<Record<keyof FormData | 'submit', string>>;
 
 export default function RTGSTransferForm() {
+  const { phone } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     branchName: 'Ayer Tena Branch',
@@ -70,10 +73,8 @@ export default function RTGSTransferForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [_windows, setWindows] = useState<WindowType[]>([]);
-  const [customerAccounts, setCustomerAccounts] = useState<Array<{
-    accountNumber: string;
-    accountName: string;
-  }>>([]);
+  const { accounts, loadingAccounts } = useUserAccounts();
+  const [customerAccounts, setCustomerAccounts] = useState<Array<{ accountNumber: string; accountName: string }>>([]);
   const [showAccountSelection, setShowAccountSelection] = useState(false);
   const [step, setStep] = useState(0); // 0: Customer+Beneficiary, 1: Signature, 2: Review
   const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
@@ -138,42 +139,38 @@ export default function RTGSTransferForm() {
     loadWindows();
   }, []);
 
+  // Prefill phone from auth
+  useEffect(() => {
+    if (phone) {
+      setFormData(prev => ({ ...prev, customerTelephone: phone }));
+    }
+  }, [phone]);
+
+  // Load customer accounts from hook and auto-select
+  useEffect(() => {
+    if (loadingAccounts) return;
+    const mapped = (accounts || []).map(a => ({ accountNumber: a.accountNumber, accountName: a.accountHolderName || '' }));
+    setCustomerAccounts(mapped);
+
+    if (!accounts || accounts.length === 0) {
+      setShowAccountSelection(false);
+      setFormData(prev => ({ ...prev, orderingAccountNumber: '', orderingCustomerName: '' }));
+      return;
+    }
+
+    if (accounts.length === 1) {
+      const acc = accounts[0];
+      setShowAccountSelection(false);
+      setFormData(prev => ({ ...prev, orderingAccountNumber: acc.accountNumber, orderingCustomerName: acc.accountHolderName || '' }));
+    } else {
+      setShowAccountSelection(true);
+      // default to first or previously selected logic could be added later
+      setFormData(prev => ({ ...prev, orderingAccountNumber: '', orderingCustomerName: '' }));
+    }
+  }, [accounts, loadingAccounts]);
+
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    
-    // If phone number changes and is valid, fetch customer accounts
-    if (name === 'customerTelephone' && /^\d{9,12}$/.test(value)) {
-      // Simulate API call to fetch customer accounts
-      setTimeout(() => {
-        // Mock data - in a real app, this would be an API call
-        const mockAccounts = [
-          { accountNumber: '1000123456789', accountName: 'John Doe' },
-          { accountNumber: '1000987654321', accountName: 'John Doe Business' },
-        ];
-        
-        setCustomerAccounts(mockAccounts);
-        
-        if (mockAccounts.length === 1) {
-          // Auto-select if only one account
-          setFormData(prev => ({
-            ...prev,
-            [name]: value,
-            orderingAccountNumber: mockAccounts[0].accountNumber,
-            orderingCustomerName: mockAccounts[0].accountName
-          }));
-        } else if (mockAccounts.length > 1) {
-          // Show account selection if multiple accounts
-          setShowAccountSelection(true);
-          setFormData(prev => ({
-            ...prev,
-            [name]: value,
-            orderingAccountNumber: '',
-            orderingCustomerName: ''
-          }));
-        }
-      }, 500);
-    }
-    
     setFormData(prev => ({
       ...prev,
       [name]: value
