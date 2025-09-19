@@ -1,5 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircleIcon, PrinterIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircleIcon, PrinterIcon } from '@heroicons/react/24/outline';
+import { cancelEBankingApplicationByCustomer } from '../../../../services/eBankingApplicationService';
 
 type FormData = {
   formReferenceId: string;
@@ -19,142 +21,205 @@ const E_BANKING_OPTIONS = [
 ];
 
 export default function EBankingConfirmation() {
-  const location = useLocation();
+  const location = useLocation() as { state?: any };
   const navigate = useNavigate();
-  const { formData, windowNumber } = location.state as { 
-    formData: FormData;
-    windowNumber: string;
+  const [data, setData] = useState<FormData | null>(null);
+  const [windowNumber, setWindowNumber] = useState<string | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Prefer inner data payload if API response wrapped: { success, message, data }
+  const apiData = useMemo(() => {
+    const api = location.state?.api;
+    if (!api) return undefined;
+    return api?.data ?? api;
+  }, [location.state]);
+
+  useEffect(() => {
+    const state = location.state;
+    if (!state) {
+      setData(null);
+      return;
+    }
+    // Prefer backend API response if present
+    if (state.api) {
+      const api = (state.api?.data ?? state.api) as any;
+      const servicesRaw = api?.ServicesRequested ?? api?.servicesRequested;
+      let services: string[] = [];
+      if (typeof servicesRaw === 'string') {
+        const parsed = String(servicesRaw).split(',').map((s: string) => s.trim()).filter(Boolean);
+        // If backend says 'None' or empty, fallback to UI-selected channels
+        if (parsed.length === 1 && parsed[0].toLowerCase() === 'none') {
+          services = Array.isArray(state.ui?.ebankingChannels) ? state.ui.ebankingChannels : [];
+        } else {
+          services = parsed;
+        }
+      } else if (Array.isArray(api?.ServicesSelected)) {
+        services = api.ServicesSelected as string[];
+      } else if (Array.isArray(state.ui?.ebankingChannels)) {
+        services = state.ui.ebankingChannels as string[];
+      }
+      setData({
+        formReferenceId: api?.FormReferenceId || api?.formReferenceId || 'N/A',
+        branchName: state.branchName || api?.BranchName || api?.branchName || 'Ayer Tena Branch',
+        accountNumber: api?.AccountNumber || api?.accountNumber || '',
+        customerName: api?.AccountHolderName || api?.accountHolderName || '',
+        mobileNumber: state.ui?.telephoneNumber || state.ui?.mobileNumber || '',
+        ebankingChannels: services,
+        submittedAt: new Date().toISOString(),
+      });
+      setWindowNumber(state.windowNumber);
+      return;
+    }
+    // Fallback to previously used formData flow
+    if (state.formData) {
+      setData(state.formData as FormData);
+      setWindowNumber(state.windowNumber);
+      return;
+    }
+    setData(null);
+  }, [location.state]);
+
+  const handlePrint = () => window.print();
+
+  // Actions
+  const entityId = useMemo(() => {
+    const id = apiData?.Id || apiData?.id || null;
+    return id as string | null;
+  }, [apiData]);
+
+  const status = (apiData?.Status || apiData?.status) as string | undefined;
+  const canUpdateCancel = !!entityId && (!status || status === 'OnQueue');
+
+  const handleUpdate = () => {
+    if (!entityId) return;
+    navigate('/form/ebanking', { state: { updateId: entityId } });
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleCancel = async () => {
+    if (!entityId) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await cancelEBankingApplicationByCustomer(entityId);
+      if (!res?.success) throw new Error(res?.message || 'Failed to cancel');
+      navigate('/form/ebanking', { state: { cancelled: true } });
+    } catch (e: any) {
+      setError(e?.message || 'Failed to cancel application');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleEdit = () => {
-    navigate(-1); // Go back to the form
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  if (!data) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
+        <div className="text-center py-8">
+          <h3 className="text-lg font-medium text-gray-900">No confirmation data</h3>
+          <p className="mt-2 text-sm text-gray-500">Please submit the E-Banking application first.</p>
+          <div className="mt-6">
+            <button
+              onClick={() => navigate('/form/ebanking')}
+              className="px-4 py-2 bg-fuchsia-700 text-white rounded-md hover:bg-fuchsia-800"
+            >
+              Go to Form
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <div className="text-center mb-8">
-        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
-          <CheckCircleIcon className="h-10 w-10 text-green-600" aria-hidden="true" />
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
+      <div className="max-w-2xl w-full bg-white p-3 sm:p-5 rounded-lg shadow-lg">
+        <div className="mb-4 bg-fuchsia-700 text-white p-3 rounded-lg shadow-lg text-center">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">E-Banking Application</h1>
         </div>
-        <h1 className="mt-3 text-2xl font-bold text-gray-900">Application Submitted Successfully</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Your E-Banking application has been received and is being processed.
-        </p>
-      </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-        <div className="px-4 py-5 sm:px-6 bg-gray-50">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Application Details
-          </h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            Reference: {formData.formReferenceId}
+        <div className="text-center mb-4">
+          <CheckCircleIcon className="h-14 w-14 mx-auto text-green-500" />
+          <h1 className="text-xl font-extrabold text-fuchsia-800 mt-2">Success!</h1>
+          <p className="text-gray-600 text-sm">Your E-Banking application has been submitted.</p>
+        </div>
+
+        <div className="my-2 grid grid-cols-2 gap-3">
+          <div className="bg-fuchsia-700 p-3 rounded-lg shadow text-center">
+            <p className="text-xs font-medium text-fuchsia-100">Queue #</p>
+            <p className="text-3xl font-bold">{(apiData?.QueueNumber ?? apiData?.queueNumber ?? 'N/A').toString()}</p>
+          </div>
+          <div className="bg-fuchsia-600 p-3 rounded-lg shadow text-center">
+            <p className="text-xs font-medium text-fuchsia-100">Token</p>
+            <p className="text-3xl font-bold">{apiData?.TokenNumber || apiData?.tokenNumber || 'N/A'}</p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 p-3 rounded-lg shadow-inner mb-3">
+          <h3 className="text-base font-bold text-fuchsia-700 mb-2">Details</h3>
+          <div className="space-y-2 text-sm sm:text-base text-gray-700">
+            <div className="flex justify-between"><strong>Date:</strong> <span>{data.submittedAt ? new Date(data.submittedAt).toLocaleString() : 'N/A'}</span></div>
+            <div className="flex justify-between"><strong>Account:</strong> <span>{data.accountNumber || 'N/A'}</span></div>
+            <div className="flex justify-between"><strong>Name:</strong> <span>{data.customerName || 'N/A'}</span></div>
+            <div className="flex justify-between"><strong>Status:</strong> <span className="font-semibold text-fuchsia-800">{(apiData?.Status || apiData?.status) ?? 'OnQueue'}</span></div>
+            <div className="flex justify-between"><strong>Branch:</strong> <span>{data.branchName || apiData?.BranchName || apiData?.branchName || apiData?.BranchId || apiData?.branchId || 'N/A'}</span></div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4">
+          <p className="text-xs sm:text-sm text-blue-700">
+            {(apiData?.Message || apiData?.message) ?? 'Please visit your selected or nearest branch if additional verification is required.'}
           </p>
+          {windowNumber && (
+            <p className="mt-1 text-xs sm:text-sm text-blue-700">Please proceed to window <span className="font-bold">{windowNumber}</span>.</p>
+          )}
         </div>
-        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-          <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Reference ID</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formData.formReferenceId}</dd>
-            </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Submitted On</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatDate(formData.submittedAt)}</dd>
-            </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Branch</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formData.branchName}</dd>
-            </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Account Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formData.accountNumber ? `•••• ${formData.accountNumber.slice(-4)}` : 'N/A'}
-              </dd>
-            </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Customer Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formData.customerName}</dd>
-            </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Mobile Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formData.mobileNumber}</dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt className="text-sm font-medium text-gray-500">Requested Services</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                <ul className="list-disc pl-5 space-y-1">
-                  {formData.ebankingChannels.map(channel => (
-                    <li key={channel}>
-                      {E_BANKING_OPTIONS.find(opt => opt.id === channel)?.label || channel}
-                    </li>
-                  ))}
-                </ul>
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
 
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
+        {data.ebankingChannels.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-md p-3 mb-3">
+            <h4 className="text-sm font-semibold text-fuchsia-700 mb-2">Requested Services</h4>
+            <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+              {data.ebankingChannels.map((c) => (
+                <li key={c}>{E_BANKING_OPTIONS.find(opt => opt.id === c)?.label || c}</li>
+              ))}
+            </ul>
           </div>
-          <div className="ml-3">
-            <p className="text-sm text-blue-700">
-              Your E-Banking request has been submitted. Please visit your selected or nearest branch if additional verification is required.
-            </p>
-            {windowNumber && (
-              <p className="mt-2 text-sm text-blue-700">
-                Please proceed to window <span className="font-bold">{windowNumber}</span> for further assistance.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
+        )}
 
-      <div className="flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0 sm:space-x-4">
-        <button
-          type="button"
-          onClick={handleEdit}
-          className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cbe-primary"
-        >
-          <PencilIcon className="-ml-1 mr-2 h-5 w-5 text-gray-500" aria-hidden="true" />
-          Edit Application
-        </button>
-        <div className="space-x-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cbe-primary"
+            onClick={() => navigate('/form/ebanking')}
+            className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition"
           >
-            Back to Dashboard
+            New
           </button>
           <button
-            type="button"
             onClick={handlePrint}
-            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-cbe-primary hover:bg-cbe-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cbe-primary"
+            className="flex items-center justify-center gap-1 w-full bg-gray-200 text-fuchsia-800 text-sm px-2 py-1.5 rounded-md shadow hover:bg-gray-300 transition"
           >
-            <PrinterIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-            Print Confirmation
+            <PrinterIcon className="h-3.5 w-3.5" />
+            Print
           </button>
+          {canUpdateCancel && (
+            <button
+              onClick={handleUpdate}
+              className="flex items-center justify-center gap-1 w-full bg-yellow-500 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-yellow-600 transition"
+            >
+              Update
+            </button>
+          )}
+          {canUpdateCancel && (
+            <button
+              onClick={handleCancel}
+              disabled={submitting}
+              className="flex items-center justify-center gap-1 w-full bg-red-600 disabled:opacity-50 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-red-700 transition"
+            >
+              Cancel
+            </button>
+          )}
         </div>
+
+        {error && <p className="text-sm text-red-600 mt-2 text-center">{error}</p>}
+        <p className="text-sm text-gray-500 mt-3 text-center">Thank you for banking with us!</p>
       </div>
     </div>
   );

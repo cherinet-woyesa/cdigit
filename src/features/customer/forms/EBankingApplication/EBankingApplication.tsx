@@ -1,6 +1,9 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Field from '../../../../components/Field';
+import { useAuth } from '../../../../context/AuthContext';
+import { useUserAccounts } from '../../../../hooks/useUserAccounts';
+import { applyEBankingApplication, getEBankingApplicationById, updateEBankingApplication } from '../../../../services/eBankingApplicationService';
 
 type FormData = {
   branchName: string;
@@ -37,6 +40,10 @@ export default function EBankingApplication() {
   const [showTerms, setShowTerms] = useState(false);
   // const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation() as { state?: any };
+  const { phone } = useAuth();
+  const { accounts, loadingAccounts } = useUserAccounts();
+  const [updateId, setUpdateId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     branchName: 'Ayer Tena Branch',
     date: new Date().toISOString().split('T')[0],
@@ -79,9 +86,59 @@ export default function EBankingApplication() {
     newAccountNumber?: string;
     termsAccepted?: string;
   };
+
+  // Prefill phone and account info from hooks
+  useEffect(() => {
+    if (phone) {
+      setFormData(prev => ({ ...prev, mobileNumber: phone }));
+    }
+  }, [phone]);
+
+  useEffect(() => {
+    if (loadingAccounts) return;
+    if (!accounts || accounts.length === 0) return;
+    if (accounts.length === 1) {
+      const a = accounts[0];
+      setFormData(prev => ({ ...prev, accountNumber: a.accountNumber, customerName: a.accountHolderName || prev.customerName }));
+    } else {
+      // default to first; could add dropdown later
+      const a = accounts[0];
+      setFormData(prev => ({ ...prev, accountNumber: a.accountNumber, customerName: a.accountHolderName || prev.customerName }));
+    }
+  }, [accounts, loadingAccounts]);
   const [errors, setErrors] = useState<Errors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(0); // 0: Transaction+Customer, 1: ID, 2: Address, 3: E-Banking Services, 4: ID Copy & Terms, 5: Review/Submit
+
+  // Detect update mode and prefill from API
+  useEffect(() => {
+    const id = location.state?.updateId as string | undefined;
+    if (!id) return;
+    setUpdateId(id);
+    (async () => {
+      try {
+        const res = await getEBankingApplicationById(id);
+        if (!res?.success || !res.data) return;
+        const d: any = res.data;
+        // Parse services
+        const services: string[] = d.ServicesRequested
+          ? String(d.ServicesRequested).split(',').map((s: string) => s.trim()).filter(Boolean)
+          : [];
+        setFormData(prev => ({
+          ...prev,
+          accountNumber: d.AccountNumber || d.accountNumber || prev.accountNumber,
+          customerName: d.AccountHolderName || d.accountHolderName || prev.customerName,
+          mobileNumber: d.PhoneNumber || d.phoneNumber || prev.mobileNumber,
+          ebankingChannels: services,
+          // Address and IDs unknown in read DTO; leave as-is
+        }));
+        // Jump to review if needed
+        setStep(3); // services step as they may want to tweak
+      } catch (e) {
+        // silently ignore
+      }
+    })();
+  }, [location.state]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -153,23 +210,89 @@ export default function EBankingApplication() {
     window.scrollTo(0, 0);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      const formReferenceId = `EB-${Date.now()}`;
-      navigate('/form/ebanking/confirmation', { 
-        state: { 
-          formData: {
-            ...formData,
-            formReferenceId,
-            submittedAt: new Date().toISOString(),
+    try {
+      const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
+
+      // Map ID fields according to selected idType
+      const isNationalId = formData.idType === 'national_id';
+      const NationalIdNumber = isNationalId ? formData.idNumber : undefined;
+      const AltIdNumber = !isNationalId ? formData.idNumber : undefined;
+      const AltIdIssuer = !isNationalId ? formData.issuingAuthority : undefined;
+
+      const payload = {
+        PhoneNumber: formData.mobileNumber || phone || '',
+        BranchId: ABIY_BRANCH_ID,
+        AccountNumber: formData.accountNumber || undefined,
+        AccountHolderName: formData.customerName || undefined,
+        NationalIdNumber,
+        AltIdNumber,
+        AltIdIssuer,
+        ServicesSelected: formData.ebankingChannels,
+        NewPhoneNumber: formData.newPhoneNumber || undefined,
+        NewAccountNumber: formData.newAccountNumber || undefined,
+        UploadedIdPath: undefined,
+        Region: !formData.idCopyAttached ? formData.region || undefined : undefined,
+        City: !formData.idCopyAttached ? formData.city || undefined : undefined,
+        SubCity: !formData.idCopyAttached ? formData.subCity || undefined : undefined,
+        Wereda: !formData.idCopyAttached ? formData.wereda || undefined : undefined,
+        HouseNumber: !formData.idCopyAttached ? formData.houseNumber || undefined : undefined,
+        IdIssueDate: formData.idIssueDate ? new Date(formData.idIssueDate).toISOString() : undefined,
+        IdExpiryDate: formData.idExpiryDate ? new Date(formData.idExpiryDate).toISOString() : undefined,
+      } as const;
+
+      // If update mode, send update; else create
+      let res: any;
+      if (updateId) {
+        const updateDto = {
+          Id: updateId,
+          BranchId: ABIY_BRANCH_ID,
+          PhoneNumber: payload.PhoneNumber,
+          AccountNumber: payload.AccountNumber,
+          AccountHolderName: payload.AccountHolderName,
+          OtpCode: undefined,
+          NationalIdNumber,
+          AltIdNumber,
+          AltIdIssuer,
+          ServicesSelected: payload.ServicesSelected,
+          NewPhoneNumber: payload.NewPhoneNumber,
+          NewAccountNumber: payload.NewAccountNumber,
+          UploadedIdPath: payload.UploadedIdPath,
+          Region: payload.Region,
+          City: payload.City,
+          SubCity: payload.SubCity,
+          Wereda: payload.Wereda,
+          HouseNumber: payload.HouseNumber,
+          IdIssueDate: payload.IdIssueDate,
+          IdExpiryDate: payload.IdExpiryDate,
+        };
+        res = await updateEBankingApplication(updateId, updateDto);
+      } else {
+        res = await applyEBankingApplication(payload as any);
+      }
+      if (!res?.success) {
+        throw new Error(res?.message || 'Failed to submit application');
+      }
+      navigate('/form/ebanking/confirmation', {
+        state: {
+          api: res, // may be wrapped {success,message,data}
+          serverData: res,
+          ui: {
+            accountNumber: formData.accountNumber,
+            accountHolderName: formData.customerName,
+            mobileNumber: formData.mobileNumber,
+            ebankingChannels: formData.ebankingChannels,
           },
-          windowNumber: '3'
-        } 
+          branchName: formData.branchName,
+        },
       });
-    }, 1000);
+    } catch (err: any) {
+      alert(err?.message || 'Submission failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Step content function

@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { useReactToPrint } from 'react-to-print';
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { cancelFundTransferByCustomer } from '../../../../services/fundTransferService';
 
 export default function FundTransferConfirmation() {
@@ -9,14 +9,18 @@ export default function FundTransferConfirmation() {
     const navigate = useNavigate();
     const componentToPrintRef = useRef(null);
 
-    const data = state || {};
-    const referenceId = data.referenceId || `FT-${Date.now()}`;
-    const debitAccount = data.debitAccountNumber || 'N/A';
-    const creditAccount = data.creditAccountNumber || 'N/A';
-    const amount = data.amount ? `${Number(data.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB` : 'N/A';
-    const branch = data.branch || 'Ayer Tena Branch';
-    const token = data.token?.toString() || 'N/A';
-    const queueNumber = data.window?.toString() || 'N/A';
+    // Prefer nested api response: { success, message, data }
+    const apiWrapper = state?.api ?? state?.serverData ?? state;
+    const apiData = useMemo(() => (apiWrapper?.data ?? apiWrapper ?? {}) as any, [apiWrapper]);
+
+    const debitAccount = apiData.DebitAccountNumber || apiData.debitAccountNumber || apiData.debitAccount || state?.debitAccountNumber || 'N/A';
+    const creditAccount = apiData.CreditAccountNumber || apiData.creditAccountNumber || apiData.creditAccount || state?.creditAccountNumber || 'N/A';
+    const amountValue = apiData.Amount ?? apiData.amount ?? state?.amount;
+    const amount = amountValue != null ? `${Number(amountValue).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB` : 'N/A';
+    const branch = apiData.BranchName || apiData.branchName || state?.branch || 'Ayer Tena Branch';
+    const token = (apiData.TokenNumber || apiData.tokenNumber || state?.token)?.toString() || 'N/A';
+    const queueNumber = (apiData.QueueNumber ?? apiData.queueNumber ?? apiData.Window ?? apiData.window ?? state?.window)?.toString() || 'N/A';
+    const entityId = apiData.Id || apiData.id || null;
 
     const handlePrint = useReactToPrint({
         // @ts-ignore
@@ -26,7 +30,7 @@ export default function FundTransferConfirmation() {
     return (
         <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4 sm:p-6">
             <div ref={componentToPrintRef} className="max-w-2xl w-full bg-white p-4 sm:p-6 rounded-lg shadow-lg text-center">
-                <div className="mb-4 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg">
+                <div className="mb-6 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg">
                     <h1 className="text-xl sm:text-2xl font-extrabold text-white">Fund Transfer Confirmation</h1>
                 </div>
 
@@ -48,9 +52,8 @@ export default function FundTransferConfirmation() {
                 </div>
 
                 <div className="text-left bg-gray-50 p-3 rounded-lg shadow-inner">
-                    <h3 className="text-base font-bold text-fuchsia-700 mb-2">Summary</h3>
+                    <h3 className="text-base font-bold text-fuchsia-700 mb-2">Transaction Summary</h3>
                     <div className="space-y-2 text-sm text-gray-700">
-                        <div className="flex justify-between"><strong className="font-medium">Reference ID:</strong> <span>{referenceId}</span></div>
                         <div className="flex justify-between"><strong className="font-medium">From:</strong> <span>{debitAccount}</span></div>
                         <div className="flex justify-between"><strong className="font-medium">To:</strong> <span>{creditAccount}</span></div>
                         <div className="flex justify-between"><strong className="font-medium">Amount:</strong> <span className="font-bold text-fuchsia-800">{amount}</span></div>
@@ -67,27 +70,31 @@ export default function FundTransferConfirmation() {
                         <PrinterIcon className="h-3.5 w-3.5" />
                         Print
                     </button>
-                    <button
-                        onClick={async () => {
-                            navigate('/fund-transfer', { state: { updateId: data.id || data.Id } });
-                        }}
-                        className="flex items-center justify-center gap-1 w-full bg-yellow-500 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-yellow-600 transition"
-                    >
-                        Update
-                    </button>
-                    <button
-                        onClick={async () => {
-                            try {
-                                await cancelFundTransferByCustomer(data.id || data.Id);
-                                navigate('/fund-transfer', { state: { cancelled: true } });
-                            } catch (e: any) {
-                                alert(e?.message || 'Failed to cancel fund transfer.');
-                            }
-                        }}
-                        className="flex items-center justify-center gap-1 w-full bg-red-600 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-red-700 transition"
-                    >
-                        Cancel
-                    </button>
+                    {entityId && (
+                        <button
+                            onClick={async () => {
+                                navigate('/fund-transfer', { state: { updateId: entityId } });
+                            }}
+                            className="flex items-center justify-center gap-1 w-full bg-yellow-500 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-yellow-600 transition"
+                        >
+                            Update
+                        </button>
+                    )}
+                    {entityId && (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await cancelFundTransferByCustomer(entityId);
+                                    navigate('/fund-transfer', { state: { cancelled: true } });
+                                } catch (e: any) {
+                                    alert(e?.message || 'Failed to cancel fund transfer.');
+                                }
+                            }}
+                            className="flex items-center justify-center gap-1 w-full bg-red-600 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-red-700 transition"
+                        >
+                            Cancel
+                        </button>
+                    )}
                 </div>
 
                 <p className="text-xs sm:text-sm text-gray-500 mt-4">Thank you for banking with us!</p>
