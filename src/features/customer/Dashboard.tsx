@@ -76,12 +76,11 @@ const FormCard = React.forwardRef<HTMLDivElement, {
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={clsx(
-        'cursor-pointer group bg-white p-3 sm:p-5 rounded-xl shadow-lg border-2 border-transparent transition-all duration-300',
+        'cursor-pointer group bg-white p-3 sm:p-5 rounded-xl shadow-lg border border-transparent transition-all duration-300',
         'hover:shadow-xl hover:border-fuchsia-500 hover:bg-fuchsia-700',
         isFocused && 'ring-2 ring-fuchsia-500',
-        'focus:outline-none focus:ring-2 focus:ring-fuchsia-500'
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500'
       )}
-      style={{ outline: isFocused ? '2px solid #a21caf' : undefined }}
     >
       <div className="flex items-center justify-center h-9 w-9 sm:h-11 sm:w-11 rounded-lg bg-fuchsia-100 mb-2 sm:mb-3">
         <form.icon className="h-5 w-5 sm:h-6 sm:w-6 text-fuchsia-700 group-hover:text-white" />
@@ -112,16 +111,28 @@ export default function Dashboard() {
   const [signalRError, setSignalRError] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [recentFormNames, setRecentFormNames] = useState<FormName[]>([]);
 
   // Search with translation
   const filteredForms = useMemo(() => {
-    if (!searchQuery.trim()) return forms;
-    const query = searchQuery.toLowerCase().trim();
+    const q = debouncedQuery.trim();
+    if (!q) return forms;
+    const query = q.toLowerCase();
     return forms.filter((form) => {
       const label = t(`forms.${form.name}`, form.name);
       return label.toLowerCase().includes(query);
     });
-  }, [searchQuery, t]);
+  }, [debouncedQuery, t]);
+
+  // Debounce search typing for perf
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(searchQuery), 150);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+
+  // Do not auto-focus a card on results change; only set focus via keyboard navigation
 
   // SignalR connection
   useEffect(() => {
@@ -178,6 +189,42 @@ export default function Dashboard() {
     }
   }, [focusedIndex, filteredForms.length]);
 
+  // Keyboard shortcut to focus search ('/')
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && (e.target as HTMLElement)?.tagName !== 'INPUT' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Load recents from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('recentForms');
+      if (raw) {
+        const parsed = JSON.parse(raw) as FormName[];
+        if (Array.isArray(parsed)) setRecentFormNames(parsed.filter((n) => forms.some(f => f.name === n)));
+      }
+    } catch {}
+  }, []);
+
+  // Helpers to record recents and navigate
+  const recordRecent = (name: FormName) => {
+    setRecentFormNames((prev) => {
+      const next = [name, ...prev.filter((n) => n !== name)].slice(0, 6);
+      try { localStorage.setItem('recentForms', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  const openForm = (form: Form) => {
+    recordRecent(form.name);
+    navigate(form.route);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* QueueNotifyModal */}
@@ -188,11 +235,13 @@ export default function Dashboard() {
         message={QueueNotifyModalMessage}
       />
       <header className="bg-fuchsia-700 text-white py-3 px-4 sm:py-5 sm:px-6 shadow-lg sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="max-w-7xl mx-auto flex justify-between items-center gap-3">
           <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
-          <h5 className="text-xs sm:text-sm bg-fuchsia-800 px-2.5 py-1 rounded-full items-left">
-            {t('loggedInAs', { phone }) || `Logged in as: ${phone}`}
-          </h5>
+          <div className="flex items-center gap-2">
+            <h5 className="text-xs sm:text-sm bg-fuchsia-800 px-2.5 py-1 rounded-full items-left">
+              {t('loggedInAs', { phone }) || `Logged in as: ${phone}`}
+            </h5>
+          </div>
         </div>
       </header>
 
@@ -205,6 +254,20 @@ export default function Dashboard() {
             </p>
           </div>
 
+          {/* Transaction History button */}
+          <div className="mb-3 sm:mb-6">
+            <button
+              type="button"
+              onClick={() => openForm(forms.find(f => f.name === 'history')!)}
+              className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-fuchsia-700 hover:bg-fuchsia-800 text-white px-4 py-3 sm:py-4 rounded-xl shadow-lg transition"
+              aria-label={t('viewHistory', 'View History')}
+            >
+              <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+              <span className="text-sm sm:text-base font-semibold">{t('viewHistory', 'View History')}</span>
+              <ArrowRightIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+          </div>
+
           <div className="mb-3 sm:mb-6">
             <div className="relative">
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 sm:left-4" />
@@ -212,10 +275,14 @@ export default function Dashboard() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                ref={searchInputRef}
                 placeholder={t('searchPlaceholder')}
                 aria-label={t('searchPlaceholder')}
                 className="w-full pl-10 pr-3 py-2 sm:py-3 border-2 border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-sm sm:text-lg"
               />
+            </div>
+            <div className="mt-1 text-xs text-gray-500" aria-live="polite">
+              {filteredForms.length} {t('results', 'results')}
             </div>
           </div>
 
@@ -231,6 +298,41 @@ export default function Dashboard() {
           )}
           {/* SignalR error intentionally not shown to user */}
 
+          {/* Recent Forms (commented out by request)
+          {!loading && recentFormNames.length > 0 && (
+            <div className="mb-3 sm:mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-700">{t('recentForms', 'Recent')}</h3>
+                <button
+                  type="button"
+                  onClick={() => { setRecentFormNames([]); try { localStorage.removeItem('recentForms'); } catch {} }}
+                  className="text-xs text-fuchsia-700 hover:underline"
+                >
+                  {t('clear', 'Clear')}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                {recentFormNames
+                  .map(n => forms.find(f => f.name === n))
+                  .filter((f): f is Form => !!f)
+                  .map((form) => (
+                    <button
+                      key={`recent-${form.name}`}
+                      type="button"
+                      onClick={() => openForm(form)}
+                      className="flex items-center justify-center gap-2 bg-white border-2 border-fuchsia-200 hover:border-fuchsia-500 hover:bg-fuchsia-700 hover:text-white text-fuchsia-800 px-2 py-2 rounded-lg shadow-sm transition text-xs sm:text-sm"
+                      aria-label={t(`forms.${form.name}`, form.name)}
+                      title={t(`forms.${form.name}`, form.name)}
+                    >
+                      <form.icon className="h-4 w-4" />
+                      <span className="font-medium truncate">{t(`forms.${form.name}`, form.name)}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+          */}
+
           {/* Cards grid */}
           {!loading && (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -243,7 +345,7 @@ export default function Dashboard() {
                   <FormCard
                     key={form.name}
                     form={form}
-                    onClick={() => navigate(form.route)}
+                    onClick={() => openForm(form)}
                     isFocused={focusedIndex === idx}
                     onKeyDown={handleCardKeyDown(idx)}
                     ref={(el: HTMLDivElement | null) => { cardRefs.current[idx] = el; }}

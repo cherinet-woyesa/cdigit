@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,9 @@ interface FormInputProps {
   ariaDescribedby?: string;
   autoFocus?: boolean;
   disabled?: boolean;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  pattern?: string;
+  maxLength?: number;
 }
 
 const FormInput: React.FC<FormInputProps> = ({
@@ -31,6 +34,9 @@ const FormInput: React.FC<FormInputProps> = ({
   ariaDescribedby,
   autoFocus,
   disabled,
+  inputMode,
+  pattern,
+  maxLength,
 }) => {
   return (
     <input
@@ -45,6 +51,9 @@ const FormInput: React.FC<FormInputProps> = ({
       aria-describedby={ariaDescribedby}
       autoFocus={autoFocus}
       disabled={disabled}
+      inputMode={inputMode}
+      pattern={pattern}
+      maxLength={maxLength}
     />
   );
 };
@@ -79,7 +88,6 @@ const OTPLogin: React.FC = () => {
   const { t } = useTranslation();
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
-  const [otp, setOtp] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
   const { setPhone } = useAuth();
@@ -87,10 +95,15 @@ const OTPLogin: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [resendCooldown, setResendCooldown] = useState<number>(0);
   const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
+  const [effectivePhone, setEffectivePhone] = useState<string>('');
+  const [resendAttempts, setResendAttempts] = useState<number>(0); // count resends after first send
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   // Start cooldown timer when OTP is sent
-  const startResendCooldown = () => {
-    setResendCooldown(30);
+  const startResendCooldown = (durationSeconds: number = 30) => {
+    if (resendCooldown > 0) return; // prevent duplicate timers
+    setResendCooldown(durationSeconds);
     const timer = setInterval(() => {
       setResendCooldown((prev) => {
         if (prev <= 1) {
@@ -116,10 +129,35 @@ const OTPLogin: React.FC = () => {
     await requestOtpDirect();
   };
 
-  // Normalize and validate Ethiopian mobile
-  // Accept both 09XXXXXXXX and +2519XXXXXXXX without forcing conversion
-  const normalizePhone = (raw: string) => raw.trim();
-  const isValidEthMobile = (p: string) => /^09\d{8}$|^\+2519\d{8}$/.test(p.trim());
+  // Normalize and validate Ethiopian mobile (07/09 series)
+  // Accept: 07XXXXXXXX, 09XXXXXXXX, 7XXXXXXXX, 9XXXXXXXX, 2517XXXXXXXX, 2519XXXXXXXX, +2517XXXXXXXX, +2519XXXXXXXX
+  // Normalize to: +2517XXXXXXXX or +2519XXXXXXXX
+  const normalizePhone = (raw: string) => {
+    const trimmed = raw.trim();
+    // Remove spaces, dashes, parentheses
+    const cleaned = trimmed.replace(/[^\d+]/g, '');
+    // Remove leading + for uniform processing, track it implicitly
+    const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+
+    // Cases
+    // 1) 0[7|9]XXXXXXXX (10 digits)
+    if (/^0[79]\d{8}$/.test(digits)) {
+      return `+251${digits.slice(1)}`;
+    }
+    // 2) [7|9]XXXXXXXX (9 digits)
+    if (/^[79]\d{8}$/.test(digits)) {
+      return `+251${digits}`;
+    }
+    // 3) 251[7|9]XXXXXXXX (12 digits)
+    if (/^251[79]\d{8}$/.test(digits)) {
+      return `+${digits}`;
+    }
+    // 4) + already removed, but handle '++' oddities
+    // Fallback: return original trimmed (will be invalid if it doesn't match)
+    return trimmed;
+  };
+
+  // Note: validation is performed inline against normalized pattern
 
   // Send OTP handler (no event, for button)
   const requestOtpDirect = async () => {
@@ -128,19 +166,53 @@ const OTPLogin: React.FC = () => {
     setLoading(true);
     try {
       const normalized = normalizePhone(phoneNumber);
-      if (!isValidEthMobile(normalized)) {
+      if (!/^\+251[79]\d{8}$/.test(normalized)) {
         setError('Please enter a valid Ethiopian mobile number (09XXXXXXXX or +2519XXXXXXXX).');
         setLoading(false);
         return;
       }
-      const response = await authService.requestOtp(normalized);
-      setMessage(response.message || t('otpSent'));
-      setStep('verify');
-      startResendCooldown();
+      // Try with normalized first
+      try {
+        const response = await authService.requestOtp(normalized);
+        setMessage(response.message || t('otpSent'));
+        setStep('verify');
+        setEffectivePhone(normalized);
+        // first send from request step uses base cooldown and resets attempts
+        if (step === 'request') {
+          setResendAttempts(0);
+          startResendCooldown(30);
+        } else {
+          const next = resendAttempts + 1;
+          setResendAttempts(next);
+          startResendCooldown(next >= 3 ? 60 : 30);
+        }
+        setLoading(false);
+        return;
+      } catch (primaryErr: any) {
+        // If not found, retry with local 0-prefixed format
+        const local = '0' + normalized.slice(-9); // 0 + last 9 digits
+        try {
+          const response2 = await authService.requestOtp(local);
+          setMessage(response2.message || t('otpSent'));
+          setStep('verify');
+          setEffectivePhone(local);
+          if (step === 'request') {
+            setResendAttempts(0);
+            startResendCooldown(30);
+          } else {
+            const next = resendAttempts + 1;
+            setResendAttempts(next);
+            startResendCooldown(next >= 3 ? 60 : 30);
+          }
+          setLoading(false);
+          return;
+        } catch (secondaryErr: any) {
+          throw secondaryErr;
+        }
+      }
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || t('otpSendError')
-      );
+      const msg = err?.message || err?.response?.data?.message || err?.response?.data || t('otpSendError');
+      setError(typeof msg === 'string' ? msg : t('otpSendError'));
       console.error('Request OTP Error:', err);
     } finally {
       setLoading(false);
@@ -155,19 +227,21 @@ const OTPLogin: React.FC = () => {
     setLoading(true);
 
     try {
-      const normalized = normalizePhone(phoneNumber);
-      const response: { message: string; token?: string } = await authService.loginWithOtp(normalized, otp);
+      // Use the phone format that succeeded during request
+      const toUse = effectivePhone || normalizePhone(phoneNumber);
+      const otpValue = otpDigits.join('');
+      const response: { message: string; token?: string } = await authService.loginWithOtp(toUse, otpValue);
       setMessage(response.message || t('loginSuccessful'));
       
       // Set the phone number in AuthContext and wait for it to be set
       await new Promise<void>((resolve) => {
-        setPhone(normalized);
+        setPhone(toUse);
         // Small delay to ensure state is updated
         setTimeout(resolve, 100);
       });
       
       // Store the phone number in localStorage as well
-      localStorage.setItem('phone', normalized);
+      localStorage.setItem('phone', toUse);
       
       // Navigate after ensuring phone is set
       navigate('/customer/dashboard'); // Redirect to the customer dashboard
@@ -180,6 +254,96 @@ const OTPLogin: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Masked phone preview helper
+  const maskPhone = (p: string) => {
+    const n = normalizePhone(p);
+    if (!/^\+251[79]\d{8}$/.test(n)) return '';
+    // Keep first 6 chars, mask middle 4, keep last 2
+    return `${n.slice(0, 6)}****${n.slice(-2)}`;
+  };
+
+  // OTP segmented handlers
+  const handleOtpChangeAt = (index: number, val: string) => {
+    const digit = val.replace(/\D/g, '').slice(0, 1);
+    const next = [...otpDigits];
+    next[index] = digit;
+    setOtpDigits(next);
+    // move focus
+    if (digit && index < otpRefs.current.length - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      const prevIndex = index - 1;
+      const next = [...otpDigits];
+      next[prevIndex] = '';
+      setOtpDigits(next);
+      otpRefs.current[prevIndex]?.focus();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'ArrowLeft' && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+      e.preventDefault();
+    }
+    if (e.key === 'ArrowRight' && index < otpRefs.current.length - 1) {
+      otpRefs.current[index + 1]?.focus();
+      e.preventDefault();
+    }
+    if (e.key === 'Escape') {
+      // go back and clear
+      setOtpDigits(['', '', '', '', '', '']);
+      setStep('request');
+      e.preventDefault();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!text) return;
+    const next = ['','','','','',''];
+    for (let i = 0; i < text.length; i++) next[i] = text[i];
+    setOtpDigits(next);
+    // focus last filled
+    const last = Math.min(text.length, 6) - 1;
+    if (last >= 0) otpRefs.current[last]?.focus();
+    e.preventDefault();
+  };
+
+  // Focus first OTP box when entering verify step
+  useEffect(() => {
+    if (step === 'verify') {
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 0);
+    }
+  }, [step]);
+
+  // Helper: paste from clipboard button
+  const pasteOtpFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const code = text.replace(/\D/g, '').slice(0, 6);
+      if (!code) return;
+      const next = ['','','','','',''];
+      for (let i = 0; i < code.length; i++) next[i] = code[i];
+      setOtpDigits(next);
+      const last = Math.min(code.length, 6) - 1;
+      if (last >= 0) otpRefs.current[last]?.focus();
+    } catch (e) {
+      // ignore clipboard errors silently
+    }
+  };
+
+  useEffect(() => {
+    const storedPhone = localStorage.getItem('phone');
+    if (storedPhone) {
+      setPhoneNumber(storedPhone);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-2">
@@ -204,13 +368,15 @@ const OTPLogin: React.FC = () => {
           </div>
 
           {/* Message and Error Display */}
-          {message && <p className="text-green-600 text-center text-sm">{message}</p>}
-          {error && <p className="text-red-600 text-center text-sm">{error}</p>}
+          <div aria-live="polite" className="min-h-[1.25rem]">
+            {message && <p className="text-green-600 text-center text-sm">{message}</p>}
+            {error && <p className="text-red-600 text-center text-sm">{error}</p>}
+          </div>
 
           {/* Step 1: Enter Phone Number */}
           {step === 'request' && (
             <>
-              <form onSubmit={handleRequestOtp} className="space-y-6">
+              <form onSubmit={handleRequestOtp} className="space-y-4">
                 <label className="block" htmlFor="phone-input">
                   <span className="text-gray-700 font-medium text-base">
                     {t('phoneNumber')}
@@ -226,6 +392,8 @@ const OTPLogin: React.FC = () => {
                     ariaDescribedby="phone-error"
                     autoFocus
                     disabled={loading}
+                    inputMode="numeric"
+                    pattern="[+0-9 ]*"
                   />
                 </label>
                 <FormButton
@@ -275,26 +443,35 @@ const OTPLogin: React.FC = () => {
 
           {/* Step 2: Enter OTP */}
           {step === 'verify' && (
-            <form onSubmit={handleLoginWithOtp} className="space-y-6">
+            <form onSubmit={handleLoginWithOtp} className="space-y-4">
               <label className="block" htmlFor="otp-input">
                 <span className="text-gray-700 font-medium text-base">
                   {t('enterOtp')}
                 </span>
-                <FormInput
-                  id="otp-input"
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder={t('otpPlaceholder')}
-                  ariaLabel={t('otpLabel')}
-                  ariaInvalid={!!error}
-                  ariaDescribedby="otp-error"
-                  autoFocus
-                  disabled={loading}
-                />
+                {/* Segmented OTP Inputs */}
+                <div className="mt-2 grid grid-cols-6 gap-2" onPaste={handleOtpPaste}>
+                  {otpDigits.map((d, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => { otpRefs.current[idx] = el; }}
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="\d*"
+                      maxLength={1}
+                      className="w-full text-center text-xl p-2 border rounded-md focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                      value={d}
+                      onChange={(e) => handleOtpChangeAt(idx, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                      aria-label={`OTP digit ${idx + 1}`}
+                      disabled={loading}
+                    />
+                  ))}
+                </div>
+                {/* Target phone info */}
+                <p className="mt-2 text-xs text-gray-500">Code sent to: <span className="font-medium">{maskPhone(effectivePhone || phoneNumber) || '—'}</span></p>
               </label>
               <FormButton
-                disabled={!otp || loading}
+                disabled={otpDigits.join('').length !== 6 || loading}
                 ariaLabel={t('verifyOtp')}
               >
                 {loading ? (
@@ -328,7 +505,15 @@ const OTPLogin: React.FC = () => {
               <div className="flex justify-between items-center mt-2">
                 <button
                   type="button"
-                  onClick={() => setStep('request')}
+                  onClick={() => {
+                    setStep('request');
+                    setOtpDigits(['','','','','','']);
+                    setError('');
+                    setMessage('');
+                    if (resendTimer) clearInterval(resendTimer);
+                    setResendCooldown(0);
+                    setResendAttempts(0);
+                  }}
                   className="text-fuchsia-700 hover:underline text-xs font-medium"
                   disabled={loading}
                   aria-label={t('backToPhone')}
@@ -337,9 +522,7 @@ const OTPLogin: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (resendCooldown === 0) requestOtpDirect();
-                  }}
+                  onClick={() => { if (resendCooldown === 0) requestOtpDirect(); }}
                   disabled={resendCooldown > 0 || loading}
                   className="text-fuchsia-700 hover:underline text-xs font-medium disabled:opacity-50"
                   aria-label={t('resendOtp')}
@@ -347,6 +530,15 @@ const OTPLogin: React.FC = () => {
                   {resendCooldown > 0
                     ? t('resendTimer', { seconds: resendCooldown })
                     : t('resendOtp')}
+                </button>
+                <button
+                  type="button"
+                  onClick={pasteOtpFromClipboard}
+                  disabled={loading}
+                  className="text-fuchsia-700 hover:underline text-xs font-medium"
+                  aria-label="Paste code from clipboard"
+                >
+                  Paste code
                 </button>
               </div>
             </form>
