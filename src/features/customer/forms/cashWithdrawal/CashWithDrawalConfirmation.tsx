@@ -29,6 +29,7 @@ export default function WithdrawalConfirmation() {
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(true);
 
+    
     const fetchWithdrawal = useCallback(async (withdrawalId: string) => {
         try {
             const response = await getWithdrawalById(withdrawalId);
@@ -51,8 +52,12 @@ export default function WithdrawalConfirmation() {
         }
     }, []);
 
+    const hasSubmitted = useRef(false);
+
     useEffect(() => {
         const runSubmit = async () => {
+            if (hasSubmitted.current) return; // ⬅️ prevent double-call
+            hasSubmitted.current = true;
             if (!state?.pending || !state?.requestPayload) {
                 // If no pending state but we have an ID, try to fetch the withdrawal
                 if (id) {
@@ -144,12 +149,12 @@ export default function WithdrawalConfirmation() {
     const effectiveData = withdrawalData?.id ? withdrawalData : (serverData?.data || {});
 
     // Format amount with proper fallback
-    const amountValue = effectiveData?.withdrawal_Amount || 
-                       (serverData as any)?.Withdrawal_Amount || 
-                       (serverData as any)?.withdrawa_Amount;
+    const amountValue = effectiveData?.withdrawal_Amount ||
+        (serverData as any)?.Withdrawal_Amount ||
+        (serverData as any)?.withdrawa_Amount;
     const amount = amountValue !== undefined && amountValue !== null
-        ? new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
+        ? new Intl.NumberFormat('en-US', {
+            style: 'currency',
             currency: 'ETB',
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -157,20 +162,20 @@ export default function WithdrawalConfirmation() {
         : 'N/A';
 
     // Get token and queue number with proper fallbacks
-    const token = effectiveData?.tokenNumber || 
-                 (serverData as any)?.tokenNumber || 
-                 (serverData as any)?.TokenNumber || 
-                 'N/A';
-    const queueNumber = effectiveData?.queueNumber?.toString() || 
-                       (serverData as any)?.queueNumber?.toString() || 
-                       (serverData as any)?.QueueNumber?.toString() || 
-                       'N/A';
-    const accountNumber = effectiveData?.accountNumber || 
-                         (serverData as any)?.accountNumber || 
-                         'N/A';
-    const accountHolderName = effectiveData?.accountHolderName || 
-                             (serverData as any)?.accountHolderName || 
-                             'N/A';
+    const token = effectiveData?.tokenNumber ||
+        (serverData as any)?.tokenNumber ||
+        (serverData as any)?.TokenNumber ||
+        'N/A';
+    const queueNumber = effectiveData?.queueNumber?.toString() ||
+        (serverData as any)?.queueNumber?.toString() ||
+        (serverData as any)?.QueueNumber?.toString() ||
+        'N/A';
+    const accountNumber = effectiveData?.accountNumber ||
+        (serverData as any)?.accountNumber ||
+        'N/A';
+    const accountHolderName = effectiveData?.accountHolderName ||
+        (serverData as any)?.accountHolderName ||
+        'N/A';
     // const referenceId = effectiveData?.formReferenceId || 
     //                    effectiveData?.referenceId || 
     //                    (serverData as any)?.formReferenceId || 
@@ -181,10 +186,10 @@ export default function WithdrawalConfirmation() {
     if (serverData || withdrawalData.id) {
         // Format amount with proper fallback
         const amount = effectiveData?.withdrawal_Amount !== undefined && effectiveData?.withdrawal_Amount !== null
-            ? `${Number(effectiveData.withdrawal_Amount).toLocaleString('en-US', { 
-                minimumFractionDigits: 2, 
-                maximumFractionDigits: 2 
-              })} ETB`
+            ? `${Number(effectiveData.withdrawal_Amount).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })} ETB`
             : '0.00 ETB';
 
         return (
@@ -214,41 +219,41 @@ export default function WithdrawalConfirmation() {
                         <h3 className="text-xl font-bold text-fuchsia-700 mb-4">Transaction Summary</h3>
                         <div className="space-y-3 text-gray-700">
                             <div className="flex justify-between">
-                                <strong className="font-medium">Account Holder:</strong> 
+                                <strong className="font-medium">Account Holder:</strong>
                                 <span className="text-right">{accountHolderName}</span>
                             </div>
                             <div className="flex justify-between">
-                                <strong className="font-medium">Account Number:</strong> 
+                                <strong className="font-medium">Account Number:</strong>
                                 <span>{accountNumber}</span>
                             </div>
                             <div className="flex justify-between">
-                                <strong className="font-medium">Amount:</strong> 
+                                <strong className="font-medium">Amount:</strong>
                                 <span className="font-bold text-fuchsia-800">{amount}</span>
                             </div>
                             <div className="flex justify-between">
-                                <strong className="font-medium">Branch:</strong> 
+                                <strong className="font-medium">Branch:</strong>
                                 <span>Ayer Tena Branch</span>
                             </div>
                         </div>
                     </div>
 
                     <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-                        <button 
-                            onClick={() => navigate('/customer/withdraw')} 
+                        <button
+                            onClick={() => navigate('/customer/withdraw')}
                             className="flex items-center justify-center gap-2 w-full sm:w-auto bg-fuchsia-700 text-white px-8 py-3 rounded-lg shadow-md hover:bg-fuchsia-800 transition transform hover:scale-105"
                         >
                             <ArrowPathIcon className="h-5 w-5" />
                             New Withdrawal
                         </button>
-                        <button 
-                            onClick={handlePrint} 
+                        <button
+                            onClick={handlePrint}
                             className="flex items-center justify-center gap-2 w-full sm:w-auto bg-gray-200 text-fuchsia-800 px-8 py-3 rounded-lg shadow-md hover:bg-gray-300 transition transform hover:scale-105"
                         >
                             <PrinterIcon className="h-5 w-5" />
                             Print Receipt
                         </button>
                     </div>
-                    
+
                     <p className="text-sm text-gray-500 mt-6">Thank you for banking with us!</p>
                 </div>
             </div>
@@ -261,7 +266,7 @@ export default function WithdrawalConfirmation() {
                 <ExclamationTriangleIcon className="h-16 w-16 mx-auto text-yellow-500" />
                 <h1 className="text-2xl font-bold text-fuchsia-800 mt-4">No Data Available</h1>
                 <p className="text-gray-600 mt-2">Please try again or contact support.</p>
-                
+
                 <div className="mt-8 flex flex-col space-y-4">
                     <button
                         onClick={() => navigate('/customer/withdraw')}

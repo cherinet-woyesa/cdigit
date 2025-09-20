@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import logo from '../../assets/logo.jpg';
 import React from 'react';
 import authService from '../../services/authService';
+import QRLogin from '../../QRLogin';
 
 // Reusable Input component
 interface FormInputProps {
@@ -157,6 +158,8 @@ const OTPLogin: React.FC = () => {
     try {
       const normalized = normalizePhone(phoneNumber);
       const response: { message: string; token?: string } = await authService.loginWithOtp(normalized, otp);
+      console.log('Login with OTP Response at ui:', response);
+      
       setMessage(response.message || t('loginSuccessful'));
       setPhone(normalized);
       navigate('/customer/dashboard'); // Redirect to the customer dashboard
@@ -339,6 +342,10 @@ const OTPLogin: React.FC = () => {
             </div>
           </form>
         )}
+        <div className="mt-6">
+          <hr className="border-t border-gray-300" />
+          <QRLogin />
+        </div>
       </div>
     </div>
   );

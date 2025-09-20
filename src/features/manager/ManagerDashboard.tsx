@@ -8,6 +8,7 @@ import CreateManagerBranchModal from "./CreateManagerBranchModal.tsx";
 import managerService from "../../services/managerService";
 import toast from "react-hot-toast";
 import MyBranchModal from "./MyBranchModal.tsx";
+import CorporateCustomers from "./CorporateCustomers.tsx";
 
 interface Branch {
   id: string;
@@ -68,24 +69,32 @@ export default function ManagerDashboard() {
           <TabsTrigger value="windows" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
             🪟 Windows
           </TabsTrigger>
+
+          <TabsTrigger value="corporate-customers" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
+            🏢 Corporate Customers
+          </TabsTrigger>
+
+
           <TabsTrigger value="assign" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
             🔗 Assign Maker
           </TabsTrigger>
           <TabsTrigger value="transactions" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
             📊 Transactions
           </TabsTrigger>
-                    <TabsTrigger value="my-branch" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
+          <TabsTrigger value="my-branch" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
             🏦 My Branch
           </TabsTrigger>
+
         </TabsList>
 
         {/* Other Tabs */}
         <TabsContent value="users"><BranchAdUsers branchId={branchId} /></TabsContent>
         <TabsContent value="windows"><Windows branchId={branchId} /></TabsContent>
+        <TabsContent value="corporate-customers"> <CorporateCustomers managerId={managerId} /> </TabsContent>
         <TabsContent value="assign"><AssignMaker branchId={branchId} /></TabsContent>
         <TabsContent value="transactions"><Transactions branchId={branchId} /></TabsContent>
 
-                {/* My Branch Tab */}
+        {/* My Branch Tab */}
         <TabsContent value="my-branch">
           {branch ? (
             <>
@@ -124,8 +133,8 @@ export default function ManagerDashboard() {
                   <div className="mt-6">
                     <span
                       className={`px-4 py-2 rounded-full text-sm font-semibold ${branch.isApproved
-                          ? "bg-green-100 text-green-800 border border-green-200"
-                          : "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                        ? "bg-green-100 text-green-800 border border-green-200"
+                        : "bg-yellow-100 text-yellow-800 border border-yellow-200"
                         }`}
                     >
                       {branch.isApproved ? "✅ Approved" : "⏳ Pending Approval"}

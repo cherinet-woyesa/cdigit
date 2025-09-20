@@ -12,9 +12,49 @@ interface Transaction {
   accountHolderName: string;
   amount: number;
   transactionType: string;
+  frontMakerId: string
   status: number; // 0: Canceled, 1: On Queue, 2: On Progress, 3: Completed
   submittedAt: string;
+  depositedToCBSAt: string;
 }
+
+// Helper to format time (hh:mm:ss)
+const formatDuration = (ms: number) => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${minutes}m ${seconds}s`;
+};
+
+// --- add this helper ---
+const groupByMaker = (transactions: Transaction[]) => {
+  const result: Record<
+    string,
+    { count: number; totalTime: number; avgTime: number }
+  > = {};
+
+  transactions.forEach((txn) => {
+    if (txn.status === 3 && txn.frontMakerId && txn.depositedToCBSAt) {
+      const time =
+        new Date(txn.depositedToCBSAt).getTime() -
+        new Date(txn.submittedAt).getTime();
+
+      if (!result[txn.frontMakerId]) {
+        result[txn.frontMakerId] = { count: 0, totalTime: 0, avgTime: 0 };
+      }
+
+      result[txn.frontMakerId].count++;
+      result[txn.frontMakerId].totalTime += time;
+      result[txn.frontMakerId].avgTime =
+        result[txn.frontMakerId].totalTime / result[txn.frontMakerId].count;
+    }
+  });
+
+  return result;
+};
+
+
 
 export default function Transactions({ branchId }: { branchId: string }) {
   const [txns, setTxns] = useState<Transaction[]>([]);
@@ -31,6 +71,22 @@ export default function Transactions({ branchId }: { branchId: string }) {
   // Modal state
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   // const [selectedTxn, setSelectedTxn] = useState<any | null>(null);
+
+  // Compute service time stats
+  const completedTxns = txns.filter(t => t.status === 3 && t.depositedToCBSAt);
+  const serviceTimes = completedTxns.map(t =>
+    new Date(t.depositedToCBSAt!).getTime() - new Date(t.submittedAt).getTime()
+  );
+
+  const longestService = serviceTimes.length ? Math.max(...serviceTimes) : 0;
+  const shortestService = serviceTimes.length ? Math.min(...serviceTimes) : 0;
+  const averageService = serviceTimes.length
+    ? serviceTimes.reduce((a, b) => a + b, 0) / serviceTimes.length
+    : 0;
+
+
+  // 🆕 Compute per-maker stats
+  const makerStats = groupByMaker(txns);
 
 
   const load = async () => {
@@ -91,38 +147,53 @@ export default function Transactions({ branchId }: { branchId: string }) {
     }
   };
 
+
+
   const columns = [
     { name: "Queue #", selector: (row: Transaction) => row.queueNumber, sortable: true },
     { name: "Type", selector: (row: Transaction) => row.transactionType, sortable: true },
     { name: "Account Holder", selector: (row: Transaction) => row.accountHolderName, sortable: true },
     { name: "Amount", selector: (row: Transaction) => `$${row.amount.toFixed(2)}`, sortable: true },
-    { name: "Status", selector: (row: Transaction) => row.status, cell: (row: Transaction) => statusBadge(row.status), sortable: true },
-    // {
-    //   name: "Action",
-    //   cell: (row: Transaction) => (
-    //     <Button
-    //       className="bg-purple-600 text-white hover:bg-purple-700 transition-shadow shadow-md hover:shadow-lg"
-    //       onClick={() => setSelectedTxn(row)}
-    //     >
-    //       View
-    //     </Button>
-    //   ),
-    // },
+    { name: "Status", cell: (row: Transaction) => statusBadge(row.status), sortable: true },
 
+    // 🆕 Service/Waiting Time Column
+    {
+      name: "Time",
+      cell: (row: Transaction) => {
+        const submittedAt = new Date(row.submittedAt).getTime();
+        if (row.status === 1) { // OnQueue
+
+          // const submittedAt = new Date(row.submittedAt).getTime();
+          // const now = new Date().getTime(); // same units (UTC ms since epoch)
+          // const waiting = now - submittedAt;
+          const submittedAt = new Date(row.submittedAt + "Z").getTime();
+          const now = Date.now();
+          const waiting = Math.max(0, now - submittedAt);
+
+          // const waiting = Date.now() - submittedAt;
+          return <span className="text-yellow-600">⏳ {formatDuration(waiting)}</span>;
+        }
+        if (row.status === 3 && row.depositedToCBSAt) { // Completed
+          const service = new Date(row.depositedToCBSAt).getTime() - submittedAt;
+          return <span className="text-green-600">⚡ {formatDuration(service)}</span>;
+        }
+        return <span className="text-gray-500">-</span>;
+      }
+    },
 
     {
       name: "Action",
       cell: (row: any) => (
         <Button
-          className="bg-gradient-to-r from-purple-600 to-purple-400 text-white hover:from-purple-700 hover:to-purple-500 transition-all"
+          className="bg-gradient-to-r from-purple-600 to-purple-400 text-white hover:from-purple-700 hover:to-purple-500"
           onClick={() => setSelectedTxn(row)}
         >
           View
         </Button>
       ),
     },
-
   ];
+
 
   return (
     <div className="space-y-4">
@@ -200,6 +271,48 @@ export default function Transactions({ branchId }: { branchId: string }) {
       {selectedTxn && (
         <TransactionDetailModal txn={selectedTxn} onClose={() => setSelectedTxn(null)} />
       )}
+
+      {/* Service Time Stats */}
+      <div className="mt-6">
+        <h3 className="text-lg font-bold text-bank mb-2">⏱️ Service Time Stats</h3>
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="bg-red-200 p-4 rounded text-center">
+            <div className="text-lg font-semibold">{formatDuration(longestService)}</div>
+            <div className="text-sm">Longest Service Time</div>
+          </div>
+          <div className="bg-green-200 p-4 rounded text-center">
+            <div className="text-lg font-semibold">{formatDuration(shortestService)}</div>
+            <div className="text-sm">Shortest Service Time</div>
+          </div>
+          <div className="bg-blue-200 p-4 rounded text-center">
+            <div className="text-lg font-semibold">{formatDuration(averageService)}</div>
+            <div className="text-sm">Average Service Time</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Per-Maker Stats */}
+      <div className="mt-6">
+        <h3 className="text-lg font-bold text-bank mb-2">👨‍💼 Maker Performance</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {Object.entries(makerStats).map(([makerId, stats]) => (
+            <div
+              key={makerId}
+              className="bg-purple-100 p-4 rounded shadow text-center"
+            >
+              <div className="text-sm font-semibold text-purple-700">
+                Maker ID: {makerId}
+              </div>
+              <div className="text-lg font-bold">
+                {stats.count} Customers Served
+              </div>
+              <div className="text-sm text-gray-700">
+                Avg Time: {formatDuration(stats.avgTime)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
 
     </div>

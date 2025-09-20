@@ -60,6 +60,14 @@ export const TransactionDetailModal: FC<TransactionDetailModalProps> = ({ txn, o
             <span className="font-semibold">Submitted At:</span>
             <span>{new Date(txn.submittedAt).toLocaleString()}</span>
           </div>
+          
+
+          <div className="flex justify-between">
+            <span className="font-semibold">Submitted to CBS At:</span>
+            <span>{new Date(txn.depositedToCBSAt).toLocaleString()}</span>
+          </div>
+
+
           <div className="flex justify-between">
             <span className="font-semibold">Form Reference ID:</span>
             <span>{txn.formReferenceId}</span>

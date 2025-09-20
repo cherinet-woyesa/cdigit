@@ -47,6 +47,7 @@ const MyBranchModal: React.FC<Props> = ({ branch, open, onClose, setBranch }) =>
         latitude: form.latitude === "" ? undefined : Number(form.latitude),
         longitude: form.longitude === "" ? undefined : Number(form.longitude),
         status: form.status,
+        isApproved: branch.isApproved,
         managerId: branch.managerId,
       };
 

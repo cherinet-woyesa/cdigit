@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from 'react-router-dom';
-
 import { jwtDecode } from "jwt-decode";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -44,6 +43,7 @@ type WindowDto = {
     branchId: string;
     windowNumber: number;
     description?: string | null;
+    windowType: string;
 };
 
 type ActionMessage = {
@@ -102,6 +102,8 @@ const MakerDashboard: React.FC = () => {
     const [QueueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
     const [amount, setAmount] = useState('');
 
+    // inside MakerDashboard component state
+    const [showServices, setShowServices] = useState(false);
 
     /** Decode token */
     useEffect(() => {
@@ -139,36 +141,36 @@ const MakerDashboard: React.FC = () => {
     // notify the comming of New customer 
     useEffect(() => {
         if (!decoded?.BranchId) return;
-    
+
         // Setup SignalR connection
         const connection = new HubConnectionBuilder()
-          .withUrl('http://localhost:5268/hub/queueHub') 
-          .withAutomaticReconnect()
-          .build();
-    
-        connection.start().then(() => {
-          console.log('Connected to SignalR hub');
-    
-          // Join group with Branch id
-          connection.invoke('JoinBranchCustomersQueueGroup', decoded?.BranchId);
-    
-          // Listen for messages
-          connection.on('NewCustomer', (data) => {
-            console.log('New customer notification received:', data);
-            setQueueNotifyModalTitle(data.transactionType + " Request");
-            setQueueNotifyModalMessage(`${data.message} is comming, please ready to serve. `);
+            .withUrl('http://localhost:5268/hub/queueHub')
+            .withAutomaticReconnect()
+            .build();
 
-            console.log("data.amount at dashboard", data.amount);
-            setAmount(`Amount: ETB ${Number(data.amount).toLocaleString()}`);   
-            setIsQueueNotifyModalOpen(true);
-            void refreshQueue();
-          });
+        connection.start().then(() => {
+            console.log('Connected to SignalR hub');
+
+            // Join group with Branch id
+            connection.invoke('JoinBranchCustomersQueueGroup', decoded?.BranchId);
+
+            // Listen for messages
+            connection.on('NewCustomer', (data) => {
+                console.log('New customer notification received:', data);
+                setQueueNotifyModalTitle(data.transactionType + " Request");
+                setQueueNotifyModalMessage(`${data.message} is comming, please ready to serve. `);
+
+                console.log("data.amount at dashboard", data.amount);
+                setAmount(`Amount: ETB ${Number(data.amount).toLocaleString()}`);
+                setIsQueueNotifyModalOpen(true);
+                void refreshQueue();
+            });
         });
-    
+
         return () => {
-          connection.stop();
+            connection.stop();
         };
-      }, [decoded?.BranchId]);
+    }, [decoded?.BranchId]);
 
 
 
@@ -382,8 +384,10 @@ const MakerDashboard: React.FC = () => {
                 decoded.nameid,
                 assignedWindow.id,
                 decoded.BranchId,
+                // assignedWindow.windowType, // pass window type
                 token
             );
+            console.log("callNextCustomer response at ui:", res);
             if (!res.success || !res.data) {
                 setCurrent(null);
                 setActionMessage({ type: 'error', content: res.message || "No customer in queue." });
@@ -521,14 +525,14 @@ const MakerDashboard: React.FC = () => {
                     </div>
                 )}
 
-<QueueNotifyModal
-        isOpen={isQueueNotifyModalOpen}
-        onClose={() => setIsQueueNotifyModalOpen(false)}
-        title={QueueNotifyModalTitle}
-        message={QueueNotifyModalMessage}
-        amount={amount}
-      />
-      
+                <QueueNotifyModal
+                    isOpen={isQueueNotifyModalOpen}
+                    onClose={() => setIsQueueNotifyModalOpen(false)}
+                    title={QueueNotifyModalTitle}
+                    message={QueueNotifyModalMessage}
+                    amount={amount}
+                />
+
                 {/* Stats */}
                 <section>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -587,6 +591,13 @@ const MakerDashboard: React.FC = () => {
                     >
                         Search by Form Ref ID
                     </button>
+                    {/* New Other Services Button */}
+                    <button
+                        onClick={() => setShowServices((prev) => !prev)}
+                        className="px-4 py-2 rounded-xl bg-fuchsia-600 text-white shadow hover:bg-fuchsia-700 transition"
+                    >
+                        {showServices ? "Hide Services" : "Other Services"}
+                    </button>
                 </section>
 
                 {/* Queue */}
@@ -638,13 +649,36 @@ const MakerDashboard: React.FC = () => {
                 </section>
 
                 {/* Served */}
-                <section>
+                <section className="w-fit mx-auto">
                     <h3 className="text-lg font-semibold text-gray-800 mb-3">
                         Total served by you (Today)
                     </h3>
                     <StatCard title="Total Served" value={totalServed} icon={faCheckCircle} bgColor="bg-fuchsia-600"
                         textColor="bg-fuchsia-100" />
                 </section>
+                    
+            {showServices && (
+                <section className="mt-6 animate-fadeIn">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Other Services</h3>
+                    <div className="grid md:grid-cols-3 gap-6">
+                        {[
+                            { title: "Account Opening Request", color: "from-purple-500 to-fuchsia-600" },
+                            { title: "CBE Birr Requests", color: "from-indigo-500 to-purple-600" },
+                            { title: "E-Banking Request", color: "from-pink-500 to-purple-600" },
+                        ].map((service, idx) => (
+                            <div
+                                key={idx}
+                                className={`rounded-2xl shadow-lg p-6 text-white cursor-pointer bg-gradient-to-br ${service.color} transform transition hover:scale-105 hover:shadow-2xl`}
+                            >
+                                <h4 className="text-xl font-bold mb-2">{service.title}</h4>
+                                <p className="text-sm text-white/80">
+                                    Manage and process {service.title.toLowerCase()} here.
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
             </main>
 
             {/* initial Window selection modal */}
@@ -674,6 +708,8 @@ const MakerDashboard: React.FC = () => {
                 />
 
             )}
+
+
 
             {/* Cancel confirm */}
             {showCancelConfirm && (

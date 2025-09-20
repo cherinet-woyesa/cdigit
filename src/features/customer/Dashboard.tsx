@@ -19,6 +19,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import QueueNotifyModal from '../../modals/QueueNotifyModal';
+import TransactionFeedbackModal from './TransactionFeedbackModal';
 
 type FormName =
   | 'accountOpening'
@@ -53,7 +54,7 @@ const forms: Form[] = [
   { name: 'mobileBanking', route: '/form/mobile-banking', icon: DevicePhoneMobileIcon, description: 'Manage your accounts on the go.' },
   { name: 'atmCard', route: '/form/atm-card', icon: CreditCardIcon, description: 'Request or manage your ATM card.' },
   { name: 'otherForms', route: '/form/other-forms', icon: Squares2X2Icon, description: 'Explore other banking services.' },
-   { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, description: 'View your transaction history.' },
+  { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, description: 'View your transaction history.' },
 ];
 
 export default function Dashboard() {
@@ -62,13 +63,22 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal state
+  // Queue Notify Modal state
   const [isQueueNotifyModalOpen, setIsQueueNotifyModalOpen] = useState(false);
   const [QueueNotifyModalMessage, setQueueNotifyModalMessage] = useState('');
   const [QueueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
   const [QueueNotifyModalWindowNumber, setQueueNotifyModalWindowNumber] = useState('');
   const [QueueNotifyModalTellerName, setQueueNotifyModalTellerName] = useState('');
 
+  //Transaction completd modal state
+  const [isTransactionFeedbackModalOpen, setTransactionFeedbackModalOpen] = useState(false);
+  const [TransactionCompletdModalTransactionId, setTransactionCompletdModalTransactionId] = useState('');
+  const [transactionCompletdModalFrontMakerId, setTransactionCompletdModalFrontMakerId] = useState('');
+  const [transactionCompletdModalBranchId, setTransactionCompletdModalBranchId] = useState('');
+  const [TransactionCompletdModalTransactionType, setTransactionCompletdModalTransactionType] = useState('');
+  const [TransactionCompletdModalTransactionAmount, setTransactionCompletdModalTransactionAmount] = useState('');
+  const [TransactionCompletdModalMessage, setTransactionCompletdModalMessage] = useState('');
+  const [TransactionCompletdModalCustomerPhone, setTransactionCompletdModalCustomerPhone] = useState(''); 
 
   const filteredForms = useMemo(() => {
     if (!searchQuery.trim()) return forms;
@@ -105,6 +115,27 @@ export default function Dashboard() {
         setQueueNotifyModalTellerName(data.tellerName);
         setIsQueueNotifyModalOpen(true);
       });
+
+      connection.on("TransactionCompleted", (data) => {
+        // Close the queue notify modal automatically
+        setIsQueueNotifyModalOpen(false);
+
+        setTransactionFeedbackModalOpen(true);
+        setTransactionCompletdModalTransactionId(data.transactionId);
+        setTransactionCompletdModalFrontMakerId(data.frontMakerId);
+        setTransactionCompletdModalBranchId(data.branchId);
+        setTransactionCompletdModalCustomerPhone(data.customerPhone);
+        setTransactionCompletdModalTransactionType(data.transactionType);
+        setTransactionCompletdModalTransactionAmount(data.amount);
+        setTransactionCompletdModalMessage(data.message);
+
+        console.log("Sgnal R data for completed transaction:" + data);
+      });
+
+      // connection.on('ReceiveNotification', (data) => {
+      //   alert(data.message);
+      // });
+
     });
 
     return () => {
@@ -123,6 +154,19 @@ export default function Dashboard() {
         QueueNotifyModalWindowNumber={QueueNotifyModalWindowNumber}
         QueueNotifyModalTellerName={QueueNotifyModalTellerName}
       />
+      {/* TransactionFeedbackModal */}
+      <TransactionFeedbackModal
+        isOpen={isTransactionFeedbackModalOpen}
+        onClose={() => setTransactionFeedbackModalOpen(false)}
+        transactionId={TransactionCompletdModalTransactionId}
+        frontMakerId={transactionCompletdModalFrontMakerId}
+        branchId={transactionCompletdModalBranchId}
+        customerPhone={TransactionCompletdModalCustomerPhone}
+        transactionType={TransactionCompletdModalTransactionType}
+        transactionAmount={TransactionCompletdModalTransactionAmount}
+        message={TransactionCompletdModalMessage}
+      />
+      {/* Header */}
       <header className="bg-fuchsia-700 text-white py-5 px-6 shadow-lg sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
