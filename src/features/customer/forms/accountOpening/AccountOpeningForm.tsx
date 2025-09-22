@@ -9,8 +9,8 @@ import type {
     FormData,
     FormErrors,
     FormSummary,
-} from "../../../../types/formTypes";
-import { INITIAL_DATA } from "../../../../types/formTypes";
+} from "./types/formTypes";
+import { INITIAL_DATA } from "./types/formTypes";
 import { StepPersonal, validate as validatePersonalDetail } from "./components/StepPersonal";
 import { StepAddress, validate as validateAddressDetail } from "./components/StepAddress";
 import { StepFinancial, validate as validateFinancialDetail } from "./components/StepFinancial";

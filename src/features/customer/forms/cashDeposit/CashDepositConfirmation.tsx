@@ -1,8 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import depositService from '../../../../services/depositService';
-import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, PrinterIcon, ArrowPathIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { useReactToPrint } from 'react-to-print';
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 
 type DepositData = {
     id?: string;
@@ -23,7 +25,9 @@ export default function DepositConfirmation() {
     const [serverData, setServerData] = useState<any>(state?.serverData || null);
     const [localData, setLocalData] = useState<DepositData>(state?.serverData?.data || {});
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
 
     const data = useMemo(() => {
         // Correctly handle the nested 'data' key from the API response
@@ -133,6 +137,16 @@ export default function DepositConfirmation() {
         // @ts-ignore - Ignore the type error for the content property
     } as any);
 
+    // Robust entity id for update/cancel
+    const entityId = useMemo(() => {
+        return (
+            effectiveData?.id ||
+            data?.id ||
+            serverData?.data?.id ||
+            null
+        );
+    }, [effectiveData?.id, data?.id, serverData?.data?.id]);
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
             <div ref={componentToPrintRef} className="max-w-2xl w-full bg-white p-4 sm:p-6 rounded-lg shadow-lg">
@@ -179,7 +193,7 @@ export default function DepositConfirmation() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button 
                         onClick={() => navigate('/form/cash-deposit')} 
                         className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition"
@@ -194,43 +208,161 @@ export default function DepositConfirmation() {
                         <PrinterIcon className="h-3.5 w-3.5" />
                         Print
                     </button>
-                    <button
-                        onClick={async () => {
-                            setSubmitting(true);
-                            setError('');
-                            try {
-                                navigate('/form/cash-deposit', { state: { updateId: data.id } });
-                            } catch (e: any) {
-                                setError(e?.message || 'Failed to update deposit.');
-                            } finally {
-                                setSubmitting(false);
-                            }
-                        }}
-                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-yellow-500 text-white px-8 py-3 rounded-lg shadow-md hover:bg-yellow-600 transition transform hover:scale-105"
-                        disabled={submitting}
-                    >
-                        Update
-                    </button>
-                    <button
-                        onClick={async () => {
-                            setSubmitting(true);
-                            setError('');
-                            try {
-                                await depositService.cancelDepositByCustomer(data.id);
-                                navigate('/form/cash-deposit', { state: { cancelled: true } });
-                            } catch (e: any) {
-                                setError(e?.message || 'Failed to cancel deposit.');
-                            } finally {
-                                setSubmitting(false);
-                            }
-                        }}
-                        className="flex items-center justify-center gap-2 w-full sm:w-auto bg-red-600 text-white px-8 py-3 rounded-lg shadow-md hover:bg-red-700 transition transform hover:scale-105"
-                        disabled={submitting}
-                    >
-                        Cancel
-                    </button>
+                    {entityId && (
+                        <button
+                            onClick={async () => {
+                                setSubmitting(true);
+                                setError('');
+                                try {
+                                    // Fetch the latest deposit data before navigating to update
+                                    const depositData = await depositService.getDepositById(entityId);
+                                    navigate('/form/cash-deposit', { 
+                                        state: { 
+                                            updateId: entityId,
+                                            formData: {
+                                                accountNumber: depositData.data?.accountNumber,
+                                                accountHolderName: depositData.data?.accountHolderName,
+                                                amount: depositData.data?.amount,
+                                                branchId: depositData.data?.branchId,
+                                                telephoneNumber: depositData.data?.telephoneNumber,
+                                                sourceOfProceeds: depositData.data?.sourceOfProceeds,
+                                                DepositedBy: depositData.data?.depositedBy
+                                            }
+                                        } 
+                                    });
+                                } catch (e: any) {
+                                    console.error('Error preparing update:', e);
+                                    setError(e?.message || 'Failed to prepare deposit update. Please try again.');
+                                } finally {
+                                    setSubmitting(false);
+                                }
+                            }}
+                            className="flex items-center justify-center gap-1 w-full bg-yellow-500 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-yellow-600 transition"
+                            disabled={submitting}
+                        >
+                            Update
+                        </button>
+                    )}
+                    {entityId && (
+                        <>
+                            <button
+                                onClick={() => setShowCancelModal(true)}
+                                className="flex items-center justify-center gap-1 w-full bg-red-600 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-red-700 transition disabled:opacity-70"
+                                disabled={submitting}
+                            >
+                                {submitting ? 'Cancelling...' : 'Cancel'}
+                            </button>
+
+                            {/* Cancel Confirmation Modal */}
+                            <Transition appear show={showCancelModal} as={Fragment}>
+                                <Dialog as="div" className="relative z-10" onClose={() => !submitting && setShowCancelModal(false)}>
+                                    <Transition.Child
+                                        as={Fragment}
+                                        enter="ease-out duration-300"
+                                        enterFrom="opacity-0"
+                                        enterTo="opacity-100"
+                                        leave="ease-in duration-200"
+                                        leaveFrom="opacity-100"
+                                        leaveTo="opacity-0"
+                                    >
+                                        <div className="fixed inset-0 bg-black/25" />
+                                    </Transition.Child>
+
+                                    <div className="fixed inset-0 overflow-y-auto">
+                                        <div className="flex min-h-full items-center justify-center p-4 text-center">
+                                            <Transition.Child
+                                                as={Fragment}
+                                                enter="ease-out duration-300"
+                                                enterFrom="opacity-0 scale-95"
+                                                enterTo="opacity-100 scale-100"
+                                                leave="ease-in duration-200"
+                                                leaveFrom="opacity-100 scale-100"
+                                                leaveTo="opacity-0 scale-95"
+                                            >
+                                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                                                    <Dialog.Title
+                                                        as="h3"
+                                                        className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2"
+                                                    >
+                                                        <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
+                                                        Confirm Cancellation
+                                                    </Dialog.Title>
+                                                    <div className="mt-4">
+                                                        <p className="text-sm text-gray-500">
+                                                            Are you sure you want to cancel this deposit? This action cannot be undone.
+                                                        </p>
+                                                    </div>
+
+                                                    {error && (
+                                                        <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                                                            {error}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="mt-6 flex justify-end gap-3">
+                                                        <button
+                                                            type="button"
+                                                            className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
+                                                            onClick={() => setShowCancelModal(false)}
+                                                            disabled={submitting}
+                                                        >
+                                                            Go Back
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    setSubmitting(true);
+                                                                    setError('');
+                                                                    
+                                                                    const response = await depositService.cancelDepositByCustomer(entityId);
+                                                                        
+                                                                    if (response.success) {
+                                                                        setSuccessMessage(response.message || 'Deposit cancelled successfully');
+                                                                        setShowCancelModal(false);
+                                                                        setTimeout(() => {
+                                                                            navigate('/dashboard', { 
+                                                                                state: { 
+                                                                                    showSuccess: true,
+                                                                                    successMessage: response.message || 'Deposit cancelled successfully'
+                                                                                } 
+                                                                            });
+                                                                        }, 1500);
+                                                                    } else {
+                                                                        throw new Error(response.message || 'Failed to cancel deposit');
+                                                                    }
+                                                                } catch (e: any) {
+                                                                    console.error('Error cancelling deposit:', e);
+                                                                    setError(e?.message || 'Failed to cancel deposit. Please try again.');
+                                                                } finally {
+                                                                    setSubmitting(false);
+                                                                }
+                                                            }}
+                                                            disabled={submitting}
+                                                        >
+                                                            {submitting ? 'Cancelling...' : 'Yes, Cancel Deposit'}
+                                                        </button>
+                                                    </div>
+                                                </Dialog.Panel>
+                                            </Transition.Child>
+                                        </div>
+                                    </div>
+                                </Dialog>
+                            </Transition>
+                        </>
+                    )}
                 </div>
-                {error && <div className="text-red-500 mt-4">{error}</div>}
+                {error && (
+                    <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                        {error}
+                    </div>
+                )}
+                {successMessage && (
+                    <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                        {successMessage}
+                    </div>
+                )}
                 <p className="text-sm text-gray-500 mt-6">Thank you for banking with us!</p>
             </div>
         </div>

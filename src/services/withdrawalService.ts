@@ -93,17 +93,41 @@ export async function getWithdrawalById(id: string): Promise<WithdrawalResponse>
   return response.json();
 }
 
-export async function cancelWithdrawalByCustomer(id: string): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(`${API_BASE_URL}/cancel-by-customer/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData?.message || 'Failed to cancel withdrawal.';
-    throw new Error(errorMessage);
+export interface CancelWithdrawalResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+export async function cancelWithdrawalByCustomer(id: string): Promise<CancelWithdrawalResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/cancel-by-customer/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const responseData = await response.json().catch(() => ({
+      success: false,
+      message: 'Invalid response from server'
+    }));
+
+    if (!response.ok) {
+      throw new Error(responseData?.message || 'Failed to cancel withdrawal');
+    }
+
+    return {
+      success: true,
+      message: responseData.message || 'Withdrawal cancelled successfully',
+      data: responseData.data
+    };
+  } catch (error: any) {
+    console.error('Error cancelling withdrawal:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to cancel withdrawal',
+      data: null
+    };
   }
-  return response.json();
 }

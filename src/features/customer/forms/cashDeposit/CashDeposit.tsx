@@ -1,6 +1,6 @@
 
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import depositService from '../../../../services/depositService';
 import Field from '../../../../components/Field';
@@ -22,6 +22,7 @@ export default function CashDepositForm() {
     const { t } = useTranslation();
     const { phone } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation() as { state?: any };
     const { 
         accounts, 
         accountDropdown, 
@@ -38,12 +39,16 @@ export default function CashDepositForm() {
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [updateId, setUpdateId] = useState<string | null>(null);
+    const [loadingUpdate, setLoadingUpdate] = useState(false);
+    const [step, setStep] = useState<number>(1);
 
     // Handle account selection when accounts are loaded or changed
     useEffect(() => {
         console.log('Accounts changed:', { loadingAccounts, accounts });
         
         if (loadingAccounts) return;
+        if (updateId) return; // in update mode, keep fetched values
         
         if (!accounts || accounts.length === 0) {
             console.log('No accounts available');
@@ -79,7 +84,31 @@ export default function CashDepositForm() {
                 amount: prev.amount
             }));
         }
-    }, [accounts, loadingAccounts]);
+    }, [accounts, loadingAccounts, updateId]);
+
+    // Detect update mode and prefill
+    useEffect(() => {
+        const id = location.state?.updateId as string | undefined;
+        if (!id) return;
+        setUpdateId(id);
+        (async () => {
+            try {
+                setLoadingUpdate(true);
+                const res = await depositService.getDepositById(id);
+                const d: any = res?.data || {};
+                setFormData(prev => ({
+                    ...prev,
+                    accountNumber: d.accountNumber || prev.accountNumber,
+                    accountHolderName: d.accountHolderName || prev.accountHolderName,
+                    amount: d.amount != null ? String(d.amount) : prev.amount,
+                }));
+            } catch (e) {
+                // ignore and remain in create mode
+            } finally {
+                setLoadingUpdate(false);
+            }
+        })();
+    }, [location.state]);
 
     const handleRefreshAccounts = async () => {
         if (!phone) {
@@ -140,20 +169,42 @@ export default function CashDepositForm() {
         return Object.keys(errs).length === 0;
     };
 
+    const handleNext = (e: FormEvent) => {
+        e.preventDefault();
+        if (!validateAll()) return;
+        setStep(2);
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!validateAll()) return;
         setIsSubmitting(true);
         try {
             const depositData = {
+                // Core form data
+                id: updateId || undefined,
                 formKey: Date.now().toString(),
                 branchId: ABIY_BRANCH_ID,
                 accountHolderName: formData.accountHolderName,
                 accountNumber: formData.accountNumber,
                 amount: Number(formData.amount),
                 telephoneNumber: phone || '',
+                // Required fields with default values
+                amountInWords: 'N/A',
+                sourceOfProceeds: 'N/A',
+                typeOfAccount: 'N/A',
+                DepositedBy: 'N/A',
+                // Additional required fields
+                transactionType: 'Cash Deposit',
+                status: 'Pending',
+                tokenNumber: '',
+                formReferenceId: updateId || `dep-${Date.now()}`
             };
-            const response = await depositService.submitDeposit(depositData);
+            
+            const response = updateId
+                ? await depositService.updateDeposit(updateId, depositData)
+                : await depositService.submitDeposit(depositData);
+                
             navigate('/form/cash-deposit/cashdepositconfirmation', { 
                 state: { 
                     serverData: response,
@@ -163,7 +214,7 @@ export default function CashDepositForm() {
                         accountHolderName: formData.accountHolderName,
                         amount: formData.amount,
                         telephoneNumber: phone || ''
-                    }
+                    },
                 } 
             });
         } catch (error: any) {
@@ -255,124 +306,147 @@ export default function CashDepositForm() {
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-white">{t('cashDeposit', 'Cash Deposit')}</h1>
                 <p className="text-white text-sm sm:text-base mt-1">{t('ayerTenaBranch', 'Ayer Tena Branch')}</p>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                <div className="p-3 sm:p-4 border rounded-lg shadow-sm">
-                    <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">{t('accountInformation', 'Account Information')}</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                        <Field 
-                            label={t('accountNumber', 'Account Number')} 
-                            required 
-                            error={errors.accountNumber}
-                        >
-                            {accountDropdown ? (
-                                <select 
-                                    name="accountNumber" 
-                                    value={formData.accountNumber} 
-                                    onChange={handleChange} 
-                                    className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
-                                    disabled={isRefreshing}
-                                    aria-invalid={!!errors.accountNumber}
-                                    aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
-                                >
-                                    <option value="">{t('selectYourAccount', 'Select your account')}</option>
-                                    {accounts.map(acc => (
-                                        <option key={acc.accountNumber} value={acc.accountNumber}>
-                                            {acc.accountNumber} - {acc.accountHolderName}
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
+            {step === 1 && (
+                <form onSubmit={handleNext} className="space-y-4 sm:space-y-6">
+                    <div className="p-3 sm:p-4 border rounded-lg shadow-sm">
+                        <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">{t('accountInformation', 'Account Information')}</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                            <Field 
+                                label={t('accountNumber', 'Account Number')} 
+                                required 
+                                error={errors.accountNumber}
+                            >
+                                {accountDropdown ? (
+                                    <select 
+                                        name="accountNumber" 
+                                        value={formData.accountNumber} 
+                                        onChange={handleChange} 
+                                        className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
+                                        disabled={isRefreshing}
+                                        aria-invalid={!!errors.accountNumber}
+                                        aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
+                                    >
+                                        <option value="">{t('selectYourAccount', 'Select your account')}</option>
+                                        {accounts.map(acc => (
+                                            <option key={acc.accountNumber} value={acc.accountNumber}>
+                                                {acc.accountNumber} - {acc.accountHolderName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input 
+                                        type="text" 
+                                        name="accountNumber" 
+                                        value={formData.accountNumber} 
+                                        onChange={handleChange} 
+                                        readOnly={accounts.length === 1}
+                                        disabled={isRefreshing}
+                                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
+                                        aria-invalid={!!errors.accountNumber}
+                                        aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
+                                    />
+                                )}
+                                {errors.accountNumber && (
+                                    <p id="accountNumber-error" className="mt-1 text-sm text-red-600">
+                                        {errors.accountNumber}
+                                    </p>
+                                )}
+                            </Field>
+                            <Field 
+                                label={t('accountHolderName', 'Account Holder Name')} 
+                                required 
+                                error={errors.accountHolderName}
+                            >
                                 <input 
                                     type="text" 
-                                    name="accountNumber" 
-                                    value={formData.accountNumber} 
-                                    onChange={handleChange} 
-                                    readOnly={accounts.length === 1}
-                                    disabled={isRefreshing}
-                                    className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                                    aria-invalid={!!errors.accountNumber}
-                                    aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
+                                    name="accountHolderName" 
+                                    value={formData.accountHolderName} 
+                                    readOnly 
+                                    className="form-input w-full p-3 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed"
+                                    aria-invalid={!!errors.accountHolderName}
+                                    aria-describedby={errors.accountHolderName ? 'accountHolderName-error' : undefined}
                                 />
-                            )}
-                            {errors.accountNumber && (
-                                <p id="accountNumber-error" className="mt-1 text-sm text-red-600">
-                                    {errors.accountNumber}
-                                </p>
-                            )}
-                        </Field>
-                        <Field 
-                            label={t('accountHolderName', 'Account Holder Name')} 
-                            required 
-                            error={errors.accountHolderName}
-                        >
-                            <input 
-                                type="text" 
-                                name="accountHolderName" 
-                                value={formData.accountHolderName} 
-                                readOnly 
-                                className="form-input w-full p-3 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed"
-                                aria-invalid={!!errors.accountHolderName}
-                                aria-describedby={errors.accountHolderName ? 'accountHolderName-error' : undefined}
-                            />
-                            {errors.accountHolderName && (
-                                <p id="accountHolderName-error" className="mt-1 text-sm text-red-600">
-                                    {errors.accountHolderName}
-                                </p>
-                            )}
-                        </Field>
+                                {errors.accountHolderName && (
+                                    <p id="accountHolderName-error" className="mt-1 text-sm text-red-600">
+                                        {errors.accountHolderName}
+                                    </p>
+                                )}
+                            </Field>
+                        </div>
                     </div>
-                </div>
-                <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
-                    <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">{t('amountInformation', 'Amount Information')}</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                        <Field 
-                            label={t('amount', 'Amount')} 
-                            required 
-                            error={errors.amount}
-                        >
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <span className="text-gray-500">ETB</span>
+                    <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
+                        <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">{t('amountInformation', 'Amount Information')}</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                            <Field 
+                                label={t('amount', 'Amount')} 
+                                required 
+                                error={errors.amount}
+                            >
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-500">ETB</span>
+                                    </div>
+                                    <input 
+                                        type="number" 
+                                        name="amount" 
+                                        value={formData.amount} 
+                                        onChange={handleChange} 
+                                        className="form-input w-full p-3 pl-16 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
+                                        placeholder="0.00"
+                                        min="1"
+                                        step="0.01"
+                                        disabled={isRefreshing}
+                                        aria-invalid={!!errors.amount}
+                                        aria-describedby={errors.amount ? 'amount-error' : undefined}
+                                    />
                                 </div>
-                                <input 
-                                    type="number" 
-                                    name="amount" 
-                                    value={formData.amount} 
-                                    onChange={handleChange} 
-                                    className="form-input w-full p-3 pl-16 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                                    placeholder="0.00"
-                                    min="1"
-                                    step="0.01"
-                                    disabled={isRefreshing}
-                                    aria-invalid={!!errors.amount}
-                                    aria-describedby={errors.amount ? 'amount-error' : undefined}
-                                />
-                            </div>
-                            {errors.amount && (
-                                <p id="amount-error" className="mt-1 text-sm text-red-600">
-                                    {errors.amount}
-                                </p>
-                            )}
-                        </Field>
+                                {errors.amount && (
+                                    <p id="amount-error" className="mt-1 text-sm text-red-600">
+                                        {errors.amount}
+                                    </p>
+                                )}
+                            </Field>
+                        </div>
                     </div>
-                </div>
-                <div className="pt-3 sm:pt-4">
-                    <button 
-                        type="submit" 
-                        disabled={isSubmitting}
-                        className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base"
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" />
-                                {t('processing', 'Processing...')}
-                            </>
-                        ) : (
-                            t('submitDeposit', 'Submit Deposit')
-                        )}
-                    </button>
-                </div>
-            </form>
+                    <div className="pt-3 sm:pt-4">
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting || loadingUpdate}
+                            className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base"
+                        >
+                            {t('continue', 'Continue')}
+                        </button>
+                    </div>
+                </form>
+            )}
+            {step === 2 && (
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                    <div className="p-3 sm:p-4 border rounded-lg shadow-sm">
+                        <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">{t('confirmDeposit', 'Confirm Deposit')}</h2>
+                        <div className="bg-gray-50 p-3 rounded-lg shadow-inner space-y-2 text-gray-700">
+                            <div className="flex justify-between"><strong className="font-medium">{t('account', 'Account')}:</strong> <span>{formData.accountHolderName} ({formData.accountNumber})</span></div>
+                            <div className="flex justify-between items-center"><strong className="font-medium">{t('amount', 'Amount')}:</strong> <span className="font-bold text-fuchsia-800">{Number(formData.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB</span></div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setStep(1)} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-2 sm:py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">{t('back', 'Back')}</button>
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting || loadingUpdate}
+                            className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" />
+                                    {t('processing', 'Processing...')}
+                                </>
+                            ) : (
+                                t('submitDeposit', 'Submit Deposit')
+                            )}
+                        </button>
+                    </div>
+                </form>
+            )}
         </div>
     );
 }
