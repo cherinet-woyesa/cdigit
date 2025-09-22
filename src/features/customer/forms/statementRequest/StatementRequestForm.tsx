@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { Loader2, Mail, Check, X, Plus, Trash2 } from 'lucide-react';
-import { statementService, type CustomerAccount } from '../../../../services/statementService';
+import { statementService } from '../../../../services/statementService';
+import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 import Field from '../../../../components/Field';
 
 // Statement frequency options
@@ -19,10 +20,14 @@ const StatementRequestForm: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [accounts, setAccounts] = useState<CustomerAccount[]>([]);
+  const {
+    accounts,
+    loadingAccounts,
+  } = useUserAccounts();
   const [signature, setSignature] = useState('');
-  
+  const [step, setStep] = useState(1);
+  const [errors, setErrors] = useState<{ selectedAccounts?: string; emailAddresses?: string; signature?: string; termsAccepted?: string }>({});
+
   // Form state
   const [formData, setFormData] = useState({
     emailAddresses: [''] as string[],
@@ -32,32 +37,12 @@ const StatementRequestForm: React.FC = () => {
   });
 
   // Auto-fill branch and date
-  const branchName = user?.branchName || 'Head Office';
+  const branchName = user?.branchId || 'Head Office';
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
-
-  // Load customer accounts on component mount
-  useEffect(() => {
-    const loadCustomerAccounts = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setLoading(true);
-        const customerAccounts = await statementService.getCustomerAccounts(user.id);
-        setAccounts(customerAccounts);
-      } catch (error) {
-        console.error('Error loading customer accounts:', error);
-        toast.error('Failed to load your accounts. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadCustomerAccounts();
-  }, [user?.id]);
 
   // Handle email input changes
   const handleEmailChange = (index: number, value: string) => {
@@ -119,60 +104,66 @@ const StatementRequestForm: React.FC = () => {
     toast.success('Signature captured successfully');
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form
+  // Step 1 validation
+  const validateStep1 = () => {
+    const errs: typeof errors = {};
     if (formData.selectedAccounts.length === 0) {
-      toast.error('Please select at least one account');
-      return;
+      errs.selectedAccounts = 'Please select at least one account';
     }
-    
-    // Validate emails
     const emailValidation = statementService.validateEmails(
       formData.emailAddresses.filter(email => email.trim() !== '')
     );
-    
     if (!emailValidation.valid) {
-      toast.error(`Invalid email format: ${emailValidation.invalidEmails.join(', ')}`);
-      return;
+      errs.emailAddresses = `Invalid email format: ${emailValidation.invalidEmails.join(', ')}`;
     }
-    
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  // Step 2 validation
+  const validateStep2 = () => {
+    const errs: typeof errors = {};
     if (!signature) {
-      toast.error('Please provide your digital signature');
-      return;
+      errs.signature = 'Please provide your digital signature';
     }
-    
     if (!formData.termsAccepted) {
-      toast.error('You must accept the terms and conditions');
-      return;
+      errs.termsAccepted = 'You must accept the terms and conditions';
     }
-    
-    setLoading(true);
-    
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  // Step navigation
+  const handleNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateStep1()) setStep(2);
+  };
+
+  const handleBack = () => setStep(1);
+
+  // Final submit
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateStep2()) return;
+  // No need for setLoading, use loadingAccounts for UI
     try {
-      // Get selected accounts details
       const selectedAccountsDetails = accounts.filter(acc => 
         formData.selectedAccounts.includes(acc.accountNumber)
       );
-      
-      // In a real app, we would submit to the API
       const result = await statementService.submitStatementRequest({
         branchName,
-        branchCode: selectedAccountsDetails[0]?.branchCode || '100', // Default to first account's branch
+  branchCode: selectedAccountsDetails[0]?.branchId || '100',
         customerId: user?.id || 'CUSTOMER_ID',
-        customerName: user?.name || 'Customer',
+  customerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Customer',
         accountNumbers: formData.selectedAccounts,
         emailAddresses: formData.emailAddresses.filter(email => email.trim() !== ''),
         statementFrequency: formData.statementFrequency,
         termsAccepted: formData.termsAccepted,
         signature: signature,
         makerId: user?.id || 'SYSTEM',
-        makerName: user?.name || 'System User',
+  makerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'System User',
         makerDate: new Date().toISOString(),
       });
-      
       if (result.success) {
         navigate('/form/statement-request/confirmation', {
           state: { request: result.data }
@@ -182,7 +173,7 @@ const StatementRequestForm: React.FC = () => {
       console.error('Error submitting statement request:', error);
       toast.error('Failed to submit request. Please try again.');
     } finally {
-      setLoading(false);
+  // No need for setLoading, use loadingAccounts for UI
     }
   };
 
@@ -259,7 +250,7 @@ const StatementRequestForm: React.FC = () => {
       </div>
       
       <div className="space-y-2 max-h-60 overflow-y-auto p-2 border rounded-md">
-        {loading ? (
+        {loadingAccounts ? (
           <div className="flex justify-center py-4">
             <Loader2 className="animate-spin h-5 w-5 text-blue-600" />
           </div>
@@ -286,11 +277,11 @@ const StatementRequestForm: React.FC = () => {
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between">
-                    <span className="font-medium">{account.accountName}</span>
-                    <span className="text-sm text-gray-500">{account.currency}</span>
+                    <span className="font-medium">{account.accountHolderName}</span>
+                    <span className="text-sm text-gray-500">{account.accountType}</span>
                   </div>
                   <div className="text-sm text-gray-500">
-                    {account.accountNumber} • {account.branchName}
+                    {account.accountNumber} • {account.accountType}
                   </div>
                 </div>
               </div>
@@ -310,7 +301,7 @@ const StatementRequestForm: React.FC = () => {
     <div className="border-2 border-dashed rounded-lg p-4 text-center">
       {signature ? (
         <div className="py-8 text-green-600">
-          <CheckCircle2 size={48} className="mx-auto mb-2" />
+          <Check size={48} className="mx-auto mb-2" />
           <p>Signature captured successfully</p>
           <button
             type="button"
@@ -337,147 +328,108 @@ const StatementRequestForm: React.FC = () => {
           </p>
         </div>
       )}
+      {errors.signature && <p className="mt-2 text-sm text-red-600">{errors.signature}</p>}
     </div>
   );
 
   return (
-    <div className="container mx-auto p-4 max-w-3xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Statement Request</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Subscribe to receive periodic account statements via email
-        </p>
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg">
+      <div className="mb-4 sm:mb-6 bg-fuchsia-700 text-white p-3 sm:p-4 rounded-lg shadow-lg text-center">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Statement Request</h1>
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mt-2">
+    <span className="bg-fuchsia-900 px-3 py-1 rounded text-xs sm:text-sm font-semibold">Branch: {user?.branchId || 'Head Office'}</span>
+          <span className="bg-fuchsia-900 px-3 py-1 rounded text-xs sm:text-sm font-semibold">Date: {currentDate}</span>
+        </div>
+        <p className="text-white text-sm sm:text-base mt-1">Subscribe to receive periodic account statements via email</p>
       </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Auto-filled Information */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h2 className="text-lg font-medium mb-4">Request Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field
-              label="Branch Name"
-              value={branchName}
-              readOnly
-            />
-            <Field
-              label="Date"
-              value={currentDate}
-              readOnly
-            />
+      {step === 1 && (
+        <form onSubmit={handleNext} className="space-y-4 sm:space-y-6">
+          {/* Request Information section removed: branch name and date are now in the header */}
+          <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Account Selection</h2>
+            {renderAccountSelection()}
+            {errors.selectedAccounts && <p className="mt-2 text-sm text-red-600">{errors.selectedAccounts}</p>}
           </div>
-        </div>
-        
-        {/* Account Selection */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-medium mb-4">Account Selection</h2>
-          {renderAccountSelection()}
-        </div>
-        
-        {/* Statement Preferences */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-medium mb-4">Statement Preferences</h2>
-          
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Statement Frequency
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {FREQUENCY_OPTIONS.map((option) => (
-                <div key={option.value} className="flex items-center">
-                  <input
-                    id={`frequency-${option.value}`}
-                    name="statementFrequency"
-                    type="radio"
-                    checked={formData.statementFrequency === option.value}
-                    onChange={() => setFormData(prev => ({
-                      ...prev,
-                      statementFrequency: option.value as any
-                    }))}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <label
-                    htmlFor={`frequency-${option.value}`}
-                    className="ml-3 block text-sm font-medium text-gray-700"
-                  >
-                    {option.label}
-                  </label>
-                </div>
-              ))}
+          <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Statement Preferences</h2>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Statement Frequency</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {FREQUENCY_OPTIONS.map((option) => (
+                  <div key={option.value} className="flex items-center">
+                    <input
+                      id={`frequency-${option.value}`}
+                      name="statementFrequency"
+                      type="radio"
+                      checked={formData.statementFrequency === option.value}
+                      onChange={() => setFormData(prev => ({
+                        ...prev,
+                        statementFrequency: option.value as any
+                      }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <label htmlFor={`frequency-${option.value}`} className="ml-3 block text-sm font-medium text-gray-700">{option.label}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address(es)</label>
+              <p className="text-sm text-gray-500 mb-3">Enter the email address(es) where you'd like to receive your statements</p>
+              {renderEmailFields()}
+              {errors.emailAddresses && <p className="mt-2 text-sm text-red-600">{errors.emailAddresses}</p>}
             </div>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address(es)
-            </label>
-            <p className="text-sm text-gray-500 mb-3">
-              Enter the email address(es) where you'd like to receive your statements
-            </p>
-            {renderEmailFields()}
+          <div className="pt-3 sm:pt-4">
+            <button type="submit" disabled={loadingAccounts} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base">
+              Continue
+            </button>
           </div>
-        </div>
-        
-        {/* Digital Signature */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-medium mb-4">Digital Signature</h2>
-          {renderSignaturePad()}
-        </div>
-        
-        {/* Terms and Conditions */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <input
-                id="termsAccepted"
-                name="termsAccepted"
-                type="checkbox"
-                checked={formData.termsAccepted}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  termsAccepted: e.target.checked
-                }))}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="termsAccepted" className="font-medium text-gray-700">
-                I agree to the terms and conditions
-              </label>
-              <p className="text-gray-500">
-                By checking this box, I authorize the bank to send electronic statements to the 
-                email address(es) provided above. I understand that I may be charged a fee for 
-                this service as per the bank's tariff guide.
-              </p>
+        </form>
+      )}
+      {step === 2 && (
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <div className="p-3 sm:p-4 border rounded-lg shadow-sm">
+            <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Digital Signature</h2>
+            {renderSignaturePad()}
+          </div>
+          <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Terms and Conditions</h2>
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  id="termsAccepted"
+                  name="termsAccepted"
+                  type="checkbox"
+                  checked={formData.termsAccepted}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    termsAccepted: e.target.checked
+                  }))}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="termsAccepted" className="font-medium text-gray-700">I agree to the terms and conditions</label>
+                <p className="text-gray-500">By checking this box, I authorize the bank to send electronic statements to the email address(es) provided above. I understand that I may be charged a fee for this service as per the bank's tariff guide.</p>
+                {errors.termsAccepted && <p className="mt-2 text-sm text-red-600">{errors.termsAccepted}</p>}
+              </div>
             </div>
           </div>
-        </div>
-        
-        {/* Form Actions */}
-        <div className="flex justify-end space-x-3 mt-8">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          
-          <button
-            type="submit"
-            disabled={loading || formData.selectedAccounts.length === 0 || !signature || !formData.termsAccepted}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4 inline" />
-                Submitting...
-              </>
-            ) : 'Submit Request'}
-          </button>
-        </div>
-      </form>
+          <div className="grid grid-cols-2 gap-2 pt-3 sm:pt-4">
+            <button type="button" onClick={handleBack} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-2 sm:py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">Back</button>
+            <button type="submit" disabled={loadingAccounts} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base">
+              {loadingAccounts ? (
+                <>
+                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4 inline" />
+                  Submitting...
+                </>
+              ) : 'Submit Request'}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 };

@@ -13,6 +13,10 @@ import {
   CreditCardIcon,
   CurrencyDollarIcon,
   Squares2X2Icon,
+  ReceiptPercentIcon,
+  DocumentDuplicateIcon,
+  HandRaisedIcon,
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -32,7 +36,11 @@ type FormName =
   | 'ebankingApplication'
   | 'otherServices'
   | 'cbeBirrRegistration'
-  | 'otherForms';
+  | 'otherForms'
+  | 'posRequest'
+  | 'statementRequest'
+  | 'stopPayment'
+  | 'cbeBirrLink';
 
 interface Form {
   name: FormName;
@@ -49,8 +57,11 @@ const forms: Form[] = [
   { name: 'rtgsTransfer', route: '/form/rtgs-transfer', icon: ArrowsRightLeftIcon, description: 'RTGS Customer Transfer Order.' },
   { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, description: 'Apply for E-Banking services.' },
   { name: 'cbeBirrRegistration', route: '/form/cbe-birr', icon: CurrencyDollarIcon, description: 'Register for CBE-Birr.' },
-  { name: 'mobileBanking', route: '/form/mobile-banking', icon: DevicePhoneMobileIcon, description: 'Manage your accounts on the go.' },
-  { name: 'atmCard', route: '/form/atm-card', icon: CreditCardIcon, description: 'Request or manage your ATM card.' },
+  
+  { name: 'posRequest', route: '/form/pos-request', icon: ReceiptPercentIcon, description: 'Request a POS device for your business.' },
+  { name: 'statementRequest', route: '/form/statement-request', icon: DocumentDuplicateIcon, description: 'Request your account statement.' },
+  { name: 'stopPayment', route: '/form/stop-payment', icon: HandRaisedIcon, description: 'Request to stop payment on a cheque.' },
+  { name: 'cbeBirrLink', route: '/form/cbe-birr-link', icon: LinkIcon, description: 'Link your CBE-Birr and bank account.' },
   { name: 'otherForms', route: '/form/other-forms', icon: Squares2X2Icon, description: 'Explore other banking services.' },
   { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, description: 'View your transaction history.' },
 ];
