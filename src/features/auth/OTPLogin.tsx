@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { speak } from '../../lib/speechSynthesis';
 import logo from '../../assets/logo.jpg';
 import React from 'react';
 import authService from '../../services/authService';
@@ -85,7 +86,7 @@ const FormButton: React.FC<FormButtonProps> = ({
 };
 
 const OTPLogin: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -365,6 +366,16 @@ const OTPLogin: React.FC = () => {
             <h2 className="text-base font-semibold text-gray-800">
               {t('enterPhonePrompt')}
             </h2>
+            {/* Speak Button */}
+            <button
+              type="button"
+              onClick={() => speak(`${t('bankName')}. ${t('welcome')}. ${t('enterPhonePrompt')}`, i18n.language.startsWith('am') ? 'am' : 'en')}
+              className="mt-2 inline-flex items-center px-3 py-1.5 bg-fuchsia-100 text-fuchsia-700 rounded hover:bg-fuchsia-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-fuchsia-400"
+              aria-label="Speak bank name, welcome and prompt message"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5v14m-7-7h14" /></svg>
+              {i18n.language.startsWith('am') ? 'አንባብ' : 'Speak'}
+            </button>
           </div>
 
           {/* Message and Error Display */}

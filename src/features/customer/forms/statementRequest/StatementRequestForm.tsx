@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
-import { useTranslation } from 'react-i18next';
+
 import { toast } from 'react-toastify';
-import { Loader2, Mail, Check, X, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Mail, Check, Plus, Trash2 } from 'lucide-react';
 import { statementService } from '../../../../services/statementService';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
-import Field from '../../../../components/Field';
+
 
 // Statement frequency options
 const FREQUENCY_OPTIONS = [
@@ -17,7 +17,7 @@ const FREQUENCY_OPTIONS = [
 ];
 
 const StatementRequestForm: React.FC = () => {
-  const { t } = useTranslation();
+  // const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const {
@@ -152,7 +152,7 @@ const StatementRequestForm: React.FC = () => {
       );
       const result = await statementService.submitStatementRequest({
         branchName,
-  branchCode: selectedAccountsDetails[0]?.branchId || '100',
+  branchCode: (selectedAccountsDetails[0] as any)?.branchId || '100',
         customerId: user?.id || 'CUSTOMER_ID',
   customerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Customer',
         accountNumbers: formData.selectedAccounts,

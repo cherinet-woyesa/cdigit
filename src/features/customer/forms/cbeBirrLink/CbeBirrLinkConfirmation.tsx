@@ -65,114 +65,37 @@ const CbeBirrLinkConfirmation: React.FC = () => {
               <CheckCircle2 className="h-12 w-12 text-green-600" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+          <h1 className="text-2xl font-bold text-fuchsia-700 mb-2">
             Request Submitted Successfully
           </h1>
-          <p className="text-gray-600">
-            Your CBE-Birr {getActionLabel(request.actionType).toLowerCase()} request has been received.
+          <p className="text-fuchsia-700 font-semibold">
+            Your request has been submitted successfully. Please present your ID at windows number 12.
           </p>
         </div>
         
         {/* Request Summary */}
         <div className="border border-gray-200 rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-4 pb-2 border-b">
+          <h2 className="text-lg font-semibold mb-4 pb-2 border-b text-fuchsia-700">
             Request Details
           </h2>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <p className="text-sm text-gray-500">Reference Number</p>
+              <p className="text-sm text-gray-500">Form Ref ID</p>
               <p className="font-medium">{request.formRefId}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Date & Time</p>
-              <p className="font-medium">{formatDate(request.date)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Branch Name</p>
               <p className="font-medium">{request.branchName}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Request Type</p>
+              <p className="text-sm text-gray-500">Customer Name</p>
+              <p className="font-medium">{request.fullName}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Selected Service(s)</p>
               <p className="font-medium">{getActionLabel(request.actionType)}</p>
             </div>
           </div>
-          
-          <div className="mb-6">
-            <h3 className="font-medium mb-2">Customer Information</h3>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Full Name</p>
-                  <p className="font-medium">{request.fullName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Customer ID</p>
-                  <p className="font-medium">{request.customerId}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">ID Type</p>
-                  <p className="font-medium">
-                    {ID_TYPES.find(t => t.value === request.idType)?.label || request.idType}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">ID Number</p>
-                  <p className="font-medium">{request.idNumber}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {request.accounts.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-medium mb-2">
-                {request.actionType === 'unlink' ? 'Accounts to Unlink' : 'Accounts to Link'}
-              </h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <ul className="list-disc pl-5 space-y-1">
-                  {request.accounts.map(account => (
-                    <li key={account} className="font-medium">
-                      {account}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-          
-          {request.actionType === 'change_phone' && request.newPhoneNumber && (
-            <div className="mb-6">
-              <h3 className="font-medium mb-2">Phone Number Change</h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Current Phone</p>
-                    <p className="font-medium">{request.currentPhoneNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">New Phone</p>
-                    <p className="font-medium">{request.newPhoneNumber}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {request.actionType === 'modify_end_date' && request.newEndDate && (
-            <div className="mb-6">
-              <h3 className="font-medium mb-2">New End Date</h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="font-medium">
-                  {new Date(request.newEndDate).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            </div>
-          )}
         </div>
         
         {/* Next Steps */}

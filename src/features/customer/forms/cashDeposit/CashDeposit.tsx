@@ -7,6 +7,14 @@ import Field from '../../../../components/Field';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 import { useTranslation } from 'react-i18next';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+// Reusable error message component
+function ErrorMessage({ id, message }: { id?: string; message: string }) {
+    return (
+        <p id={id} className="mt-1 text-sm text-red-600">
+            {message}
+        </p>
+    );
+}
 
 const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
 
@@ -229,7 +237,7 @@ export default function CashDepositForm() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
                 <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin" />
-                <p className="text-lg text-gray-600">Loading your accounts...</p>
+                <p className="text-lg text-gray-600">{t('loadingAccounts', 'Loading your accounts...')}</p>
             </div>
         );
     }
@@ -242,7 +250,7 @@ export default function CashDepositForm() {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100">
                         <AlertCircle className="h-8 w-8 text-red-600" />
                     </div>
-                    <h2 className="text-xl font-semibold text-gray-900">Unable to load accounts</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">{t('unableToLoadAccounts', 'Unable to load accounts')}</h2>
                     <p className="text-gray-600">{errorAccounts}</p>
                     <button
                         onClick={handleRefreshAccounts}
@@ -252,12 +260,12 @@ export default function CashDepositForm() {
                         {isRefreshing ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Refreshing...
+                                {t('refreshing', 'Refreshing...')}
                             </>
                         ) : (
                             <>
                                 <RefreshCw className="mr-2 h-4 w-4" />
-                                Try Again
+                                {t('tryAgain', 'Try Again')}
                             </>
                         )}
                     </button>
@@ -276,8 +284,8 @@ export default function CashDepositForm() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
-                    <h2 className="text-xl font-semibold text-gray-900">No Accounts Found</h2>
-                    <p className="text-gray-600">We couldn't find any accounts associated with your phone number.</p>
+                    <h2 className="text-xl font-semibold text-gray-900">{t('noAccountsFound', 'No Accounts Found')}</h2>
+                    <p className="text-gray-600">{t('noAccountsMessage', "We couldn't find any accounts associated with your phone number.")}</p>
                     <button
                         onClick={handleRefreshAccounts}
                         disabled={isRefreshing}
@@ -286,12 +294,12 @@ export default function CashDepositForm() {
                         {isRefreshing ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Refreshing...
+                                {t('refreshing', 'Refreshing...')}
                             </>
                         ) : (
                             <>
                                 <RefreshCw className="mr-2 h-4 w-4" />
-                                Refresh Accounts
+                                {t('refreshAccounts', 'Refresh Accounts')}
                             </>
                         )}
                     </button>
@@ -347,9 +355,7 @@ export default function CashDepositForm() {
                                     />
                                 )}
                                 {errors.accountNumber && (
-                                    <p id="accountNumber-error" className="mt-1 text-sm text-red-600">
-                                        {errors.accountNumber}
-                                    </p>
+                                    <ErrorMessage id="accountNumber-error" message={errors.accountNumber} />
                                 )}
                             </Field>
                             <Field 
@@ -367,9 +373,7 @@ export default function CashDepositForm() {
                                     aria-describedby={errors.accountHolderName ? 'accountHolderName-error' : undefined}
                                 />
                                 {errors.accountHolderName && (
-                                    <p id="accountHolderName-error" className="mt-1 text-sm text-red-600">
-                                        {errors.accountHolderName}
-                                    </p>
+                                    <ErrorMessage id="accountHolderName-error" message={errors.accountHolderName} />
                                 )}
                             </Field>
                         </div>
@@ -401,9 +405,7 @@ export default function CashDepositForm() {
                                     />
                                 </div>
                                 {errors.amount && (
-                                    <p id="amount-error" className="mt-1 text-sm text-red-600">
-                                        {errors.amount}
-                                    </p>
+                                    <ErrorMessage id="amount-error" message={errors.amount} />
                                 )}
                             </Field>
                         </div>

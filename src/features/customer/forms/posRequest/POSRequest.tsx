@@ -37,6 +37,8 @@ export default function POSRequestForm() {
   const { phone } = useAuth();
   const navigate = useNavigate();
   const { accounts, loadingAccounts, errorAccounts } = useUserAccounts();
+  // Define current date for header
+  const currentDate = new Date().toLocaleDateString();
   
   const [formData, setFormData] = useState<FormData>({
     accountNumber: '',
@@ -292,13 +294,14 @@ export default function POSRequestForm() {
   }
   
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        {/* Form Header */}
-        <div className="bg-fuchsia-800 px-4 py-5 sm:px-6">
-          <h2 className="text-xl font-semibold text-white">
-            {t('posRequestForm', 'POS Request - Merchant Application')}
-          </h2>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
+      <div className="max-w-4xl w-full bg-white p-4 sm:p-6 rounded-lg shadow-lg">
+        <div className="mb-4 sm:mb-6 bg-fuchsia-700 text-white p-3 sm:p-4 rounded-lg shadow-lg text-center">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">POS Request</h1>
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mt-2">
+            <span className="bg-fuchsia-900 px-3 py-1 rounded text-xs sm:text-sm font-semibold">Branch: {branchName}</span>
+            <span className="bg-fuchsia-900 px-3 py-1 rounded text-xs sm:text-sm font-semibold">Date: {currentDate}</span>
+          </div>
           <p className="mt-1 text-sm text-fuchsia-100">
             {t('fillAllRequiredFields', 'Please fill in all required fields to apply for a POS terminal')}
           </p>
