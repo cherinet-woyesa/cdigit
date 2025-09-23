@@ -236,21 +236,24 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
             </div>
             <div className="flex justify-between mt-10">
                 <button
-                    type="button"
-                    className="bg-gray-300 text-fuchsia-700 px-6 py-2 rounded-lg shadow hover:bg-gray-400 transition"
-                    onClick={onBack}
-                >
-                    Back
-                </button>
-                <button
-                    type="button"
-                    className={`w-full md:w-auto px-10 py-3 rounded-lg font-semibold shadow-lg transition transform duration-200 
-                        ${submitting ? 'bg-fuchsia-300 cursor-not-allowed' : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
-                    onClick={handleNext}
-                    disabled={submitting}
-                >
-                    {submitting ? 'Saving...' : 'Next'}
-                </button>
+  type="button"
+  className="px-6 py-2 rounded-lg font-semibold shadow bg-gray-300 text-fuchsia-700 hover:bg-gray-400 transition"
+  onClick={onBack}
+>
+  Back
+</button>
+<button
+  type="button"
+  className={`px-6 py-2 rounded-lg font-semibold shadow-lg transition transform duration-200 
+    ${submitting 
+      ? 'bg-fuchsia-300 cursor-not-allowed text-white' 
+      : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
+  onClick={handleNext}
+  disabled={submitting}
+>
+  {submitting ? 'Saving...' : 'Next'}
+</button>
+
             </div>
         </div>
     );

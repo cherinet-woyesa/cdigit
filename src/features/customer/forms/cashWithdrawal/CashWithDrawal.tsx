@@ -39,6 +39,20 @@ export default function CashWithdrawalForm() {
 
     useEffect(() => {
         if (!loadingAccounts && accounts.length > 0) {
+            // Try to restore from localStorage
+            const saved = localStorage.getItem('selectedWithdrawalAccount');
+            if (saved) {
+                const acc = accounts.find(a => a.accountNumber === saved);
+                if (acc) {
+                    setFormData(prev => ({
+                        ...prev,
+                        accountNumber: acc.accountNumber,
+                        accountHolderName: acc.accountHolderName,
+                    }));
+                    return;
+                }
+            }
+            // Default: auto-select if only one account
             if (accounts.length === 1) {
                 setFormData(prev => ({
                     ...prev,
@@ -47,7 +61,7 @@ export default function CashWithdrawalForm() {
                 }));
             }
         }
-    }, [accounts, loadingAccounts]); // Added dependency array for useEffect to prevent infinite loop
+    }, [accounts, loadingAccounts]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -56,6 +70,7 @@ export default function CashWithdrawalForm() {
             const selected = accounts.find(acc => acc.accountNumber === value);
             if (selected) {
                 newFormData.accountHolderName = selected.accountHolderName || selected.name || '';
+                localStorage.setItem('selectedWithdrawalAccount', value);
             }
         }
         setFormData(newFormData);

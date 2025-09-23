@@ -29,6 +29,26 @@ export default function RTGSTransferConfirmation() {
     const printRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (state?.api) {
+            const api = state.api;
+            setData({
+                formReferenceId: api.FormReferenceId || api.formReferenceId,
+                branchName: api.BranchName || api.branchName,
+                orderingAccountNumber: api.OrderingAccountNumber || api.orderingAccountNumber,
+                orderingCustomerName: api.OrderingCustomerName || api.orderingCustomerName,
+                beneficiaryBank: api.BeneficiaryBank || api.beneficiaryBank,
+                beneficiaryBranch: api.BeneficiaryBranch || api.beneficiaryBranch,
+                beneficiaryAccountNumber: api.BeneficiaryAccountNumber || api.beneficiaryAccountNumber,
+                beneficiaryName: api.BeneficiaryName || api.beneficiaryName,
+                transferAmount: api.TransferAmount ?? api.transferAmount,
+                paymentNarrative: api.PaymentNarrative || api.paymentNarrative,
+                customerTelephone: api.CustomerTelephone || api.customerTelephone,
+                submittedAt: (api.SubmittedAt || api.submittedAt) ? new Date(api.SubmittedAt || api.submittedAt).toISOString() : new Date().toISOString(),
+            });
+            setIsLoading(false);
+            return;
+        }
+
         if (state?.formData) {
             setData({
                 formReferenceId: state.formData.formReferenceId,
@@ -42,14 +62,14 @@ export default function RTGSTransferConfirmation() {
                 transferAmount: state.formData.transferAmount,
                 paymentNarrative: state.formData.paymentNarrative,
                 customerTelephone: state.formData.customerTelephone,
-                tokenNumber: state.formData.tokenNumber,
                 submittedAt: new Date().toISOString()
             });
             setIsLoading(false);
-        } else {
-            setError('No transfer data found. Please complete the RTGS transfer form first.');
-            setIsLoading(false);
+            return;
         }
+
+        setError('No transfer data found. Please complete the RTGS transfer form first.');
+        setIsLoading(false);
     }, [state]);
 
     const handleNewTransfer = () => {
@@ -96,139 +116,51 @@ export default function RTGSTransferConfirmation() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-8">
-            <div ref={printRef} className="p-6">
-                <div className="text-center mb-8">
-                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
-                        <CheckCircleIcon className="h-10 w-10 text-green-600" aria-hidden="true" />
-                    </div>
-                    <h1 className="mt-3 text-2xl font-bold text-gray-900">RTGS Transfer Successful</h1>
-                    <p className="mt-2 text-sm text-gray-500">
-                        Your RTGS transfer request has been submitted successfully.
-                    </p>
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
+            <div ref={printRef} className="max-w-2xl w-full bg-white p-4 sm:p-6 rounded-lg shadow-lg">
+                <div className="mb-6 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg text-center">
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white">RTGS Transfer Confirmation</h1>
                 </div>
 
-                <div className="bg-gray-50 p-6 rounded-lg mb-8">
-                    <h2 className="text-lg font-medium text-cbe-primary mb-4">Transfer Details</h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">Reference Number</h3>
-                            <p className="mt-1 text-sm text-gray-900 font-medium">{data.formReferenceId || 'N/A'}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">Transaction Date</h3>
-                            <p className="mt-1 text-sm text-gray-900">
-                                {data.submittedAt ? new Date(data.submittedAt).toLocaleString() : 'N/A'}
-                            </p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">From Account</h3>
-                            <p className="mt-1 text-sm text-gray-900">{data.orderingAccountNumber || 'N/A'}</p>
-                            <p className="text-xs text-gray-500">{data.orderingCustomerName || ''}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">Amount</h3>
-                            <p className="mt-1 text-lg font-bold text-cbe-primary">
-                                {data.transferAmount ? `ETB ${data.transferAmount.toLocaleString()}` : 'N/A'}
-                            </p>
-                        </div>
-                        
-                        <div className="md:col-span-2">
-                            <h3 className="text-sm font-medium text-gray-500">Beneficiary Bank</h3>
-                            <p className="mt-1 text-sm text-gray-900">{data.beneficiaryBank || 'N/A'}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">Beneficiary Branch</h3>
-                            <p className="mt-1 text-sm text-gray-900">{data.beneficiaryBranch || 'N/A'}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">Beneficiary Account</h3>
-                            <p className="mt-1 text-sm text-gray-900">{data.beneficiaryAccountNumber || 'N/A'}</p>
-                            <p className="text-xs text-gray-500">{data.beneficiaryName || ''}</p>
-                        </div>
-                        
-                        <div className="md:col-span-2">
-                            <h3 className="text-sm font-medium text-gray-500">Payment Narrative</h3>
-                            <p className="mt-1 text-sm text-gray-900 whitespace-pre-line">
-                                {data.paymentNarrative || 'N/A'}
-                            </p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">Token Number</h3>
-                            <p className="mt-1 text-sm font-mono text-gray-900">{data.tokenNumber || 'N/A'}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-500">Branch</h3>
-                            <p className="mt-1 text-sm text-gray-900">{data.branchName || 'N/A'}</p>
-                        </div>
+                <div className="text-center mb-4">
+                    <CheckCircleIcon className="h-14 w-14 mx-auto text-green-500" />
+                    <h1 className="text-xl font-extrabold text-fuchsia-800 mt-2">Success!</h1>
+                    <p className="text-gray-600 text-sm">Your RTGS transfer request has been submitted.</p>
+                </div>
+
+                <div className="bg-gray-50 p-3 rounded-lg shadow-inner mb-4">
+                    <h3 className="text-base font-bold text-fuchsia-700 mb-2">Transfer Details</h3>
+                    <div className="space-y-2 text-sm sm:text-base text-gray-700">
+                        <div className="flex justify-between"><strong>Reference:</strong> <span>{data.formReferenceId || 'N/A'}</span></div>
+                        <div className="flex justify-between"><strong>Date:</strong> <span>{data.submittedAt ? new Date(data.submittedAt).toLocaleString() : 'N/A'}</span></div>
+                        <div className="flex justify-between"><strong>From Account:</strong> <span>{data.orderingAccountNumber || 'N/A'}</span></div>
+                        <div className="flex justify-between"><strong>Amount:</strong> <span className="font-bold text-fuchsia-800">{typeof data.transferAmount === 'number' ? `ETB ${data.transferAmount.toLocaleString()}` : 'N/A'}</span></div>
+                        <div className="flex justify-between"><strong>Beneficiary:</strong> <span>{data.beneficiaryName || 'N/A'}</span></div>
+                        <div className="flex justify-between"><strong>Beneficiary Account:</strong> <span>{data.beneficiaryAccountNumber || 'N/A'}</span></div>
+                        <div className="flex justify-between"><strong>Bank/Branch:</strong> <span>{data.beneficiaryBank || 'N/A'}{data.beneficiaryBranch ? ` / ${data.beneficiaryBranch}` : ''}</span></div>
+                        <div className="flex justify-between"><strong>Narrative:</strong> <span className="text-right">{data.paymentNarrative || 'N/A'}</span></div>
+                        <div className="flex justify-between"><strong>Branch:</strong> <span>{data.branchName || 'N/A'}</span></div>
                     </div>
                 </div>
-                
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3">
-                            <p className="text-sm text-blue-700">
-                                Your RTGS transfer request has been received. Please present your ID at counter number <span className="font-bold">
-                                    {state?.windowNumber || 'N/A'}
-                                </span> to complete the transaction.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="mt-8 border-t border-gray-200 pt-6">
-                    <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                            For any inquiries, please contact our customer service at +251 11 551 5000
-                        </div>
-                        <div className="text-xs text-gray-500">
-                            {data.formReferenceId && `Ref: ${data.formReferenceId}`}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div className="mt-8 flex justify-between border-t border-gray-200 pt-6">
-                <button
-                    type="button"
-                    onClick={handlePrint}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cbe-primary"
-                >
-                    <PrinterIcon className="-ml-1 mr-2 h-5 w-5 text-gray-500" aria-hidden="true" />
-                    Print
-                </button>
-                
-                <div className="space-x-3">
+
+                <div className="grid grid-cols-2 gap-2">
                     <button
-                        type="button"
-                        onClick={() => navigate('/')}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cbe-primary"
-                    >
-                        Return to Dashboard
-                    </button>
-                    
-                    <button
-                        type="button"
                         onClick={handleNewTransfer}
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-cbe-primary hover:bg-cbe-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cbe-primary"
+                        className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition"
                     >
-                        <ArrowPathIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-                        New Transfer
+                        <ArrowPathIcon className="h-3.5 w-3.5" />
+                        New
+                    </button>
+                    <button
+                        onClick={handlePrint}
+                        className="flex items-center justify-center gap-1 w-full bg-gray-200 text-fuchsia-800 text-sm px-2 py-1.5 rounded-md shadow hover:bg-gray-300 transition"
+                    >
+                        <PrinterIcon className="h-3.5 w-3.5" />
+                        Print
                     </button>
                 </div>
+
+                <p className="text-sm text-gray-500 mt-6 text-center">Thank you for banking with us!</p>
             </div>
         </div>
     );

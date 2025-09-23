@@ -28,6 +28,18 @@ import TransactionHistory from './features/customer/TransactionHistory';
 import CbeBirrRegistrationConfirmation from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistrationConfirmation';
 import RTGSTransferConfirmation from './features/customer/forms/RTGSTransfer/RTGSTransferConfirmation';
 import EBankingConfirmation from './features/customer/forms/EBankingApplication/EBankingConfirmation';
+// import ChequeBookRequest from './features/customer/forms/chequeBookRequest/ChequeBookRequest';
+// import ChequeBookRequestConfirmation from './features/customer/forms/chequeBookRequest/ChequeBookRequestConfirmation';
+import POSRequest from './features/customer/forms/posRequest/POSRequest';
+import POSRequestConfirmation from './features/customer/forms/posRequest/POSRequestConfirmation';
+import StatementRequestForm from './features/customer/forms/statementRequest/StatementRequestForm';
+import StatementRequestConfirmation from './features/customer/forms/statementRequest/StatementRequestConfirmation';
+import CbeBirrLinkForm from './features/customer/forms/cbeBirrLink/CbeBirrLinkForm';
+import CbeBirrLinkConfirmation from './features/customer/forms/cbeBirrLink/CbeBirrLinkConfirmation';
+import StopPaymentForm from './features/customer/forms/stopPayment/StopPaymentForm';
+import StopPaymentConfirmation from './features/customer/forms/stopPayment/StopPaymentConfirmation';
+import PettyCashForm from './features/internal/forms/pettyCash/PettyCashForm';
+import PettyCashConfirmation from './features/internal/forms/pettyCash/PettyCashConfirmation';
 
 // A simple protected route component
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
@@ -77,7 +89,7 @@ function App() {
         <Route path="/" element={<Navigate to="/otp-login" replace />} /> {/* Redirect to OTP Login */}
         <Route path="/otp-login" element={<OTPLogin />} />
         <Route path="/staff-login" element={<StaffLogin />} />
-  <Route path="/form/account-opening" element={<AccountOpeningForm />} />
+        <Route path="/form/account-opening" element={<AccountOpeningForm />} />
         <Route path="/form/cbe-birr" element={
           <ProtectedRoute>
             <CbeBirrRegistration />
@@ -107,9 +119,10 @@ function App() {
           <ProtectedRoute>
             <EBankingConfirmation />
           </ProtectedRoute>
-        } />  <Route path="/form/rtgs-transfer" element={<RTGSTransfer />} />
-  <Route path="/form/ebanking" element={<EBankingApplication />} />
-  <Route path="/form/cbe-birr" element={<CbeBirrRegistration />} />
+        } />  
+        <Route path="/form/rtgs-transfer" element={<RTGSTransfer />} />
+        <Route path="/form/ebanking" element={<EBankingApplication />} />
+        <Route path="/form/cbe-birr" element={<CbeBirrRegistration />} />
 
         <Route path="/dashboard" element={
           <ProtectedRoute>
@@ -201,6 +214,65 @@ function App() {
         <Route path="/customer/dashboard" element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/form/pos-request" element={
+          <ProtectedRoute>
+            <POSRequest />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/pos-request/confirmation" element={
+          <ProtectedRoute>
+            <POSRequestConfirmation />
+          </ProtectedRoute>
+        } />
+        
+        {/* Statement Request Routes */}
+        <Route path="/form/statement-request" element={
+          <ProtectedRoute>
+            <StatementRequestForm />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/statement-request/confirmation" element={
+          <ProtectedRoute>
+            <StatementRequestConfirmation />
+          </ProtectedRoute>
+        } />
+        
+        {/* CBE-Birr Link Routes */}
+        <Route path="/form/cbe-birr-link" element={
+          <ProtectedRoute>
+            <CbeBirrLinkForm />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/cbe-birr-link/confirmation" element={
+          <ProtectedRoute>
+            <CbeBirrLinkConfirmation />
+          </ProtectedRoute>
+        } />
+        
+        {/* Stop Payment Order Routes */}
+        <Route path="/form/stop-payment" element={
+          <ProtectedRoute>
+            <StopPaymentForm />
+          </ProtectedRoute>
+        } />
+        <Route path="/form/stop-payment/confirmation" element={
+          <ProtectedRoute>
+            <StopPaymentConfirmation />
+          </ProtectedRoute>
+        } />
+        
+        {/* Internal Routes - Petty Cash */}
+        <Route path="/internal/petty-cash" element={
+          <ProtectedRoute role="internal">
+            <PettyCashForm />
+          </ProtectedRoute>
+        } />
+        <Route path="/internal/petty-cash/confirmation" element={
+          <ProtectedRoute role="internal">
+            <PettyCashConfirmation />
           </ProtectedRoute>
         } />
       </Routes>

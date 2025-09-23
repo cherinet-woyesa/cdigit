@@ -28,7 +28,6 @@
   "otpPlaceholder": "6-digit code",
   "otpLabel": "One Time Password",
   "backToPhone": "Back to phone input",
-
   "dashboardTitle": "CBE Digital Forms",
   "loggedInAs": "Logged in as",
   "welcomeBanner": "Welcome to CBE Digital Services",
@@ -45,11 +44,12 @@
     "atmCard": "ATM Card Request",
     "cbeBirr": "CBE-Birr Registration",
     "otherForms": "Other Forms",
-    "history": "Transaction History"
+    "history": "Transaction History",
+    "rtgsTransfer": "RTGS Transfer",
+    "ebankingApplication": "E-Banking Application",
+    "cbeBirrRegistration": "CBE-Birr Registration"
   },
-
   "select": "Select",
-
   "account": {
     "personalDetailsTitle": "Personal Details",
     "accountType": "Account Type",
@@ -119,6 +119,42 @@
     }
   },
   "back": "Back",
-  "next": "Next"
-
+  "next": "Next",
+  "cashDeposit": "Cash Deposit",
+  "loadingAccounts": "Loading your accounts...",
+  "unableToLoadAccounts": "Unable to load accounts",
+  "refreshing": "Refreshing...",
+  "tryAgain": "Try Again",
+  "noAccountsFound": "No Accounts Found",
+  "noAccountsMessage": "We couldn't find any accounts associated with your phone number.",
+  "refreshAccounts": "Refresh Accounts",
+  "accountInformation": "Account Information",
+  "amountInformation": "Amount Information",
+  "continue": "Continue",
+  "submitDeposit": "Submit Deposit",
+  "processing": "Processing...",
+  "confirmDeposit": "Confirm Deposit",
+  "amount": "Amount",
+  "transactionSummary": "Transaction Summary",
+  "accountHolder": "Account Holder",
+  "branch": "Branch",
+  "depositConfirmation": "Deposit Confirmation",
+  "success": "Success!",
+  "depositSubmitted": "Your deposit has been submitted.",
+  "queueNumber": "Queue #",
+  "token": "Token",
+  "newDeposit": "New",
+  "print": "Print",
+  "update": "Update",
+  "cancelling": "Cancelling...",
+  "cancel": "Cancel",
+  "confirmCancellation": "Confirm Cancellation",
+  "cancelDepositPrompt": "Are you sure you want to cancel this deposit? This action cannot be undone.",
+  "goBack": "Go Back",
+  "yesCancelDeposit": "Yes, Cancel Deposit",
+  "depositCancelled": "Deposit cancelled successfully",
+  "cancelDepositFailed": "Failed to cancel deposit. Please try again.",
+  "fetchDepositError": "Failed to fetch deposit confirmation.",
+  "prepareUpdateError": "Failed to prepare deposit update. Please try again.",
+  "thankYouBanking": "Thank you for banking with us!"
 }

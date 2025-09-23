@@ -28,5 +28,6 @@
   "@hooks/*": ["hooks/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "src/@types", "src/types"],
+  "typeRoots": ["./node_modules/@types", "./src/types"]
 }
