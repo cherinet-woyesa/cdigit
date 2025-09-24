@@ -5,6 +5,7 @@ const API_BASE_URL = 'http://localhost:5268/api';
 export type CbeBirrRegistrationCreateDto = {
   CustomerPhoneNumber: string;
   FullName: string;
+  BranchId: string;
   PlaceOfBirth?: string;
   DateOfBirth: string | Date;
   Gender: string;
@@ -18,6 +19,7 @@ export type CbeBirrRegistrationCreateDto = {
   EducationLevel: string;
   MothersFullName: string;
   DigitalSignature?: string | null;
+  OtpCode: string;
 };
 
 export type CbeBirrRegistrationReadDto = {

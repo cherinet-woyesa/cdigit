@@ -4,6 +4,7 @@ import Field from '../../../../components/Field';
 import { useAuth } from '../../../../context/AuthContext';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 import { applyEBankingApplication, getEBankingApplicationById, updateEBankingApplication } from '../../../../services/eBankingApplicationService';
+import authService from '../../../../services/authService';
 
 type FormData = {
   branchName: string;
@@ -27,6 +28,7 @@ type FormData = {
   newAccountNumber: string;
   termsAccepted: boolean;
   idCopyAttached: boolean;
+  otpCode?: string;
 };
 
 const E_BANKING_OPTIONS = [
@@ -66,7 +68,12 @@ export default function EBankingApplication() {
     newAccountNumber: '',
     termsAccepted: false,
     idCopyAttached: false,
+    otpCode: '',
   });
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpMessage, setOtpMessage] = useState('');
+  const [otpError, setOtpError] = useState('');
 
   type Errors = {
     accountNumber?: string;
@@ -227,6 +234,7 @@ export default function EBankingApplication() {
         BranchId: ABIY_BRANCH_ID,
         AccountNumber: formData.accountNumber || undefined,
         AccountHolderName: formData.customerName || undefined,
+        OtpCode: formData.otpCode || '',
         NationalIdNumber,
         AltIdNumber,
         AltIdIssuer,
@@ -252,7 +260,7 @@ export default function EBankingApplication() {
           PhoneNumber: payload.PhoneNumber,
           AccountNumber: payload.AccountNumber,
           AccountHolderName: payload.AccountHolderName,
-          OtpCode: undefined,
+          OtpCode: payload.OtpCode,
           NationalIdNumber,
           AltIdNumber,
           AltIdIssuer,
@@ -490,6 +498,43 @@ export default function EBankingApplication() {
               </div>
             ))}
           </div>
+        </div>
+        <div className="mt-4">
+          <Field label="OTP Code">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="otpCode"
+                value={(formData as any).otpCode || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, otpCode: e.target.value } as any))}
+                className="mt-1 block w-full border-2 border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-fuchsia-500 focus:border-fuchsia-500 sm:text-sm"
+              />
+              <button type="button" onClick={async () => {
+                setOtpLoading(true); setOtpMessage(''); setOtpError('');
+                try {
+                  const raw = (formData.mobileNumber || phone || '').trim();
+                  const cleaned = raw.replace(/[^\d+]/g, '');
+                  let p = cleaned.startsWith('+') ? cleaned : (cleaned.startsWith('0') ? `+251${cleaned.slice(1)}` : `+${cleaned}`);
+                  try { await authService.requestOtp(p); } catch { p = '0' + p.slice(-9); await authService.requestOtp(p); }
+                  setFormData(prev => ({ ...prev, mobileNumber: p }));
+                  setOtpMessage('OTP sent successfully.');
+                } catch (e: any) { setOtpError(e?.message || 'Failed to send OTP'); }
+                finally { setOtpLoading(false); }
+              }} disabled={otpLoading} className="px-3 py-2 bg-fuchsia-700 text-white rounded disabled:opacity-50">{otpLoading ? 'Sending...' : 'Request OTP'}</button>
+              <button type="button" onClick={async () => {
+                setOtpLoading(true); setOtpMessage(''); setOtpError('');
+                try { const res = await authService.verifyOtp(formData.mobileNumber || phone || '', (formData as any).otpCode || ''); if (res.verified) { setOtpVerified(true); setOtpMessage(res.message || 'OTP verified.'); } else { setOtpVerified(false); setOtpError(res.message || 'OTP verification failed'); } }
+                catch (e: any) { setOtpVerified(false); setOtpError(e?.message || 'OTP verification failed'); }
+                finally { setOtpLoading(false); }
+              }} disabled={otpLoading || !(formData as any).otpCode} className="px-3 py-2 bg-gray-200 text-fuchsia-800 rounded disabled:opacity-50">{otpLoading ? 'Verifying...' : (otpVerified ? 'Verified' : 'Verify OTP')}</button>
+            </div>
+            {(otpMessage || otpError) && (
+              <div className="mt-2 text-sm">
+                {otpMessage && <p className="text-green-600">{otpMessage}</p>}
+                {otpError && <p className="text-red-600">{otpError}</p>}
+              </div>
+            )}
+          </Field>
         </div>
       </div>
     );

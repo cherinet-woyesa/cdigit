@@ -17,6 +17,9 @@ const BranchSelectionEnhanced: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [proceeding, setProceeding] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [/* recommendation */, setRecommendation] = useState<Branch | null>(null);
+  const [showQr, setShowQr] = useState<boolean>(false);
+ 
 
   const canProceed = useMemo(() => !!selectedId && !proceeding, [selectedId, proceeding]);
 
@@ -35,6 +38,7 @@ const BranchSelectionEnhanced: React.FC = () => {
       const last = localStorage.getItem('lastActiveBranchId');
       const preferred = list.find(b => b.id === last) || list.find(b => b.isActive) || list[0];
       setSelectedId(preferred?.id || list[0].id);
+      setRecommendation(preferred || list[0]);
     } catch (e) {
       console.error('Branch load failed', e);
       setError('Failed to load branches. Please try again later.');
@@ -45,6 +49,18 @@ const BranchSelectionEnhanced: React.FC = () => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Preselect from query param if provided (e.g., scanned link)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const bid = params.get('branchId');
+    if (bid && branches.length > 0) {
+      const match = branches.find(b => b.id === bid || b.code === bid);
+      if (match) {
+        setSelectedId(match.id);
+      }
+    }
+  }, [location.search, branches]);
 
   const handleProceed = async () => {
     if (!selectedId) return;
@@ -84,6 +100,8 @@ const BranchSelectionEnhanced: React.FC = () => {
     }, 0);
   };
 
+  // QR scanning removed
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-2">
@@ -111,7 +129,7 @@ const BranchSelectionEnhanced: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-2">
-      <div className="w-full max-w-sm bg-white shadow-xl rounded-xl p-6 space-y-6">
+      <div className="w-full max-w-sm sm:max-w-md bg-white shadow-xl rounded-xl p-6 space-y-6">
         <div className="text-center space-y-2">
           <div className="w-20 h-20 mx-auto">
             <img src={logo} alt="CBE Logo" className="h-16 w-16 object-contain mx-auto rounded-full border-2 border-fuchsia-200" />
@@ -119,6 +137,8 @@ const BranchSelectionEnhanced: React.FC = () => {
           <h1 className="text-2xl font-extrabold text-fuchsia-700">Select Your Branch</h1>
           <p className="text-gray-600 text-sm">Choose the branch you are currently at.</p>
         </div>
+
+        {/* Recommendation is applied by default selection; no banner needed */}
 
         <div className="space-y-2">
           <label htmlFor="branch-select" className="block text-sm font-medium text-gray-700">Branch Name</label>
@@ -132,6 +152,33 @@ const BranchSelectionEnhanced: React.FC = () => {
               <option key={b.id} value={b.id}>{b.name}</option>
             ))}
           </select>
+        </div>
+
+        <div className="space-y-3">
+          {/* Generate QR for testing on mobile */}
+          <button
+            onClick={() => setShowQr(v => !v)}
+            className="w-full py-2 px-4 border border-fuchsia-200 rounded-lg text-sm bg-white text-fuchsia-800 hover:bg-fuchsia-50"
+            disabled={!selectedId}
+          >
+            {showQr ? 'Hide' : 'Show'} QR for this Branch
+          </button>
+          {showQr && selectedId && (
+            <div className="flex justify-center">
+              {(() => {
+                const configuredBase = (import.meta as any).env?.VITE_PUBLIC_BASE_URL as string | undefined;
+                const baseUrl = configuredBase && configuredBase.trim().length > 0 ? configuredBase : window.location.origin;
+                const qrUrl = `${baseUrl}/select-branch?branchId=${selectedId}`;
+                return (
+                  <img
+                alt="Branch QR"
+                className="border rounded-lg"
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrUrl)}`}
+              />
+                );
+              })()}
+            </div>
+          )}
         </div>
 
         <button

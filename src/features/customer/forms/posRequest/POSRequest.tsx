@@ -6,6 +6,8 @@ import Field from '../../../../components/Field';
 import { useTranslation } from 'react-i18next';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import authService from '../../../../services/authService';
+import { submitPosRequest } from '../../../../services/posRequestService';
 
 interface FormData {
   accountNumber: string;
@@ -28,6 +30,7 @@ interface FormData {
   estimatedMonthlyTransaction: string;
   bankAccountForSettlement: string;
   termsAccepted: boolean;
+  otpCode?: string;
 }
 
 type Errors = Partial<Record<keyof FormData, string>>;
@@ -61,7 +64,12 @@ export default function POSRequestForm() {
     estimatedMonthlyTransaction: '',
     bankAccountForSettlement: '',
     termsAccepted: false,
+    otpCode: '',
   });
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpMessage, setOtpMessage] = useState('');
+  const [otpError, setOtpError] = useState('');
   
   const [errors, setErrors] = useState<Errors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -159,33 +167,75 @@ export default function POSRequestForm() {
     setIsSubmitting(true);
     
     try {
-      // TODO: Replace with actual API call
-      // const response = await posService.submitRequest({
-      //   ...formData,
-      //   formRefId,
-      //   branchName,
-      //   submittedBy: user?.id || '',
-      //   status: 'pending'
-      // });
-      
-      // Navigate to confirmation page
-      navigate('/form/pos-request/confirmation', { 
-        state: { 
-          formData: {
-            ...formData,
-            formRefId,
-            branchName,
-            date: new Date().toLocaleString(),
-          } 
-        } 
-      });
-      
+      // Build backend payload
+      const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
+      const payload = {
+        BranchId: ABIY_BRANCH_ID,
+        OtpCode: formData.otpCode || '',
+        AccountNumber: formData.accountNumber,
+        ContactNumber: formData.phoneNumber,
+        SecondaryContactNumber: undefined,
+        Address: `${formData.region}, ${formData.city}, ${formData.subCity}, ${formData.woreda}, ${formData.houseNumber}${formData.landmark ? ', ' + formData.landmark : ''}`,
+        NatureOfBusiness: formData.businessName,
+        TypeOfBusiness: formData.businessType,
+        NumberOfPOSRequired: formData.numberOfPOS,
+        TermsAccepted: formData.termsAccepted,
+      };
+
+      const response = await submitPosRequest(payload as any);
+      if (!response?.success) throw new Error(response?.message || 'Submission failed');
+
+      navigate('/form/pos-request/confirmation', { state: { api: response.data } });
       toast.success('POS request submitted successfully');
     } catch (error) {
       console.error('Error submitting POS request:', error);
       toast.error('Failed to submit POS request. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const normalizePhone = (raw: string) => {
+    const cleaned = raw.trim().replace(/[^\d+]/g, '');
+    const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+    if (/^0[79]\d{8}$/.test(digits)) return `+251${digits.slice(1)}`;
+    if (/^[79]\d{8}$/.test(digits)) return `+251${digits}`;
+    if (/^251[79]\d{8}$/.test(digits)) return `+${digits}`;
+    return raw.trim();
+  };
+
+  const requestOtp = async () => {
+    setOtpLoading(true);
+    setOtpMessage('');
+    setOtpError('');
+    try {
+      const normalized = normalizePhone(formData.phoneNumber || phone || '');
+      let phoneToSend = normalized;
+      try { await authService.requestOtp(phoneToSend); }
+      catch { phoneToSend = '0' + normalized.slice(-9); await authService.requestOtp(phoneToSend); }
+      setFormData(prev => ({ ...prev, phoneNumber: phoneToSend }));
+      setOtpMessage('OTP sent successfully.');
+    } catch (e: any) {
+      setOtpError(e?.message || 'Failed to send OTP');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    setOtpLoading(true);
+    setOtpMessage('');
+    setOtpError('');
+    try {
+      const phoneToUse = formData.phoneNumber || phone || '';
+      const res = await authService.verifyOtp(phoneToUse, formData.otpCode || '');
+      if (res.verified) { setOtpVerified(true); setOtpMessage(res.message || 'OTP verified.'); }
+      else { setOtpVerified(false); setOtpError(res.message || 'OTP verification failed'); }
+    } catch (e: any) {
+      setOtpVerified(false);
+      setOtpError(e?.message || 'OTP verification failed');
+    } finally {
+      setOtpLoading(false);
     }
   };
   
@@ -946,6 +996,27 @@ export default function POSRequestForm() {
                       </p>
                     )}
                   </div>
+                </div>
+                <div className="mt-4">
+                  <Field label="OTP Code" error={undefined}>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        name="otpCode"
+                        value={formData.otpCode}
+                        onChange={(e) => setFormData(prev => ({ ...prev, otpCode: e.target.value }))}
+                        className="mt-1 block w-full border-2 border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-fuchsia-500 focus:border-fuchsia-500 sm:text-sm"
+                      />
+                      <button type="button" onClick={requestOtp} disabled={otpLoading} className="px-3 py-2 bg-fuchsia-700 text-white rounded disabled:opacity-50">{otpLoading ? 'Sending...' : 'Request OTP'}</button>
+                      <button type="button" onClick={verifyOtp} disabled={otpLoading || !formData.otpCode} className="px-3 py-2 bg-gray-200 text-fuchsia-800 rounded disabled:opacity-50">{otpLoading ? 'Verifying...' : (otpVerified ? 'Verified' : 'Verify OTP')}</button>
+                    </div>
+                    {(otpMessage || otpError) && (
+                      <div className="mt-2 text-sm">
+                        {otpMessage && <p className="text-green-600">{otpMessage}</p>}
+                        {otpError && <p className="text-red-600">{otpError}</p>}
+                      </div>
+                    )}
+                  </Field>
                 </div>
               </div>
             </div>

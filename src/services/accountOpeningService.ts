@@ -1,4 +1,5 @@
 import axios from "axios";
+import api from './http';
 import type {
     PersonalDetail,
     AddressDetail,
@@ -15,9 +16,7 @@ import type {
 // Base URL for your backend API
 const API_URL = "http://localhost:5268/api/AccountOpening"; // Adjust port if needed
 
-const api = axios.create({
-    baseURL: API_URL,
-});
+api.defaults.baseURL = API_URL;
 
 /**
  * Retrieves a saved form summary by mobile phone number.

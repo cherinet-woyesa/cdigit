@@ -6,6 +6,7 @@ import Field from '../../../../components/Field';
 import { fetchWindowsByBranch } from '../../../../services/windowService';
 import { createCbeBirrRegistration, getCbeBirrRegistration, updateCbeBirrRegistration } from '../../../../services/cbeBirrRegistrationService';
 import type { Window as WindowType } from '../../../../services/windowService';
+import authService from '../../../../services/authService';
 
 type FormData = {
     name: string;
@@ -28,6 +29,7 @@ type FormData = {
     motherFatherName: string;
     motherGrandfatherName: string;
     digitalSignature: string;
+    otpCode: string;
 };
 
 type Errors = Partial<Record<keyof FormData | 'submit', string>>;
@@ -68,6 +70,7 @@ export default function CbeBirrRegistrationForm() {
         motherFatherName: '',
         motherGrandfatherName: '',
         digitalSignature: '',
+        otpCode: '',
     });
 
     const [errors, setErrors] = useState<Errors>({});
@@ -77,6 +80,11 @@ export default function CbeBirrRegistrationForm() {
     const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
     const [isUpdate, setIsUpdate] = useState(false);
     const [currentId, setCurrentId] = useState<string | null>(null);
+    const [otpVerified, setOtpVerified] = useState(false);
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpMessage, setOtpMessage] = useState('');
+    const [otpError, setOtpError] = useState('');
+    const [phoneForOtp, setPhoneForOtp] = useState<string | null>(null);
     // Step-wise validation
     const validateStep = (): boolean => {
         const errs: Errors = {};
@@ -109,6 +117,9 @@ export default function CbeBirrRegistrationForm() {
             if (!formData.motherName) errs.motherName = "Mother's Name is required.";
             if (!formData.motherFatherName) errs.motherFatherName = "Mother's Father Name is required.";
             if (!formData.motherGrandfatherName) errs.motherGrandfatherName = "Mother's Grandfather Name is required.";
+        }
+        if (step === 4) {
+            if (!formData.otpCode) errs.otpCode = 'OTP Code is required.';
         }
         // Step 4 (Digital Signature) is optional for now; no validation
         setErrors(errs);
@@ -218,7 +229,7 @@ export default function CbeBirrRegistrationForm() {
             'phoneNumber', 'fullName', 'fatherName', 'grandfatherName',
             'placeOfBirth', 'dateOfBirth', 'city', 'wereda', 'kebele',
             'idNumber', 'issuedBy', 'motherName', 'motherFatherName',
-            'motherGrandfatherName'
+            'motherGrandfatherName', 'otpCode'
         ];
 
         requiredFields.forEach(field => {
@@ -242,6 +253,69 @@ export default function CbeBirrRegistrationForm() {
         return Object.keys(errs).length === 0;
     };
 
+    const normalizePhone = (raw: string) => {
+        const cleaned = raw.trim().replace(/[^\d+]/g, '');
+        const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+        if (/^0[79]\d{8}$/.test(digits)) return `+251${digits.slice(1)}`;
+        if (/^[79]\d{8}$/.test(digits)) return `+251${digits}`;
+        if (/^251[79]\d{8}$/.test(digits)) return `+${digits}`;
+        return raw.trim();
+    };
+
+    const handleRequestOtp = async () => {
+        setOtpError('');
+        setOtpMessage('');
+        setOtpLoading(true);
+        try {
+            const normalized = normalizePhone(formData.phoneNumber);
+            let phoneToSend = normalized;
+            let success = false;
+
+            try {
+                await authService.requestOtp(phoneToSend);
+                success = true;
+            } catch (err) {
+                // fallback to 09XXXXXXXX
+                phoneToSend = '0' + normalized.slice(-9);
+                await authService.requestOtp(phoneToSend);
+                success = true;
+            }
+
+            if (success) {
+                setOtpMessage('OTP sent successfully.');
+                setPhoneForOtp(phoneToSend);
+                // lock the phone field to the exact OTP phone format
+                setFormData(prev => ({ ...prev, phoneNumber: phoneToSend }));
+            }
+        } catch (e: any) {
+            setOtpError(typeof e === 'string' ? e : (e?.message || 'Failed to send OTP'));
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        setOtpError('');
+        setOtpMessage('');
+        setOtpLoading(true);
+        try {
+            const phoneToUse = phoneForOtp || normalizePhone(formData.phoneNumber);
+            const res = await authService.verifyOtp(phoneToUse, formData.otpCode);
+            if (res.verified) {
+                setOtpVerified(true);
+                setOtpMessage(res.message || 'OTP verified.');
+            } else {
+                setOtpVerified(false);
+                setOtpError(res.message || 'OTP verification failed');
+            }
+        } catch (e: any) {
+            setOtpVerified(false);
+            setOtpError(e?.message || 'OTP verification failed');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -250,9 +324,18 @@ export default function CbeBirrRegistrationForm() {
             const fullNameCombined = `${formData.fullName} ${formData.fatherName} ${formData.grandfatherName}`.trim();
             const mothersFullName = `${formData.motherName} ${formData.motherFatherName} ${formData.motherGrandfatherName}`.trim();
 
+            if (!otpVerified) {
+                // Attempt verification inline before submit
+                await handleVerifyOtp();
+                if (!otpVerified) {
+                    throw new Error('OTP not verified');
+                }
+            }
+
             const payload = {
-                CustomerPhoneNumber: formData.phoneNumber,
+                CustomerPhoneNumber: phoneForOtp || formData.phoneNumber,
                 FullName: fullNameCombined,
+                BranchId: ABIY_BRANCH_ID,
                 PlaceOfBirth: formData.placeOfBirth,
                 DateOfBirth: formData.dateOfBirth,
                 Gender: formData.gender,
@@ -266,6 +349,7 @@ export default function CbeBirrRegistrationForm() {
                 EducationLevel: formData.educationLevel,
                 MothersFullName: mothersFullName,
                 DigitalSignature: formData.digitalSignature || undefined,
+                OtpCode: formData.otpCode,
             };
 
             const apiRes = isUpdate && currentId
@@ -304,6 +388,7 @@ export default function CbeBirrRegistrationForm() {
                                 type="tel"
                                 value={formData.phoneNumber}
                                 onChange={handleChange}
+                                disabled={!!phone}
                                 placeholder="+251XXXXXXXXX"
                                 className="w-full px-3 py-2 border rounded"
                             />
@@ -555,6 +640,42 @@ export default function CbeBirrRegistrationForm() {
                             name="digitalSignature"
                             value={formData.digitalSignature}
                         />
+                        <div className="mt-4 text-left">
+                            <Field label="OTP Code *" error={errors.otpCode}>
+                                <input
+                                    name="otpCode"
+                                    type="text"
+                                    value={formData.otpCode}
+                                    onChange={handleChange}
+                                    placeholder="Enter the 6-digit OTP"
+                                    className="w-full px-3 py-2 border rounded"
+                                />
+                            </Field>
+                            <div className="flex gap-2 mt-2">
+                                <button
+                                    type="button"
+                                    onClick={handleRequestOtp}
+                                    disabled={otpLoading}
+                                    className="px-3 py-2 bg-fuchsia-700 text-white rounded disabled:opacity-50"
+                                >
+                                    {otpLoading ? 'Sending...' : 'Request OTP'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleVerifyOtp}
+                                    disabled={otpLoading || !formData.otpCode}
+                                    className="px-3 py-2 bg-gray-200 text-fuchsia-800 rounded disabled:opacity-50"
+                                >
+                                    {otpLoading ? 'Verifying...' : (otpVerified ? 'Verified' : 'Verify OTP')}
+                                </button>
+                            </div>
+                            {(otpMessage || otpError) && (
+                                <div className="mt-2 text-sm">
+                                    {otpMessage && <p className="text-green-600">{otpMessage}</p>}
+                                    {otpError && <p className="text-red-600">{otpError}</p>}
+                                </div>
+                            )}
+                        </div>
                         <div className="flex justify-between">
                             <button
                                 type="button"

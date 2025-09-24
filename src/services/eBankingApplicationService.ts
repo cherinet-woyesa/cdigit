@@ -7,7 +7,7 @@ export type EBankingApplicationRequestDto = {
   BranchId: string; // Guid as string
   AccountNumber?: string | null;
   AccountHolderName?: string | null;
-  OtpCode?: string | null; // optional (frontend does not use OTP)
+  OtpCode: string; // required by backend
   NationalIdNumber?: string | null;
   AltIdNumber?: string | null;
   AltIdIssuer?: string | null;

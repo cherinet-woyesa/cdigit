@@ -35,6 +35,7 @@ const StepCustomerBeneficiary: React.FC<StepCustomerBeneficiaryProps> = ({
             type="tel"
             value={formData.customerTelephone}
             onChange={onChange}
+            disabled={!!formData.customerTelephone}
             placeholder="0912345678"
             className="w-full p-2 border rounded text-sm"
           />
@@ -42,8 +43,8 @@ const StepCustomerBeneficiary: React.FC<StepCustomerBeneficiaryProps> = ({
         {showAccountSelection && customerAccounts.length > 0 && (
           <div className="mb-3 md:col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-1">Select Account</label>
-            <select
-              className="block w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-fuchsia-700 focus:border-fuchsia-700"
+          <select
+              className={`block w-full p-2 rounded-md text-sm focus:outline-none focus:ring-fuchsia-700 focus:border-fuchsia-700 ${errors.orderingAccountNumber ? 'border-red-500' : 'border-gray-300'}`}
               value={formData.orderingAccountNumber || ''}
               onChange={(e) => {
                 const acc = customerAccounts.find(a => a.accountNumber === e.target.value);
@@ -66,7 +67,7 @@ const StepCustomerBeneficiary: React.FC<StepCustomerBeneficiaryProps> = ({
             value={formData.orderingAccountNumber}
             onChange={onChange}
             disabled={showAccountSelection}
-            className="w-full p-2 border rounded text-sm"
+            className={`w-full p-2 border rounded text-sm ${errors.orderingAccountNumber ? 'border-red-500' : ''}`}
           />
         </Field>
         <Field label="Customer Name *" error={errors.orderingCustomerName}>

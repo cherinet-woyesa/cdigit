@@ -13,6 +13,7 @@ export type RtgsTransferRequestDto = {
   PaymentNarrative: string;
   CustomerTelephone?: string | null;
   DigitalSignature: string;
+  OtpCode: string;
 };
 
 export type RtgsTransferResponseDto = {

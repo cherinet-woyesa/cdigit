@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as accountOpeningService from "../../../../services/accountOpeningService";
 import { checkAccountExistsByPhone } from "../../../../services/accountsService";
@@ -96,6 +96,43 @@ export function AccountOpeningForm() {
     function isValidPhoneNumber(phone: string) {
         return /^09\d{8}$|^\+2519\d{8}$/.test(phone);
     }
+
+    // Sync step to URL and restore from localStorage on mount
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const stepParam = params.get('step');
+            if (stepParam) {
+                const s = parseInt(stepParam, 10);
+                if (!Number.isNaN(s) && s >= 0 && s < steps.length) {
+                    goTo(s);
+                }
+            }
+            const storedPhone = localStorage.getItem('accountOpeningPhone');
+            if (storedPhone && phoneNumberScreenActive) {
+                setPhoneNumberInput(storedPhone);
+            }
+        } catch {}
+        // warn on unsaved close during active editing
+        const handler = (e: BeforeUnloadEvent) => {
+            if (!phoneNumberScreenActive && currentStep < steps.length) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, []);
+
+    // Reflect step changes in URL and persist phone for resume
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            params.set('step', String(currentStep));
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.history.replaceState({}, '', newUrl);
+        } catch {}
+    }, [currentStep]);
 
     const handleNext = async () => {
         // If we are on the review step, just proceed to the success screen.
@@ -262,6 +299,8 @@ export function AccountOpeningForm() {
         setPhoneInputError(undefined);
         setPhoneCheckLoading(true);
         try {
+            // persist for resume across refresh
+            localStorage.setItem('accountOpeningPhone', phoneNumberInput.trim());
             const accountExists = await checkAccountExistsByPhone(phoneNumberInput.trim());
             if (accountExists) {
                 setPhoneInputError("An account already exists for this phone number.");

@@ -299,7 +299,7 @@ const OTPLogin: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { setPhone, login } = useAuth();
+  const { login, setPhone } = useAuth();
 
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
@@ -313,11 +313,14 @@ const OTPLogin: React.FC = () => {
   const otpInput = useOtpInput(6);
 
   useEffect(() => {
+    // Prefill from storage or URL (?phone=...)
     const storedPhone = localStorage.getItem('phone');
-    if (storedPhone) {
-      setPhoneNumber(storedPhone);
-    }
+    const urlParamPhone = new URLSearchParams(window.location.search).get('phone');
+    const initial = urlParamPhone || storedPhone;
+    if (initial) setPhoneNumber(initial);
   }, []);
+
+  // Do not auto-redirect if already authenticated; allow OTP flow explicitly
 
   useEffect(() => {
     if (step === 'verify') {
@@ -375,6 +378,7 @@ const OTPLogin: React.FC = () => {
     if (success) {
       setStep('verify');
       setEffectivePhone(phoneToSend);
+      setPhone(phoneToSend);
       const nextAttempts = step === 'request' ? 0 : resendAttempts + 1;
       setResendAttempts(nextAttempts);
       startResendCooldown(nextAttempts >= 3 ? 60 : 30);
@@ -415,6 +419,8 @@ const OTPLogin: React.FC = () => {
       
       // Login with the token and user data
       login(token, userData);
+      // Persist normalized phone used for OTP
+      setPhone(effectivePhone);
       
       // Always navigate to Customer Dashboard after OTP login
       navigate('/customer/dashboard', { replace: true });
@@ -432,7 +438,7 @@ const OTPLogin: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [effectivePhone, navigate, otpInput.otpDigits, setPhone, t]);
+  }, [effectivePhone, navigate, otpInput.otpDigits, t, login, location.state]);
 
   const handleBackToRequest = () => {
     setStep('request');

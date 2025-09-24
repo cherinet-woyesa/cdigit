@@ -8,6 +8,7 @@ import StepSignature from './StepSignature';
 import StepReview from './StepReview';
 import { useAuth } from '../../../../context/AuthContext';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
+import authService from '../../../../services/authService';
 
 // List of Ethiopian banks (can be fetched from an API in production)
 const BANKS = [
@@ -19,7 +20,6 @@ const BANKS = [
   'Bank of Abyssinia',
   'Wegagen Bank',
   'United Bank',
-  'Zemen Bank',
   'Berhan Bank',
   'Abay Bank',
   'Bunna Bank',
@@ -47,6 +47,7 @@ type FormData = {
   paymentNarrative: string;
   customerTelephone: string;
   digitalSignature: string;
+  otpCode: string;
 };
 
 type Errors = Partial<Record<keyof FormData | 'submit', string>>;
@@ -67,6 +68,7 @@ export default function RTGSTransferForm() {
     paymentNarrative: '',
     customerTelephone: '',
     digitalSignature: '',
+    otpCode: '',
   });
 
   const [errors, setErrors] = useState<Errors>({});
@@ -77,17 +79,25 @@ export default function RTGSTransferForm() {
   const [customerAccounts, setCustomerAccounts] = useState<Array<{ accountNumber: string; accountName: string }>>([]);
   const [showAccountSelection, setShowAccountSelection] = useState(false);
   const [step, setStep] = useState(0); // 0: Customer+Beneficiary, 1: Signature, 2: Review
+  const [stepError, setStepError] = useState('');
   const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpMessage, setOtpMessage] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [phoneForOtp, setPhoneForOtp] = useState<string | null>(null);
   // Step-wise validation
   const validateStep = (): boolean => {
     const errs: Errors = {};
     if (step === 0) {
       // Customer + Beneficiary Information
-      if (!formData.customerTelephone) errs.customerTelephone = 'Customer Telephone is required.';
       if (!formData.orderingAccountNumber) errs.orderingAccountNumber = 'Account Number is required.';
       if (!formData.orderingCustomerName) errs.orderingCustomerName = 'Customer Name is required.';
-      if (formData.customerTelephone && !/^\d{9,12}$/.test(formData.customerTelephone)) {
-        errs.customerTelephone = 'Please enter a valid phone number (9-12 digits)';
+      if (formData.customerTelephone) {
+        const digitsOnly = formData.customerTelephone.replace(/\D/g, '');
+        if (digitsOnly.length < 9 || digitsOnly.length > 12) {
+          errs.customerTelephone = 'Please enter a valid phone number (9-12 digits)';
+        }
       }
       if (!formData.beneficiaryBank) errs.beneficiaryBank = 'Beneficiary Bank is required.';
       if (!formData.beneficiaryBranch) errs.beneficiaryBranch = 'Beneficiary Branch is required.';
@@ -107,13 +117,21 @@ export default function RTGSTransferForm() {
     }
     if (step === 1) {
       if (!formData.digitalSignature) errs.digitalSignature = 'Digital Signature is required.';
+      if (!formData.otpCode) errs.otpCode = 'OTP code is required.';
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleNext = () => {
-    if (!validateStep()) return;
+    if (step === 0 && !formData.customerTelephone && phone) {
+      setFormData(prev => ({ ...prev, customerTelephone: phone }));
+    }
+    if (!validateStep()) {
+      setStepError('Please fix the highlighted fields before continuing.');
+      return;
+    }
+    setStepError('');
     setStep(prev => prev + 1);
     window.scrollTo(0, 0);
   };
@@ -186,6 +204,60 @@ export default function RTGSTransferForm() {
     setShowAccountSelection(false);
   };
 
+  const normalizePhone = (raw: string) => {
+    const cleaned = raw.trim().replace(/[^\d+]/g, '');
+    const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+    if (/^0[79]\d{8}$/.test(digits)) return `+251${digits.slice(1)}`;
+    if (/^[79]\d{8}$/.test(digits)) return `+251${digits}`;
+    if (/^251[79]\d{8}$/.test(digits)) return `+${digits}`;
+    return raw.trim();
+  };
+
+  const handleRequestOtp = async () => {
+    setOtpError('');
+    setOtpMessage('');
+    setOtpLoading(true);
+    try {
+      const normalized = normalizePhone(formData.customerTelephone || phone || '');
+      let phoneToSend = normalized;
+      try {
+        await authService.requestOtp(phoneToSend);
+      } catch {
+        phoneToSend = '0' + normalized.slice(-9);
+        await authService.requestOtp(phoneToSend);
+      }
+      setPhoneForOtp(phoneToSend);
+      setFormData(prev => ({ ...prev, customerTelephone: phoneToSend }));
+      setOtpMessage('OTP sent successfully.');
+    } catch (e: any) {
+      setOtpError(e?.message || 'Failed to send OTP');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setOtpError('');
+    setOtpMessage('');
+    setOtpLoading(true);
+    try {
+      const phoneToUse = phoneForOtp || normalizePhone(formData.customerTelephone || phone || '');
+      const res = await authService.verifyOtp(phoneToUse, formData.otpCode);
+      if (res.verified) {
+        setOtpVerified(true);
+        setOtpMessage(res.message || 'OTP verified.');
+      } else {
+        setOtpVerified(false);
+        setOtpError(res.message || 'OTP verification failed');
+      }
+    } catch (e: any) {
+      setOtpVerified(false);
+      setOtpError(e?.message || 'OTP verification failed');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const validateAll = (): boolean => {
     const errs: Errors = {};
     
@@ -232,6 +304,10 @@ export default function RTGSTransferForm() {
     setIsSubmitting(true);
     
     try {
+      if (!otpVerified) {
+        await handleVerifyOtp();
+        if (!otpVerified) throw new Error('OTP not verified');
+      }
       // Build backend payload and submit
       const payload = {
         BranchId: ABIY_BRANCH_ID,
@@ -244,6 +320,7 @@ export default function RTGSTransferForm() {
         PaymentNarrative: formData.paymentNarrative,
         CustomerTelephone: formData.customerTelephone || undefined,
         DigitalSignature: formData.digitalSignature,
+        OtpCode: formData.otpCode,
       };
 
       const res = await submitRtgsTransfer(payload);
@@ -292,6 +369,12 @@ export default function RTGSTransferForm() {
           formData={formData}
           errors={errors}
           onChange={handleChange}
+          onRequestOtp={handleRequestOtp}
+          onVerifyOtp={async () => { await handleVerifyOtp(); if (otpVerified && formData.digitalSignature) { setStep(2); window.scrollTo(0,0); }}}
+          otpVerified={otpVerified}
+          otpLoading={otpLoading}
+          otpMessage={otpMessage}
+          otpError={otpError}
         />
       );
     }
@@ -315,6 +398,11 @@ export default function RTGSTransferForm() {
         </div>
       </div>
       <form onSubmit={step === 2 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }} className="space-y-6">
+        {stepError && (
+          <div className="p-3 bg-red-50 border-l-4 border-red-400 text-sm text-red-700 rounded">
+            {stepError}
+          </div>
+        )}
         {getStepContent()}
         <div className="flex justify-between pt-4">
           {step > 0 && (
