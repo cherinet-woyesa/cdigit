@@ -41,6 +41,10 @@ export default function WithdrawalConfirmation() {
     const [withdrawalData, setWithdrawalData] = useState<WithdrawalData>({});
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(true);
+    const [isCancelling, setIsCancelling] = useState(false);
+    const [isUpdating] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+    const [showSuccess, setShowSuccess] = useState(false);
 
     const fetchWithdrawal = useCallback(async (withdrawalId: string) => {
         try {
@@ -64,12 +68,8 @@ export default function WithdrawalConfirmation() {
         }
     }, []);
 
-    const hasSubmitted = useRef(false);
-
     useEffect(() => {
         const runSubmit = async () => {
-            if (hasSubmitted.current) return; // ⬅️ prevent double-call
-            hasSubmitted.current = true;
             try {
                 if (id) {
                     // If we have an ID, fetch the withdrawal details
@@ -229,13 +229,13 @@ export default function WithdrawalConfirmation() {
     const effectiveData = withdrawalData?.id ? withdrawalData : (serverData?.data || {});
 
     // Format amount with proper fallback
-    const amountValue = effectiveData?.withdrawal_Amount ||
-        (serverData as any)?.Withdrawal_Amount ||
-        (serverData as any)?.withdrawal_Amount ||
+    const amountValue = effectiveData?.withdrawal_Amount || 
+                       (serverData as any)?.Withdrawal_Amount || 
+                       (serverData as any)?.withdrawal_Amount ||
                        0;
     const amount = amountValue !== undefined && amountValue !== null
-        ? new Intl.NumberFormat('en-US', {
-            style: 'currency',
+        ? new Intl.NumberFormat('en-US', { 
+            style: 'currency', 
             currency: 'ETB',
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -243,30 +243,30 @@ export default function WithdrawalConfirmation() {
         : 'N/A';
 
     // Get token and queue number with proper fallbacks
-    const token = effectiveData?.tokenNumber ||
-        (serverData as any)?.tokenNumber ||
-        (serverData as any)?.TokenNumber ||
-        'N/A';
-    const queueNumber = effectiveData?.queueNumber?.toString() ||
-        (serverData as any)?.queueNumber?.toString() ||
-        (serverData as any)?.QueueNumber?.toString() ||
+    const token = effectiveData?.tokenNumber || 
+                 (serverData as any)?.tokenNumber || 
+                 (serverData as any)?.TokenNumber || 
+                 'N/A';
+    const queueNumber = effectiveData?.queueNumber?.toString() || 
+                       (serverData as any)?.queueNumber?.toString() || 
+                       (serverData as any)?.QueueNumber?.toString() || 
                        (serverData as any)?.data?.queueNumber?.toString() ||
-        'N/A';
-    const accountNumber = effectiveData?.accountNumber ||
-        (serverData as any)?.accountNumber ||
-        'N/A';
-    const accountHolderName = effectiveData?.accountHolderName ||
-        (serverData as any)?.accountHolderName ||
-        'N/A';
+                       'N/A';
+    const accountNumber = effectiveData?.accountNumber || 
+                         (serverData as any)?.accountNumber || 
+                         'N/A';
+    const accountHolderName = effectiveData?.accountHolderName || 
+                             (serverData as any)?.accountHolderName || 
+                             'N/A';
 
     // If we have server data, show the success message
     if (serverData || withdrawalData.id) {
         // Format amount with proper fallback
         const amount = effectiveData?.withdrawal_Amount !== undefined && effectiveData?.withdrawal_Amount !== null
-            ? `${Number(effectiveData.withdrawal_Amount).toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            })} ETB`
+            ? `${Number(effectiveData.withdrawal_Amount).toLocaleString('en-US', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+              })} ETB`
             : '0.00 ETB';
 
         return (
@@ -297,19 +297,19 @@ export default function WithdrawalConfirmation() {
                         <h3 className="text-base font-bold text-fuchsia-700 mb-2">Transaction Summary</h3>
                         <div className="space-y-2 text-sm text-gray-700">
                             <div className="flex justify-between">
-                                <strong className="font-medium">Account:</strong>
+                                <strong className="font-medium">Account:</strong> 
                                 <span className="text-right">{accountNumber}</span>
                             </div>
                             <div className="flex justify-between">
-                                <strong className="font-medium">Holder:</strong>
+                                <strong className="font-medium">Holder:</strong> 
                                 <span>{accountHolderName}</span>
                             </div>
                             <div className="flex justify-between">
-                                <strong className="font-medium">Amount:</strong>
+                                <strong className="font-medium">Amount:</strong> 
                                 <span className="font-bold text-fuchsia-800">{amount}</span>
                             </div>
                             <div className="flex justify-between">
-                                <strong className="font-medium">Type:</strong>
+                                <strong className="font-medium">Type:</strong> 
                                 <span>Withdrawal</span>
                             </div>
                         </div>
@@ -346,7 +346,7 @@ export default function WithdrawalConfirmation() {
                             Back to Dashboard
                         </button>
                     </div>
-
+                    
                     <p className="text-sm text-gray-500 mt-6">Thank you for banking with us!</p>
                 </div>
             </div>
@@ -359,7 +359,7 @@ export default function WithdrawalConfirmation() {
                 <ExclamationTriangleIcon className="h-16 w-16 mx-auto text-yellow-500" />
                 <h1 className="text-2xl font-bold text-fuchsia-800 mt-4">No Data Available</h1>
                 <p className="text-gray-600 mt-2">Please try again or contact support.</p>
-
+                
                 <div className="mt-8 flex flex-col space-y-4">
                     <button
                         onClick={() => navigate('/customer/withdraw')}

@@ -277,8 +277,6 @@ export default function Dashboard() {
         onClose={() => setIsQueueNotifyModalOpen(false)}
         title={QueueNotifyModalTitle}
         message={QueueNotifyModalMessage}
-        QueueNotifyModalWindowNumber={QueueNotifyModalWindowNumber}
-        QueueNotifyModalTellerName={QueueNotifyModalTellerName}
       />
       {/* TransactionFeedbackModal */}
       <TransactionFeedbackModal
