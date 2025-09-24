@@ -1,7 +1,9 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { useBranch } from './context/BranchContext';
 import OTPLogin from './features/auth/OTPLogin';
+import BranchSelectionEnhanced from './features/branch/BranchSelectionEnhanced';
 import StaffLogin from './features/auth/StaffLogin';
 import CashDeposit from './features/customer/forms/cashDeposit/CashDeposit';
 import CashDepositConfirmation from './features/customer/forms/cashDeposit/CashDepositConfirmation';
@@ -44,19 +46,39 @@ import PettyCashConfirmation from './features/internal/forms/pettyCash/PettyCash
 // A simple protected route component
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
   const { isAuthenticated, user, loading } = useAuth();
+  const { branch, isLoading: isBranchLoading } = useBranch();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  if (loading) {
-    return <div>Loading...</div>; // Or a spinner
+  useEffect(() => {
+    // If user is authenticated but doesn't have a branch selected
+    if (isAuthenticated && user && !branch && !isBranchLoading && !location.pathname.startsWith('/select-branch')) {
+      navigate('/select-branch', { state: { from: location }, replace: true });
+    }
+  }, [isAuthenticated, user, branch, isBranchLoading, location, navigate]);
+
+  if (loading || isBranchLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
   }
 
-  console.log('ProtectedRoute - isAuthenticated:', isAuthenticated, 'User:', user); // Log authentication state and user
-
   if (!isAuthenticated) {
-    return <Navigate to="/otp-login" replace />; // Redirect to OTP Login if not authenticated
+    // Store the attempted URL for redirecting after login
+    return <Navigate to="/otp-login" state={{ from: location }} replace />;
   }
 
   if (role && user?.role !== role) {
-    return <div>Access Denied</div>; // Handle unauthorized access
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+          <p className="text-gray-600">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;
@@ -86,7 +108,8 @@ function App() {
         <LanguageSwitcher />
       </div>
       <Routes>
-        <Route path="/" element={<Navigate to="/otp-login" replace />} /> {/* Redirect to OTP Login */}
+        <Route path="/" element={<Navigate to="/select-branch" replace />} /> {/* Start with branch selection */}
+        <Route path="/select-branch" element={<BranchSelectionEnhanced />} />
         <Route path="/otp-login" element={<OTPLogin />} />
         <Route path="/staff-login" element={<StaffLogin />} />
         <Route path="/form/account-opening" element={<AccountOpeningForm />} />

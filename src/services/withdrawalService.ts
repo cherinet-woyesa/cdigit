@@ -1,6 +1,68 @@
+export interface OtpRequestResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    phoneNumber: string;
+    expiryTime?: string;
+  };
+}
+
+export interface OtpVerificationResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    isVerified: boolean;
+    token?: string;
+    otp?: string; // Add this line to include otp in the response data
+  };
+}
+
+export interface WithdrawalUpdateDto {
+  withdrawal_Amount?: number;
+  remark?: string;
+  status?: string;
+  // Add other updatable fields as needed
+}
+
+export async function updateWithdrawal(id: string, data: WithdrawalUpdateDto): Promise<WithdrawalResponse> {
+  const response = await fetch(`${API_BASE_URL}/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  const json = await response.json().catch(async () => {
+    const text = await response.text();
+    return { success: false, message: text } as any;
+  });
+
+  if (!response.ok) {
+    const message = json?.message || json || 'Failed to update withdrawal';
+    throw new Error(message);
+  }
+
+  // Handle wrapped responses: { success, message, data }
+  if (typeof json === 'object' && json !== null && 'success' in json) {
+    if ((json as any).success === false) {
+      throw new Error((json as any).message || 'Withdrawal update failed');
+    }
+    if ((json as any).data) {
+      return (json as any).data as WithdrawalResponse;
+    }
+  }
+
+  return {
+    success: true,
+    message: 'Withdrawal updated successfully',
+    data: json
+  };
+}
 // src/services/withdrawalService.ts
 
 const API_BASE_URL = 'http://localhost:5268/api/Withdrawal';
+const AUTH_API_URL = 'http://localhost:5268/api/Auth';
 
 export interface WithdrawalRequest {
   phoneNumber: string;
@@ -97,6 +159,104 @@ export interface CancelWithdrawalResponse {
   success: boolean;
   message: string;
   data?: any;
+}
+
+export async function requestWithdrawalOtp(phoneNumber: string): Promise<OtpRequestResponse> {
+  try {
+    const response = await fetch(`${AUTH_API_URL}/request-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phoneNumber }),
+    });
+
+    const responseData = await response.json().catch(() => ({
+      success: false,
+      message: 'Invalid response from server',
+    }));
+
+    if (!response.ok) {
+      // Handle 404 for no account found
+      if (response.status === 404) {
+        return {
+          success: false,
+          message: 'No account found with this phone number',
+        };
+      }
+      throw new Error(responseData?.message || 'Failed to request OTP');
+    }
+
+    return {
+      success: true,
+      message: responseData.message || 'OTP sent successfully',
+      data: responseData.data,
+    };
+  } catch (error: any) {
+    console.error('Error requesting OTP:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to request OTP',
+    };
+  }
+}
+
+export async function verifyWithdrawalOtp(phoneNumber: string, otp: string): Promise<OtpVerificationResponse> {
+  try {
+    // Ensure OTP is 6 digits
+    const otpCode = otp.trim();
+    if (!/^\d{6}$/.test(otpCode)) {
+      throw new Error('OTP code must be exactly 6 digits');
+    }
+
+    // Verify the OTP
+    const verifyResponse = await fetch(`${AUTH_API_URL}/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        phoneNumber, 
+        otp: otpCode,
+        OtpCode: otpCode, // Some APIs might expect this exact casing
+      }),
+    });
+
+    const verifyData = await verifyResponse.json().catch(() => ({
+      success: false,
+      message: 'Invalid response from server',
+    }));
+
+    if (!verifyResponse.ok) {
+      // If there are validation errors, format them properly
+      if (verifyData?.errors) {
+        const errorMessages = Object.values(verifyData.errors).flat().join(' ');
+        throw new Error(errorMessages || 'Validation failed');
+      }
+      throw new Error(verifyData?.message || 'Failed to verify OTP');
+    }
+
+    // If we reach here, OTP is verified successfully
+    // No need for additional authentication since we're just verifying the OTP for withdrawal
+    return {
+      success: true,
+      message: verifyData.message || 'OTP verified successfully',
+      data: {
+        isVerified: true,
+        // Include the OTP in the response so we can use it for the withdrawal
+        otp: otpCode,
+      },
+    };
+  } catch (error: any) {
+    console.error('Error during OTP verification:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to verify OTP',
+      data: {
+        isVerified: false,
+      },
+    };
+  }
 }
 
 export async function cancelWithdrawalByCustomer(id: string): Promise<CancelWithdrawalResponse> {

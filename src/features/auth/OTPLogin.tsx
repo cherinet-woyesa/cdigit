@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { type TFunction } from 'i18next';
 import { speak } from '../../lib/speechSynthesis';
 import logo from '../../assets/logo.jpg';
 import React from 'react';
 import authService from '../../services/authService';
 
-// Reusable Input component
+// Reusable Input component (No changes)
 interface FormInputProps {
   id: string;
   type: string;
@@ -24,7 +25,7 @@ interface FormInputProps {
   maxLength?: number;
 }
 
-const FormInput: React.FC<FormInputProps> = ({
+const FormInput: React.FC<FormInputProps> = React.memo(({
   id,
   type,
   value,
@@ -57,9 +58,9 @@ const FormInput: React.FC<FormInputProps> = ({
       maxLength={maxLength}
     />
   );
-};
+});
 
-// Reusable Button component
+// Reusable Button component (No changes)
 interface FormButtonProps {
   disabled?: boolean;
   children: React.ReactNode;
@@ -67,7 +68,7 @@ interface FormButtonProps {
   className?: string;
 }
 
-const FormButton: React.FC<FormButtonProps> = ({
+const FormButton: React.FC<FormButtonProps> = React.memo(({
   disabled,
   children,
   ariaLabel,
@@ -83,261 +84,233 @@ const FormButton: React.FC<FormButtonProps> = ({
       {children}
     </button>
   );
-};
+});
 
-const OTPLogin: React.FC = () => {
-  const { t, i18n } = useTranslation();
-  const [step, setStep] = useState<'request' | 'verify'>('request');
-  const [phoneNumber, setPhoneNumber] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const navigate = useNavigate();
-  const { setPhone } = useAuth();
-  const [message, setMessage] = useState<string>('');
-  const [error, setError] = useState<string>('');
+// --- Custom Hooks for Logic Encapsulation ---
+
+/**
+ * Manages the OTP resend cooldown timer.
+ */
+const useResendCooldown = () => {
   const [resendCooldown, setResendCooldown] = useState<number>(0);
-  const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
-  const [effectivePhone, setEffectivePhone] = useState<string>('');
-  const [resendAttempts, setResendAttempts] = useState<number>(0); // count resends after first send
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Start cooldown timer when OTP is sent
-  const startResendCooldown = (durationSeconds: number = 30) => {
-    if (resendCooldown > 0) return; // prevent duplicate timers
+  const startResendCooldown = useCallback((durationSeconds: number) => {
+    if (timerRef.current) clearInterval(timerRef.current);
     setResendCooldown(durationSeconds);
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setResendCooldown((prev) => {
         if (prev <= 1) {
-          clearInterval(timer);
+          if (timerRef.current) clearInterval(timerRef.current);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    setResendTimer(timer);
-  };
+  }, []);
 
-  // Clean up timer on unmount
+  const clearResendCooldown = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setResendCooldown(0);
+  }, []);
+
   useEffect(() => {
     return () => {
-      if (resendTimer) clearInterval(resendTimer);
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [resendTimer]);
+  }, []);
 
-  // Send OTP handler (for form submit)
-  const handleRequestOtp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    await requestOtpDirect();
-  };
+  return { resendCooldown, startResendCooldown, clearResendCooldown };
+};
 
-  // Normalize and validate Ethiopian mobile (07/09 series)
-  // Accept: 07XXXXXXXX, 09XXXXXXXX, 7XXXXXXXX, 9XXXXXXXX, 2517XXXXXXXX, 2519XXXXXXXX, +2517XXXXXXXX, +2519XXXXXXXX
-  // Normalize to: +2517XXXXXXXX or +2519XXXXXXXX
-  const normalizePhone = (raw: string) => {
-    const trimmed = raw.trim();
-    // Remove spaces, dashes, parentheses
-    const cleaned = trimmed.replace(/[^\d+]/g, '');
-    // Remove leading + for uniform processing, track it implicitly
-    const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+/**
+ * Manages the state and interactions of the segmented OTP input.
+ */
+const useOtpInput = (length: number) => {
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(length).fill(''));
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-    // Cases
-    // 1) 0[7|9]XXXXXXXX (10 digits)
-    if (/^0[79]\d{8}$/.test(digits)) {
-      return `+251${digits.slice(1)}`;
-    }
-    // 2) [7|9]XXXXXXXX (9 digits)
-    if (/^[79]\d{8}$/.test(digits)) {
-      return `+251${digits}`;
-    }
-    // 3) 251[7|9]XXXXXXXX (12 digits)
-    if (/^251[79]\d{8}$/.test(digits)) {
-      return `+${digits}`;
-    }
-    // 4) + already removed, but handle '++' oddities
-    // Fallback: return original trimmed (will be invalid if it doesn't match)
-    return trimmed;
-  };
-
-  // Note: validation is performed inline against normalized pattern
-
-  // Send OTP handler (no event, for button)
-  const requestOtpDirect = async () => {
-    setError('');
-    setMessage('');
-    setLoading(true);
-    try {
-      const normalized = normalizePhone(phoneNumber);
-      if (!/^\+251[79]\d{8}$/.test(normalized)) {
-        setError('Please enter a valid Ethiopian mobile number (09XXXXXXXX or +2519XXXXXXXX).');
-        setLoading(false);
-        return;
-      }
-      // Try with normalized first
-      try {
-        const response = await authService.requestOtp(normalized);
-        setMessage(response.message || t('otpSent'));
-        setStep('verify');
-        setEffectivePhone(normalized);
-        // first send from request step uses base cooldown and resets attempts
-        if (step === 'request') {
-          setResendAttempts(0);
-          startResendCooldown(30);
-        } else {
-          const next = resendAttempts + 1;
-          setResendAttempts(next);
-          startResendCooldown(next >= 3 ? 60 : 30);
-        }
-        setLoading(false);
-        return;
-      } catch (primaryErr: any) {
-        // If not found, retry with local 0-prefixed format
-        const local = '0' + normalized.slice(-9); // 0 + last 9 digits
-        try {
-          const response2 = await authService.requestOtp(local);
-          setMessage(response2.message || t('otpSent'));
-          setStep('verify');
-          setEffectivePhone(local);
-          if (step === 'request') {
-            setResendAttempts(0);
-            startResendCooldown(30);
-          } else {
-            const next = resendAttempts + 1;
-            setResendAttempts(next);
-            startResendCooldown(next >= 3 ? 60 : 30);
-          }
-          setLoading(false);
-          return;
-        } catch (secondaryErr: any) {
-          throw secondaryErr;
-        }
-      }
-    } catch (err: any) {
-      const msg = err?.message || err?.response?.data?.message || err?.response?.data || t('otpSendError');
-      setError(typeof msg === 'string' ? msg : t('otpSendError'));
-      console.error('Request OTP Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Verify OTP handler
-  const handleLoginWithOtp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError('');
-    setMessage('');
-    setLoading(true);
-
-    try {
-      // Use the phone format that succeeded during request
-      const toUse = effectivePhone || normalizePhone(phoneNumber);
-      const otpValue = otpDigits.join('');
-      const response: { message: string; token?: string } = await authService.loginWithOtp(toUse, otpValue);
-      setMessage(response.message || t('loginSuccessful'));
-      
-      // Set the phone number in AuthContext and wait for it to be set
-      await new Promise<void>((resolve) => {
-        setPhone(toUse);
-        // Small delay to ensure state is updated
-        setTimeout(resolve, 100);
-      });
-      
-      // Store the phone number in localStorage as well
-      localStorage.setItem('phone', toUse);
-      
-      // Navigate after ensuring phone is set
-      navigate('/customer/dashboard'); // Redirect to the customer dashboard
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message || t('invalidOtp')
-      );
-      console.error('Login with OTP Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Masked phone preview helper
-  const maskPhone = (p: string) => {
-    const n = normalizePhone(p);
-    if (!/^\+251[79]\d{8}$/.test(n)) return '';
-    // Keep first 6 chars, mask middle 4, keep last 2
-    return `${n.slice(0, 6)}****${n.slice(-2)}`;
-  };
-
-  // OTP segmented handlers
-  const handleOtpChangeAt = (index: number, val: string) => {
-    const digit = val.replace(/\D/g, '').slice(0, 1);
-    const next = [...otpDigits];
-    next[index] = digit;
-    setOtpDigits(next);
-    // move focus
-    if (digit && index < otpRefs.current.length - 1) {
-      otpRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      const prevIndex = index - 1;
-      const next = [...otpDigits];
-      next[prevIndex] = '';
-      setOtpDigits(next);
-      otpRefs.current[prevIndex]?.focus();
-      e.preventDefault();
-      return;
-    }
-    if (e.key === 'ArrowLeft' && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-      e.preventDefault();
-    }
-    if (e.key === 'ArrowRight' && index < otpRefs.current.length - 1) {
-      otpRefs.current[index + 1]?.focus();
-      e.preventDefault();
-    }
-    if (e.key === 'Escape') {
-      // go back and clear
-      setOtpDigits(['', '', '', '', '', '']);
-      setStep('request');
-      e.preventDefault();
-    }
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (!text) return;
-    const next = ['','','','','',''];
-    for (let i = 0; i < text.length; i++) next[i] = text[i];
-    setOtpDigits(next);
-    // focus last filled
-    const last = Math.min(text.length, 6) - 1;
-    if (last >= 0) otpRefs.current[last]?.focus();
-    e.preventDefault();
-  };
-
-  // Focus first OTP box when entering verify step
   useEffect(() => {
-    if (step === 'verify') {
-      setTimeout(() => {
-        otpRefs.current[0]?.focus();
-      }, 0);
-    }
-  }, [step]);
+    otpRefs.current = otpRefs.current.slice(0, length);
+  }, [length]);
 
-  // Helper: paste from clipboard button
-  const pasteOtpFromClipboard = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      const code = text.replace(/\D/g, '').slice(0, 6);
-      if (!code) return;
-      const next = ['','','','','',''];
-      for (let i = 0; i < code.length; i++) next[i] = code[i];
-      setOtpDigits(next);
-      const last = Math.min(code.length, 6) - 1;
-      if (last >= 0) otpRefs.current[last]?.focus();
-    } catch (e) {
-      // ignore clipboard errors silently
+  const handleOtpChangeAt = useCallback((index: number, val: string) => {
+    const digit = val.replace(/\D/g, '').slice(0, 1);
+    const newOtp = [...otpDigits];
+    newOtp[index] = digit;
+    setOtpDigits(newOtp);
+
+    if (digit && index < length - 1) {
+      otpRefs.current[index + 1]?.focus();
     }
-  };
+  }, [otpDigits, length]);
+
+  const handleOtpKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < length - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  }, [otpDigits, length]);
+
+  const handleOtpPaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, length);
+    if (!text) return;
+    e.preventDefault();
+    const newOtp = Array(length).fill('');
+    for (let i = 0; i < text.length; i++) newOtp[i] = text[i];
+    setOtpDigits(newOtp);
+    const focusIndex = Math.min(text.length, length) - 1;
+    if (focusIndex >= 0) otpRefs.current[focusIndex]?.focus();
+  }, [length]);
+  
+  const resetOtp = useCallback(() => {
+    setOtpDigits(Array(length).fill(''));
+  }, [length]);
+
+  return { otpDigits, otpRefs, handleOtpChangeAt, handleOtpKeyDown, handleOtpPaste, resetOtp };
+};
+
+
+// --- UI Components for Each Step ---
+
+interface RequestOtpFormProps {
+  phoneNumber: string;
+  setPhoneNumber: (value: string) => void;
+  handleRequestOtp: (e: React.FormEvent<HTMLFormElement>) => void;
+  loading: boolean;
+  error: string;
+  t: TFunction;
+}
+
+const RequestOtpForm: React.FC<RequestOtpFormProps> = React.memo(({ phoneNumber, setPhoneNumber, handleRequestOtp, loading, error, t }) => (
+  <>
+    <form onSubmit={handleRequestOtp} className="space-y-4">
+      <label className="block" htmlFor="phone-input">
+        <span className="text-gray-700 font-medium text-base">{t('phoneNumber')}</span>
+        <FormInput
+          id="phone-input"
+          type="tel"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder={t('phonePlaceholder')}
+          ariaLabel={t('phoneNumber')}
+          ariaInvalid={!!error}
+          ariaDescribedby="phone-error"
+          autoFocus
+          disabled={loading}
+          inputMode="numeric"
+          pattern="[+0-9 ]*"
+        />
+      </label>
+      <FormButton disabled={!phoneNumber || loading} ariaLabel={t('requestOtp')}>
+        {loading ? (
+          <span className="flex items-center">
+            <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+            {t('sendingOtp')}
+          </span>
+        ) : (
+          t('requestOtp')
+        )}
+      </FormButton>
+    </form>
+    <div className="text-center mt-4">
+      <span className="text-gray-700 text-sm">{t('noAccount')}</span>
+      <Link to="/form/account-opening" className="ml-2 text-fuchsia-700 font-semibold hover:underline hover:text-fuchsia-800 transition-colors text-sm">
+        {t('createAccount')}
+      </Link>
+    </div>
+  </>
+));
+
+interface VerifyOtpFormProps {
+  handleLoginWithOtp: (e: React.FormEvent<HTMLFormElement>) => void;
+  loading: boolean;
+  effectivePhone: string;
+  resendCooldown: number;
+  requestOtpDirect: () => void;
+  handleBack: () => void;
+  maskPhone: (phone: string) => string;
+  t: TFunction;
+  otpInput: ReturnType<typeof useOtpInput>;
+}
+
+const VerifyOtpForm: React.FC<VerifyOtpFormProps> = React.memo(({ handleLoginWithOtp, loading, effectivePhone, resendCooldown, requestOtpDirect, handleBack, maskPhone, t, otpInput }) => {
+  const { otpDigits, otpRefs, handleOtpChangeAt, handleOtpKeyDown, handleOtpPaste } = otpInput;
+
+  return (
+    <form onSubmit={handleLoginWithOtp} className="space-y-4">
+      <label className="block" htmlFor="otp-input">
+        <span className="text-gray-700 font-medium text-base">{t('enterOtp')}</span>
+        <div className="mt-2 grid grid-cols-6 gap-2" onPaste={handleOtpPaste}>
+          {otpDigits.map((d, idx) => (
+            <input
+              key={idx}
+              ref={(el) => { otpRefs.current[idx] = el; }}
+              type="tel"
+              inputMode="numeric"
+              pattern="\d*"
+              maxLength={1}
+              className="w-full text-center text-xl p-2 border rounded-md focus:ring-fuchsia-500 focus:border-fuchsia-500"
+              value={d}
+              onChange={(e) => handleOtpChangeAt(idx, e.target.value)}
+              onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+              aria-label={`OTP digit ${idx + 1}`}
+              disabled={loading}
+            />
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-gray-500">Code sent to: <span className="font-medium">{maskPhone(effectivePhone) || '—'}</span></p>
+      </label>
+      <FormButton disabled={otpDigits.join('').length !== 6 || loading} ariaLabel={t('verifyOtp')}>
+        {loading ? (
+          <span className="flex items-center">
+            <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+            {t('verifying')}
+          </span>
+        ) : (
+          t('verifyOtp')
+        )}
+      </FormButton>
+      <div className="flex justify-between items-center mt-2">
+        <button type="button" onClick={handleBack} className="text-fuchsia-700 hover:underline text-xs font-medium" disabled={loading} aria-label={t('backToPhone')}>
+          &larr; {t('backToPhone')}
+        </button>
+        <button type="button" onClick={() => { if (resendCooldown === 0) requestOtpDirect(); }} disabled={resendCooldown > 0 || loading} className="text-fuchsia-700 hover:underline text-xs font-medium disabled:opacity-50" aria-label={t('resendOtp')}>
+          {resendCooldown > 0 ? t('resendTimer', { seconds: resendCooldown }) : t('resendOtp')}
+        </button>
+      </div>
+    </form>
+  );
+});
+
+
+// --- Main Component ---
+
+const OTPLogin: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { setPhone, login } = useAuth();
+
+  const [step, setStep] = useState<'request' | 'verify'>('request');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [effectivePhone, setEffectivePhone] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [message, setMessage] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [resendAttempts, setResendAttempts] = useState<number>(0);
+
+  const { resendCooldown, startResendCooldown, clearResendCooldown } = useResendCooldown();
+  const otpInput = useOtpInput(6);
 
   useEffect(() => {
     const storedPhone = localStorage.getItem('phone');
@@ -346,27 +319,141 @@ const OTPLogin: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (step === 'verify') {
+      setTimeout(() => otpInput.otpRefs.current[0]?.focus(), 0);
+    }
+  }, [step, otpInput.otpRefs]);
+
+  const normalizePhone = (raw: string) => {
+    const cleaned = raw.trim().replace(/[^\d+]/g, '');
+    const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+    if (/^0[79]\d{8}$/.test(digits)) return `+251${digits.slice(1)}`;
+    if (/^[79]\d{8}$/.test(digits)) return `+251${digits}`;
+    if (/^251[79]\d{8}$/.test(digits)) return `+${digits}`;
+    return raw.trim(); // Fallback
+  };
+
+  const maskPhone = (p: string) => {
+    const n = normalizePhone(p);
+    return /^\+251[79]\d{8}$/.test(n) ? `${n.slice(0, 6)}****${n.slice(-2)}` : '';
+  };
+
+  const requestOtpDirect = useCallback(async () => {
+    setError('');
+    setMessage('');
+    setLoading(true);
+
+    const normalized = normalizePhone(phoneNumber);
+    if (!/^\+251[79]\d{8}$/.test(normalized)) {
+      setError('Please enter a valid Ethiopian mobile number (09XXXXXXXX or +2519XXXXXXXX).');
+      setLoading(false);
+      return;
+    }
+
+    let phoneToSend = normalized;
+    let success = false;
+
+    try {
+      const response = await authService.requestOtp(phoneToSend);
+      setMessage(response.message || t('otpSent'));
+      success = true;
+    } catch (err) {
+      console.warn('First OTP attempt failed, trying alternative format.', err);
+      phoneToSend = '0' + normalized.slice(-9);
+      try {
+        const response = await authService.requestOtp(phoneToSend);
+        setMessage(response.message || t('otpSent'));
+        success = true;
+      } catch (finalErr: any) {
+        const msg = finalErr?.message || finalErr?.response?.data?.message || t('otpSendError');
+        setError(typeof msg === 'string' ? msg : t('otpSendError'));
+        console.error('Request OTP Error (secondary attempt):', finalErr);
+      }
+    }
+
+    if (success) {
+      setStep('verify');
+      setEffectivePhone(phoneToSend);
+      const nextAttempts = step === 'request' ? 0 : resendAttempts + 1;
+      setResendAttempts(nextAttempts);
+      startResendCooldown(nextAttempts >= 3 ? 60 : 30);
+    }
+    setLoading(false);
+  }, [phoneNumber, t, step, resendAttempts, startResendCooldown]);
+
+  const handleRequestOtp = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await requestOtpDirect();
+  }, [requestOtpDirect]);
+
+  const handleLoginWithOtp = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    setLoading(true);
+
+    try {
+      const otpValue = otpInput.otpDigits.join('');
+      const response = await authService.loginWithOtp(effectivePhone, otpValue);
+      
+      // Save the authentication token
+      const token = response.token;
+      if (!token) {
+        throw new Error('No token received');
+      }
+      
+      // Get user data from response or use defaults
+      const userData = {
+        id: response.userId || `temp_${Date.now()}`,
+        email: response.email || `${effectivePhone}@cbe.et`,
+        role: response.role || 'Customer',
+        firstName: response.firstName || 'Guest',
+        lastName: response.lastName || 'User',
+        branchId: response.branchId
+      };
+      
+      // Login with the token and user data
+      login(token, userData);
+      
+      // Always navigate to Customer Dashboard after OTP login
+      navigate('/customer/dashboard', { replace: true });
+
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || t('invalidOtp') || 'Login failed. Please try again.';
+      setError(errorMessage);
+      console.error('Login with OTP Error:', err);
+      
+      // Reset OTP on error for security
+      otpInput.resetOtp();
+      if (otpInput.otpRefs.current[0]) {
+        otpInput.otpRefs.current[0].focus();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [effectivePhone, navigate, otpInput.otpDigits, setPhone, t]);
+
+  const handleBackToRequest = () => {
+    setStep('request');
+    otpInput.resetOtp();
+    setError('');
+    setMessage('');
+    clearResendCooldown();
+    setResendAttempts(0);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#faf6e9] px-2">
       <div className="w-full max-w-sm bg-white shadow-xl rounded-xl p-4 sm:p-6 space-y-6">
         <div>
-          {/* Brand Header */}
           <div className="text-center space-y-2">
-            <h1 className="text-base font-semibold text-gray-900 uppercase">
-              {t('bankName')}
-            </h1>
+            <h1 className="text-base font-semibold text-gray-900 uppercase">{t('bankName')}</h1>
             <div className="w-20 h-20 mx-auto">
-              <img
-                src={logo}
-                alt={t('logoAlt')}
-                className="h-16 w-16 object-contain mx-auto rounded-full border-2 border-fuchsia-200"
-              />
+              <img src={logo} alt={t('logoAlt')} className="h-16 w-16 object-contain mx-auto rounded-full border-2 border-fuchsia-200" />
             </div>
             <h2 className="text-2xl font-extrabold text-fuchsia-700">{t('welcome')}</h2>
-            <h2 className="text-base font-semibold text-gray-800">
-              {t('enterPhonePrompt')}
-            </h2>
-            {/* Speak Button */}
+            <h2 className="text-base font-semibold text-gray-800">{t('enterPhonePrompt')}</h2>
             <button
               type="button"
               onClick={() => speak(`${t('bankName')}. ${t('welcome')}. ${t('enterPhonePrompt')}`, i18n.language.startsWith('am') ? 'am' : 'en')}
@@ -378,181 +465,32 @@ const OTPLogin: React.FC = () => {
             </button>
           </div>
 
-          {/* Message and Error Display */}
-          <div aria-live="polite" className="min-h-[1.25rem]">
+          <div aria-live="polite" className="min-h-[1.25rem] mt-4">
             {message && <p className="text-green-600 text-center text-sm">{message}</p>}
             {error && <p className="text-red-600 text-center text-sm">{error}</p>}
           </div>
 
-          {/* Step 1: Enter Phone Number */}
-          {step === 'request' && (
-            <>
-              <form onSubmit={handleRequestOtp} className="space-y-4">
-                <label className="block" htmlFor="phone-input">
-                  <span className="text-gray-700 font-medium text-base">
-                    {t('phoneNumber')}
-                  </span>
-                  <FormInput
-                    id="phone-input"
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder={t('phonePlaceholder')}
-                    ariaLabel={t('phoneNumber')}
-                    ariaInvalid={!!error}
-                    ariaDescribedby="phone-error"
-                    autoFocus
-                    disabled={loading}
-                    inputMode="numeric"
-                    pattern="[+0-9 ]*"
-                  />
-                </label>
-                <FormButton
-                  disabled={!phoneNumber || loading}
-                  ariaLabel={t('requestOtp')}
-                >
-                  {loading ? (
-                    <span className="flex items-center">
-                      <svg
-                        className="animate-spin h-5 w-5 mr-2 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v8z"
-                        ></path>
-                      </svg>
-                      {t('sendingOtp')}
-                    </span>
-                  ) : (
-                    t('requestOtp')
-                  )}
-                </FormButton>
-              </form>
-              <div className="text-center mt-4">
-                <span className="text-gray-700 text-sm">{t('noAccount')}</span>
-                <Link
-                  to="/form/account-opening"
-                  className="ml-2 text-fuchsia-700 font-semibold hover:underline hover:text-fuchsia-800 transition-colors text-sm"
-                >
-                  {t('createAccount')}
-                </Link>
-              </div>
-            </>
-          )}
-
-          {/* Step 2: Enter OTP */}
-          {step === 'verify' && (
-            <form onSubmit={handleLoginWithOtp} className="space-y-4">
-              <label className="block" htmlFor="otp-input">
-                <span className="text-gray-700 font-medium text-base">
-                  {t('enterOtp')}
-                </span>
-                {/* Segmented OTP Inputs */}
-                <div className="mt-2 grid grid-cols-6 gap-2" onPaste={handleOtpPaste}>
-                  {otpDigits.map((d, idx) => (
-                    <input
-                      key={idx}
-                      ref={(el) => { otpRefs.current[idx] = el; }}
-                      type="tel"
-                      inputMode="numeric"
-                      pattern="\d*"
-                      maxLength={1}
-                      className="w-full text-center text-xl p-2 border rounded-md focus:ring-fuchsia-500 focus:border-fuchsia-500"
-                      value={d}
-                      onChange={(e) => handleOtpChangeAt(idx, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      aria-label={`OTP digit ${idx + 1}`}
-                      disabled={loading}
-                    />
-                  ))}
-                </div>
-                {/* Target phone info */}
-                <p className="mt-2 text-xs text-gray-500">Code sent to: <span className="font-medium">{maskPhone(effectivePhone || phoneNumber) || '—'}</span></p>
-              </label>
-              <FormButton
-                disabled={otpDigits.join('').length !== 6 || loading}
-                ariaLabel={t('verifyOtp')}
-              >
-                {loading ? (
-                  <span className="flex items-center">
-                    <svg
-                      className="animate-spin h-5 w-5 mr-2 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v8z"
-                      ></path>
-                    </svg>
-                    {t('verifying')}
-                  </span>
-                ) : (
-                  t('verifyOtp')
-                )}
-              </FormButton>
-              <div className="flex justify-between items-center mt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep('request');
-                    setOtpDigits(['','','','','','']);
-                    setError('');
-                    setMessage('');
-                    if (resendTimer) clearInterval(resendTimer);
-                    setResendCooldown(0);
-                    setResendAttempts(0);
-                  }}
-                  className="text-fuchsia-700 hover:underline text-xs font-medium"
-                  disabled={loading}
-                  aria-label={t('backToPhone')}
-                >
-                  &larr; {t('backToPhone')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { if (resendCooldown === 0) requestOtpDirect(); }}
-                  disabled={resendCooldown > 0 || loading}
-                  className="text-fuchsia-700 hover:underline text-xs font-medium disabled:opacity-50"
-                  aria-label={t('resendOtp')}
-                >
-                  {resendCooldown > 0
-                    ? t('resendTimer', { seconds: resendCooldown })
-                    : t('resendOtp')}
-                </button>
-                <button
-                  type="button"
-                  onClick={pasteOtpFromClipboard}
-                  disabled={loading}
-                  className="text-fuchsia-700 hover:underline text-xs font-medium"
-                  aria-label="Paste code from clipboard"
-                >
-                  Paste code
-                </button>
-              </div>
-            </form>
+          {step === 'request' ? (
+            <RequestOtpForm
+              phoneNumber={phoneNumber}
+              setPhoneNumber={setPhoneNumber}
+              handleRequestOtp={handleRequestOtp}
+              loading={loading}
+              error={error}
+              t={t}
+            />
+          ) : (
+            <VerifyOtpForm
+              handleLoginWithOtp={handleLoginWithOtp}
+              loading={loading}
+              effectivePhone={effectivePhone}
+              resendCooldown={resendCooldown}
+              requestOtpDirect={requestOtpDirect}
+              handleBack={handleBackToRequest}
+              maskPhone={maskPhone}
+              t={t}
+              otpInput={otpInput}
+            />
           )}
         </div>
       </div>

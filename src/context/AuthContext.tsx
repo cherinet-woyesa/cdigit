@@ -20,10 +20,11 @@ interface AuthContextType {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
-    login: (jwtToken: string) => void;
+    login: (jwtToken: string, userData?: Partial<User>) => void;
     logout: () => void;
     loading: boolean;
     updateAssignedWindow: (window: Window | null) => void;
+    updateUserBranch: (branchId: string) => void;
     phone: string | null;
     setPhone: (newPhone: string | null) => void;
 }
@@ -69,24 +70,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
     }, []);
 
-    const login = (jwtToken: string) => {
+    const login = (jwtToken: string, userData?: Partial<User>) => {
         const base64Url = jwtToken.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const decodedPayload = JSON.parse(window.atob(base64));
 
-        console.log('Decoded JWT Payload:', decodedPayload); // Log the decoded payload
+        console.log('Decoded JWT Payload:', decodedPayload);
 
         const [firstName, lastName] = (decodedPayload.unique_name || ' ').split(' ');
-        let userRole = decodedPayload.role;
+        const userRole = decodedPayload.role || userData?.role || 'Customer';
+        const branchId = decodedPayload.BranchId || userData?.branchId;
 
         const userPayload: User = {
-            id: decodedPayload.nameid,
-            email: decodedPayload.email,
+            id: decodedPayload.nameid || userData?.id || '',
+            email: decodedPayload.email || userData?.email || '',
             role: userRole,
-            firstName: firstName,
-            lastName: lastName,
-            branchId: decodedPayload.BranchId ? decodedPayload.BranchId : undefined,
-            assignedWindow: null
+            firstName: firstName || userData?.firstName || '',
+            lastName: lastName || userData?.lastName || '',
+            branchId: branchId,
+            assignedWindow: userData?.assignedWindow || null
         };
 
         localStorage.setItem('token', jwtToken);
@@ -99,33 +101,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('phone');
-        setToken(null);
+        localStorage.removeItem('lastActiveBranchId');
         setUser(null);
-        setPhone(null);
+        setToken(null);
+        setPhoneState(null);
     };
 
     const updateAssignedWindow = (window: Window | null) => {
-        setUser(prevUser => {
-            if (!prevUser) return null;
-            const updatedUser = { ...prevUser, assignedWindow: window };
+        if (user) {
+            const updatedUser = { ...user, assignedWindow: window };
+            setUser(updatedUser);
             localStorage.setItem('user', JSON.stringify(updatedUser));
-            return updatedUser;
-        });
+        }
     };
 
-    const value = {
-        user,
-        token,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        loading,
-        updateAssignedWindow,
-        phone,
-        setPhone
+    // Update user data when branch is selected
+    const updateUserBranch = (branchId: string) => {
+        if (user) {
+            const updatedUser = { ...user, branchId };
+            setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            localStorage.setItem('lastActiveBranchId', branchId);
+        }
     };
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={{
+            user,
+            token,
+            isAuthenticated: !!user,
+            login,
+            logout,
+            loading,
+            updateAssignedWindow,
+            updateUserBranch,
+            phone,
+            setPhone
+        }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
 export const useAuth = () => {

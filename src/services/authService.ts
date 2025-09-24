@@ -3,21 +3,31 @@ import axios from 'axios';
 const API_BASE_URL = 'http://localhost:5268/api';
 
 // Generic backend API response shape
-type ApiResponse<T> = {
+interface ApiResponse<T> {
     success: boolean;
     message: string;
     data: T;
-};
+}
 
-interface LoginResponse {
+export interface LoginResponse {
     message: string;
     token?: string;
     role?: string;
+    userId?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    branchId?: string;
+    accounts?: Array<{
+        accountNumber: string;
+        accountType: string;
+        balance: number;
+    }>;
 }
 
-interface RegisterResponse {}
+export interface RegisterResponse {}
 
-interface RequestOtpResponse {
+export interface RequestOtpResponse {
     message: string;
     accounts?: any[];
 }

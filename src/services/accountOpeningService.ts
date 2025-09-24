@@ -189,8 +189,49 @@ export const saveDigitalSignature = async (data: any): Promise<IdResponse> => {
 /**
  * Submits the entire application after all steps are completed.
  * @param customerId The ID of the customer application to submit.
- * @returns A promise that resolves on successful submission.
+ * @returns A promise that resolves with the API response on successful submission.
+ * @throws {Error} If the submission fails or returns an error.
  */
-export const submitApplication = async (customerId: number): Promise<void> => {
-    await api.post(`/submit/${customerId}`);
+export const submitApplication = async (customerId: number): Promise<any> => {
+    try {
+        console.log(`Submitting application for customer ID: ${customerId}`);
+        const response = await api.post(`/submit/${customerId}`);
+        
+        // Log the full response for debugging
+        console.log('Submit application response:', response);
+        
+        // Check if the response indicates success
+        if (response.status >= 200 && response.status < 300) {
+            return response.data; // Return the full response data
+        } else {
+            // Handle non-2xx responses
+            throw new Error(`Server returned status ${response.status}: ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('Error in submitApplication:', error);
+        
+        // Extract more detailed error information if available
+        if (axios.isAxiosError(error)) {
+            const errorMessage = error.response?.data?.message || 
+                               error.response?.data?.error || 
+                               error.message || 
+                               'Failed to submit application';
+            
+            // Log more details for debugging
+            console.error('Error details:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                },
+            });
+            
+            throw new Error(`Submission failed: ${errorMessage}`);
+        }
+        
+        // Re-throw with a generic message if we can't extract more details
+        throw new Error('An unknown error occurred while submitting the application');
+    }
 };

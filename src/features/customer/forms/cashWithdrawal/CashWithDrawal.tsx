@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import Field from '../../../../components/Field';
-// Removed duplicate import
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
-import authService from '../../../../services/authService';
+import { requestWithdrawalOtp, verifyWithdrawalOtp } from '../../../../services/withdrawalService';
+import { useTranslation } from 'react-i18next';
+import { SpeakerWaveIcon } from '@heroicons/react/24/solid';
 
 // Removed unused API_BASE_URL
 
@@ -18,6 +19,7 @@ type FormData = {
 type Errors = Partial<Record<keyof FormData, string>> & { message?: string; otp?: string };
 
 export default function CashWithdrawalForm() {
+    const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const { phone } = useAuth();
     const { accounts, accountDropdown, loadingAccounts } = useUserAccounts();
@@ -28,7 +30,7 @@ export default function CashWithdrawalForm() {
         otp: '',
     });
     const [errors, setErrors] = useState<Errors>({});
-    const [isLoading, setIsLoading] = useState(false);
+    // Removed unused isLoading state
     const [step, setStep] = useState(1);
     const [otpLoading, setOtpLoading] = useState(false);
     const [otpMessage, setOtpMessage] = useState('');
@@ -36,6 +38,15 @@ export default function CashWithdrawalForm() {
     const [resendCooldown, setResendCooldown] = useState(0);
     const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
     const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
+
+    // Speech synthesis utility
+    const speak = (text: string) => {
+        if ('speechSynthesis' in window) {
+            const utterance = new window.SpeechSynthesisUtterance(text);
+            utterance.lang = i18n.language === 'am' ? 'am-ET' : 'en-US';
+            window.speechSynthesis.speak(utterance);
+        }
+    };
 
     useEffect(() => {
         if (!loadingAccounts && accounts.length > 0) {
@@ -74,13 +85,13 @@ export default function CashWithdrawalForm() {
             }
         }
         setFormData(newFormData);
-    }; // Added closing curly brace for handleChange function
+    };
 
     const validateAll = (): boolean => {
         const errs: Errors = {};
-        if (!formData.accountNumber) errs.accountNumber = "Account number is required.";
-        if (!formData.accountHolderName) errs.accountHolderName = "Account holder name is required.";
-        if (!formData.amount || Number(formData.amount) <= 0) errs.amount = "A valid amount is required.";
+        if (!formData.accountNumber) errs.accountNumber = t('accountNumberRequired', 'Account number is required.');
+        if (!formData.accountHolderName) errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required.');
+        if (!formData.amount || Number(formData.amount) <= 0) errs.amount = t('validAmountRequired', 'A valid amount is required.');
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -99,99 +110,120 @@ export default function CashWithdrawalForm() {
             return;
         }
         try {
-            // Use backend OTP request (like OTPLogin)
-            const response = await authService.requestOtp(phone);
-            setOtpMessage(response.message || 'OTP sent to your phone.');
-            setStep(2);
-            // Start resend cooldown
-            setResendCooldown(30);
-            const timer = setInterval(() => {
-                setResendCooldown(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-            setResendTimer(timer);
+            const response = await requestWithdrawalOtp(phone);
+            if (response.success) {
+                setOtpMessage(response.message || 'OTP sent to your phone.');
+                setStep(2);
+                // Start resend cooldown
+                setResendCooldown(30);
+                const timer = setInterval(() => {
+                    setResendCooldown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                setResendTimer(timer);
+            } else {
+                setOtpError(response.message || 'Failed to send OTP.');
+            }
         } catch (err: any) {
-            setOtpError(err?.response?.data?.message || 'Failed to send OTP.');
+            setOtpError(err?.message || 'Failed to send OTP.');
         } finally {
             setOtpLoading(false);
         }
     };
 
-    // Step 2: Just check OTP format and proceed to confirmation
-    const handleStep2Next = (e: React.FormEvent) => {
+    // Step 2: Verify OTP with backend before proceeding
+    const handleStep2Next = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.otp || formData.otp.length !== 6) {
             setErrors({ otp: 'Please enter the 6-digit OTP sent to your phone.' });
             return;
         }
+        if (!phone) {
+            setErrors({ otp: 'Phone number is missing. Please log in again.' });
+            return;
+        }
         setErrors({});
-        setStep(3);
+        setOtpLoading(true);
+        try {
+            const response = await verifyWithdrawalOtp(phone, formData.otp);
+            if (response.success && response.data?.isVerified) {
+                setStep(3);
+            } else {
+                setErrors({ otp: response.message || 'Invalid OTP. Please try again.' });
+            }
+        } catch (err: any) {
+            setErrors({ otp: err?.message || 'Failed to verify OTP. Please try again.' });
+        } finally {
+            setOtpLoading(false);
+        }
     };
 
-    // Step 3: Confirm and submit withdrawal (backend validates OTP)
-    const handleSubmitWithdrawal = async (e: React.FormEvent) => {
+    // Step 3: Only navigate to confirmation page, do not send withdrawal request here
+    const handleSubmitWithdrawal = (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
         setErrors({});
-        try {
-            const withdrawalReq = {
-                phoneNumber: phone,
-                branchId: ABIY_BRANCH_ID,
-                accountNumber: formData.accountNumber,
-                accountHolderName: formData.accountHolderName,
-                withdrawal_Amount: Number(formData.amount),
-                OtpCode: formData.otp,
-            };
-            // Backend will validate OTP here
-            navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', { state: { pending: true, requestPayload: withdrawalReq, ui: { ...formData } } });
-        } catch (err: any) {
-            setErrors({ message: err?.message || 'Failed to submit withdrawal.' });
-        } finally {
-            setIsLoading(false);
-        }
+        const withdrawalReq = {
+            phoneNumber: phone,
+            branchId: ABIY_BRANCH_ID,
+            accountNumber: formData.accountNumber,
+            accountHolderName: formData.accountHolderName,
+            withdrawal_Amount: Number(formData.amount),
+            // OtpCode removed: OTP already verified in step 2
+        };
+        navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', { state: { pending: true, requestPayload: withdrawalReq, ui: { ...formData } } });
     };
 
     // Step 1 UI
     const renderStep1 = () => (
         <form onSubmit={handleStep1Next} className="space-y-6">
             <div className="p-4 border rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Account Information</h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-fuchsia-700">{t('accountInformation', 'Account Information')}</h2>
+                    <button type="button" onClick={() => speak(t('accountInformation', 'Account Information'))} className="ml-2 p-1 rounded-full bg-fuchsia-100 hover:bg-fuchsia-200">
+                        <SpeakerWaveIcon className="h-5 w-5 text-fuchsia-700" />
+                    </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Field label="Account Number" required error={errors.accountNumber}>
+                    <Field label={t('accountNumber', 'Account Number')} required error={errors.accountNumber}>
                         {accountDropdown ? (
                             <select name="accountNumber" value={formData.accountNumber} onChange={handleChange} className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm">
-                                <option value="">Select your account</option>
+                                <option value="">{t('selectAccount', 'Select your account')}</option>
                                 {accounts.map(acc => <option key={acc.accountNumber} value={acc.accountNumber}>{acc.accountNumber} - {acc.accountHolderName}</option>)}
                             </select>
                         ) : (
                             <input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} readOnly={accounts.length === 1} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" />
                         )}
                     </Field>
-                    <Field label="Account Holder Name" required error={errors.accountHolderName}>
+                    <Field label={t('accountHolderName', 'Account Holder Name')} required error={errors.accountHolderName}>
                         <input type="text" name="accountHolderName" value={formData.accountHolderName} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" />
                     </Field>
                 </div>
             </div>
             <div className="p-4 border rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Amount Information</h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-fuchsia-700">{t('amountInformation', 'Amount Information')}</h2>
+                    <button type="button" onClick={() => speak(t('amountInformation', 'Amount Information'))} className="ml-2 p-1 rounded-full bg-fuchsia-100 hover:bg-fuchsia-200">
+                        <SpeakerWaveIcon className="h-5 w-5 text-fuchsia-700" />
+                    </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Field label="Amount" required error={errors.amount}>
+                    <Field label={t('amount', 'Amount')} required error={errors.amount}>
                         <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" />
                     </Field>
                 </div>
             </div>
             <div className="pt-4">
-                <button type="submit" disabled={isLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50">
-                    {isLoading ? 'Processing...' : 'Continue'}
+                <button type="submit" disabled={otpLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50">
+                    {otpLoading ? t('processing', 'Processing...') : t('continue', 'Continue')}
                 </button>
             </div>
         </form>
-    ); // Removed the extra closing parenthesis that was here.
+    );
 
     // Step 2 UI
     const renderStep2 = () => (
@@ -215,11 +247,12 @@ export default function CashWithdrawalForm() {
                             setOtpLoading(true);
                             try {
                                 if (!phone) {
-                                    setOtpError('Phone number is missing. Please log in again.');
-                                    setOtpLoading(false);
-                                    return;
-                                }
-                                const response = await authService.requestOtp(phone);
+                                setOtpError('Phone number is missing. Please log in again.');
+                                setOtpLoading(false);
+                                return;
+                            }
+                            const response = await requestWithdrawalOtp(phone);
+                            if (response.success) {
                                 setOtpMessage(response.message || 'OTP resent.');
                                 setResendCooldown(30);
                                 const timer = setInterval(() => {
@@ -232,6 +265,9 @@ export default function CashWithdrawalForm() {
                                     });
                                 }, 1000);
                                 setResendTimer(timer);
+                            } else {
+                                setOtpError(response.message || 'Failed to resend OTP.');
+                            }
                             } catch (err: any) {
                                 setOtpError(err?.response?.data?.message || 'Failed to resend OTP.');
                             } finally {
@@ -260,7 +296,7 @@ export default function CashWithdrawalForm() {
             </div>
             <div className="flex gap-4">
                 <button type="button" onClick={() => setStep(2)} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">Back</button>
-                <button type="submit" disabled={isLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">{isLoading ? 'Processing...' : 'Confirm & Withdraw'}</button>
+                <button type="submit" className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">Confirm & Withdraw</button>
             </div>
         </form>
     );

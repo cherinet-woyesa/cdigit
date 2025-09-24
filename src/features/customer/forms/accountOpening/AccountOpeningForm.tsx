@@ -211,21 +211,36 @@ export function AccountOpeningForm() {
         if (!formData.customerId) {
             setErrors((prev) => ({
                 ...prev,
-                apiError: "Could not submit application: Customer ID is missing.",
+                apiError: "Could not submit application: Customer ID is missing. Please complete all previous steps first.",
             }));
             return;
         }
+        
         setSubmitting(true);
+        setErrors(prev => ({ ...prev, apiError: undefined }));
+        
         try {
+            console.log("Submitting application for customer ID:", formData.customerId);
+            
+            // Submit the application and proceed to success screen on success
             await accountOpeningService.submitApplication(formData.customerId);
             console.log("Application submitted successfully!");
-            next(); // Go to success screen
+            
+            // Proceed to success screen
+            next();
         } catch (error) {
             console.error("Failed to submit application:", error);
+            const errorMessage = error instanceof Error 
+                ? `Failed to submit the application: ${error.message}` 
+                : "An unknown error occurred while submitting the application.";
+                
             setErrors((prev) => ({
                 ...prev,
-                apiError: "Failed to submit the application. Please try again.",
+                apiError: errorMessage,
             }));
+            
+            // Optionally, you could add automatic retry logic here
+            // or provide more specific error messages based on error type/status
         } finally {
             setSubmitting(false);
         }
