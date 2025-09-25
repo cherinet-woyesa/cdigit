@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import Field from '../../../../components/Field';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
-import { requestWithdrawalOtp, verifyWithdrawalOtp } from '../../../../services/withdrawalService';
+import { requestWithdrawalOtp } from '../../../../services/withdrawalService';
 import { useTranslation } from 'react-i18next';
 import { SpeakerWaveIcon } from '@heroicons/react/24/solid';
 
@@ -137,30 +137,13 @@ export default function CashWithdrawalForm() {
     };
 
     // Step 2: Verify OTP with backend before proceeding
-    const handleStep2Next = async (e: React.FormEvent) => {
+    const handleStep2Next = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.otp || formData.otp.length !== 6) {
             setErrors({ otp: 'Please enter the 6-digit OTP sent to your phone.' });
             return;
         }
-        if (!phone) {
-            setErrors({ otp: 'Phone number is missing. Please log in again.' });
-            return;
-        }
-        setErrors({});
-        setOtpLoading(true);
-        try {
-            const response = await verifyWithdrawalOtp(phone, formData.otp);
-            if (response.success && response.data?.isVerified) {
-                setStep(3);
-            } else {
-                setErrors({ otp: response.message || 'Invalid OTP. Please try again.' });
-            }
-        } catch (err: any) {
-            setErrors({ otp: err?.message || 'Failed to verify OTP. Please try again.' });
-        } finally {
-            setOtpLoading(false);
-        }
+        setStep(3);
     };
 
     // Step 3: Only navigate to confirmation page, do not send withdrawal request here
@@ -173,7 +156,7 @@ export default function CashWithdrawalForm() {
             accountNumber: formData.accountNumber,
             accountHolderName: formData.accountHolderName,
             withdrawal_Amount: Number(formData.amount),
-            // OtpCode removed: OTP already verified in step 2
+            OtpCode: formData.otp,
         };
         navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', { state: { pending: true, requestPayload: withdrawalReq, ui: { ...formData } } });
     };

@@ -201,63 +201,7 @@ export async function requestWithdrawalOtp(phoneNumber: string): Promise<OtpRequ
   }
 }
 
-export async function verifyWithdrawalOtp(phoneNumber: string, otp: string): Promise<OtpVerificationResponse> {
-  try {
-    // Ensure OTP is 6 digits
-    const otpCode = otp.trim();
-    if (!/^\d{6}$/.test(otpCode)) {
-      throw new Error('OTP code must be exactly 6 digits');
-    }
 
-    // Verify the OTP
-    const verifyResponse = await fetch(`${AUTH_API_URL}/verify-otp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        phoneNumber, 
-        otp: otpCode,
-        OtpCode: otpCode, // Some APIs might expect this exact casing
-      }),
-    });
-
-    const verifyData = await verifyResponse.json().catch(() => ({
-      success: false,
-      message: 'Invalid response from server',
-    }));
-
-    if (!verifyResponse.ok) {
-      // If there are validation errors, format them properly
-      if (verifyData?.errors) {
-        const errorMessages = Object.values(verifyData.errors).flat().join(' ');
-        throw new Error(errorMessages || 'Validation failed');
-      }
-      throw new Error(verifyData?.message || 'Failed to verify OTP');
-    }
-
-    // If we reach here, OTP is verified successfully
-    // No need for additional authentication since we're just verifying the OTP for withdrawal
-    return {
-      success: true,
-      message: verifyData.message || 'OTP verified successfully',
-      data: {
-        isVerified: true,
-        // Include the OTP in the response so we can use it for the withdrawal
-        otp: otpCode,
-      },
-    };
-  } catch (error: any) {
-    console.error('Error during OTP verification:', error);
-    return {
-      success: false,
-      message: error.message || 'Failed to verify OTP',
-      data: {
-        isVerified: false,
-      },
-    };
-  }
-}
 
 export async function cancelWithdrawalByCustomer(id: string): Promise<CancelWithdrawalResponse> {
   try {
