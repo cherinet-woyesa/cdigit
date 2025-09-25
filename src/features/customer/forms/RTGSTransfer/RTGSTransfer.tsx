@@ -265,19 +265,30 @@ export default function RTGSTransferForm() {
     const requiredFields: (keyof FormData)[] = [
       'orderingAccountNumber', 'orderingCustomerName', 'beneficiaryBank',
       'beneficiaryBranch', 'beneficiaryAccountNumber', 'beneficiaryName',
-      'transferAmount', 'paymentNarrative', 'digitalSignature'
+      'transferAmount', 'paymentNarrative', 'digitalSignature', 'otpCode'
     ];
 
+    // Check each required field
     requiredFields.forEach(field => {
-      if (!formData[field]) {
+      const value = formData[field];
+      if (!value) {
         const fieldName = field.split(/(?=[A-Z])/).join(' ');
         errs[field] = `${fieldName} is required.`;
+        console.log(`Validation failed - ${field} is required`);
+      } else {
+        console.log(`Field ${field} has value:`, value);
       }
     });
 
     // Phone number validation (if provided)
-    if (formData.customerTelephone && !/^\d{9,12}$/.test(formData.customerTelephone)) {
-      errs.customerTelephone = 'Please enter a valid phone number (9-12 digits)';
+    if (formData.customerTelephone) {
+      const digitsOnly = formData.customerTelephone.replace(/\D/g, '');
+      if (digitsOnly.length < 9 || digitsOnly.length > 12) {
+        errs.customerTelephone = 'Please enter a valid phone number (9-12 digits)';
+        console.log('Validation failed - Invalid phone number format');
+      }
+    } else {
+      console.log('No customer telephone provided');
     }
 
     // Transfer amount validation
@@ -285,30 +296,76 @@ export default function RTGSTransferForm() {
       const amount = parseFloat(formData.transferAmount);
       if (isNaN(amount) || amount <= 0) {
         errs.transferAmount = 'Please enter a valid amount';
+        console.log('Validation failed - Invalid transfer amount');
       }
+    } else {
+      console.log('No transfer amount provided');
     }
 
     // Payment narrative validation
-    if (formData.paymentNarrative && (formData.paymentNarrative.length < 10 || formData.paymentNarrative.length > 200)) {
-      errs.paymentNarrative = 'Payment narrative must be between 10 and 200 characters';
+    if (formData.paymentNarrative) {
+      if (formData.paymentNarrative.length < 10 || formData.paymentNarrative.length > 200) {
+        errs.paymentNarrative = 'Payment narrative must be between 10 and 200 characters';
+        console.log('Validation failed - Payment narrative length invalid');
+      }
+    } else {
+      console.log('No payment narrative provided');
+    }
+
+    // OTP validation
+    if (!formData.otpCode) {
+      errs.otpCode = 'OTP code is required';
+      console.log('Validation failed - OTP code is required');
+    }
+
+    // Digital signature validation
+    if (!formData.digitalSignature) {
+      errs.digitalSignature = 'Digital signature is required';
+      console.log('Validation failed - Digital signature is required');
+    }
+
+    // Log all validation errors
+    const errorCount = Object.keys(errs).length;
+    if (errorCount > 0) {
+      console.group('Form Validation Errors');
+      console.log('Total errors:', errorCount);
+      Object.entries(errs).forEach(([field, error]) => {
+        console.log(`- ${field}: ${error}`);
+      });
+      console.groupEnd();
+    } else {
+      console.log('Form validation passed');
     }
 
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    return errorCount === 0;
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!validateAll()) return;
+    
+    // Validate form
+    if (!validateAll()) {
+      console.log('Form validation failed');
+      return;
+    }
     
     setIsSubmitting(true);
+    console.log('Starting form submission...');
     
     try {
+      // Verify OTP if not already verified
       if (!otpVerified) {
+        console.log('OTP not verified, attempting verification...');
         await handleVerifyOtp();
-        if (!otpVerified) throw new Error('OTP not verified');
+        if (!otpVerified) {
+          console.error('OTP verification failed');
+          throw new Error('OTP verification failed. Please try again.');
+        }
+        console.log('OTP verified successfully');
       }
-      // Build backend payload and submit
+      
+      // Build backend payload
       const payload = {
         BranchId: ABIY_BRANCH_ID,
         OrderingAccountNumber: formData.orderingAccountNumber,
@@ -322,18 +379,36 @@ export default function RTGSTransferForm() {
         DigitalSignature: formData.digitalSignature,
         OtpCode: formData.otpCode,
       };
+      
+      console.log('Submitting payload to backend:', JSON.stringify(payload, null, 2));
 
+      // Submit to backend
       const res = await submitRtgsTransfer(payload);
+      console.log('Backend response:', res);
+      
       if (!res?.success) {
-        throw new Error(res?.message || 'Failed to submit RTGS transfer');
+        const errorMessage = res?.message || 'Failed to submit RTGS transfer';
+        console.error('Backend error:', errorMessage);
+        throw new Error(errorMessage);
       }
 
+      console.log('Transfer submitted successfully, navigating to confirmation');
       navigate('/form/rtgs-transfer/confirmation', { state: { api: res.data } });
-    } catch (error) {
-      console.error('Error submitting form:', error);
+    } catch (error: any) {
+      console.error('Error in handleSubmit:', error);
+      const errorMessage = error?.response?.data?.message || 
+                         error?.message || 
+                         'An unexpected error occurred. Please try again.';
+      
+      console.error('Error details:', {
+        message: errorMessage,
+        status: error?.response?.status,
+        data: error?.response?.data
+      });
+      
       setErrors(prev => ({
         ...prev,
-        submit: 'Failed to submit the form. Please try again.'
+        submit: errorMessage
       }));
     } finally {
       setIsSubmitting(false);

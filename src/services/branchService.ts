@@ -8,7 +8,17 @@ export interface Branch {
   code: string;
   location?: string;
   status: string;
+  qrCode: string;
   isActive?: boolean;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  phone?: string;
+  workingHours?: string;
+  email?: string;
+  managerName?: string;
+  services?: string[];
+  lastUpdated?: string;
 }
 
 const API_BASE_URL = 'http://localhost:5268/api';

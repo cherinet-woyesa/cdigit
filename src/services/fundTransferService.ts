@@ -33,15 +33,40 @@ export const submitFundTransfer = async (data: {
     BranchId: data.branchId,
     DebitAccountNumber: data.debitAccountNumber,
     BeneficiaryAccountNumber: data.creditAccountNumber,
-    TransferAmount: data.amount,
+    TransferAmount: Number(data.amount),
     Reason: data.remark ?? '',
     OtpCode: data.otp,
   };
-  const res = await axios.post(`${API_BASE_URL}/FundTransfer/Submit`, payload);
+  const res = await axios.post(`${API_BASE_URL}/FundTransfer/submit`, payload);
   return res.data?.data ?? res.data;
 };
 
 export const cancelFundTransferByCustomer = async (id: string): Promise<any> => {
   const res = await axios.put(`${API_BASE_URL}/FundTransfer/cancel-by-customer/${id}`);
+  return res.data;
+};
+
+export const updateFundTransfer = async (
+  id: string,
+  data: {
+    phoneNumber?: string;
+    branchId: string;
+    debitAccountNumber: string;
+    creditAccountNumber: string;
+    amount: string | number;
+    remark?: string;
+    otp: string;
+  }
+) => {
+  const payload = {
+    PhoneNumber: data.phoneNumber,
+    BranchId: data.branchId,
+    DebitAccountNumber: data.debitAccountNumber,
+    BeneficiaryAccountNumber: data.creditAccountNumber,
+    TransferAmount: Number(data.amount),
+    Reason: data.remark ?? '',
+    OtpCode: data.otp,
+  };
+  const res = await axios.put(`${API_BASE_URL}/FundTransfer/${id}`, payload);
   return res.data;
 };

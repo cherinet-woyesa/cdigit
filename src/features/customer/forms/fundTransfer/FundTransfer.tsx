@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import Field from '../../../../components/Field';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import { sendFundTransferOTP, submitFundTransfer } from '../../../../services/fundTransferService';
+import { sendFundTransferOTP, submitFundTransfer, updateFundTransfer } from '../../../../services/fundTransferService';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 
 const API_BASE_URL = 'http://localhost:5268/api';
@@ -13,6 +13,7 @@ const API_BASE_URL = 'http://localhost:5268/api';
 export default function FundTransfer() {
     const { phone } = useAuth();
     const navigate = useNavigate();
+    const { state } = useLocation() as { state?: any };
     const { accounts, accountDropdown, loadingAccounts } = useUserAccounts();
 
     const [formData, setFormData] = useState({
@@ -28,6 +29,7 @@ export default function FundTransfer() {
     const [errors, setErrors] = useState<any>({});
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState(1);
+    const [updateId, setUpdateId] = useState<string | null>(null);
     const [otpLoading, setOtpLoading] = useState(false);
     const [otpMessage, setOtpMessage] = useState('');
     const [otpError, setOtpError] = useState('');
@@ -37,6 +39,19 @@ export default function FundTransfer() {
     const branchInfo = { name: 'Ayer Tena Branch', id: 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6', date: new Date().toLocaleDateString() };
 
     useEffect(() => {
+        if (state?.updateId) {
+            setUpdateId(state.updateId as string);
+            const fd = state.formData || {};
+            setFormData(prev => ({
+                ...prev,
+                debitAccountNumber: fd.debitAccountNumber || state?.debitAccountNumber || prev.debitAccountNumber,
+                debitAccountName: prev.debitAccountName,
+                creditAccountNumber: fd.creditAccountNumber || state?.creditAccountNumber || prev.creditAccountNumber,
+                creditAccountName: fd.creditAccountName || state?.creditAccountName || prev.creditAccountName,
+                amount: fd.amount ? String(fd.amount) : (state?.amount ? String(state.amount) : prev.amount),
+            }));
+            setStep(3);
+        }
         if (!loadingAccounts && accounts.length > 0) {
             // Try to restore from localStorage
             const saved = localStorage.getItem('selectedDebitAccount');
@@ -162,8 +177,21 @@ export default function FundTransfer() {
         setErrors({});
         try {
             const payload = { ...formData, phoneNumber: phone || '', branchId: branchInfo.id };
-            const res = await submitFundTransfer(payload);
-            navigate('/fund-transfer-confirmation', { state: { ...res, ...formData } });
+            if (updateId) {
+                const res = await updateFundTransfer(updateId, {
+                    phoneNumber: phone || '',
+                    branchId: branchInfo.id,
+                    debitAccountNumber: formData.debitAccountNumber,
+                    creditAccountNumber: formData.creditAccountNumber,
+                    amount: formData.amount,
+                    remark: undefined,
+                    otp: formData.otp,
+                });
+                navigate('/fund-transfer-confirmation', { state: { api: res } });
+            } else {
+                const res = await submitFundTransfer(payload);
+                navigate('/fund-transfer-confirmation', { state: { api: res, ...formData } });
+            }
         } catch (err: any) { setErrors({ submit: err?.response?.data?.message || 'Submission failed' }); }
         setIsLoading(false);
     };

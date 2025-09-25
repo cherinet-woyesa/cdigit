@@ -36,8 +36,54 @@ export type RtgsTransferResponseDto = {
 export type ApiResponse<T> = { success: boolean; message?: string; data?: T };
 
 export async function submitRtgsTransfer(payload: RtgsTransferRequestDto): Promise<ApiResponse<RtgsTransferResponseDto>> {
-  const res = await axios.post(`${API_BASE_URL}/RtgsTransfer/submit`, payload);
-  return res.data;
+  try {
+    console.log(`Sending RTGS transfer request to: ${API_BASE_URL}/RtgsTransfer/submit`);
+    const res = await axios.post(`${API_BASE_URL}/RtgsTransfer/submit`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 30000, // 30 seconds timeout
+      validateStatus: (status) => status < 500, // Don't throw for 4xx errors
+    });
+    
+    console.log('RTGS transfer response status:', res.status);
+    
+    if (!res.data) {
+      console.error('Empty response from server');
+      throw new Error('Empty response from server');
+    }
+    
+    return res.data;
+  } catch (error: any) {
+    console.error('Error in submitRtgsTransfer:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      code: error.code,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        data: error.config?.data,
+      },
+    });
+    
+    // Handle different types of errors
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      throw {
+        ...error,
+        message: error.response.data?.message || 'Server responded with an error',
+        status: error.response.status,
+      };
+    } else if (error.request) {
+      // The request was made but no response was received
+      throw new Error('No response received from server. Please check your connection.');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      throw new Error(`Request failed: ${error.message}`);
+    }
+  }
 }
 
 export async function getRtgsTransferById(id: string): Promise<ApiResponse<RtgsTransferResponseDto>> {

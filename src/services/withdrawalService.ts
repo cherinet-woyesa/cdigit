@@ -13,7 +13,7 @@ export interface OtpVerificationResponse {
   data?: {
     isVerified: boolean;
     token?: string;
-    otp?: string; // Add this line to include otp in the response data
+    otp?: string;
   };
 }
 
@@ -21,8 +21,26 @@ export interface WithdrawalUpdateDto {
   withdrawal_Amount?: number;
   remark?: string;
   status?: string;
-  // Add other updatable fields as needed
 }
+
+export interface WithdrawalResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+export interface WithdrawalRequest {
+  phoneNumber: string;
+  branchId: string;
+  accountNumber: string | number;
+  accountHolderName: string;
+  withdrawal_Amount: number;
+  remark?: string;
+  otpCode?: string; // Changed from OtpCode to otpCode (camelCase)
+}
+
+const API_BASE_URL = 'http://localhost:5268/api/Withdrawal';
+const AUTH_API_URL = 'http://localhost:5268/api/Auth';
 
 export async function updateWithdrawal(id: string, data: WithdrawalUpdateDto): Promise<WithdrawalResponse> {
   const response = await fetch(`${API_BASE_URL}/${id}`, {
@@ -43,7 +61,6 @@ export async function updateWithdrawal(id: string, data: WithdrawalUpdateDto): P
     throw new Error(message);
   }
 
-  // Handle wrapped responses: { success, message, data }
   if (typeof json === 'object' && json !== null && 'success' in json) {
     if ((json as any).success === false) {
       throw new Error((json as any).message || 'Withdrawal update failed');
@@ -59,40 +76,8 @@ export async function updateWithdrawal(id: string, data: WithdrawalUpdateDto): P
     data: json
   };
 }
-// src/services/withdrawalService.ts
 
-const API_BASE_URL = 'http://localhost:5268/api/Withdrawal';
-const AUTH_API_URL = 'http://localhost:5268/api/Auth';
-
-export interface WithdrawalRequest {
-  phoneNumber: string;
-  branchId: string; // Guid as string
-  accountNumber: string | number; // long on backend
-  accountHolderName: string;
-  withdrawal_Amount: number; // will map to Withdrawal_Amount
-  remark?: string;
-  OtpCode: string;
-}
-
-export interface WithdrawalResponse {
-  success: boolean;
-  message: string;
-  data?: {
-    id: string;
-    branchId: string;
-    formReferenceId: string;
-    accountNumber: string;
-    accountHolderName?: string;
-    withdrawal_Amount: number;
-    tokenNumber: string;
-    queueNumber: number;
-    remark?: string;
-    transactionType: string;
-    status: string;
-  };
-}
-
-export async function submitWithdrawal(data: WithdrawalRequest): Promise<WithdrawalResponse> {
+export async function submitWithdrawal(data: WithdrawalRequest, token?: string): Promise<WithdrawalResponse> {
   // Backend expects PascalCase keys per DTO
   const payload = {
     PhoneNumber: data.phoneNumber,
@@ -101,14 +86,22 @@ export async function submitWithdrawal(data: WithdrawalRequest): Promise<Withdra
     AccountHolderName: data.accountHolderName,
     Withdrawal_Amount: data.withdrawal_Amount,
     Remark: data.remark ?? '',
-    OtpCode: data.OtpCode,
+    OtpCode: data.otpCode, // FIXED: Changed from data.OtpCode to data.otpCode
   };
+
+  console.log('Submitting withdrawal with payload:', payload); // Debug log
+
+  const headers: any = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   const response = await fetch(`${API_BASE_URL}/Submit`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -177,7 +170,6 @@ export async function requestWithdrawalOtp(phoneNumber: string): Promise<OtpRequ
     }));
 
     if (!response.ok) {
-      // Handle 404 for no account found
       if (response.status === 404) {
         return {
           success: false,
@@ -200,8 +192,6 @@ export async function requestWithdrawalOtp(phoneNumber: string): Promise<OtpRequ
     };
   }
 }
-
-
 
 export async function cancelWithdrawalByCustomer(id: string): Promise<CancelWithdrawalResponse> {
   try {

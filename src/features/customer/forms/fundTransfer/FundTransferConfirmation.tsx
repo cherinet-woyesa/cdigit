@@ -62,7 +62,7 @@ export default function FundTransferConfirmation() {
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button onClick={() => navigate('/fund-transfer')} className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition">
+                    <button onClick={() => navigate('/form/fund-transfer')} className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition">
                         <ArrowPathIcon className="h-3.5 w-3.5" />
                         New
                     </button>
@@ -73,7 +73,17 @@ export default function FundTransferConfirmation() {
                     {entityId && (
                         <button
                             onClick={async () => {
-                                navigate('/fund-transfer', { state: { updateId: entityId } });
+                                navigate('/form/fund-transfer', {
+                                    state: {
+                                        updateId: entityId,
+                                        formData: {
+                                            debitAccountNumber: apiData?.DebitAccountNumber || apiData?.debitAccountNumber,
+                                            creditAccountNumber: apiData?.BeneficiaryAccountNumber || apiData?.creditAccountNumber,
+                                            creditAccountName: apiData?.BeneficiaryName || apiData?.beneficiaryName,
+                                            amount: apiData?.TransferAmount || apiData?.amount,
+                                        }
+                                    }
+                                });
                             }}
                             className="flex items-center justify-center gap-1 w-full bg-yellow-500 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-yellow-600 transition"
                         >
@@ -85,7 +95,7 @@ export default function FundTransferConfirmation() {
                             onClick={async () => {
                                 try {
                                     await cancelFundTransferByCustomer(entityId);
-                                    navigate('/fund-transfer', { state: { cancelled: true } });
+                                    navigate('/form/fund-transfer', { state: { cancelled: true } });
                                 } catch (e: any) {
                                     alert(e?.message || 'Failed to cancel fund transfer.');
                                 }

@@ -6,6 +6,7 @@ interface User {
     role: string;
     firstName: string;
     lastName: string;
+    token: string;
     branchId?: string;
     assignedWindow?: Window | null;
 }

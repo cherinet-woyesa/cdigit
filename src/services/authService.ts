@@ -57,7 +57,7 @@ interface AuthService {
     customerLogin: (email: string, password: string) => Promise<LoginResponse>;
     registerCustomer: (email: string, password: string, phoneNumber: string) => Promise<RegisterResponse>;
     requestOtp: (phoneNumber: string) => Promise<RequestOtpResponse>;
-    verifyOtp: (phoneNumber: string, otp: string) => Promise<VerifyOtpResponse>;
+    verifyOtp: (phoneNumber: string, otp: string, token?: string) => Promise<VerifyOtpResponse>;
 
     staffLogin: (email: string, password: string) => Promise<LoginResponse>;
     
@@ -114,9 +114,13 @@ const authService: AuthService = {
     },
 
     // Verify OTP for customer
-    verifyOtp: async (phoneNumber: string, otp: string) => {
+    verifyOtp: async (phoneNumber: string, otp: string, token?: string) => {
         try {
-            const response = await axios.post<ApiResponse<boolean>>(`${API_BASE_URL}/auth/verify-otp`, { PhoneNumber: phoneNumber, OtpCode: otp });
+            const headers: any = {};
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+            const response = await axios.post<ApiResponse<boolean>>(`${API_BASE_URL}/auth/verify-otp`, { PhoneNumber: phoneNumber, OtpCode: otp }, { headers });
             return {
                 verified: response.data.data === true,
                 message: response.data.message || 'OTP verification result',

@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { useAuth } from './context/AuthContext';
 import { useBranch } from './context/BranchContext';
 import OTPLogin from './features/auth/OTPLogin';
+import QRTestPage from './features/branch/QRTestPage';
+import QRCodeGenerator from './features/branch/QRCodeGenerator';
 import BranchSelectionEnhanced from './features/branch/BranchSelectionEnhanced';
 import StaffLogin from './features/auth/StaffLogin';
 import CashDeposit from './features/customer/forms/cashDeposit/CashDeposit';
@@ -245,6 +247,7 @@ function App() {
             <POSRequest />
           </ProtectedRoute>
         } />
+        <Route path="/qr-generator" element={<QRCodeGenerator />} />
         <Route path="/form/pos-request/confirmation" element={
           <ProtectedRoute>
             <POSRequestConfirmation />
@@ -293,6 +296,7 @@ function App() {
             <PettyCashForm />
           </ProtectedRoute>
         } />
+        <Route path="/qr-test" element={<QRTestPage />} />
         <Route path="/internal/petty-cash/confirmation" element={
           <ProtectedRoute role="internal">
             <PettyCashConfirmation />
