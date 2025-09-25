@@ -78,19 +78,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         console.log('Decoded JWT Payload:', decodedPayload);
 
-        const [firstName, lastName] = (decodedPayload.unique_name || ' ').split(' ');
-        const userRole = decodedPayload.role || userData?.role || 'Customer';
-        const branchId = decodedPayload.BranchId || userData?.branchId;
+        // FIX: Use the exact field names from your JWT payload
+        const accountHolderName = decodedPayload.unique_name || 'Customer';
+        const [firstName, ...lastNameParts] = accountHolderName.split(' ');
+        const lastName = lastNameParts.join(' ') || 'User';
+        
+        // FIX: For OTP login, role is always 'Customer'
+        const userRole = 'Customer';
+        
+        // FIX: Use AccountId instead of nameid (nameid doesn't exist in your JWT)
+        const userId = decodedPayload.AccountId || userData?.id || `cust_${Date.now()}`;
+        
+        // FIX: Email fallback
+        const userEmail = decodedPayload.email || userData?.email || `${userId}@cbe.et`;
 
         const userPayload: User = {
-            id: decodedPayload.nameid || userData?.id || '',
-            email: decodedPayload.email || userData?.email || '',
+            id: userId,
+            email: userEmail,
             role: userRole,
-            firstName: firstName || userData?.firstName || '',
-            lastName: lastName || userData?.lastName || '',
-            branchId: branchId,
+            token: jwtToken,
+            firstName: firstName || 'Customer',
+            lastName: lastName || 'User',
+            branchId: decodedPayload.BranchId || userData?.branchId,
             assignedWindow: userData?.assignedWindow || null
         };
+
+        console.log('Created User Payload:', userPayload);
 
         localStorage.setItem('token', jwtToken);
         localStorage.setItem('user', JSON.stringify(userPayload));

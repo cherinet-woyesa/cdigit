@@ -32,8 +32,6 @@ import TransactionHistory from './features/customer/TransactionHistory';
 import CbeBirrRegistrationConfirmation from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistrationConfirmation';
 import RTGSTransferConfirmation from './features/customer/forms/RTGSTransfer/RTGSTransferConfirmation';
 import EBankingConfirmation from './features/customer/forms/EBankingApplication/EBankingConfirmation';
-// import ChequeBookRequest from './features/customer/forms/chequeBookRequest/ChequeBookRequest';
-// import ChequeBookRequestConfirmation from './features/customer/forms/chequeBookRequest/ChequeBookRequestConfirmation';
 import POSRequest from './features/customer/forms/posRequest/POSRequest';
 import POSRequestConfirmation from './features/customer/forms/posRequest/POSRequestConfirmation';
 import StatementRequestForm from './features/customer/forms/statementRequest/StatementRequestForm';
@@ -86,8 +84,11 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
   return <>{children}</>;
 };
 
+// FIXED: DashboardRouter now handles Customer role properly
 const DashboardRouter: React.FC = () => {
   const { user } = useAuth();
+
+  console.log('DashboardRouter - User role:', user?.role); // Debug log
 
   if (user?.role === 'Admin') {
     return <AdminDashboard />;
@@ -98,8 +99,18 @@ const DashboardRouter: React.FC = () => {
   if (user?.role === 'Maker') {
     return <MakerDashboard />;
   }
+  if (user?.role === 'Customer' || !user?.role) {
+    return <Dashboard />;
+  }
 
-  return <div>Access Denied</div>; // Handle unexpected roles
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+        <p className="text-gray-600">Unknown user role: {user?.role}</p>
+      </div>
+    </div>
+  );
 };
 
 // Main App component
@@ -110,24 +121,21 @@ function App() {
         <LanguageSwitcher />
       </div>
       <Routes>
-        <Route path="/" element={<Navigate to="/select-branch" replace />} /> {/* Start with branch selection */}
+        <Route path="/" element={<Navigate to="/select-branch" replace />} />
         <Route path="/select-branch" element={<BranchSelectionEnhanced />} />
         <Route path="/otp-login" element={<OTPLogin />} />
         <Route path="/staff-login" element={<StaffLogin />} />
+        
+        {/* Public forms */}
         <Route path="/form/account-opening" element={<AccountOpeningForm />} />
-        <Route path="/form/cbe-birr" element={
-          <ProtectedRoute>
-            <CbeBirrRegistration />
-          </ProtectedRoute>
-        } />
+        <Route path="/form/rtgs-transfer" element={<RTGSTransfer />} />
+        <Route path="/form/ebanking" element={<EBankingApplication />} />
+        <Route path="/form/cbe-birr" element={<CbeBirrRegistration />} />
+
+        {/* Protected forms */}
         <Route path="/form/cbe-birr/confirmation" element={
           <ProtectedRoute>
             <CbeBirrRegistrationConfirmation />
-          </ProtectedRoute>
-        } />
-        <Route path="/form/rtgs-transfer" element={
-          <ProtectedRoute>
-            <RTGSTransfer />
           </ProtectedRoute>
         } />
         <Route path="/form/rtgs-transfer/confirmation" element={
@@ -135,26 +143,20 @@ function App() {
             <RTGSTransferConfirmation />
           </ProtectedRoute>
         } />
-        <Route path="/form/ebanking" element={
-          <ProtectedRoute>
-            <EBankingApplication />
-          </ProtectedRoute>
-        } />
         <Route path="/form/ebanking/confirmation" element={
           <ProtectedRoute>
             <EBankingConfirmation />
           </ProtectedRoute>
-        } />  
-        <Route path="/form/rtgs-transfer" element={<RTGSTransfer />} />
-        <Route path="/form/ebanking" element={<EBankingApplication />} />
-        <Route path="/form/cbe-birr" element={<CbeBirrRegistration />} />
+        } />
 
+        {/* Main dashboard route - FIXED: Now handles Customer role */}
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <DashboardRouter />
           </ProtectedRoute>
         } />
 
+        {/* Customer forms */}
         <Route path="/form/cash-deposit" element={
           <ProtectedRoute>
             <CashDeposit />
@@ -175,7 +177,6 @@ function App() {
             <CashWithDrawalConfirmation />
           </ProtectedRoute>
         } />
-
         <Route path="/form/fund-transfer" element={
           <ProtectedRoute>
             <FundTransfer />
@@ -191,7 +192,15 @@ function App() {
             <TransactionHistory />
           </ProtectedRoute>
         } />
-        {/* Added routes for admin actions */}
+
+        {/* Direct customer dashboard route */}
+        <Route path="/customer/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Admin routes */}
         <Route path="/admin/create-branch" element={
           <ProtectedRoute role="Admin">
             <CreateBranch />
@@ -208,7 +217,7 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Added routes for manager actions */}
+        {/* Manager routes */}
         <Route path="/manager/create-user" element={
           <ProtectedRoute role="Manager">
             <CreateUserManagerRoute />
@@ -220,7 +229,7 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Added routes for role-based dashboards */}
+        {/* Role-specific dashboard routes */}
         <Route path="/dashboard/admin" element={
           <ProtectedRoute role="Admin">
             <AdminDashboard />
@@ -236,25 +245,18 @@ function App() {
             <MakerDashboard />
           </ProtectedRoute>
         } />
-        <Route path="/customer/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
         
+        {/* Additional forms */}
         <Route path="/form/pos-request" element={
           <ProtectedRoute>
             <POSRequest />
           </ProtectedRoute>
         } />
-        <Route path="/qr-generator" element={<QRCodeGenerator />} />
         <Route path="/form/pos-request/confirmation" element={
           <ProtectedRoute>
             <POSRequestConfirmation />
           </ProtectedRoute>
         } />
-        
-        {/* Statement Request Routes */}
         <Route path="/form/statement-request" element={
           <ProtectedRoute>
             <StatementRequestForm />
@@ -265,8 +267,6 @@ function App() {
             <StatementRequestConfirmation />
           </ProtectedRoute>
         } />
-        
-        {/* CBE-Birr Link Routes */}
         <Route path="/form/cbe-birr-link" element={
           <ProtectedRoute>
             <CbeBirrLinkForm />
@@ -277,8 +277,6 @@ function App() {
             <CbeBirrLinkConfirmation />
           </ProtectedRoute>
         } />
-        
-        {/* Stop Payment Order Routes */}
         <Route path="/form/stop-payment" element={
           <ProtectedRoute>
             <StopPaymentForm />
@@ -289,19 +287,25 @@ function App() {
             <StopPaymentConfirmation />
           </ProtectedRoute>
         } />
-        
-        {/* Internal Routes - Petty Cash */}
+
+        {/* Utility routes */}
+        <Route path="/qr-generator" element={<QRCodeGenerator />} />
+        <Route path="/qr-test" element={<QRTestPage />} />
+
+        {/* Internal routes */}
         <Route path="/internal/petty-cash" element={
           <ProtectedRoute role="internal">
             <PettyCashForm />
           </ProtectedRoute>
         } />
-        <Route path="/qr-test" element={<QRTestPage />} />
         <Route path="/internal/petty-cash/confirmation" element={
           <ProtectedRoute role="internal">
             <PettyCashConfirmation />
           </ProtectedRoute>
         } />
+
+        {/* Fallback route */}
+        <Route path="*" element={<Navigate to="/select-branch" replace />} />
       </Routes>
     </>
   );

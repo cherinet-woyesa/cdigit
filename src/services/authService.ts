@@ -23,6 +23,12 @@ export interface LoginResponse {
         accountType: string;
         balance: number;
     }>;
+    // Add data property to match the actual backend response structure
+    data?: {
+        token: string;
+        expiration: string;
+        accounts?: any[];
+    };
 }
 
 export interface RegisterResponse {}
@@ -43,13 +49,21 @@ interface NewLoginResponse {
     message: string;
     data: {
         token: string;
-        role?: string;       // role can be extracted from token claims or backend may include it later
+        role?: string;
         expiration: string;
     };
 }
 
-
-
+// Specific interface for OTP login response
+export interface OtpLoginResponse {
+    success: boolean;
+    message: string;
+    data: {
+        token: string;
+        expiration: string;
+        accounts?: any[];
+    };
+}
 
 /////////////////////////////////////
 interface AuthService {
@@ -67,10 +81,6 @@ interface AuthService {
     assignMakerToWindow: (makerId: string, windowId: string, token: string) => Promise<any>;
 
     getBranches: () => Promise<any>;
-
-
-    // Branches
-    
 }
 
 const authService: AuthService = {
@@ -136,9 +146,7 @@ const authService: AuthService = {
         }
     },
 
-
-
-     // Staff login
+    // Staff login
     staffLogin: async (email: string, password: string) => {
         try {
             const response = await axios.post<NewLoginResponse>(`${API_BASE_URL}/auth/staff-login`, { email, password });
@@ -147,13 +155,9 @@ const authService: AuthService = {
                 localStorage.setItem('userToken', apiResponse.data.token);
                 console.log("at Staff login method, successful, token:", apiResponse.data.token);
 
-                // Map new backend structure to existing LoginResponse format
                 return {
-                    // success: apiResponse.success,
                     message: apiResponse.message,
                     token: apiResponse.data.token,
-                    // role: apiResponse.data.role,         // if backend includes role inside token claims
-                    // expiration: apiResponse.data.expiration,
                 } as LoginResponse;
             }
             
@@ -164,7 +168,6 @@ const authService: AuthService = {
             throw error.response?.data?.message || "Staff login failed";
         }
     },
-
 
     // Staff registration
     registerStaff: async (staffData: any, token: string) => {
@@ -205,20 +208,25 @@ const authService: AuthService = {
         }
     },
 
-    // Login with OTP
-    loginWithOtp: async (phoneNumber: string, otp: string, selectedAccountNum?: string) => {
+    // Login with OTP - FIXED: Return proper structure with data property
+    loginWithOtp: async (phoneNumber: string, otp: string, selectedAccountNum?: string): Promise<LoginResponse> => {
         try {
             const response = await axios.post<ApiResponse<{ token: string; expiration: string; accounts: any[] }>>(
                 `${API_BASE_URL}/auth/login-with-otp`,
                 selectedAccountNum ? { phoneNumber, otp, selectedAccountNum } : { phoneNumber, otp }
             );
+            
             const token = response.data.data?.token;
             if (token) {
                 localStorage.setItem('userToken', token);
             }
+            
+            // FIX: Return the full response structure that includes the data property
             return {
                 message: response.data.message || 'Login successful',
-                token,
+                token: token,
+                // Include the data property to match the backend structure
+                data: response.data.data
             };
         } catch (error: any) {
             console.error("Login with OTP error:", error.response?.data || error.message);

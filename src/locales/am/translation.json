@@ -35,6 +35,11 @@
   "searchPlaceholder": "ቅጽ ይፈልጉ...",
   "noResults": "ምንም ቅጾች አልተገኙም። ሌላ ቃል ይሞክሩ።",
   "startForm": "ይህን ቅጽ ይጀምሩ",
+  "phoneRequired": "ስልክ ቁጥር ያስፈልጋል",
+  "invalidEthiopianNumber": "እባክዎ ትክክለኛ የኢትዮጵያ ሞባይል ቁጥር ያስገቡ (09XXXXXXXX ወይም +2519XXXXXXXX)",
+  "rateLimitExceeded": "በጣም ብዙ ሙከራዎች። እባክዎ ቆይተው እንደገና ይሞክሩ።",
+  "serverError": "የሰርቨር ስህተት። እባክዎ እንደገና ይሞክሩ።",
+  "unexpectedError": "ያልተጠበቀ ስህተት ተከስቷል።",
   "forms": {
     "accountOpening": "መለያ መክፈቻ",
     "cashDeposit": "ገንዘብ ማስገቢያ",
