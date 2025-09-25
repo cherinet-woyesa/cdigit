@@ -176,9 +176,9 @@ export default function Dashboard() {
         // Join group with phone number
         connection.invoke('JoinQueueGroup', phone);
         // Listen for messages
-        connection.on('CustomerCalled', (data: { message: string; windowId: string }) => {
+        connection.on('CustomerCalled', (data: { message: string; windowNumber: string }) => {
           setQueueNotifyModalTitle(t('beingCalled', 'You Are Being Called'));
-          setQueueNotifyModalMessage(`${data.message} Window ${data.windowId}`);
+          setQueueNotifyModalMessage(`${data.message} Window ${data.windowNumber}`);
           setIsQueueNotifyModalOpen(true);
         });
 
@@ -353,43 +353,7 @@ export default function Dashboard() {
               <span className="ml-3 text-fuchsia-700 font-semibold">{t('loading', 'Loading...')}</span>
             </div>
           )}
-          {/* SignalR error intentionally not shown to user */}
-
-          {/* Recent Forms (commented out by request)
-          {!loading && recentFormNames.length > 0 && (
-            <div className="mb-3 sm:mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-700">{t('recentForms', 'Recent')}</h3>
-                <button
-                  type="button"
-                  onClick={() => { setRecentFormNames([]); try { localStorage.removeItem('recentForms'); } catch {} }}
-                  className="text-xs text-fuchsia-700 hover:underline"
-                >
-                  {t('clear', 'Clear')}
-                </button>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                {recentFormNames
-                  .map(n => forms.find(f => f.name === n))
-                  .filter((f): f is Form => !!f)
-                  .map((form) => (
-                    <button
-                      key={`recent-${form.name}`}
-                      type="button"
-                      onClick={() => openForm(form)}
-                      className="flex items-center justify-center gap-2 bg-white border-2 border-fuchsia-200 hover:border-fuchsia-500 hover:bg-fuchsia-700 hover:text-white text-fuchsia-800 px-2 py-2 rounded-lg shadow-sm transition text-xs sm:text-sm"
-                      aria-label={t(`forms.${form.name}`, form.name)}
-                      title={t(`forms.${form.name}`, form.name)}
-                    >
-                      <form.icon className="h-4 w-4" />
-                      <span className="font-medium truncate">{t(`forms.${form.name}`, form.name)}</span>
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
-          */}
-
+       
           {/* Cards grid */}
           {!loading && (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

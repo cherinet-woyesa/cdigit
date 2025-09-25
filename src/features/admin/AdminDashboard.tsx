@@ -35,6 +35,31 @@ interface AccountType {
   name: string;
 }
 
+interface BranchTransaction {
+  id: string;
+  formReferenceId: string;
+  queueNumber: number;
+  accountHolderName: string;
+  amount: number;
+  transactionType: string;
+  frontMakerId: string;
+  branchId: string;
+  status: number; // 0: Canceled, 1: On Queue, 2: On Progress, 3: Completed
+  submittedAt: string;
+  calledAt: string;
+  depositedToCBSAt: string;
+}
+
+interface BranchFeedback {
+  id: string;
+  rating: number;
+  comments: string;
+  branchId: string;
+  frontMakerId: string;
+  createdAt: string;
+}
+
+
 type BranchStatus = "Active" | "Closed";
 
 

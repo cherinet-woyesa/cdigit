@@ -96,6 +96,13 @@ const adminService = {
     const res = await axios.delete(`${API_BASE_URL}/accounttypes/${id}`, getAuthHeaders());
     return res.data;
   },
+
+// -------------------- Transaction APIs --------------------
+  getTodaysTransactions: async (branchId: string) => {
+    const res = await axios.get(`${API_BASE_URL}/Teller/TodaysTransactions`, getAuthHeaders());
+    return res.data; // full ApiResponse with { Transactions, Summary }
+  },
+
 };
 
 export default adminService;

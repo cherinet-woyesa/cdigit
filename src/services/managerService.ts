@@ -14,10 +14,6 @@ const getAuthHeaders = () => {
 };
 
 
-
-
-
-
 const managerService = {
   // --- AD USERS ---
   getAdUsersByBranch: async (branchId: string) => {

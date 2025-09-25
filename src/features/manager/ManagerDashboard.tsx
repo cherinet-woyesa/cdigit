@@ -9,6 +9,7 @@ import managerService from "../../services/managerService";
 import toast from "react-hot-toast";
 import MyBranchModal from "./MyBranchModal.tsx";
 import CorporateCustomers from "./CorporateCustomers.tsx";
+import ScreenDisplay from "../screen/ScreenDisplay";
 
 interface Branch {
   id: string;
@@ -84,6 +85,9 @@ export default function ManagerDashboard() {
           <TabsTrigger value="my-branch" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
             🏦 My Branch
           </TabsTrigger>
+          <TabsTrigger value="Screen-Display" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
+            🏦 Screen Display
+          </TabsTrigger>
 
         </TabsList>
 
@@ -93,6 +97,7 @@ export default function ManagerDashboard() {
         <TabsContent value="corporate-customers"> <CorporateCustomers managerId={managerId} /> </TabsContent>
         <TabsContent value="assign"><AssignMaker branchId={branchId} /></TabsContent>
         <TabsContent value="transactions"><Transactions branchId={branchId} /></TabsContent>
+        <TabsContent value="Screen-Display"> <ScreenDisplay /> </TabsContent>
 
         {/* My Branch Tab */}
         <TabsContent value="my-branch">
