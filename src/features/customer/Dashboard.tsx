@@ -1,5 +1,6 @@
+import React from 'react'; // Add this import
 import { useAuth } from '../../context/AuthContext';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
@@ -17,6 +18,8 @@ import {
   DocumentDuplicateIcon,
   HandRaisedIcon,
   LinkIcon,
+  XMarkIcon,
+  FunnelIcon,
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -47,29 +50,34 @@ interface Form {
   route: string;
   icon: React.ElementType;
   description: string;
+  category: 'transactions' | 'services' | 'requests' | 'history';
 }
 
 const forms: Form[] = [
-  { name: 'accountOpening', route: '/form/account-opening', icon: DocumentTextIcon, description: 'Open a new bank account.' },
-  { name: 'cashDeposit', route: '/form/cash-deposit', icon: ArrowDownTrayIcon, description: 'Deposit cash to an account.' },
-  { name: 'cashWithdrawal', route: '/form/cash-withdrawal', icon: ArrowUpTrayIcon, description: 'Withdraw cash from your account.' },
-  { name: 'fundTransfer', route: '/form/fund-transfer', icon: ArrowsRightLeftIcon, description: 'Transfer funds between accounts.' },
-  { name: 'rtgsTransfer', route: '/form/rtgs-transfer', icon: ArrowsRightLeftIcon, description: 'RTGS Customer Transfer Order.' },
-  { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, description: 'Apply for E-Banking services.' },
-  { name: 'cbeBirrRegistration', route: '/form/cbe-birr', icon: CurrencyDollarIcon, description: 'Register for CBE-Birr.' },
-  
-  { name: 'posRequest', route: '/form/pos-request', icon: ReceiptPercentIcon, description: 'Request a POS device for your business.' },
-  { name: 'statementRequest', route: '/form/statement-request', icon: DocumentDuplicateIcon, description: 'Request your account statement.' },
-  { name: 'stopPayment', route: '/form/stop-payment', icon: HandRaisedIcon, description: 'Request to stop payment on a cheque.' },
-  { name: 'cbeBirrLink', route: '/form/cbe-birr-link', icon: LinkIcon, description: 'Link your CBE-Birr and bank account.' },
-  { name: 'otherForms', route: '/form/other-forms', icon: Squares2X2Icon, description: 'Explore other banking services.' },
-  { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, description: 'View your transaction history.' },
+  { name: 'accountOpening', route: '/form/account-opening', icon: DocumentTextIcon, description: 'Open a new bank account.', category: 'services' },
+  { name: 'cashDeposit', route: '/form/cash-deposit', icon: ArrowDownTrayIcon, description: 'Deposit cash to an account.', category: 'transactions' },
+  { name: 'cashWithdrawal', route: '/form/cash-withdrawal', icon: ArrowUpTrayIcon, description: 'Withdraw cash from your account.', category: 'transactions' },
+  { name: 'fundTransfer', route: '/form/fund-transfer', icon: ArrowsRightLeftIcon, description: 'Transfer funds between accounts.', category: 'transactions' },
+  { name: 'rtgsTransfer', route: '/form/rtgs-transfer', icon: ArrowsRightLeftIcon, description: 'RTGS Customer Transfer Order.', category: 'transactions' },
+  { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, description: 'Apply for E-Banking services.', category: 'services' },
+  { name: 'cbeBirrRegistration', route: '/form/cbe-birr', icon: CurrencyDollarIcon, description: 'Register for CBE-Birr.', category: 'services' },
+  { name: 'posRequest', route: '/form/pos-request', icon: ReceiptPercentIcon, description: 'Request a POS device for your business.', category: 'requests' },
+  { name: 'statementRequest', route: '/form/statement-request', icon: DocumentDuplicateIcon, description: 'Request your account statement.', category: 'requests' },
+  { name: 'stopPayment', route: '/form/stop-payment', icon: HandRaisedIcon, description: 'Request to stop payment on a cheque.', category: 'requests' },
+  { name: 'cbeBirrLink', route: '/form/cbe-birr-link', icon: LinkIcon, description: 'Link your CBE-Birr and bank account.', category: 'services' },
+  { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, description: 'View your transaction history.', category: 'history' },
 ];
 
+// Categories for filtering
+const categories = [
+  { id: 'all', label: 'All Services', count: forms.length },
+  { id: 'transactions', label: 'Transactions', count: forms.filter(f => f.category === 'transactions').length },
+  { id: 'services', label: 'Banking Services', count: forms.filter(f => f.category === 'services').length },
+  { id: 'requests', label: 'Requests', count: forms.filter(f => f.category === 'requests').length },
+];
 
-// Card component for forms
-import React from 'react';
-const FormCard = React.forwardRef<HTMLDivElement, {
+// Optimized FormCard with memoization
+const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
   form: Form;
   onClick: () => void;
   isFocused: boolean;
@@ -77,282 +85,415 @@ const FormCard = React.forwardRef<HTMLDivElement, {
 }>(({ form, onClick, isFocused, onKeyDown }, ref) => {
   const { t } = useTranslation();
   const label = t(`forms.${form.name}`, form.name);
+  
   return (
     <div
       ref={ref}
       role="button"
       tabIndex={0}
-      aria-label={label}
-      title={label}
+      aria-label={`${label} - ${form.description}`}
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={clsx(
-        'cursor-pointer group bg-white p-3 sm:p-5 rounded-xl shadow-lg border border-transparent transition-all duration-300',
-        'hover:shadow-xl hover:border-fuchsia-500 hover:bg-fuchsia-700',
-        isFocused && 'ring-2 ring-fuchsia-500',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500'
+        'group relative bg-white p-4 rounded-2xl shadow-sm border-2 border-gray-100 transition-all duration-300 ease-out',
+        'hover:shadow-xl hover:border-fuchsia-300 hover:transform hover:scale-105',
+        'focus:outline-none focus:ring-4 focus:ring-fuchsia-200 focus:border-fuchsia-500',
+        isFocused && 'ring-4 ring-fuchsia-200 border-fuchsia-500 scale-105',
+        'active:scale-95'
       )}
     >
-      <div className="flex items-center justify-center h-9 w-9 sm:h-11 sm:w-11 rounded-lg bg-fuchsia-100 mb-2 sm:mb-3">
-        <form.icon className="h-5 w-5 sm:h-6 sm:w-6 text-fuchsia-700 group-hover:text-white" />
-      </div>
-      <h3 className="text-sm sm:text-lg font-semibold text-gray-800 group-hover:text-white">
-        {label}
-      </h3>
-      <div className="mt-1.5 sm:mt-3 text-fuchsia-600 font-semibold flex items-center gap-1 sm:gap-2 group-hover:gap-3 transition-all group-hover:text-white text-sm">
-        <span>
-          {form.name === 'history' ? t('viewHistory', 'View History') : t('startForm')}
-        </span>
-        <ArrowRightIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+      {/* Gradient overlay on hover */}
+      <div className={clsx(
+        'absolute inset-0 rounded-2xl bg-gradient-to-br from-fuchsia-50 to-pink-50 opacity-0 transition-opacity duration-300',
+        'group-hover:opacity-100'
+      )} />
+      
+      <div className="relative z-10">
+        <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-500 mb-3 group-hover:from-fuchsia-600 group-hover:to-pink-600 transition-all">
+          <form.icon className="h-6 w-6 text-white" />
+        </div>
+        
+        <h3 className="text-base font-semibold text-gray-900 mb-1 line-clamp-2 leading-tight">
+          {label}
+        </h3>
+        
+        <p className="text-xs text-gray-600 mb-3 line-clamp-2 leading-relaxed">
+          {form.description}
+        </p>
+        
+        <div className="flex items-center justify-between">
+          <span className={clsx(
+            'px-2 py-1 rounded-full text-xs font-medium capitalize',
+            form.category === 'transactions' && 'bg-blue-100 text-blue-800',
+            form.category === 'services' && 'bg-green-100 text-green-800',
+            form.category === 'requests' && 'bg-orange-100 text-orange-800',
+            form.category === 'history' && 'bg-purple-100 text-purple-800'
+          )}>
+            {form.category}
+          </span>
+          
+          <div className="flex items-center gap-1 text-fuchsia-600 group-hover:text-fuchsia-700 transition-colors">
+            <span className="text-xs font-semibold">
+              {form.name === 'history' ? t('viewHistory', 'View') : t('startForm', 'Start')}
+            </span>
+            <ArrowRightIcon className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+          </div>
+        </div>
       </div>
     </div>
   );
-});
+}));
+
 FormCard.displayName = 'FormCard';
 
+// Skeleton loader for better loading states
+const FormCardSkeleton: React.FC = () => (
+  <div className="bg-white p-4 rounded-2xl shadow-sm border-2 border-gray-100 animate-pulse">
+    <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-gray-200 mb-3"></div>
+    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+    <div className="h-3 bg-gray-200 rounded mb-3"></div>
+    <div className="flex justify-between">
+      <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
+      <div className="h-4 w-12 bg-gray-200 rounded"></div>
+    </div>
+  </div>
+);
+
 export default function Dashboard() {
-  const { phone } = useAuth();
+  const { phone, user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  
+  // State management
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [isQueueNotifyModalOpen, setIsQueueNotifyModalOpen] = useState(false);
-  const [QueueNotifyModalMessage, setQueueNotifyModalMessage] = useState('');
-  const [QueueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
+  const [queueNotifyModalMessage, setQueueNotifyModalMessage] = useState('');
+  const [queueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [signalRError, setSignalRError] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  
+  // Refs
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [recentFormNames, setRecentFormNames] = useState<FormName[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Search with translation
-  const filteredForms = useMemo(() => {
-    const q = debouncedQuery.trim();
-    if (!q) return forms;
-    const query = q.toLowerCase();
-    return forms.filter((form) => {
-      const label = t(`forms.${form.name}`, form.name);
-      return label.toLowerCase().includes(query);
-    });
-  }, [debouncedQuery, t]);
-
-  // Debounce search typing for perf
+  // Debounced search with useCallback for stability
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedQuery(searchQuery), 150);
-    return () => clearTimeout(id);
+    const timeoutId = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim().toLowerCase());
+    }, 200);
+    
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // Do not auto-focus a card on results change; only set focus via keyboard navigation
+  // Optimized form filtering with useMemo
+  const filteredForms = useMemo(() => {
+    let filtered = forms;
+    
+    // Category filter
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(form => form.category === selectedCategory);
+    }
+    
+    // Search filter
+    if (debouncedQuery) {
+      filtered = filtered.filter(form => {
+        const label = t(`forms.${form.name}`, form.name).toLowerCase();
+        const description = form.description.toLowerCase();
+        return label.includes(debouncedQuery) || description.includes(debouncedQuery);
+      });
+    }
+    
+    return filtered;
+  }, [debouncedQuery, selectedCategory, t]);
 
-  // SignalR connection
+  // SignalR connection with better error handling
   useEffect(() => {
     if (!phone) {
-      navigate('/');
+      navigate('/otp-login');
       return;
     }
-    setLoading(true);
-    setSignalRError(null);
-    const connection = new HubConnectionBuilder()
-      .withUrl('http://localhost:5268/hub/queueHub')
-      .withAutomaticReconnect()
-      .build();
 
-    connection.start()
-      .then(() => {
-        setLoading(false);
-        // Join group with phone number
-        connection.invoke('JoinQueueGroup', phone);
-        // Listen for messages
+    let connection: any;
+    const connectSignalR = async () => {
+      try {
+        setLoading(true);
+        connection = new HubConnectionBuilder()
+          .withUrl('http://localhost:5268/hub/queueHub')
+          .withAutomaticReconnect([0, 1000, 5000, 10000])
+          .build();
+
+        await connection.start();
+        
+        await connection.invoke('JoinQueueGroup', phone);
+        
         connection.on('CustomerCalled', (data: { message: string; windowId: string }) => {
           setQueueNotifyModalTitle(t('beingCalled', 'You Are Being Called'));
-          setQueueNotifyModalMessage(`${data.message} Window ${data.windowId}`);
+          setQueueNotifyModalMessage(`${data.message} - Window ${data.windowId}`);
           setIsQueueNotifyModalOpen(true);
         });
-      })
-      .catch(() => {
+
+        setSignalRError(null);
+      } catch (error) {
+        console.warn('SignalR connection failed:', error);
+        setSignalRError(t('signalRError', 'Notifications temporarily unavailable'));
+      } finally {
         setLoading(false);
-        setSignalRError(t('signalRError', 'Could not connect to notification service.'));
-      });
+      }
+    };
+
+    connectSignalR();
 
     return () => {
-      connection.off('CustomerCalled');
-      connection.stop();
+      if (connection) {
+        connection.off('CustomerCalled');
+        connection.stop().catch(console.warn);
+      }
     };
   }, [phone, navigate, t]);
 
-  // Keyboard navigation for cards
-  const handleCardKeyDown = (idx: number) => (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      navigate(filteredForms[idx].route);
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      setFocusedIndex((prev) => (prev + 1) % filteredForms.length);
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusedIndex((prev) => (prev - 1 + filteredForms.length) % filteredForms.length);
+  // Keyboard navigation with improved accessibility
+  const handleCardKeyDown = useCallback((idx: number) => (e: React.KeyboardEvent<HTMLDivElement>) => {
+    switch (e.key) {
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        openForm(filteredForms[idx]);
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        setFocusedIndex(prev => (prev + 1) % filteredForms.length);
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        setFocusedIndex(prev => (prev - 1 + filteredForms.length) % filteredForms.length);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusedIndex(prev => {
+          const next = prev + 2;
+          return next < filteredForms.length ? next : next % 2;
+        });
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusedIndex(prev => {
+          const next = prev - 2;
+          return next >= 0 ? next : filteredForms.length - (Math.abs(next) % 2);
+        });
+        break;
+      case 'Home':
+        e.preventDefault();
+        setFocusedIndex(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        setFocusedIndex(filteredForms.length - 1);
+        break;
     }
-  };
+  }, [filteredForms]);
 
+  // Focus management
   useEffect(() => {
     if (focusedIndex >= 0 && cardRefs.current[focusedIndex]) {
       cardRefs.current[focusedIndex]?.focus();
     }
-  }, [focusedIndex, filteredForms.length]);
+  }, [focusedIndex]);
 
-  // Keyboard shortcut to focus search ('/')
+  // Keyboard shortcuts
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && (e.target as HTMLElement)?.tagName !== 'INPUT' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA') {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  // Load recents from localStorage
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('recentForms');
-      if (raw) {
-        const parsed = JSON.parse(raw) as FormName[];
-        if (Array.isArray(parsed)) setRecentFormNames(parsed.filter((n) => forms.some(f => f.name === n)));
+      if (e.key === 'Escape' && searchQuery) {
+        setSearchQuery('');
+        searchInputRef.current?.focus();
       }
-    } catch {}
-  }, []);
+    };
 
-  // Helpers to record recents and navigate
-  const recordRecent = (name: FormName) => {
-    setRecentFormNames((prev) => {
-      const next = [name, ...prev.filter((n) => n !== name)].slice(0, 6);
-      try { localStorage.setItem('recentForms', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
-  const openForm = (form: Form) => {
-    recordRecent(form.name);
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [searchQuery]);
+
+  // Form navigation handler
+  const openForm = useCallback((form: Form) => {
     navigate(form.route);
-  };
+  }, [navigate]);
+
+  // Clear search
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* QueueNotifyModal */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100" ref={containerRef}>
+      {/* Notification Modal */}
       <QueueNotifyModal
         isOpen={isQueueNotifyModalOpen}
         onClose={() => setIsQueueNotifyModalOpen(false)}
-        title={QueueNotifyModalTitle}
-        message={QueueNotifyModalMessage}
+        title={queueNotifyModalTitle}
+        message={queueNotifyModalMessage}
       />
-      <header className="bg-fuchsia-700 text-white py-3 px-4 sm:py-5 sm:px-6 shadow-lg sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
-          <div className="flex items-center gap-2">
-            <h5 className="text-xs sm:text-sm bg-fuchsia-800 px-2.5 py-1 rounded-full items-left">
-              {t('loggedInAs', { phone }) || `Logged in as: ${phone}`}
-            </h5>
+
+      {/* Header */}
+      <header className="bg-gradient-to-r from-fuchsia-700 to-pink-700 text-white shadow-lg sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold">{t('dashboardTitle', 'CBE Digital Banking')}</h1>
+              <p className="text-fuchsia-200 text-sm mt-1">
+                {t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="bg-fuchsia-800/50 px-3 py-1.5 rounded-full text-sm">
+                📱 {phone}
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto py-3 sm:py-6 px-2">
-        <div className="bg-white p-3 sm:p-5 rounded-xl shadow-lg">
-          <div className="bg-fuchsia-700 text-white p-3 sm:p-5 rounded-xl mb-3 sm:mb-6 shadow-lg">
-            <h2 className="text-xl sm:text-2xl font-bold">{t('welcomeBanner')}</h2>
-            <p className="opacity-90 mt-1 text-xs sm:text-base">
-              {t('welcomeSubtitle')}
-            </p>
-          </div>
-
-          {/* Transaction History button */}
-          <div className="mb-3 sm:mb-6">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {/* Welcome Banner */}
+        <div className="bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-2xl p-6 mb-6 shadow-lg">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">{t('welcomeBanner', 'Welcome to CBE Digital Services')}</h2>
+              <p className="text-fuchsia-100 opacity-90">
+                {t('welcomeSubtitle', 'Access all banking services in one place')}
+              </p>
+            </div>
             <button
-              type="button"
               onClick={() => openForm(forms.find(f => f.name === 'history')!)}
-              className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-fuchsia-700 hover:bg-fuchsia-800 text-white px-4 py-3 sm:py-4 rounded-xl shadow-lg transition"
-              aria-label={t('viewHistory', 'View History')}
+              className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 group"
             >
-              <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-sm sm:text-base font-semibold">{t('viewHistory', 'View History')}</span>
-              <ArrowRightIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+              <ClockIcon className="h-5 w-5" />
+              {t('viewHistory', 'Transaction History')}
+              <ArrowRightIcon className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
+        </div>
 
-          <div className="mb-3 sm:mb-6">
-            <div className="relative">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 sm:left-4" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                ref={searchInputRef}
-                placeholder={t('searchPlaceholder')}
-                aria-label={t('searchPlaceholder')}
-                className="w-full pl-10 pr-3 py-2 sm:py-3 border-2 border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-sm sm:text-lg"
-              />
-            </div>
-            <div className="mt-1 text-xs text-gray-500" aria-live="polite">
-              {filteredForms.length} {t('results', 'results')}
-            </div>
+        {/* Search and Filters */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+          {/* Search Bar */}
+          <div className="relative mb-4">
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('searchPlaceholder', 'Search for services...')}
+              className="w-full pl-12 pr-10 py-4 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-100 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Clear search"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            )}
           </div>
 
-          {/* Loading state */}
-          {loading && (
-            <div className="flex justify-center items-center py-8">
-              <svg className="animate-spin h-8 w-8 text-fuchsia-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-              </svg>
-              <span className="ml-3 text-fuchsia-700 font-semibold">{t('loading', 'Loading...')}</span>
-            </div>
-          )}
-          {/* SignalR error intentionally not shown to user */}
+          {/* Category Filters */}
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={clsx(
+                  'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
+                  selectedCategory === category.id
+                    ? 'bg-fuchsia-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                )}
+              >
+                <FunnelIcon className="h-4 w-4" />
+                {category.label}
+                <span className={clsx(
+                  'px-1.5 py-0.5 rounded-full text-xs',
+                  selectedCategory === category.id
+                    ? 'bg-white/20'
+                    : 'bg-gray-200'
+                )}>
+                  {category.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* Recent Forms (commented out by request)
-          {!loading && recentFormNames.length > 0 && (
-            <div className="mb-3 sm:mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-700">{t('recentForms', 'Recent')}</h3>
-                <button
-                  type="button"
-                  onClick={() => { setRecentFormNames([]); try { localStorage.removeItem('recentForms'); } catch {} }}
-                  className="text-xs text-fuchsia-700 hover:underline"
-                >
-                  {t('clear', 'Clear')}
-                </button>
+        {/* Results Count */}
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-gray-600">
+            {filteredForms.length} {t('servicesFound', 'services found')}
+          </p>
+          {debouncedQuery && (
+            <button
+              onClick={clearSearch}
+              className="text-sm text-fuchsia-600 hover:text-fuchsia-700 font-medium"
+            >
+              Clear search
+            </button>
+          )}
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <FormCardSkeleton key={i} />
+            ))}
+          </div>
+        )}
+
+        {/* Error State */}
+        {signalRError && !loading && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-yellow-100 p-2 rounded-full">
+                <DevicePhoneMobileIcon className="h-5 w-5 text-yellow-600" />
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                {recentFormNames
-                  .map(n => forms.find(f => f.name === n))
-                  .filter((f): f is Form => !!f)
-                  .map((form) => (
-                    <button
-                      key={`recent-${form.name}`}
-                      type="button"
-                      onClick={() => openForm(form)}
-                      className="flex items-center justify-center gap-2 bg-white border-2 border-fuchsia-200 hover:border-fuchsia-500 hover:bg-fuchsia-700 hover:text-white text-fuchsia-800 px-2 py-2 rounded-lg shadow-sm transition text-xs sm:text-sm"
-                      aria-label={t(`forms.${form.name}`, form.name)}
-                      title={t(`forms.${form.name}`, form.name)}
-                    >
-                      <form.icon className="h-4 w-4" />
-                      <span className="font-medium truncate">{t(`forms.${form.name}`, form.name)}</span>
-                    </button>
-                  ))}
+              <div>
+                <p className="text-yellow-800 font-medium">{signalRError}</p>
+                <p className="text-yellow-600 text-sm">You can still use all services</p>
               </div>
             </div>
-          )}
-          */}
+          </div>
+        )}
 
-          {/* Cards grid */}
-          {!loading && (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {filteredForms.length === 0 ? (
-                <div className="col-span-full text-center text-gray-500 py-6">
-                  {t('noFormsFound', 'No forms found for your search.')}
+        {/* Services Grid */}
+        {!loading && (
+          <>
+            {filteredForms.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MagnifyingGlassIcon className="h-8 w-8 text-gray-400" />
                 </div>
-              ) : (
-                filteredForms.map((form, idx) => (
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {t('noResults', 'No services found')}
+                </h3>
+                <p className="text-gray-600">
+                  {debouncedQuery 
+                    ? t('noResultsForQuery', 'Try adjusting your search or filters')
+                    : t('noServicesAvailable', 'No services available in this category')
+                  }
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredForms.map((form, idx) => (
                   <FormCard
                     key={form.name}
                     form={form}
@@ -361,10 +502,29 @@ export default function Dashboard() {
                     onKeyDown={handleCardKeyDown(idx)}
                     ref={(el: HTMLDivElement | null) => { cardRefs.current[idx] = el; }}
                   />
-                ))
-              )}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Quick Actions Footer */}
+        <div className="mt-8 bg-white rounded-2xl shadow-sm p-6">
+          <h3 className="font-semibold text-gray-900 mb-4">Need help?</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 transition-colors">
+              <div className="text-fuchsia-600 font-semibold">Visit Branch</div>
+              <div className="text-sm text-gray-600">Find nearest location</div>
+            </button>
+            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 transition-colors">
+              <div className="text-fuchsia-600 font-semibold">Contact Support</div>
+              <div className="text-sm text-gray-600">Get help 24/7</div>
+            </button>
+            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 transition-colors">
+              <div className="text-fuchsia-600 font-semibold">FAQ</div>
+              <div className="text-sm text-gray-600">Common questions</div>
+            </button>
+          </div>
         </div>
       </main>
     </div>
