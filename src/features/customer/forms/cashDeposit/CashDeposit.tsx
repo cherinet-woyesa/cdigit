@@ -48,6 +48,8 @@ export default function CashDepositForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [updateId, setUpdateId] = useState<string | null>(null);
+    const [tokenNumber, setTokenNumber] = useState<string | null>(null);
+    const [queueNumber, setQueueNumber] = useState<number | null>(null);
     const [loadingUpdate, setLoadingUpdate] = useState(false);
     const [step, setStep] = useState<number>(1);
 
@@ -99,6 +101,8 @@ export default function CashDepositForm() {
         const id = location.state?.updateId as string | undefined;
         if (!id) return;
         setUpdateId(id);
+        setTokenNumber(location.state?.tokenNumber);
+        setQueueNumber(location.state?.queueNumber);
         (async () => {
             try {
                 setLoadingUpdate(true);
@@ -186,6 +190,12 @@ export default function CashDepositForm() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!validateAll()) return;
+
+        if (!phone) {
+            alert("Phone number is not available. Please log in again.");
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const depositData = {
@@ -205,7 +215,8 @@ export default function CashDepositForm() {
                 // Additional required fields
                 transactionType: 'Cash Deposit',
                 status: 'Pending',
-                tokenNumber: '',
+                tokenNumber: tokenNumber || '',
+                queueNumber: queueNumber,
                 formReferenceId: updateId || `dep-${Date.now()}`
             };
             
@@ -223,6 +234,8 @@ export default function CashDepositForm() {
                         amount: formData.amount,
                         telephoneNumber: phone || ''
                     },
+                    tokenNumber: response.data?.tokenNumber || tokenNumber,
+                    queueNumber: response.data?.queueNumber || queueNumber,
                 } 
             });
         } catch (error: any) {

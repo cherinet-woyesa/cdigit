@@ -53,6 +53,7 @@ export type DepositFormFields = {
     transactionType?: string;
     status?: string;
     tokenNumber?: string;
+    queueNumber?: number;
     id?: string;
     formReferenceId?: string;
 };
@@ -103,7 +104,7 @@ const depositService = {
                 AccountHolderName: data.accountHolderName,
                 Amount: data.amount,
                 BranchId: data.branchId,
-                TelephoneNumber: data.telephoneNumber || '',
+                PhoneNumber: data.telephoneNumber || '',
                 // Required fields with default values
                 AmountInWords: data.amountInWords || 'N/A',
                 SourceOfProceeds: data.sourceOfProceeds || 'N/A',
@@ -218,7 +219,7 @@ const depositService = {
                 AccountHolderName: data.accountHolderName,
                 Amount: data.amount,
                 BranchId: data.branchId,
-                TelephoneNumber: data.telephoneNumber || '',
+                PhoneNumber: data.telephoneNumber || '',
                 // Required fields with empty string as fallback and correct casing
                 AmountInWords: data.amountInWords || 'N/A',
                 SourceOfProceeds: data.sourceOfProceeds || 'N/A',
@@ -272,7 +273,8 @@ const depositService = {
                     id,
                     formReferenceId: id,
                     status: 'Updated',
-                    tokenNumber: '',
+                    tokenNumber: data.tokenNumber || '',
+                    queueNumber: data.queueNumber,
                     transactionType: 'Cash Deposit',
                     amountInWords: '',
                     depositedBy: null,
