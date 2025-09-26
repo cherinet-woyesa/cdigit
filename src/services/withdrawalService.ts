@@ -36,7 +36,7 @@ export interface WithdrawalRequest {
   accountHolderName: string;
   withdrawal_Amount: number;
   remark?: string;
-  otpCode?: string; // Changed from OtpCode to otpCode (camelCase)
+  otpCode: string; // Now required
 }
 
 const API_BASE_URL = 'http://localhost:5268/api/Withdrawal';
@@ -86,7 +86,7 @@ export async function submitWithdrawal(data: WithdrawalRequest, token?: string):
     AccountHolderName: data.accountHolderName,
     Withdrawal_Amount: data.withdrawal_Amount,
     Remark: data.remark ?? '',
-    OtpCode: data.otpCode, // FIXED: Changed from data.OtpCode to data.otpCode
+    OtpCode: data.otpCode,
   };
 
   console.log('Submitting withdrawal with payload:', payload); // Debug log
@@ -115,21 +115,8 @@ export async function submitWithdrawal(data: WithdrawalRequest, token?: string):
     throw new Error(message);
   }
 
-  // Handle wrapped responses: { success, message, data }
-  if (typeof json === 'object' && json !== null && 'success' in json) {
-    if ((json as any).success === false) {
-      throw new Error((json as any).message || 'Withdrawal submission failed');
-    }
-    if ((json as any).data) {
-      return (json as any).data as WithdrawalResponse;
-    }
-  }
-
-  return {
-    success: true,
-    message: 'Withdrawal submitted successfully',
-    data: json
-  };
+  // Always return the full backend response (with success/message/data)
+  return json;
 }
 
 export async function getWithdrawalById(id: string): Promise<WithdrawalResponse> {

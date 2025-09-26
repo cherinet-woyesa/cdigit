@@ -344,7 +344,7 @@ export default function Dashboard() {
 
       {/* Header */}
      
-<header className="bg-gradient-to-r from-fuchsia-700 to-pink-700 text-white shadow-lg sticky top-0 z-50">
+<header className="bg-fuchsia-700 text-white shadow-lg sticky top-0 z-50">
   <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
       <div>
@@ -356,10 +356,10 @@ export default function Dashboard() {
       
       {/* Integrated Language Switcher */}
       <div className="flex items-center gap-3">
-      <div className="bg-fuchsia-800/50 px-3 py-1.5 rounded-full text-sm">
+      <div className="bg-fuchsia-800/80 px-3 py-1.5 rounded-full text-sm">
           📱 {phone}
         </div>
-        <div className="bg-white/20 rounded-lg p-1">
+        <div className="bg-fuchsia-700/30 rounded-lg p-1">
           <LanguageSwitcher />
         </div>
        
@@ -371,7 +371,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-2xl p-6 mb-6 shadow-lg">
+  <div className="bg-fuchsia-700 text-white rounded-2xl p-6 mb-6 shadow-lg">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold mb-2">{t('welcomeBanner', 'Welcome to CBE Digital Services')}</h2>
@@ -381,7 +381,7 @@ export default function Dashboard() {
             </div>
             <button
               onClick={() => openForm(forms.find(f => f.name === 'history')!)}
-              className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 group"
+              className="bg-fuchsia-800 hover:bg-fuchsia-900 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 group"
             >
               <ClockIcon className="h-5 w-5" />
               {t('viewHistory', 'Transaction History')}
@@ -391,7 +391,7 @@ export default function Dashboard() {
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+  <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           {/* Search Bar */}
           <div className="relative mb-4">
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -423,8 +423,8 @@ export default function Dashboard() {
                 className={clsx(
                   'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
                   selectedCategory === category.id
-                    ? 'bg-fuchsia-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-fuchsia-700 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-fuchsia-100 hover:text-fuchsia-700'
                 )}
               >
                 <FunnelIcon className="h-4 w-4" />
@@ -433,7 +433,7 @@ export default function Dashboard() {
                   'px-1.5 py-0.5 rounded-full text-xs',
                   selectedCategory === category.id
                     ? 'bg-white/20'
-                    : 'bg-gray-200'
+                    : 'bg-fuchsia-50'
                 )}>
                   {category.count}
                 </span>
@@ -450,7 +450,7 @@ export default function Dashboard() {
           {debouncedQuery && (
             <button
               onClick={clearSearch}
-              className="text-sm text-fuchsia-600 hover:text-fuchsia-700 font-medium"
+              className="text-sm text-fuchsia-700 hover:text-fuchsia-900 font-medium"
             >
               Clear search
             </button>
@@ -518,18 +518,18 @@ export default function Dashboard() {
 
         {/* Quick Actions Footer */}
         <div className="mt-8 bg-white rounded-2xl shadow-sm p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Need help?</h3>
+          <h3 className="font-semibold text-fuchsia-700 mb-4">Need help?</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 transition-colors">
-              <div className="text-fuchsia-600 font-semibold">Visit Branch</div>
+            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
+              <div className="text-fuchsia-700 font-semibold">Visit Branch</div>
               <div className="text-sm text-gray-600">Find nearest location</div>
             </button>
-            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 transition-colors">
-              <div className="text-fuchsia-600 font-semibold">Contact Support</div>
+            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
+              <div className="text-fuchsia-700 font-semibold">Contact Support</div>
               <div className="text-sm text-gray-600">Get help 24/7</div>
             </button>
-            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 transition-colors">
-              <div className="text-fuchsia-600 font-semibold">FAQ</div>
+            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
+              <div className="text-fuchsia-700 font-semibold">FAQ</div>
               <div className="text-sm text-gray-600">Common questions</div>
             </button>
           </div>

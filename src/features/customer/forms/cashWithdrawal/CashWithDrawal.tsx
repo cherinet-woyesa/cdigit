@@ -1,28 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
-import Field from '../../../../components/Field';
+import { useBranch } from '../../../../context/BranchContext';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 import { requestWithdrawalOtp, submitWithdrawal } from '../../../../services/withdrawalService';
 import authService from '../../../../services/authService';
-import { useTranslation } from 'react-i18next';
-import { SpeakerWaveIcon } from '@heroicons/react/24/solid';
+import Field from '../../../../components/Field';
+import { 
+    Loader2, 
+    AlertCircle, 
+    CheckCircle2, 
+    ChevronRight,
+    CreditCard,
+    DollarSign,
+    User,
+    Shield,
+    Plane,
+    MapPin,
+    Calendar
+} from 'lucide-react';
 
-type FormData = {
+// Error message component (consistent with deposit form)
+function ErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700">{message}</span>
+        </div>
+    );
+}
+
+interface FormData {
     accountNumber: string;
     accountHolderName: string;
     amount: string;
     otp: string;
-};
+}
 
-type Errors = Partial<Record<keyof FormData, string>> & { message?: string; otp?: string };
+type Errors = Partial<Record<keyof FormData, string>> & { submit?: string; otp?: string };
 
 export default function CashWithdrawalForm() {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
+    const { phone, token, user } = useAuth();
+    const { branch } = useBranch();
     const navigate = useNavigate();
-    const { state } = useLocation() as { state?: any };
-    const { phone, token } = useAuth();
-    const { accounts, accountDropdown, loadingAccounts } = useUserAccounts();
+    const location = useLocation();
+    const { 
+        accounts, 
+        accountDropdown, 
+        loadingAccounts, 
+        errorAccounts, 
+        refreshAccounts 
+    } = useUserAccounts();
+
     const [formData, setFormData] = useState<FormData>({
         accountNumber: '',
         accountHolderName: '',
@@ -30,103 +62,144 @@ export default function CashWithdrawalForm() {
         otp: '',
     });
     const [errors, setErrors] = useState<Errors>({});
-    const [step, setStep] = useState(1);
-    const [updateId, setUpdateId] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [step, setStep] = useState<number>(1);
     const [otpLoading, setOtpLoading] = useState(false);
     const [otpMessage, setOtpMessage] = useState('');
-    const [otpError, setOtpError] = useState('');
     const [resendCooldown, setResendCooldown] = useState(0);
     const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
-    const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
 
-    const speak = (text: string) => {
-        if ('speechSynthesis' in window) {
-            const utterance = new window.SpeechSynthesisUtterance(text);
-            utterance.lang = i18n.language === 'am' ? 'am-ET' : 'en-US';
-            window.speechSynthesis.speak(utterance);
-        }
-    };
-
+    // Account selection logic (consistent with deposit form)
     useEffect(() => {
-        if (state?.updateId) {
-            setUpdateId(state.updateId as string);
-            const fd = state.formData || {};
+        if (loadingAccounts) return;
+
+        if (!accounts || accounts.length === 0) {
+            setFormData(prev => ({ ...prev, accountNumber: '', accountHolderName: '' }));
+            return;
+        }
+
+        if (accounts.length === 1) {
+            const account = accounts[0];
             setFormData(prev => ({
                 ...prev,
-                accountNumber: fd.accountNumber || prev.accountNumber,
-                accountHolderName: fd.accountHolderName || prev.accountHolderName,
-                amount: String(fd.amount ?? prev.amount),
+                accountNumber: account.accountNumber,
+                accountHolderName: account.accountHolderName || '',
             }));
-            setStep(2); 
+        } else if (accounts.length > 1) {
+            const savedAccount = localStorage.getItem('selectedWithdrawalAccount');
+            const selectedAccount = accounts.find(a => a.accountNumber === savedAccount) || accounts[0];
+            setFormData(prev => ({
+                ...prev,
+                accountNumber: selectedAccount.accountNumber,
+                accountHolderName: selectedAccount.accountHolderName || '',
+            }));
         }
-        if (!loadingAccounts && accounts.length > 0) {
-            const saved = localStorage.getItem('selectedWithdrawalAccount');
-            if (saved) {
-                const acc = accounts.find(a => a.accountNumber === saved);
-                if (acc) {
-                    setFormData(prev => ({
-                        ...prev,
-                        accountNumber: acc.accountNumber,
-                        accountHolderName: acc.accountHolderName,
-                    }));
-                    return;
-                }
-            }
-            if (accounts.length === 1) {
-                setFormData(prev => ({
-                    ...prev,
-                    accountNumber: accounts[0].accountNumber,
-                    accountHolderName: accounts[0].accountHolderName,
-                }));
-            }
-        }
-    }, [accounts, loadingAccounts, state?.updateId, state?.formData]);
+    }, [accounts, loadingAccounts]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    // Handle cleanup of timers
+    useEffect(() => {
+        return () => {
+            if (resendTimer) clearInterval(resendTimer);
+        };
+    }, [resendTimer]);
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        const newFormData = { ...formData, [name]: value };
-        if (name === "accountNumber") {
+        
+        if (errors[name as keyof Errors]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+
+        if (name === 'accountNumber') {
             const selected = accounts.find(acc => acc.accountNumber === value);
             if (selected) {
-                newFormData.accountHolderName = selected.accountHolderName || selected.name || '';
+                setFormData(prev => ({
+                    ...prev,
+                    accountNumber: value,
+                    accountHolderName: selected.accountHolderName || ''
+                }));
                 localStorage.setItem('selectedWithdrawalAccount', value);
+                return;
             }
         }
-        setFormData(newFormData);
+        
+        if (name === 'amount') {
+            const sanitizedValue = value.replace(/[^\d.]/g, '');
+            const parts = sanitizedValue.split('.');
+            if (parts.length > 2) return;
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
+        }
+
+        if (name === 'otp') {
+            const sanitizedValue = value.replace(/\D/g, '').slice(0, 6);
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const validateAll = (): boolean => {
+    const validateStep1 = (): boolean => {
         const errs: Errors = {};
-        if (!formData.accountNumber) errs.accountNumber = t('accountNumberRequired', 'Account number is required.');
-        if (!formData.accountHolderName) errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required.');
-        if (!formData.amount || Number(formData.amount) <= 0) errs.amount = t('validAmountRequired', 'A valid amount is required.');
+        
+        if (!formData.accountNumber.trim()) {
+            errs.accountNumber = t('accountNumberRequired', 'Please select an account');
+        }
+        
+        if (!formData.accountHolderName.trim()) {
+            errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required');
+        }
+        
+        if (!formData.amount || Number(formData.amount) <= 0) {
+            errs.amount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
+        }
+        
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
 
-    const handleStep1Next = (e: React.FormEvent) => {
+    const validateStep3 = (): boolean => {
+        const errs: Errors = {};
+        
+        if (!formData.otp || formData.otp.length !== 6) {
+            errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+        }
+        
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    const handleStep1Next = (e: FormEvent) => {
         e.preventDefault();
-        if (!validateAll()) return;
+        if (!validateStep1()) {
+            const firstError = Object.keys(errors)[0];
+            if (firstError) {
+                document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
         setStep(2);
     };
 
-    const handleRequestOtp = async (e: React.FormEvent) => {
+    const handleStep2Next = async (e: FormEvent) => {
         e.preventDefault();
-        setOtpError('');
-        setOtpMessage('');
-        setOtpLoading(true);
-        setErrors({});
         if (!phone) {
-            setOtpError('Phone number is missing. Please log in again.');
-            setOtpLoading(false);
+            setErrors({ submit: t('missingPhoneNumber', 'Phone number not found. Please log in again.') });
             return;
         }
+
+        setOtpLoading(true);
+        setErrors({});
+        setOtpMessage('');
+
         try {
             const response = await requestWithdrawalOtp(phone);
             if (response.success) {
-                setOtpMessage(response.message || 'OTP sent to your phone.');
+                setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
                 setStep(3);
                 setResendCooldown(30);
+                
                 const timer = setInterval(() => {
                     setResendCooldown(prev => {
                         if (prev <= 1) {
@@ -138,196 +211,469 @@ export default function CashWithdrawalForm() {
                 }, 1000);
                 setResendTimer(timer);
             } else {
-                setOtpError(response.message || 'Failed to send OTP.');
+                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
             }
-        } catch (err: any) {
-            setOtpError(err?.message || 'Failed to send OTP.');
+        } catch (error: any) {
+            setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
         } finally {
             setOtpLoading(false);
         }
     };
 
-    const handleSubmitWithOtp = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.otp || formData.otp.length !== 6) {
-            setErrors({ otp: 'Please enter the 6-digit OTP sent to your phone.' });
-            return;
-        }
+    const handleResendOtp = async () => {
+        if (!phone || resendCooldown > 0) return;
+
         setOtpLoading(true);
         setErrors({});
+        setOtpMessage('');
 
-        if (!phone) {
-            setErrors({ message: 'Phone number not found. Please log in again.' });
+        try {
+            const response = await requestWithdrawalOtp(phone);
+            if (response.success) {
+                setOtpMessage(t('otpResent', 'OTP resent successfully.'));
+                setResendCooldown(30);
+                
+                const timer = setInterval(() => {
+                    setResendCooldown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                setResendTimer(timer);
+            } else {
+                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
+            }
+        } catch (error: any) {
+            setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
+        } finally {
             setOtpLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!validateStep3()) return;
+        if (!formData.otp || formData.otp.length !== 6) {
+            setErrors({ otp: t('validOtpRequired', 'Please enter the 6-digit OTP') });
             return;
         }
 
-        const otpResponse = await authService.verifyOtp(phone, formData.otp, token || undefined);
+        if (!phone || !branch?.id) {
+            setErrors({ submit: t('missingInfo', 'Please ensure all information is complete.') });
+            return;
+        }
 
-        if (otpResponse.verified) {
-            const withdrawalReq = {
+        setIsSubmitting(true);
+        try {
+            // Submit withdrawal with OTP directly (no separate OTP verification)
+            const withdrawalData = {
                 phoneNumber: phone,
-                branchId: ABIY_BRANCH_ID,
+                branchId: branch.id,
                 accountNumber: formData.accountNumber,
                 accountHolderName: formData.accountHolderName,
                 withdrawal_Amount: Number(formData.amount),
+                otpCode: formData.otp || '', // for type
+                OtpCode: formData.otp || '' // for backend
             };
+            console.log('Submitting withdrawal payload:', withdrawalData);
 
-            try {
-                const submissionResponse = await submitWithdrawal(withdrawalReq, token || undefined);
-                if (submissionResponse.success) {
-                    navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', { state: { serverData: submissionResponse } });
-                } else {
-                    setErrors({ message: submissionResponse.message || 'Withdrawal failed after OTP verification.' });
-                }
-            } catch (error: any) {
-                setErrors({ message: error.message || 'An unexpected error occurred during submission.' });
+            const response = await submitWithdrawal(withdrawalData, token || undefined);
+
+            // Always expect the full backend response (with success/message/data)
+            if (response && response.success) {
+                navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', { 
+                    state: { 
+                        serverData: response,
+                        branchName: branch?.name,
+                        ui: {
+                            accountNumber: formData.accountNumber,
+                            accountHolderName: formData.accountHolderName,
+                            amount: formData.amount,
+                            telephoneNumber: phone
+                        },
+                        tokenNumber: response.data?.tokenNumber,
+                        queueNumber: response.data?.queueNumber,
+                    } 
+                });
+            } else {
+                setErrors({ submit: response?.message || t('invalidOtp', 'Invalid or already used OTP. Please try again.') });
             }
-
-        } else {
-            setErrors({ otp: otpResponse.message || 'Invalid OTP. Please try again.' });
+        } catch (error: any) {
+            setErrors({ submit: error?.message || t('submissionFailed', 'Submission failed. Please try again.') });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } finally {
+            setIsSubmitting(false);
         }
-        setOtpLoading(false);
     };
 
-    const renderStep1 = () => (
-        <form onSubmit={handleStep1Next} className="space-y-6">
-            <div className="p-4 border rounded-lg shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-fuchsia-700">{t('accountInformation', 'Account Information')}</h2>
-                    <button type="button" onClick={() => speak(t('accountInformation', 'Account Information'))} className="ml-2 p-1 rounded-full bg-fuchsia-100 hover:bg-fuchsia-200">
-                        <SpeakerWaveIcon className="h-5 w-5 text-fuchsia-700" />
-                    </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Field label={t('accountNumber', 'Account Number')} required error={errors.accountNumber}>
-                        {accountDropdown ? (
-                            <select name="accountNumber" value={formData.accountNumber} onChange={handleChange} className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm">
-                                <option value="">{t('selectAccount', 'Select your account')}</option>
-                                {accounts.map(acc => <option key={acc.accountNumber} value={acc.accountNumber}>{acc.accountNumber} - {acc.accountHolderName}</option>)}
-                            </select>
-                        ) : (
-                            <input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} readOnly={accounts.length === 1} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" />
-                        )}
-                    </Field>
-                    <Field label={t('accountHolderName', 'Account Holder Name')} required error={errors.accountHolderName}>
-                        <input type="text" name="accountHolderName" value={formData.accountHolderName} readOnly className="form-input w-full p-2 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed" />
-                    </Field>
+    // Loading states (consistent with deposit form)
+    if (loadingAccounts) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
+                        <p className="text-gray-600">{t('loading', 'Loading...')}</p>
+                    </div>
                 </div>
             </div>
-            <div className="p-4 border rounded-lg shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-fuchsia-700">{t('amountInformation', 'Amount Information')}</h2>
-                    <button type="button" onClick={() => speak(t('amountInformation', 'Amount Information'))} className="ml-2 p-1 rounded-full bg-fuchsia-100 hover:bg-fuchsia-200">
-                        <SpeakerWaveIcon className="h-5 w-5 text-fuchsia-700" />
-                    </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Field label={t('amount', 'Amount')} required error={errors.amount}>
-                        <input type="number" name="amount" value={formData.amount} onChange={handleChange} className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm" />
-                    </Field>
-                </div>
-            </div>
-            <div className="pt-4">
-                <button type="submit" className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50">
-                    {t('continue', 'Continue')}
-                </button>
-            </div>
-        </form>
-    );
+        );
+    }
 
-    const renderReviewStep = () => (
-        <form onSubmit={handleRequestOtp} className="space-y-6 text-center">
-            <div className="p-4 border rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">Confirm Withdrawal</h2>
-                <div className="space-y-2 text-gray-700 bg-gray-50 p-4 rounded-lg shadow-inner">
-                    <div className="flex justify-between"><strong className="font-medium">Account:</strong> <span>{formData.accountHolderName} ({formData.accountNumber})</span></div>
-                    <div className="flex justify-between items-center"><strong className="font-medium">Amount:</strong> <span className="font-bold text-2xl text-fuchsia-800">{Number(formData.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB</span></div>
+    if (errorAccounts) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
+                        <p className="text-gray-600 mb-4">{errorAccounts}</p>
+                        <button
+                            onClick={() => refreshAccounts()}
+                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                        >
+                            {t('tryAgain', 'Try Again')}
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div className="flex gap-4">
-                <button type="button" onClick={() => setStep(1)} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">Back</button>
-                <button type="submit" disabled={otpLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50">
-                    {otpLoading ? t('processing', 'Processing...') : t('requestOtp', 'Request OTP')}
-                </button>
-            </div>
-        </form>
-    );
+        );
+    }
 
-    const renderOtpStep = () => (
-        <form onSubmit={handleSubmitWithOtp} className="space-y-6 text-center">
-            <div className="p-4 border rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-fuchsia-700 mb-4">OTP Verification</h2>
-                <p className="text-gray-600 mb-2">An OTP has been sent to your phone number: <strong className="text-fuchsia-800">{phone}</strong></p>
-                {otpMessage && <p className="text-green-600 mb-2">{otpMessage}</p>}
-                {otpError && <p className="text-red-600 mb-2">{otpError}</p>}
-                {errors.otp && <p className="text-red-600 mb-2">{errors.otp}</p>}
-                <Field label="Enter OTP" required error={errors.otp}>
-                    <input type="text" name="otp" value={formData.otp} onChange={handleChange} maxLength={6} className="form-input w-full p-4 text-center text-2xl tracking-widest rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500" />
-                </Field>
+    if (!loadingAccounts && accounts.length === 0) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noAccounts', 'No Accounts')}</h3>
+                        <p className="text-gray-600 mb-4">{t('noAccountsMessage', 'No accounts found for your phone number.')}</p>
+                        <button
+                            onClick={() => refreshAccounts()}
+                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                        >
+                            {t('refresh', 'Refresh')}
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div className="flex gap-4 items-center justify-between">
-                <button type="button" onClick={() => setStep(2)} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">Back</button>
-                <button type="button"
-                    onClick={async () => {
-                        if (resendCooldown === 0) {
-                            setOtpError('');
-                            setOtpMessage('');
-                            setOtpLoading(true);
-                            try {
-                                if (!phone) {
-                                setOtpError('Phone number is missing. Please log in again.');
-                                setOtpLoading(false);
-                                return;
-                            }
-                            const response = await requestWithdrawalOtp(phone);
-                            if (response.success) {
-                                setOtpMessage(response.message || 'OTP resent.');
-                                setResendCooldown(30);
-                                const timer = setInterval(() => {
-                                    setResendCooldown(prev => {
-                                        if (prev <= 1) {
-                                            clearInterval(timer);
-                                            return 0;
-                                        }
-                                        return prev - 1;
-                                    });
-                                }, 1000);
-                                setResendTimer(timer);
-                            } else {
-                                setOtpError(response.message || 'Failed to resend OTP.');
-                            }
-                            } catch (err: any) {
-                                setOtpError(err?.response?.data?.message || 'Failed to resend OTP.');
-                            } finally {
-                                setOtpLoading(false);
-                            }
-                        }
-                    }}
-                    disabled={resendCooldown > 0 || otpLoading}
-                    className="w-full bg-fuchsia-100 text-fuchsia-700 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-fuchsia-200 transition disabled:opacity-50">
-                    {resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : 'Resend OTP'}
-                </button>
-                <button type="submit" disabled={formData.otp.length !== 6 || otpLoading} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition disabled:opacity-50">Verify & Proceed</button>
-            </div>
-        </form>
-    );
-
-    useEffect(() => {
-        return () => {
-            if (resendTimer) clearInterval(resendTimer);
-        };
-    }, [resendTimer]);
+        );
+    }
 
     return (
-        <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
-            <div className="text-center mb-8 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg">
-                <h1 className="text-3xl font-extrabold text-white">Cash Withdrawal</h1>
-                <p className="text-white mt-1">Ayer Tena Branch</p>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-4xl w-full mx-auto">
+                <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+                    {/* Header with Language Switcher */}
+                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-lg">
+                                        <Plane className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold">{t('cashWithdrawal', 'Cash Withdrawal')}</h1>
+                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>{branch?.name || t('branch', 'Branch')}</span>
+                                            <span>•</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
+                                        📱 {phone}
+                                    </div>
+                                    <div className="bg-white/20 rounded-lg p-1">
+                                        <LanguageSwitcher />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <div className="p-6">
+                        {/* Progress Steps - 3 steps for withdrawal */}
+                        <div className="flex justify-center mb-6">
+                            <div className="flex items-center bg-gray-50 rounded-lg p-1">
+                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 1 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
+                                    <span className="font-medium text-sm">1. {t('details', 'Details')}</span>
+                                </div>
+                                <div className="mx-1 text-gray-400 text-sm">→</div>
+                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 2 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
+                                    <span className="font-medium text-sm">2. {t('confirm', 'Confirm')}</span>
+                                </div>
+                                <div className="mx-1 text-gray-400 text-sm">→</div>
+                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 3 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
+                                    <span className="font-medium text-sm">3. {t('otp', 'OTP')}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Step 1: Account Details */}
+                        {step === 1 && (
+                            <form onSubmit={handleStep1Next} className="space-y-6">
+                                <div className="border border-gray-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <CreditCard className="h-5 w-5 text-fuchsia-700" />
+                                        {t('accountInformation', 'Account Information')}
+                                    </h2>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <Field 
+                                            label={t('accountNumber', 'Account Number')} 
+                                            required 
+                                            error={errors.accountNumber}
+                                        >
+                                            {accountDropdown ? (
+                                                <select 
+                                                    name="accountNumber" 
+                                                    value={formData.accountNumber} 
+                                                    onChange={handleChange} 
+                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    id="accountNumber"
+                                                >
+                                                    <option value="">{t('selectAccount', 'Select account')}</option>
+                                                    {accounts.map(acc => (
+                                                        <option key={acc.accountNumber} value={acc.accountNumber}>
+                                                            {acc.accountNumber} - {acc.accountHolderName}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input 
+                                                    type="text" 
+                                                    name="accountNumber" 
+                                                    value={formData.accountNumber} 
+                                                    onChange={handleChange} 
+                                                    readOnly={accounts.length === 1}
+                                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                                                    id="accountNumber"
+                                                />
+                                            )}
+                                        </Field>
+                                        
+                                        <Field 
+                                            label={t('accountHolderName', 'Account Holder Name')} 
+                                            required 
+                                            error={errors.accountHolderName}
+                                        >
+                                            <input 
+                                                type="text" 
+                                                name="accountHolderName" 
+                                                value={formData.accountHolderName} 
+                                                readOnly 
+                                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                                                id="accountHolderName"
+                                            />
+                                        </Field>
+                                    </div>
+                                </div>
+
+                                <div className="border border-gray-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <DollarSign className="h-5 w-5 text-fuchsia-700" />
+                                        {t('amountInformation', 'Amount Information')}
+                                    </h2>
+                                    
+                                    <div className="max-w-md">
+                                        <Field 
+                                            label={t('amount', 'Amount (ETB)')} 
+                                            required 
+                                            error={errors.amount}
+                                        >
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <span className="text-gray-600 font-medium">ETB</span>
+                                                </div>
+                                                <input 
+                                                    type="text" 
+                                                    name="amount" 
+                                                    value={formData.amount} 
+                                                    onChange={handleChange} 
+                                                    className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    placeholder="0.00"
+                                                    id="amount"
+                                                />
+                                            </div>
+                                        </Field>
+                                    </div>
+                                </div>
+
+                                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                                <div className="flex justify-end">
+                                    <button 
+                                        type="submit" 
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                    >
+                                        <span>{t('continue', 'Continue')}</span>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Step 2: Confirmation */}
+                        {step === 2 && (
+                            <form onSubmit={handleStep2Next} className="space-y-6">
+                                <div className="border border-gray-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                        {t('confirmWithdrawal', 'Confirm Withdrawal')}
+                                    </h2>
+                                    
+                                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                            <span className="font-medium text-gray-700">{t('accountHolder', 'Account Holder')}:</span>
+                                            <span className="font-semibold">{formData.accountHolderName}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                            <span className="font-medium text-gray-700">{t('accountNumber', 'Account Number')}:</span>
+                                            <span className="font-mono font-semibold">{formData.accountNumber}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="font-medium text-gray-700">{t('amount', 'Amount')}:</span>
+                                            <span className="text-lg font-bold text-fuchsia-700">
+                                                {Number(formData.amount).toLocaleString()} ETB
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(1)}
+                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                                    >
+                                        <ChevronRight className="h-4 w-4 rotate-180" />
+                                        {t('back', 'Back')}
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={otpLoading}
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                                    >
+                                        {otpLoading ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                {t('requestingOtp', 'Requesting OTP...')}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Shield className="h-4 w-4" />
+                                                {t('requestOtp', 'Request OTP')}
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Step 3: OTP Verification */}
+                        {step === 3 && (
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="border border-gray-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <Shield className="h-5 w-5 text-fuchsia-700" />
+                                        {t('otpVerification', 'OTP Verification')}
+                                    </h2>
+                                    
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                        <p className="text-sm text-blue-700">
+                                            {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
+                                            <strong className="text-blue-900"> {phone}</strong>
+                                        </p>
+                                        {otpMessage && (
+                                            <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                                                <CheckCircle2 className="h-3 w-3" />
+                                                {otpMessage}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="max-w-md">
+                                        <Field 
+                                            label={t('enterOtp', 'Enter OTP')} 
+                                            required 
+                                            error={errors.otp}
+                                        >
+                                            <input 
+                                                type="text" 
+                                                name="otp" 
+                                                value={formData.otp} 
+                                                onChange={handleChange} 
+                                                maxLength={6}
+                                                className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
+                                                placeholder="000000"
+                                                id="otp"
+                                            />
+                                        </Field>
+                                        
+                                        <div className="mt-2 flex justify-between items-center">
+                                            <button
+                                                type="button"
+                                                onClick={handleResendOtp}
+                                                disabled={resendCooldown > 0 || otpLoading}
+                                                className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
+                                            >
+                                                {resendCooldown > 0 
+                                                    ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
+                                                    : t('resendOtp', 'Resend OTP')
+                                                }
+                                            </button>
+                                            <span className="text-sm text-gray-500">
+                                                {formData.otp.length}/6
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(2)}
+                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                                    >
+                                        <ChevronRight className="h-4 w-4 rotate-180" />
+                                        {t('back', 'Back')}
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={isSubmitting || formData.otp.length !== 6}
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                {t('processing', 'Processing...')}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                {t('verifyAndSubmit', 'Verify & Submit')}
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
             </div>
-            {step === 1 && renderStep1()}
-            {step === 2 && renderReviewStep()}
-            {step === 3 && renderOtpStep()}
         </div>
     );
 }
