@@ -1,22 +1,45 @@
-
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
+import { useBranch } from '../../../../context/BranchContext';
 import depositService from '../../../../services/depositService';
 import Field from '../../../../components/Field';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 import { useTranslation } from 'react-i18next';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
-// Reusable error message component
+import LanguageSwitcher from '../../../../components/LanguageSwitcher';
+import { 
+    Loader2, 
+    AlertCircle, 
+    RefreshCw, 
+    CheckCircle2, 
+    ChevronRight, 
+    CreditCard,
+    DollarSign,
+    User,
+    MapPin,
+    Calendar,
+    Plane
+} from 'lucide-react';
+
+// Enhanced error message component
 function ErrorMessage({ id, message }: { id?: string; message: string }) {
     return (
-        <p id={id} className="mt-1 text-sm text-red-600">
-            {message}
-        </p>
+        <div className="flex items-center gap-2 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span id={id} className="text-sm text-red-700">{message}</span>
+        </div>
     );
 }
 
-const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
+// Success message component
+function SuccessMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span className="text-sm text-green-700">{message}</span>
+        </div>
+    );
+}
 
 interface FormData {
     accountNumber: string;
@@ -24,13 +47,14 @@ interface FormData {
     amount: string;
 }
 
-type Errors = Partial<Record<keyof FormData, string>>;
+type Errors = Partial<Record<keyof FormData, string>> & { submit?: string };
 
 export default function CashDepositForm() {
     const { t } = useTranslation();
-    const { phone } = useAuth();
+    const { phone, user } = useAuth();
+    const { branch } = useBranch();
     const navigate = useNavigate();
-    const location = useLocation() as { state?: any };
+    const location = useLocation();
     const { 
         accounts, 
         accountDropdown, 
@@ -52,57 +76,55 @@ export default function CashDepositForm() {
     const [queueNumber, setQueueNumber] = useState<number | null>(null);
     const [loadingUpdate, setLoadingUpdate] = useState(false);
     const [step, setStep] = useState<number>(1);
+    const [successMessage, setSuccessMessage] = useState('');
 
-    // Handle account selection when accounts are loaded or changed
+    // Show success message from navigation state
     useEffect(() => {
-        console.log('Accounts changed:', { loadingAccounts, accounts });
-        
-        if (loadingAccounts) return;
-        if (updateId) return; // in update mode, keep fetched values
-        
+        if (location.state?.showSuccess) {
+            setSuccessMessage(location.state.successMessage || t('depositSubmittedSuccessfully', 'Deposit submitted successfully!'));
+            setTimeout(() => {
+                setSuccessMessage('');
+                navigate(location.pathname, { replace: true, state: {} });
+            }, 5000);
+        }
+    }, [location.state, navigate, location.pathname, t]);
+
+    // Account selection logic
+    useEffect(() => {
+        if (loadingAccounts || updateId) return;
+
         if (!accounts || accounts.length === 0) {
-            console.log('No accounts available');
-            setFormData(prev => ({
-                ...prev,
-                accountNumber: '',
-                accountHolderName: ''
-            }));
+            setFormData(prev => ({ ...prev, accountNumber: '', accountHolderName: '' }));
             return;
         }
 
-        // If there's only one account, auto-select it
         if (accounts.length === 1) {
-            console.log('Auto-selecting single account:', accounts[0]);
             const account = accounts[0];
             setFormData(prev => ({
                 ...prev,
                 accountNumber: account.accountNumber,
                 accountHolderName: account.accountHolderName || '',
-                amount: prev.amount
             }));
         } else if (accounts.length > 1) {
-            console.log('Multiple accounts available:', accounts.length);
-            // If multiple accounts, check for previously selected account
             const savedAccount = localStorage.getItem('selectedDepositAccount');
             const selectedAccount = accounts.find(a => a.accountNumber === savedAccount) || accounts[0];
-            
-            console.log('Selected account:', selectedAccount);
             setFormData(prev => ({
                 ...prev,
                 accountNumber: selectedAccount.accountNumber,
                 accountHolderName: selectedAccount.accountHolderName || '',
-                amount: prev.amount
             }));
         }
     }, [accounts, loadingAccounts, updateId]);
 
-    // Detect update mode and prefill
+    // Update mode detection
     useEffect(() => {
         const id = location.state?.updateId as string | undefined;
         if (!id) return;
+        
         setUpdateId(id);
         setTokenNumber(location.state?.tokenNumber);
         setQueueNumber(location.state?.queueNumber);
+        
         (async () => {
             try {
                 setLoadingUpdate(true);
@@ -115,7 +137,7 @@ export default function CashDepositForm() {
                     amount: d.amount != null ? String(d.amount) : prev.amount,
                 }));
             } catch (e) {
-                // ignore and remain in create mode
+                console.error('Failed to load deposit for update:', e);
             } finally {
                 setLoadingUpdate(false);
             }
@@ -123,17 +145,12 @@ export default function CashDepositForm() {
     }, [location.state]);
 
     const handleRefreshAccounts = async () => {
-        if (!phone) {
-            console.error('Cannot refresh: No phone number available');
-            return;
-        }
-        
+        if (!phone) return;
         try {
             setIsRefreshing(true);
             await refreshAccounts();
         } catch (error) {
             console.error('Failed to refresh accounts:', error);
-            // We'll let the error be handled by the error state in the hook
         } finally {
             setIsRefreshing(false);
         }
@@ -141,15 +158,9 @@ export default function CashDepositForm() {
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        console.log('Field changed:', { name, value });
         
-        // Clear any previous errors for this field
         if (errors[name as keyof Errors]) {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[name as keyof Errors];
-                return newErrors;
-            });
+            setErrors(prev => ({ ...prev, [name]: undefined }));
         }
 
         if (name === 'accountNumber') {
@@ -160,30 +171,50 @@ export default function CashDepositForm() {
                     accountNumber: value,
                     accountHolderName: selected.accountHolderName
                 }));
-                // Save the selected account for future use
                 localStorage.setItem('selectedDepositAccount', value);
                 return;
             }
         }
         
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        if (name === 'amount') {
+            const sanitizedValue = value.replace(/[^\d.]/g, '');
+            const parts = sanitizedValue.split('.');
+            if (parts.length > 2) return;
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const validateAll = (): boolean => {
         const errs: Errors = {};
-        if (!formData.accountNumber) errs.accountNumber = t('accountNumberRequired', 'Account number is required.');
-        if (!formData.accountHolderName) errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required.');
-        if (!formData.amount || Number(formData.amount) <= 0) errs.amount = t('validAmountRequired', 'A valid amount is required.');
+        
+        if (!formData.accountNumber.trim()) {
+            errs.accountNumber = t('accountNumberRequired', 'Please select an account');
+        }
+        
+        if (!formData.accountHolderName.trim()) {
+            errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required');
+        }
+        
+        if (!formData.amount || Number(formData.amount) <= 0) {
+            errs.amount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
+        }
+        
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
 
     const handleNext = (e: FormEvent) => {
         e.preventDefault();
-        if (!validateAll()) return;
+        if (!validateAll()) {
+            const firstError = Object.keys(errors)[0];
+            if (firstError) {
+                document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
         setStep(2);
     };
 
@@ -191,32 +222,29 @@ export default function CashDepositForm() {
         e.preventDefault();
         if (!validateAll()) return;
 
-        if (!phone) {
-            alert("Phone number is not available. Please log in again.");
+        if (!phone || !branch?.id) {
+            setErrors({ submit: t('missingInfo', 'Please ensure all information is complete.') });
             return;
         }
 
         setIsSubmitting(true);
         try {
             const depositData = {
-                // Core form data
                 id: updateId || undefined,
                 formKey: Date.now().toString(),
-                branchId: ABIY_BRANCH_ID,
+                branchId: branch.id,
                 accountHolderName: formData.accountHolderName,
                 accountNumber: formData.accountNumber,
                 amount: Number(formData.amount),
-                telephoneNumber: phone || '',
-                // Required fields with default values
+                telephoneNumber: phone,
                 amountInWords: 'N/A',
                 sourceOfProceeds: 'N/A',
                 typeOfAccount: 'N/A',
                 DepositedBy: 'N/A',
-                // Additional required fields
                 transactionType: 'Cash Deposit',
                 status: 'Pending',
                 tokenNumber: tokenNumber || '',
-                queueNumber: queueNumber,
+                queueNumber: queueNumber || undefined,
                 formReferenceId: updateId || `dep-${Date.now()}`
             };
             
@@ -227,241 +255,301 @@ export default function CashDepositForm() {
             navigate('/form/cash-deposit/cashdepositconfirmation', { 
                 state: { 
                     serverData: response,
-                    branchName: t('ayerTenaBranch', 'Ayer Tena Branch'),
+                    branchName: branch?.name,
                     ui: {
                         accountNumber: formData.accountNumber,
                         accountHolderName: formData.accountHolderName,
                         amount: formData.amount,
-                        telephoneNumber: phone || ''
+                        telephoneNumber: phone
                     },
                     tokenNumber: response.data?.tokenNumber || tokenNumber,
                     queueNumber: response.data?.queueNumber || queueNumber,
                 } 
             });
         } catch (error: any) {
-            alert(error?.message || t('submissionFailed', 'Submission failed. Please try again.'));
+            setErrors({ submit: error?.message || t('submissionFailed', 'Submission failed. Please try again.') });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Show loading state
-    if (loadingAccounts) {
+    // Loading states
+    if (loadingAccounts || loadingUpdate) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-                <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin" />
-                <p className="text-lg text-gray-600">{t('loadingAccounts', 'Loading your accounts...')}</p>
-            </div>
-        );
-    }
-
-    // Show error state
-    if (errorAccounts) {
-        return (
-            <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-                <div className="text-center p-6 space-y-4">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100">
-                        <AlertCircle className="h-8 w-8 text-red-600" />
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
+                        <p className="text-gray-600">{t('loading', 'Loading...')}</p>
                     </div>
-                    <h2 className="text-xl font-semibold text-gray-900">{t('unableToLoadAccounts', 'Unable to load accounts')}</h2>
-                    <p className="text-gray-600">{errorAccounts}</p>
-                    <button
-                        onClick={handleRefreshAccounts}
-                        disabled={isRefreshing}
-                        className="mt-4 px-6 py-2 bg-fuchsia-700 text-white rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center justify-center mx-auto"
-                    >
-                        {isRefreshing ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                {t('refreshing', 'Refreshing...')}
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                {t('tryAgain', 'Try Again')}
-                            </>
-                        )}
-                    </button>
                 </div>
             </div>
         );
     }
 
-    // Show empty state
+    if (errorAccounts) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
+                        <p className="text-gray-600 mb-4">{errorAccounts}</p>
+                        <button
+                            onClick={handleRefreshAccounts}
+                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                        >
+                            {t('tryAgain', 'Try Again')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (!loadingAccounts && accounts.length === 0) {
         return (
-            <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-                <div className="text-center p-6 space-y-4">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100">
-                        <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noAccounts', 'No Accounts')}</h3>
+                        <p className="text-gray-600 mb-4">{t('noAccountsMessage', 'No accounts found for your phone number.')}</p>
+                        <button
+                            onClick={handleRefreshAccounts}
+                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                        >
+                            {t('refresh', 'Refresh')}
+                        </button>
                     </div>
-                    <h2 className="text-xl font-semibold text-gray-900">{t('noAccountsFound', 'No Accounts Found')}</h2>
-                    <p className="text-gray-600">{t('noAccountsMessage', "We couldn't find any accounts associated with your phone number.")}</p>
-                    <button
-                        onClick={handleRefreshAccounts}
-                        disabled={isRefreshing}
-                        className="mt-4 px-6 py-2 bg-fuchsia-700 text-white rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center justify-center mx-auto"
-                    >
-                        {isRefreshing ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                {t('refreshing', 'Refreshing...')}
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                {t('refreshAccounts', 'Refresh Accounts')}
-                            </>
-                        )}
-                    </button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg">
-            <div className="mb-4 sm:mb-6 bg-fuchsia-700 text-white p-3 sm:p-4 rounded-lg shadow-lg text-center">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white">{t('cashDeposit', 'Cash Deposit')}</h1>
-                <p className="text-white text-sm sm:text-base mt-1">{t('ayerTenaBranch', 'Ayer Tena Branch')}</p>
-            </div>
-            {step === 1 && (
-                <form onSubmit={handleNext} className="space-y-4 sm:space-y-6">
-                    <div className="p-3 sm:p-4 border rounded-lg shadow-sm">
-                        <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">{t('accountInformation', 'Account Information')}</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            <Field 
-                                label={t('accountNumber', 'Account Number')} 
-                                required 
-                                error={errors.accountNumber}
-                            >
-                                {accountDropdown ? (
-                                    <select 
-                                        name="accountNumber" 
-                                        value={formData.accountNumber} 
-                                        onChange={handleChange} 
-                                        className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
-                                        disabled={isRefreshing}
-                                        aria-invalid={!!errors.accountNumber}
-                                        aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
-                                    >
-                                        <option value="">{t('selectYourAccount', 'Select your account')}</option>
-                                        {accounts.map(acc => (
-                                            <option key={acc.accountNumber} value={acc.accountNumber}>
-                                                {acc.accountNumber} - {acc.accountHolderName}
-                                            </option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <input 
-                                        type="text" 
-                                        name="accountNumber" 
-                                        value={formData.accountNumber} 
-                                        onChange={handleChange} 
-                                        readOnly={accounts.length === 1}
-                                        disabled={isRefreshing}
-                                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                                        aria-invalid={!!errors.accountNumber}
-                                        aria-describedby={errors.accountNumber ? 'accountNumber-error' : undefined}
-                                    />
-                                )}
-                                {errors.accountNumber && (
-                                    <ErrorMessage id="accountNumber-error" message={errors.accountNumber} />
-                                )}
-                            </Field>
-                            <Field 
-                                label={t('accountHolderName', 'Account Holder Name')} 
-                                required 
-                                error={errors.accountHolderName}
-                            >
-                                <input 
-                                    type="text" 
-                                    name="accountHolderName" 
-                                    value={formData.accountHolderName} 
-                                    readOnly 
-                                    className="form-input w-full p-3 rounded-lg border-2 border-gray-300 bg-gray-100 cursor-not-allowed"
-                                    aria-invalid={!!errors.accountHolderName}
-                                    aria-describedby={errors.accountHolderName ? 'accountHolderName-error' : undefined}
-                                />
-                                {errors.accountHolderName && (
-                                    <ErrorMessage id="accountHolderName-error" message={errors.accountHolderName} />
-                                )}
-                            </Field>
-                        </div>
-                    </div>
-                    <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
-                        <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">{t('amountInformation', 'Amount Information')}</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            <Field 
-                                label={t('amount', 'Amount')} 
-                                required 
-                                error={errors.amount}
-                            >
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span className="text-gray-500">ETB</span>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-4xl w-full mx-auto">
+                <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+                    {/* Header with Language Switcher */}
+                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-lg">
+                                        <Plane className="h-5 w-5 text-white" />
                                     </div>
-                                    <input 
-                                        type="number" 
-                                        name="amount" 
-                                        value={formData.amount} 
-                                        onChange={handleChange} 
-                                        className="form-input w-full p-3 pl-16 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                                        placeholder="0.00"
-                                        min="1"
-                                        step="0.01"
-                                        disabled={isRefreshing}
-                                        aria-invalid={!!errors.amount}
-                                        aria-describedby={errors.amount ? 'amount-error' : undefined}
-                                    />
+                                    <div>
+                                        <h1 className="text-lg font-bold">{t('cashDeposit', 'Cash Deposit')}</h1>
+                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>{branch?.name || t('branch', 'Branch')}</span>
+                                            <span>•</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                {errors.amount && (
-                                    <ErrorMessage id="amount-error" message={errors.amount} />
-                                )}
-                            </Field>
+                                
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
+                                        📱 {phone}
+                                    </div>
+                                    <div className="bg-white/20 rounded-lg p-1">
+                                        <LanguageSwitcher />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div className="pt-3 sm:pt-4">
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting || loadingUpdate}
-                            className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base"
-                        >
-                            {t('continue', 'Continue')}
-                        </button>
-                    </div>
-                </form>
-            )}
-            {step === 2 && (
-                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                    <div className="p-3 sm:p-4 border rounded-lg shadow-sm">
-                        <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">{t('confirmDeposit', 'Confirm Deposit')}</h2>
-                        <div className="bg-gray-50 p-3 rounded-lg shadow-inner space-y-2 text-gray-700">
-                            <div className="flex justify-between"><strong className="font-medium">{t('account', 'Account')}:</strong> <span>{formData.accountHolderName} ({formData.accountNumber})</span></div>
-                            <div className="flex justify-between items-center"><strong className="font-medium">{t('amount', 'Amount')}:</strong> <span className="font-bold text-fuchsia-800">{Number(formData.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB</span></div>
+                    </header>
+
+                    {/* Main Content */}
+                    <div className="p-6">
+                        {successMessage && (
+                            <div className="mb-6">
+                                <SuccessMessage message={successMessage} />
+                            </div>
+                        )}
+
+                        {/* Progress Steps */}
+                        <div className="flex justify-center mb-6">
+                            <div className="flex items-center bg-gray-50 rounded-lg p-1">
+                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 1 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
+                                    <span className="font-medium text-sm">1. {t('details', 'Details')}</span>
+                                </div>
+                                <div className="mx-1 text-gray-400 text-sm">→</div>
+                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 2 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
+                                    <span className="font-medium text-sm">2. {t('confirm', 'Confirm')}</span>
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Step 1: Account Details */}
+                        {step === 1 && (
+                            <form onSubmit={handleNext} className="space-y-6">
+                                <div className="border border-gray-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <CreditCard className="h-5 w-5 text-fuchsia-700" />
+                                        {t('accountInformation', 'Account Information')}
+                                    </h2>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <Field 
+                                            label={t('accountNumber', 'Account Number')} 
+                                            required 
+                                            error={errors.accountNumber}
+                                        >
+                                            {accountDropdown ? (
+                                                <select 
+                                                    name="accountNumber" 
+                                                    value={formData.accountNumber} 
+                                                    onChange={handleChange} 
+                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    id="accountNumber"
+                                                >
+                                                    <option value="">{t('selectAccount', 'Select account')}</option>
+                                                    {accounts.map(acc => (
+                                                        <option key={acc.accountNumber} value={acc.accountNumber}>
+                                                            {acc.accountNumber} - {acc.accountHolderName}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input 
+                                                    type="text" 
+                                                    name="accountNumber" 
+                                                    value={formData.accountNumber} 
+                                                    onChange={handleChange} 
+                                                    readOnly={accounts.length === 1}
+                                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                                                    id="accountNumber"
+                                                />
+                                            )}
+                                        </Field>
+                                        
+                                        <Field 
+                                            label={t('accountHolderName', 'Account Holder Name')} 
+                                            required 
+                                            error={errors.accountHolderName}
+                                        >
+                                            <input 
+                                                type="text" 
+                                                name="accountHolderName" 
+                                                value={formData.accountHolderName} 
+                                                readOnly 
+                                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                                                id="accountHolderName"
+                                            />
+                                        </Field>
+                                    </div>
+                                </div>
+
+                                <div className="border border-gray-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <DollarSign className="h-5 w-5 text-fuchsia-700" />
+                                        {t('amountInformation', 'Amount Information')}
+                                    </h2>
+                                    
+                                    <div className="max-w-md">
+                                        <Field 
+                                            label={t('amount', 'Amount (ETB)')} 
+                                            required 
+                                            error={errors.amount}
+                                        >
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <span className="text-gray-600 font-medium">ETB</span>
+                                                </div>
+                                                <input 
+                                                    type="text" 
+                                                    name="amount" 
+                                                    value={formData.amount} 
+                                                    onChange={handleChange} 
+                                                    className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    placeholder="0.00"
+                                                    id="amount"
+                                                />
+                                            </div>
+                                        </Field>
+                                    </div>
+                                </div>
+
+                                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                                <div className="flex justify-end">
+                                    <button 
+                                        type="submit" 
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                    >
+                                        <span>{t('continue', 'Continue')}</span>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Step 2: Confirmation */}
+                        {step === 2 && (
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="border border-gray-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                        {t('confirmDeposit', 'Confirm Deposit')}
+                                    </h2>
+                                    
+                                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                            <span className="font-medium text-gray-700">{t('accountHolder', 'Account Holder')}:</span>
+                                            <span className="font-semibold">{formData.accountHolderName}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                            <span className="font-medium text-gray-700">{t('accountNumber', 'Account Number')}:</span>
+                                            <span className="font-mono font-semibold">{formData.accountNumber}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="font-medium text-gray-700">{t('amount', 'Amount')}:</span>
+                                            <span className="text-lg font-bold text-fuchsia-700">
+                                                {Number(formData.amount).toLocaleString()} ETB
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(1)}
+                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                                    >
+                                        <ChevronRight className="h-4 w-4 rotate-180" />
+                                        {t('back', 'Back')}
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={isSubmitting}
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                {t('processing', 'Processing...')}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                {t('submit', 'Submit')}
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button type="button" onClick={() => setStep(1)} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-2 sm:py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">{t('back', 'Back')}</button>
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting || loadingUpdate}
-                            className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" />
-                                    {t('processing', 'Processing...')}
-                                </>
-                            ) : (
-                                t('submitDeposit', 'Submit Deposit')
-                            )}
-                        </button>
-                    </div>
-                </form>
-            )}
+                </div>
+            </div>
         </div>
     );
 }

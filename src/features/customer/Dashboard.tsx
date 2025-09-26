@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import QueueNotifyModal from '../../modals/QueueNotifyModal';
 import clsx from 'clsx';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 type FormName =
   | 'accountOpening'
@@ -342,23 +343,30 @@ export default function Dashboard() {
       />
 
       {/* Header */}
-      <header className="bg-gradient-to-r from-fuchsia-700 to-pink-700 text-white shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-              <h1 className="text-2xl font-bold">{t('dashboardTitle', 'CBE Digital Banking')}</h1>
-              <p className="text-fuchsia-200 text-sm mt-1">
-                {t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-fuchsia-800/50 px-3 py-1.5 rounded-full text-sm">
-                📱 {phone}
-              </div>
-            </div>
-          </div>
+     
+<header className="bg-gradient-to-r from-fuchsia-700 to-pink-700 text-white shadow-lg sticky top-0 z-50">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div>
+        <h1 className="text-2xl font-bold">{t('dashboardTitle', 'CBE Digital Banking')}</h1>
+        <p className="text-fuchsia-200 text-sm mt-1">
+          {t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}
+        </p>
+      </div>
+      
+      {/* Integrated Language Switcher */}
+      <div className="flex items-center gap-3">
+      <div className="bg-fuchsia-800/50 px-3 py-1.5 rounded-full text-sm">
+          📱 {phone}
         </div>
-      </header>
+        <div className="bg-white/20 rounded-lg p-1">
+          <LanguageSwitcher />
+        </div>
+       
+      </div>
+    </div>
+  </div>
+</header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">

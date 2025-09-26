@@ -117,9 +117,9 @@ const DashboardRouter: React.FC = () => {
 function App() {
   return (
     <>
-      <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 1000 }}>
+      {/* <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 1000 }}>
         <LanguageSwitcher />
-      </div>
+      </div> */}
       <Routes>
         <Route path="/" element={<Navigate to="/select-branch" replace />} />
         <Route path="/select-branch" element={<BranchSelectionEnhanced />} />

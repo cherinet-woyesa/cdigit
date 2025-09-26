@@ -1,23 +1,42 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useMemo, useRef, Fragment } from 'react';
 import depositService from '../../../../services/depositService';
-import { CheckCircleIcon, PrinterIcon, ArrowPathIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher'; // Add this import
+import { useAuth } from '../../../../context/AuthContext'; // Add for phone number
+import { 
+    CheckCircle2, 
+    Printer, 
+    RefreshCw, 
+    X, 
+    AlertTriangle,
+    Plane,
+    MapPin,
+    Calendar,
+    Clock,
+    User,
+    CreditCard,
+    DollarSign,
+    Building
+} from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import { Dialog, Transition } from '@headlessui/react';
-import { useTranslation } from 'react-i18next';
-// Reusable message components
+
+// Enhanced message components
 function ErrorMessage({ message }: { message: string }) {
     return (
-        <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {message}
+        <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg mb-3">
+            <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-red-700 text-sm">{message}</span>
         </div>
     );
 }
 
 function SuccessMessage({ message }: { message: string }) {
     return (
-        <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-            {message}
+        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg mb-3">
+            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span className="text-green-700 text-sm">{message}</span>
         </div>
     );
 }
@@ -32,11 +51,12 @@ type DepositData = {
     amount?: number;
     tokenNumber?: string;
     queueNumber?: number;
-    [key: string]: any; // For any additional properties
+    [key: string]: any;
 };
 
 export default function DepositConfirmation() {
     const { t } = useTranslation();
+    const { phone } = useAuth(); // Get phone for header
     const { state } = useLocation() as { state?: any };
     const navigate = useNavigate();
     const [serverData, setServerData] = useState<any>(state?.serverData || null);
@@ -47,12 +67,8 @@ export default function DepositConfirmation() {
     const [showCancelModal, setShowCancelModal] = useState(false);
 
     const data = useMemo(() => {
-        if (serverData?.data) {
-            return serverData.data;
-        }
-        if (state?.serverData?.data) {
-            return state.serverData.data;
-        }
+        if (serverData?.data) return serverData.data;
+        if (state?.serverData?.data) return state.serverData.data;
         return {};
     }, [serverData, state]);
 
@@ -61,6 +77,7 @@ export default function DepositConfirmation() {
             if (data.id || error) return;
             const refId = data.formReferenceId || data.referenceId || data.ReferenceId || state?.serverData?.data?.id;
             if (!refId) return;
+            
             setSubmitting(true);
             setError('');
             try {
@@ -82,6 +99,7 @@ export default function DepositConfirmation() {
                 setSubmitting(false);
             }
         };
+
         if (state?.serverData?.data) {
             setServerData(state.serverData);
             setLocalData(prev => ({
@@ -98,235 +116,326 @@ export default function DepositConfirmation() {
     const effectiveData = localData?.id ? localData : (data || {});
     const accountNumber = effectiveData?.accountNumber || state?.ui?.accountNumber || 'N/A';
     const accountHolderName = effectiveData?.accountHolderName || state?.ui?.accountHolderName || 'N/A';
-    const branchName = state?.branchName || t('ayerTenaBranch', 'Ayer Tena Branch');
+    const branchName = state?.branchName || t('selectedBranch', 'Selected Branch');
     const amountValue = effectiveData?.amount ?? state?.ui?.amount;
     const amount = amountValue !== undefined && amountValue !== null
         ? `${Number(amountValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB`
         : '0.00 ETB';
-    // Always prefer values from navigation state if present and not 'N/A', then from effectiveData, then from serverData, then fallback
+    
+    // Preserve token and queue number from original submission during updates
     const token = (state?.tokenNumber && state?.tokenNumber !== 'N/A')
         ? state.tokenNumber
         : (effectiveData?.tokenNumber || serverData?.data?.tokenNumber || 'N/A');
+    
     const queueNumber = (state?.queueNumber && state?.queueNumber !== 'N/A')
         ? state.queueNumber.toString()
         : (effectiveData?.queueNumber?.toString() || serverData?.data?.queueNumber?.toString() || 'N/A');
+    
     const componentToPrintRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
         content: () => componentToPrintRef.current,
         documentTitle: t('depositConfirmation', 'Deposit Confirmation'),
-        onAfterPrint: () => {},
-        removeAfterPrint: true,
         pageStyle: `
-            @page { size: auto; margin: 10mm 10mm 10mm 10mm; }
-            @media print { body { -webkit-print-color-adjust: exact; } }
+            @page { size: auto; margin: 10mm; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+                .no-print { display: none !important; }
+            }
         `,
     } as any);
+
     const entityId = useMemo(() => {
-        return (
-            effectiveData?.id ||
-            data?.id ||
-            serverData?.data?.id ||
-            null
-        );
+        return effectiveData?.id || data?.id || serverData?.data?.id || null;
     }, [effectiveData?.id, data?.id, serverData?.data?.id]);
 
+    const handleNewDeposit = () => {
+        navigate('/form/cash-deposit', { 
+            state: { 
+                showSuccess: false 
+            } 
+        });
+    };
+
+    const handleUpdateDeposit = async () => {
+        if (!entityId) return;
+        
+        setSubmitting(true);
+        setError('');
+        try {
+            const depositData = await depositService.getDepositById(entityId);
+            navigate('/form/cash-deposit', {
+                state: {
+                    updateId: entityId,
+                    formData: {
+                        accountNumber: depositData.data?.accountNumber,
+                        accountHolderName: depositData.data?.accountHolderName,
+                        amount: depositData.data?.amount,
+                    },
+                    // Preserve original token and queue number
+                    tokenNumber: token,
+                    queueNumber: parseInt(queueNumber) || state?.queueNumber
+                }
+            });
+        } catch (e: any) {
+            setError(e?.message || t('prepareUpdateError', 'Failed to prepare deposit update. Please try again.'));
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleCancelDeposit = async () => {
+        if (!entityId) return;
+        
+        try {
+            setSubmitting(true);
+            setError('');
+            const response = await depositService.cancelDepositByCustomer(entityId);
+            if (response.success) {
+                setSuccessMessage(response.message || t('depositCancelled', 'Deposit cancelled successfully'));
+                setShowCancelModal(false);
+                setTimeout(() => {
+                    navigate('/form/cash-deposit', {
+                        state: {
+                            showSuccess: true,
+                            successMessage: response.message || t('depositCancelled', 'Deposit cancelled successfully')
+                        }
+                    });
+                }, 1500);
+            } else {
+                throw new Error(response.message || t('cancelDepositFailed', 'Failed to cancel deposit'));
+            }
+        } catch (e: any) {
+            setError(e?.message || t('cancelDepositFailed', 'Failed to cancel deposit. Please try again.'));
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
-            <div ref={componentToPrintRef} className="max-w-2xl w-full bg-white rounded-lg shadow-lg">
-                <div className="mb-6 bg-fuchsia-700 text-white rounded-t-lg shadow-lg text-center">
-                    <h1 className="text-4xl sm:text-5xl font-extrabold text-white py-5">{t('depositConfirmation', 'Deposit Confirmation')}</h1>
-                </div>
-                <div className="text-center mb-1">
-                    <CheckCircleIcon className="h-14 w-14 mx-auto text-green-500" />
-                    <h1 className="text-xl font-extrabold text-fuchsia-800 mt-2">{t('success', 'Success!')}</h1>
-                    <p className="text-gray-600 text-sm mb-1">{t('depositSubmitted', 'Your deposit has been submitted.')}</p>
-                </div>
-                <div className="my-4 grid grid-cols-2 gap-3">
-                    <div className="bg-fuchsia-700 p-3 rounded-lg shadow text-center">
-                        <p className="text-xs font-medium text-fuchsia-100">{t('queueNumber', 'Queue #')}</p>
-                        <p className="text-3xl font-bold">{queueNumber}</p>
-                    </div>
-                    <div className="bg-fuchsia-600 p-3 rounded-lg shadow text-center">
-                        <p className="text-xs font-medium text-fuchsia-100">{t('token', 'Token')}</p>
-                        <p className="text-3xl font-bold">{token}</p>
-                    </div>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-lg shadow-inner mb-4">
-                    <h3 className="text-base font-bold text-fuchsia-700 mb-2">{t('transactionSummary', 'Transaction Summary')}</h3>
-                    <div className="space-y-2 text-sm sm:text-base text-gray-700">
-                        <div className="flex justify-between">
-                            <strong className="font-medium">{t('accountHolder', 'Account Holder')}:</strong>
-                            <span className="text-right">{accountHolderName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <strong className="font-medium">{t('accountNumber', 'Account Number')}:</strong>
-                            <span>{accountNumber}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <strong className="font-medium">{t('amount', 'Amount')}:</strong>
-                            <span className="font-bold text-fuchsia-800">{amount}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <strong className="font-medium">{t('branch', 'Branch')}:</strong>
-                            <span>{branchName}</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button
-                        onClick={() => navigate('/form/cash-deposit')}
-                        className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition"
-                    >
-                        <ArrowPathIcon className="h-3.5 w-3.5" />
-                        {t('newDeposit', 'New')}
-                    </button>
-                    <button
-                        onClick={handlePrint}
-                        className="flex items-center justify-center gap-1 w-full bg-gray-200 text-fuchsia-800 text-sm px-2 py-1.5 rounded-md shadow hover:bg-gray-300 transition"
-                    >
-                        <PrinterIcon className="h-3.5 w-3.5" />
-                        {t('print', 'Print')}
-                    </button>
-                    {entityId && (
-                        <button
-                            onClick={async () => {
-                                setSubmitting(true);
-                                setError('');
-                                try {
-                                    const depositData = await depositService.getDepositById(entityId);
-                                    navigate('/form/cash-deposit', {
-                                        state: {
-                                            updateId: entityId,
-                                            formData: {
-                                                accountNumber: depositData.data?.accountNumber,
-                                                accountHolderName: depositData.data?.accountHolderName,
-                                                amount: depositData.data?.amount,
-                                                branchId: depositData.data?.branchId,
-                                                telephoneNumber: depositData.data?.telephoneNumber,
-                                                sourceOfProceeds: depositData.data?.sourceOfProceeds,
-                                                DepositedBy: depositData.data?.depositedBy
-                                            },
-                                            // Pass queueNumber and tokenNumber for preservation
-                                            queueNumber: depositData.data?.queueNumber ?? queueNumber,
-                                            tokenNumber: depositData.data?.tokenNumber ?? token
-                                        }
-                                    });
-                                } catch (e: any) {
-                                    setError(e?.message || t('prepareUpdateError', 'Failed to prepare deposit update. Please try again.'));
-                                } finally {
-                                    setSubmitting(false);
-                                }
-                            }}
-                            className="flex items-center justify-center gap-1 w-full bg-yellow-500 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-yellow-600 transition"
-                            disabled={submitting}
-                        >
-                            {t('update', 'Update')}
-                        </button>
-                    )}
-                    {entityId && (
-                        <>
-                            <button
-                                onClick={() => setShowCancelModal(true)}
-                                className="flex items-center justify-center gap-1 w-full bg-red-600 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-red-700 transition disabled:opacity-70"
-                                disabled={submitting}
-                            >
-                                {submitting ? t('cancelling', 'Cancelling...') : t('cancel', 'Cancel')}
-                            </button>
-                            {/* Cancel Confirmation Modal */}
-                            <Transition appear show={showCancelModal} as={Fragment}>
-                                <Dialog as="div" className="relative z-10" onClose={() => !submitting && setShowCancelModal(false)}>
-                                    <Transition.Child
-                                        as={Fragment}
-                                        enter="ease-out duration-300"
-                                        enterFrom="opacity-0"
-                                        enterTo="opacity-100"
-                                        leave="ease-in duration-200"
-                                        leaveFrom="opacity-100"
-                                        leaveTo="opacity-0"
-                                    >
-                                        <div className="fixed inset-0 bg-black/25" />
-                                    </Transition.Child>
-                                    <div className="fixed inset-0 overflow-y-auto">
-                                        <div className="flex min-h-full items-center justify-center p-4 text-center">
-                                            <Transition.Child
-                                                as={Fragment}
-                                                enter="ease-out duration-300"
-                                                enterFrom="opacity-0 scale-95"
-                                                enterTo="opacity-100 scale-100"
-                                                leave="ease-in duration-200"
-                                                leaveFrom="opacity-100 scale-100"
-                                                leaveTo="opacity-0 scale-95"
-                                            >
-                                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                                                    <Dialog.Title
-                                                        as="h3"
-                                                        className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2"
-                                                    >
-                                                        <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
-                                                        {t('confirmCancellation', 'Confirm Cancellation')}
-                                                    </Dialog.Title>
-                                                    <div className="mt-4">
-                                                        <p className="text-sm text-gray-500">
-                                                            {t('cancelDepositPrompt', 'Are you sure you want to cancel this deposit? This action cannot be undone.')}
-                                                        </p>
-                                                    </div>
-                                                    {error && <ErrorMessage message={error} />}
-                                                    <div className="mt-6 flex justify-end gap-3">
-                                                        <button
-                                                            type="button"
-                                                            className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
-                                                            onClick={() => setShowCancelModal(false)}
-                                                            disabled={submitting}
-                                                        >
-                                                            {t('goBack', 'Go Back')}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
-                                                            onClick={async () => {
-                                                                try {
-                                                                    setSubmitting(true);
-                                                                    setError('');
-                                                                    const response = await depositService.cancelDepositByCustomer(entityId);
-                                                                    if (response.success) {
-                                                                        setSuccessMessage(response.message || t('depositCancelled', 'Deposit cancelled successfully'));
-                                                                        setShowCancelModal(false);
-                                                                        setTimeout(() => {
-                                                                            navigate('/form/cash-deposit', {
-                                                                                state: {
-                                                                                    showSuccess: true,
-                                                                                    successMessage: response.message || t('depositCancelled', 'Deposit cancelled successfully')
-                                                                                }
-                                                                            });
-                                                                        }, 1500);
-                                                                    } else {
-                                                                        throw new Error(response.message || t('cancelDepositFailed', 'Failed to cancel deposit'));
-                                                                    }
-                                                                } catch (e: any) {
-                                                                    setError(e?.message || t('cancelDepositFailed', 'Failed to cancel deposit. Please try again.'));
-                                                                } finally {
-                                                                    setSubmitting(false);
-                                                                }
-                                                            }}
-                                                            disabled={submitting}
-                                                        >
-                                                            {submitting ? t('cancelling', 'Cancelling...') : t('yesCancelDeposit', 'Yes, Cancel Deposit')}
-                                                        </button>
-                                                    </div>
-                                                </Dialog.Panel>
-                                            </Transition.Child>
-                                        </div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full">
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    {/* Header with Language Switcher */}
+                    <div className="bg-fuchsia-700 text-white p-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <Plane className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-bold">{t('depositConfirmation', 'Deposit Confirmation')}</h1>
+                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{branchName}</span>
+                                        <span>•</span>
+                                        <Calendar className="h-3 w-3" />
+                                        <span>{new Date().toLocaleDateString()}</span>
                                     </div>
-                                </Dialog>
-                            </Transition>
-                        </>
-                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                    📱 {phone}
+                                </div>
+                                <div className="bg-white/20 rounded p-1">
+                                    <LanguageSwitcher />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div ref={componentToPrintRef} className="p-4">
+                        {/* Success Icon */}
+                        <div className="text-center py-4">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                            </div>
+                            <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
+                            <p className="text-gray-600 text-sm">{t('depositSubmitted', 'Your deposit has been submitted.')}</p>
+                        </div>
+
+                        {/* Queue and Token Cards */}
+                        <div className="mb-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-3 rounded-lg text-center text-white">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
+                                    </div>
+                                    <p className="text-2xl font-bold">{queueNumber}</p>
+                                </div>
+                                <div className="bg-gradient-to-r from-fuchsia-700 to-pink-700 p-3 rounded-lg text-center text-white">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                        <CreditCard className="h-3 w-3" />
+                                        <span className="text-xs font-medium">{t('token', 'Token')}</span>
+                                    </div>
+                                    <p className="text-2xl font-bold">{token}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Transaction Summary */}
+                        <div className="mb-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                                    <DollarSign className="h-4 w-4" />
+                                    {t('transactionSummary', 'Transaction Summary')}
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <User className="h-3 w-3" />
+                                            {t('accountHolder', 'Account Holder')}:
+                                        </span>
+                                        <span className="font-semibold text-right">{accountHolderName}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <CreditCard className="h-3 w-3" />
+                                            {t('accountNumber', 'Account Number')}:
+                                        </span>
+                                        <span className="font-mono font-semibold">{accountNumber}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Building className="h-3 w-3" />
+                                            {t('branch', 'Branch')}:
+                                        </span>
+                                        <span>{branchName}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <DollarSign className="h-3 w-3" />
+                                            {t('amount', 'Amount')}:
+                                        </span>
+                                        <span className="text-lg font-bold text-fuchsia-700">{amount}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Thank You Message */}
+                        <div className="text-center pt-3 border-t border-gray-200">
+                            <p className="text-gray-600 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="p-4 border-t border-gray-200 no-print">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={handleNewDeposit}
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                            >
+                                <RefreshCw className="h-3 w-3" />
+                                {t('newDeposit', 'New')}
+                            </button>
+                            
+                            <button
+                                onClick={handlePrint}
+                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                            >
+                                <Printer className="h-3 w-3" />
+                                {t('print', 'Print')}
+                            </button>
+                        </div>
+
+                        {/* Update and Cancel Buttons - Only show if entity exists */}
+                        {entityId && (
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                <button
+                                    onClick={handleUpdateDeposit}
+                                    disabled={submitting}
+                                    className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors text-xs font-medium"
+                                >
+                                    <RefreshCw className="h-3 w-3" />
+                                    {submitting ? t('processing', 'Processing...') : t('update', 'Update')}
+                                </button>
+                                
+                                <button
+                                    onClick={() => setShowCancelModal(true)}
+                                    disabled={submitting}
+                                    className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                                >
+                                    <X className="h-3 w-3" />
+                                    {t('cancel', 'Cancel')}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Messages */}
+                        {error && <ErrorMessage message={error} />}
+                        {successMessage && <SuccessMessage message={successMessage} />}
+                    </div>
                 </div>
-                {error && <ErrorMessage message={error} />}
-                {successMessage && <SuccessMessage message={successMessage} />}
-                <p className="text-sm text-gray-500 mt-6">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+
+                {/* Cancel Confirmation Modal */}
+                <Transition appear show={showCancelModal} as={Fragment}>
+                    <Dialog as="div" className="relative z-10" onClose={() => !submitting && setShowCancelModal(false)}>
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0"
+                            enterTo="opacity-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                        >
+                            <div className="fixed inset-0 bg-black/25" />
+                        </Transition.Child>
+
+                        <div className="fixed inset-0 overflow-y-auto">
+                            <div className="flex min-h-full items-center justify-center p-4 text-center">
+                                <Transition.Child
+                                    as={Fragment}
+                                    enter="ease-out duration-300"
+                                    enterFrom="opacity-0 scale-95"
+                                    enterTo="opacity-100 scale-100"
+                                    leave="ease-in duration-200"
+                                    leaveFrom="opacity-100 scale-100"
+                                    leaveTo="opacity-0 scale-95"
+                                >
+                                    <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                                        <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
+                                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                            {t('confirmCancellation', 'Confirm Cancellation')}
+                                        </Dialog.Title>
+                                        
+                                        <div className="mt-4">
+                                            <p className="text-sm text-gray-500">
+                                                {t('cancelDepositPrompt', 'Are you sure you want to cancel this deposit? This action cannot be undone.')}
+                                            </p>
+                                        </div>
+
+                                        {error && <ErrorMessage message={error} />}
+
+                                        <div className="mt-6 flex justify-end gap-3">
+                                            <button
+                                                type="button"
+                                                className="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
+                                                onClick={() => setShowCancelModal(false)}
+                                                disabled={submitting}
+                                            >
+                                                {t('goBack', 'Go Back')}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                                                onClick={handleCancelDeposit}
+                                                disabled={submitting}
+                                            >
+                                                {submitting ? t('cancelling', 'Cancelling...') : t('yesCancelDeposit', 'Yes, Cancel Deposit')}
+                                            </button>
+                                        </div>
+                                    </Dialog.Panel>
+                                </Transition.Child>
+                            </div>
+                        </div>
+                    </Dialog>
+                </Transition>
             </div>
         </div>
     );
 }
-
