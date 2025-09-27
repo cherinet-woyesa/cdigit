@@ -34,6 +34,7 @@ export interface LoginResponse {
 export interface RegisterResponse {}
 
 export interface RequestOtpResponse {
+    success: boolean;
     message: string;
     accounts?: any[];
 }

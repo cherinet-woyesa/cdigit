@@ -1,704 +1,1112 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Field from '../../../../components/Field';
 import { useAuth } from '../../../../context/AuthContext';
+import { useBranch } from '../../../../context/BranchContext';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 import { applyEBankingApplication, getEBankingApplicationById, updateEBankingApplication } from '../../../../services/eBankingApplicationService';
 import authService from '../../../../services/authService';
+import Field from '../../../../components/Field';
+import { 
+    Loader2, 
+    AlertCircle, 
+    CheckCircle2, 
+    ChevronRight,
+    CreditCard,
+    User,
+    MapPin,
+    Calendar,
+    Shield,
+    FileText,
+    Home,
+    Wifi
+} from 'lucide-react';
+
+// Error message component (consistent with other forms)
+function ErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700">{message}</span>
+        </div>
+    );
+}
+
+// Success message component
+function SuccessMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span className="text-sm text-green-700">{message}</span>
+        </div>
+    );
+}
 
 type FormData = {
-  branchName: string;
-  date: string;
-  accountNumber: string;
-  customerName: string;
-  mobileNumber: string;
-  nationalId: string;
-  idType: string;
-  idNumber: string;
-  issuingAuthority: string;
-  idIssueDate: string;
-  idExpiryDate: string;
-  region: string;
-  city: string;
-  subCity: string;
-  wereda: string;
-  houseNumber: string;
-  ebankingChannels: string[];
-  newPhoneNumber: string;
-  newAccountNumber: string;
-  termsAccepted: boolean;
-  idCopyAttached: boolean;
-  otpCode?: string;
+    branchName: string;
+    date: string;
+    accountNumber: string;
+    customerName: string;
+    mobileNumber: string;
+    nationalId: string;
+    idType: string;
+    idNumber: string;
+    issuingAuthority: string;
+    idIssueDate: string;
+    idExpiryDate: string;
+    region: string;
+    city: string;
+    subCity: string;
+    wereda: string;
+    houseNumber: string;
+    ebankingChannels: string[];
+    newPhoneNumber: string;
+    newAccountNumber: string;
+    termsAccepted: boolean;
+    idCopyAttached: boolean;
+    otpCode: string;
 };
 
+type Errors = Partial<Record<keyof FormData, string>> & { submit?: string; otp?: string };
+
 const E_BANKING_OPTIONS = [
-  { id: 'mobile_banking', label: 'Mobile Banking' },
-  { id: 'internet_banking', label: 'Internet Banking' },
-  { id: 'ussd', label: 'USSD Banking' },
-  { id: 'card_banking', label: 'Card Banking' },
+    { id: 'mobile_banking', label: 'Mobile Banking', icon: '📱' },
+    { id: 'internet_banking', label: 'Internet Banking', icon: '💻' },
+    { id: 'ussd', label: 'USSD Banking', icon: '*️⃣' },
+    { id: 'card_banking', label: 'Card Banking', icon: '💳' },
 ];
 
 export default function EBankingApplication() {
-  const [showTerms, setShowTerms] = useState(false);
-  // const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation() as { state?: any };
-  const { phone } = useAuth();
-  const { accounts, loadingAccounts } = useUserAccounts();
-  const [updateId, setUpdateId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({
-    branchName: 'Ayer Tena Branch',
-    date: new Date().toISOString().split('T')[0],
-    accountNumber: '',
-    customerName: '',
-    mobileNumber: '',
-    nationalId: '',
-    idType: 'national_id',
-    idNumber: '',
-    issuingAuthority: 'NIRA',
-    idIssueDate: '',
-    idExpiryDate: '',
-    region: '',
-    city: '',
-    subCity: '',
-    wereda: '',
-    houseNumber: '',
-    ebankingChannels: [],
-    newPhoneNumber: '',
-    newAccountNumber: '',
-    termsAccepted: false,
-    idCopyAttached: false,
-    otpCode: '',
-  });
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
-  const [otpMessage, setOtpMessage] = useState('');
-  const [otpError, setOtpError] = useState('');
+    const { t } = useTranslation();
+    const { phone, user, token } = useAuth();
+    const { branch } = useBranch();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { accounts, loadingAccounts, errorAccounts, refreshAccounts } = useUserAccounts();
 
-  type Errors = {
-    accountNumber?: string;
-    customerName?: string;
-    mobileNumber?: string;
-    idNumber?: string;
-    issuingAuthority?: string;
-    idIssueDate?: string;
-    idExpiryDate?: string;
-    region?: string;
-    city?: string;
-    subCity?: string;
-    wereda?: string;
-    houseNumber?: string;
-    ebankingChannels?: string;
-    newPhoneNumber?: string;
-    newAccountNumber?: string;
-    termsAccepted?: string;
-  };
+    const [formData, setFormData] = useState<FormData>({
+        branchName: branch?.name || 'Ayer Tena Branch',
+        date: new Date().toISOString().split('T')[0],
+        accountNumber: '',
+        customerName: '',
+        mobileNumber: phone || '',
+        nationalId: '',
+        idType: 'national_id',
+        idNumber: '',
+        issuingAuthority: 'NIRA',
+        idIssueDate: '',
+        idExpiryDate: '',
+        region: '',
+        city: '',
+        subCity: '',
+        wereda: '',
+        houseNumber: '',
+        ebankingChannels: [],
+        newPhoneNumber: '',
+        newAccountNumber: '',
+        termsAccepted: false,
+        idCopyAttached: false,
+        otpCode: '',
+    });
 
-  // Prefill phone and account info from hooks
-  useEffect(() => {
-    if (phone) {
-      setFormData(prev => ({ ...prev, mobileNumber: phone }));
-    }
-  }, [phone]);
+    const [errors, setErrors] = useState<Errors>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [step, setStep] = useState<number>(1);
+    const [updateId, setUpdateId] = useState<string | null>(null);
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpMessage, setOtpMessage] = useState('');
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
+    const [showTerms, setShowTerms] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
-  useEffect(() => {
-    if (loadingAccounts) return;
-    if (!accounts || accounts.length === 0) return;
-    if (accounts.length === 1) {
-      const a = accounts[0];
-      setFormData(prev => ({ ...prev, accountNumber: a.accountNumber, customerName: a.accountHolderName || prev.customerName }));
-    } else {
-      // default to first; could add dropdown later
-      const a = accounts[0];
-      setFormData(prev => ({ ...prev, accountNumber: a.accountNumber, customerName: a.accountHolderName || prev.customerName }));
-    }
-  }, [accounts, loadingAccounts]);
-  const [errors, setErrors] = useState<Errors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState(0); // 0: Transaction+Customer, 1: ID, 2: Address, 3: E-Banking Services, 4: ID Copy & Terms, 5: Review/Submit
+    // Initialize form data from accounts and branch context
+    useEffect(() => {
+        if (branch?.name) {
+            setFormData(prev => ({ ...prev, branchName: branch.name }));
+        }
+    }, [branch]);
 
-  // Detect update mode and prefill from API
-  useEffect(() => {
-    const id = location.state?.updateId as string | undefined;
-    if (!id) return;
-    setUpdateId(id);
-    (async () => {
-      try {
-        const res = await getEBankingApplicationById(id);
-        if (!res?.success || !res.data) return;
-        const d: any = res.data;
-        // Parse services
-        const services: string[] = d.ServicesRequested
-          ? String(d.ServicesRequested).split(',').map((s: string) => s.trim()).filter(Boolean)
-          : [];
-        setFormData(prev => ({
-          ...prev,
-          accountNumber: d.AccountNumber || d.accountNumber || prev.accountNumber,
-          customerName: d.AccountHolderName || d.accountHolderName || prev.customerName,
-          mobileNumber: d.PhoneNumber || d.phoneNumber || prev.mobileNumber,
-          ebankingChannels: services,
-          // Address and IDs unknown in read DTO; leave as-is
-        }));
-        // Jump to review if needed
-        setStep(3); // services step as they may want to tweak
-      } catch (e) {
-        // silently ignore
-      }
-    })();
-  }, [location.state]);
+    useEffect(() => {
+        if (loadingAccounts) return;
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      if (name === 'termsAccepted') {
-        setFormData(prev => ({ ...prev, [name]: checked }));
-        setShowTerms(true);
-      } else if (name === 'idCopyAttached') {
-        setFormData(prev => ({ ...prev, [name]: checked }));
-      } else {
-        const channel = (e.target as HTMLInputElement).value;
-        setFormData(prev => ({
-          ...prev,
-          ebankingChannels: checked
-            ? [...prev.ebankingChannels, channel]
-            : prev.ebankingChannels.filter(c => c !== channel)
-        }));
-      }
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-  };
+        if (!accounts || accounts.length === 0) {
+            setFormData(prev => ({ ...prev, accountNumber: '', customerName: '' }));
+            return;
+        }
 
-  const validateStep = (): boolean => {
-    const newErrors: Errors = {};
-    if (step === 0) {
-      // Transaction+Customer step
-      if (!formData.accountNumber) newErrors.accountNumber = 'Account number is required';
-      if (!formData.customerName) newErrors.customerName = 'Customer name is required';
-      if (!formData.mobileNumber) newErrors.mobileNumber = 'Mobile number is required';
-    }
-    if (step === 1 && !formData.idCopyAttached) {
-      if (!formData.idNumber) newErrors.idNumber = 'ID number is required';
-      if (!formData.issuingAuthority) newErrors.issuingAuthority = 'Issuing authority is required';
-      if (!formData.idIssueDate) newErrors.idIssueDate = 'Issue date is required';
-      if (!formData.idExpiryDate) newErrors.idExpiryDate = 'Expiry date is required';
-    }
-    if (step === 2 && !formData.idCopyAttached) {
-      if (!formData.region) newErrors.region = 'Region is required';
-      if (!formData.city) newErrors.city = 'City is required';
-      if (!formData.subCity) newErrors.subCity = 'Sub-city is required';
-      if (!formData.wereda) newErrors.wereda = 'Wereda is required';
-      if (!formData.houseNumber) newErrors.houseNumber = 'House number is required';
-    }
-    if (step === 3) {
-      if (formData.ebankingChannels.length === 0) {
-        newErrors.ebankingChannels = 'Please select at least one e-banking service';
-      }
-    }
-    if (step === 4) {
-      if (!formData.termsAccepted) {
-        newErrors.termsAccepted = 'You must accept the terms and conditions';
-      }
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+        if (accounts.length === 1) {
+            const account = accounts[0];
+            setFormData(prev => ({
+                ...prev,
+                accountNumber: account.accountNumber,
+                customerName: account.accountHolderName || prev.customerName,
+            }));
+        } else if (accounts.length > 1) {
+            const savedAccount = localStorage.getItem('selectedEBankingAccount');
+            const selectedAccount = accounts.find(a => a.accountNumber === savedAccount) || accounts[0];
+            setFormData(prev => ({
+                ...prev,
+                accountNumber: selectedAccount.accountNumber,
+                customerName: selectedAccount.accountHolderName || prev.customerName,
+            }));
+        }
+    }, [accounts, loadingAccounts]);
 
-  const handleNext = () => {
-    if (!validateStep()) return;
-    setStep((prev) => prev + 1);
-    window.scrollTo(0, 0);
-  };
-
-  const handleBack = () => {
-    setStep((prev) => prev - 1);
-    window.scrollTo(0, 0);
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
-
-      // Map ID fields according to selected idType
-      const isNationalId = formData.idType === 'national_id';
-      const NationalIdNumber = isNationalId ? formData.idNumber : undefined;
-      const AltIdNumber = !isNationalId ? formData.idNumber : undefined;
-      const AltIdIssuer = !isNationalId ? formData.issuingAuthority : undefined;
-
-      const payload = {
-        PhoneNumber: formData.mobileNumber || phone || '',
-        BranchId: ABIY_BRANCH_ID,
-        AccountNumber: formData.accountNumber || undefined,
-        AccountHolderName: formData.customerName || undefined,
-        OtpCode: formData.otpCode || '',
-        NationalIdNumber,
-        AltIdNumber,
-        AltIdIssuer,
-        ServicesSelected: formData.ebankingChannels,
-        NewPhoneNumber: formData.newPhoneNumber || undefined,
-        NewAccountNumber: formData.newAccountNumber || undefined,
-        UploadedIdPath: undefined,
-        Region: !formData.idCopyAttached ? formData.region || undefined : undefined,
-        City: !formData.idCopyAttached ? formData.city || undefined : undefined,
-        SubCity: !formData.idCopyAttached ? formData.subCity || undefined : undefined,
-        Wereda: !formData.idCopyAttached ? formData.wereda || undefined : undefined,
-        HouseNumber: !formData.idCopyAttached ? formData.houseNumber || undefined : undefined,
-        IdIssueDate: formData.idIssueDate ? new Date(formData.idIssueDate).toISOString() : undefined,
-        IdExpiryDate: formData.idExpiryDate ? new Date(formData.idExpiryDate).toISOString() : undefined,
-      } as const;
-
-      // If update mode, send update; else create
-      let res: any;
-      if (updateId) {
-        const updateDto = {
-          Id: updateId,
-          BranchId: ABIY_BRANCH_ID,
-          PhoneNumber: payload.PhoneNumber,
-          AccountNumber: payload.AccountNumber,
-          AccountHolderName: payload.AccountHolderName,
-          OtpCode: payload.OtpCode,
-          NationalIdNumber,
-          AltIdNumber,
-          AltIdIssuer,
-          ServicesSelected: payload.ServicesSelected,
-          NewPhoneNumber: payload.NewPhoneNumber,
-          NewAccountNumber: payload.NewAccountNumber,
-          UploadedIdPath: payload.UploadedIdPath,
-          Region: payload.Region,
-          City: payload.City,
-          SubCity: payload.SubCity,
-          Wereda: payload.Wereda,
-          HouseNumber: payload.HouseNumber,
-          IdIssueDate: payload.IdIssueDate,
-          IdExpiryDate: payload.IdExpiryDate,
+    // Handle cleanup of timers
+    useEffect(() => {
+        return () => {
+            if (resendTimer) clearInterval(resendTimer);
         };
-        res = await updateEBankingApplication(updateId, updateDto);
-      } else {
-        res = await applyEBankingApplication(payload as any);
-      }
-      if (!res?.success) {
-        throw new Error(res?.message || 'Failed to submit application');
-      }
-      navigate('/form/ebanking/confirmation', {
-        state: {
-          api: res, // may be wrapped {success,message,data}
-          serverData: res,
-          ui: {
-            accountNumber: formData.accountNumber,
-            accountHolderName: formData.customerName,
-            mobileNumber: formData.mobileNumber,
-            ebankingChannels: formData.ebankingChannels,
-          },
-          branchName: formData.branchName,
-        },
-      });
-    } catch (err: any) {
-      alert(err?.message || 'Submission failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    }, [resendTimer]);
 
-  // Step content function
-  function getStepContent() {
-    if (step === 0) {
-      return (
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h2 className="text-lg font-semibold text-fuchsia-700 mb-4">Transaction & Customer Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <Field label="Branch Name">
-              <input
-                type="text"
-                value={formData.branchName}
-                disabled
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="Date">
-              <input
-                type="date"
-                value={formData.date}
-                disabled
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-          </div>
-          <div className="space-y-4">
-            <Field label="Account Number *" error={typeof errors.accountNumber === 'string' ? errors.accountNumber : undefined}>
-              <input
-                name="accountNumber"
-                type="text"
-                value={formData.accountNumber}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="Customer Name *" error={typeof errors.customerName === 'string' ? errors.customerName : undefined}>
-              <input
-                name="customerName"
-                type="text"
-                value={formData.customerName}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="Mobile Number *" error={typeof errors.mobileNumber === 'string' ? errors.mobileNumber : undefined}>
-              <input
-                name="mobileNumber"
-                type="tel"
-                value={formData.mobileNumber}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-          </div>
-        </div>
-      );
-    }
-  if (step === 1 && !formData.idCopyAttached) {
-      return (
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h2 className="text-lg font-semibold text-fuchsia-700 mb-4">ID Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ID Type *</label>
-              <select
-                name="idType"
-                value={formData.idType}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-cbe-primary focus:ring-cbe-primary sm:text-sm"
-              >
-                <option value="national_id">National ID</option>
-                <option value="passport">Passport</option>
-                <option value="driving_license">Driving License</option>
-              </select>
+    // Update mode detection
+    useEffect(() => {
+        const id = location.state?.updateId as string | undefined;
+        if (!id) return;
+        
+        setUpdateId(id);
+        (async () => {
+            try {
+                const res = await getEBankingApplicationById(id);
+                const d: any = res?.data || {};
+                const services: string[] = d.ServicesRequested 
+                    ? String(d.ServicesRequested).split(',').map((s: string) => s.trim()).filter(Boolean)
+                    : [];
+
+                setFormData(prev => ({
+                    ...prev,
+                    accountNumber: d.AccountNumber || d.accountNumber || prev.accountNumber,
+                    customerName: d.AccountHolderName || d.accountHolderName || prev.customerName,
+                    mobileNumber: d.PhoneNumber || d.phoneNumber || prev.mobileNumber,
+                    ebankingChannels: services,
+                    branchName: d.BranchName || branch?.name || prev.branchName,
+                }));
+                setStep(6); // Start at review step for updates
+            } catch (e) {
+                console.error('Failed to load e-banking application for update:', e);
+            }
+        })();
+    }, [location.state, branch]);
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        
+        if (errors[name as keyof Errors]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+
+        if (type === 'checkbox') {
+            const checked = (e.target as HTMLInputElement).checked;
+            
+            if (name === 'termsAccepted') {
+                setFormData(prev => ({ ...prev, [name]: checked }));
+            } else if (name === 'idCopyAttached') {
+                setFormData(prev => ({ ...prev, [name]: checked }));
+            } else {
+                const channel = (e.target as HTMLInputElement).value;
+                setFormData(prev => ({
+                    ...prev,
+                    ebankingChannels: checked
+                        ? [...prev.ebankingChannels, channel]
+                        : prev.ebankingChannels.filter(c => c !== channel)
+                }));
+            }
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
+
+    const validateStep = (): boolean => {
+        const errs: Errors = {};
+        
+        if (step === 1) {
+            if (!formData.accountNumber.trim()) errs.accountNumber = t('accountNumberRequired', 'Account number is required');
+            if (!formData.customerName.trim()) errs.customerName = t('customerNameRequired', 'Customer name is required');
+            if (!formData.mobileNumber.trim()) errs.mobileNumber = t('mobileNumberRequired', 'Mobile number is required');
+        }
+        
+        if (step === 2 && !formData.idCopyAttached) {
+            if (!formData.idNumber.trim()) errs.idNumber = t('idNumberRequired', 'ID number is required');
+            if (!formData.issuingAuthority.trim()) errs.issuingAuthority = t('issuingAuthorityRequired', 'Issuing authority is required');
+            if (!formData.idIssueDate) errs.idIssueDate = t('issueDateRequired', 'Issue date is required');
+            if (!formData.idExpiryDate) errs.idExpiryDate = t('expiryDateRequired', 'Expiry date is required');
+        }
+        
+        if (step === 3 && !formData.idCopyAttached) {
+            if (!formData.region.trim()) errs.region = t('regionRequired', 'Region is required');
+            if (!formData.city.trim()) errs.city = t('cityRequired', 'City is required');
+            if (!formData.subCity.trim()) errs.subCity = t('subCityRequired', 'Sub-city is required');
+            if (!formData.wereda.trim()) errs.wereda = t('weredaRequired', 'Wereda is required');
+            if (!formData.houseNumber.trim()) errs.houseNumber = t('houseNumberRequired', 'House number is required');
+        }
+        
+        if (step === 4) {
+            if (formData.ebankingChannels.length === 0) {
+                errs.ebankingChannels = t('servicesRequired', 'Please select at least one e-banking service');
+            }
+        }
+        
+        if (step === 5) {
+            if (!formData.termsAccepted) {
+                errs.termsAccepted = t('termsAcceptanceRequired', 'You must accept the terms and conditions');
+            }
+        }
+        
+        if (step === 7) {
+            if (!formData.otpCode || formData.otpCode.length !== 6) {
+                errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+            }
+        }
+
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    const handleNext = (e: FormEvent) => {
+        e.preventDefault();
+        if (!validateStep()) {
+            const firstError = Object.keys(errors)[0];
+            if (firstError) {
+                document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
+        setStep(prev => prev + 1);
+    };
+
+    const handleBack = () => {
+        setStep(prev => prev - 1);
+    };
+
+    const handleRequestOtp = async () => {
+        if (!formData.mobileNumber && !phone) {
+            setErrors({ submit: t('mobileNumberRequired', 'Mobile number is required') });
+            return;
+        }
+
+        setOtpLoading(true);
+        setErrors({});
+        setOtpMessage('');
+
+        try {
+            const phoneNumber = formData.mobileNumber || phone || '';
+            await authService.requestOtp(phoneNumber);
+            setOtpMessage(t('otpSent', 'OTP sent successfully to your phone'));
+            setResendCooldown(30);
+            
+            const timer = setInterval(() => {
+                setResendCooldown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            setResendTimer(timer);
+        } catch (error: any) {
+            setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP') });
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (!formData.mobileNumber && !phone) return;
+        if (resendCooldown > 0) return;
+
+        setOtpLoading(true);
+        setErrors({});
+        setOtpMessage('');
+
+        try {
+            const phoneNumber = formData.mobileNumber || phone || '';
+            await authService.requestOtp(phoneNumber);
+            setOtpMessage(t('otpResent', 'OTP resent successfully'));
+            setResendCooldown(30);
+            
+            const timer = setInterval(() => {
+                setResendCooldown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            setResendTimer(timer);
+        } catch (error: any) {
+            setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP') });
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!validateStep()) return;
+
+        if (!phone || !branch?.id) {
+            setErrors({ submit: t('missingInfo', 'Please ensure all information is complete.') });
+            return;
+        }
+
+        if (!formData.otpCode || formData.otpCode.length !== 6) {
+            setErrors({ otp: t('validOtpRequired', 'Please enter the 6-digit OTP') });
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const isNationalId = formData.idType === 'national_id';
+            
+            // Submit with OTP directly (like withdrawal form)
+            const payload = {
+                PhoneNumber: formData.mobileNumber || phone,
+                BranchId: branch.id,
+                AccountNumber: formData.accountNumber,
+                AccountHolderName: formData.customerName,
+                OtpCode: formData.otpCode, // Send OTP directly with request
+                NationalIdNumber: isNationalId ? formData.idNumber : undefined,
+                AltIdNumber: !isNationalId ? formData.idNumber : undefined,
+                AltIdIssuer: !isNationalId ? formData.issuingAuthority : undefined,
+                ServicesSelected: formData.ebankingChannels,
+                NewPhoneNumber: formData.newPhoneNumber || undefined,
+                NewAccountNumber: formData.newAccountNumber || undefined,
+                Region: !formData.idCopyAttached ? formData.region : undefined,
+                City: !formData.idCopyAttached ? formData.city : undefined,
+                SubCity: !formData.idCopyAttached ? formData.subCity : undefined,
+                Wereda: !formData.idCopyAttached ? formData.wereda : undefined,
+                HouseNumber: !formData.idCopyAttached ? formData.houseNumber : undefined,
+                IdIssueDate: formData.idIssueDate ? new Date(formData.idIssueDate).toISOString() : undefined,
+                IdExpiryDate: formData.idExpiryDate ? new Date(formData.idExpiryDate).toISOString() : undefined,
+            };
+
+            console.log('Submitting E-Banking application with payload:', payload);
+
+            const response = updateId 
+                ? await updateEBankingApplication(updateId, { ...payload, Id: updateId })
+                : await applyEBankingApplication(payload as any);
+
+            // Handle response like withdrawal form
+            if (response && response.success) {
+                navigate('/form/ebanking/confirmation', {
+                    state: {
+                        serverData: response,
+                        branchName: branch.name,
+                        ui: {
+                            accountNumber: formData.accountNumber,
+                            accountHolderName: formData.customerName,
+                            mobileNumber: formData.mobileNumber,
+                            ebankingChannels: formData.ebankingChannels,
+                        }
+                    }
+                });
+            } else {
+                // Handle OTP errors specifically
+                const errorMessage = response?.message || t('submissionFailed', 'Submission failed');
+                if (errorMessage.toLowerCase().includes('otp') || errorMessage.toLowerCase().includes('invalid')) {
+                    setErrors({ otp: errorMessage });
+                } else {
+                    setErrors({ submit: errorMessage });
+                }
+            }
+        } catch (error: any) {
+            const errorMessage = error?.message || t('submissionFailed', 'Submission failed. Please try again.');
+            if (errorMessage.toLowerCase().includes('otp') || errorMessage.toLowerCase().includes('invalid')) {
+                setErrors({ otp: errorMessage });
+            } else {
+                setErrors({ submit: errorMessage });
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Loading states
+    if (loadingAccounts) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
+                        <p className="text-gray-600">{t('loading', 'Loading...')}</p>
+                    </div>
+                </div>
             </div>
-            <Field label="ID Number *" error={typeof errors.idNumber === 'string' ? errors.idNumber : undefined}>
-              <input
-                name="idNumber"
-                type="text"
-                value={formData.idNumber}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="Issuing Authority *" error={typeof errors.issuingAuthority === 'string' ? errors.issuingAuthority : undefined}>
-              <input
-                name="issuingAuthority"
-                type="text"
-                value={formData.issuingAuthority}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="Issue Date *" error={typeof errors.idIssueDate === 'string' ? errors.idIssueDate : undefined}>
-              <input
-                name="idIssueDate"
-                type="date"
-                value={formData.idIssueDate}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="Expiry Date *" error={typeof errors.idExpiryDate === 'string' ? errors.idExpiryDate : undefined}>
-              <input
-                name="idExpiryDate"
-                type="date"
-                value={formData.idExpiryDate}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-          </div>
-        </div>
-      );
+        );
     }
-  if (step === 2 && !formData.idCopyAttached) {
-      return (
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h2 className="text-lg font-semibold text-fuchsia-700 mb-4">Address Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Region *" error={typeof errors.region === 'string' ? errors.region : undefined}>
-              <input
-                name="region"
-                type="text"
-                value={formData.region}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="City *" error={typeof errors.city === 'string' ? errors.city : undefined}>
-              <input
-                name="city"
-                type="text"
-                value={formData.city}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="Sub-City *" error={typeof errors.subCity === 'string' ? errors.subCity : undefined}>
-              <input
-                name="subCity"
-                type="text"
-                value={formData.subCity}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="Wereda *" error={typeof errors.wereda === 'string' ? errors.wereda : undefined}>
-              <input
-                name="wereda"
-                type="text"
-                value={formData.wereda}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-            <Field label="House Number *" error={typeof errors.houseNumber === 'string' ? errors.houseNumber : undefined}>
-              <input
-                name="houseNumber"
-                type="text"
-                value={formData.houseNumber}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </Field>
-          </div>
-        </div>
-      );
-    }
-  if (step === 3) {
-    return (
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h2 className="text-lg font-semibold text-fuchsia-700 mb-4">E-Banking Services</h2>
-        <div className="space-y-4">
-          <p className="text-sm text-gray-500">Select the services you would like to apply for:</p>
-          {errors.ebankingChannels && (
-            <p className="text-sm text-red-500">{errors.ebankingChannels}</p>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {E_BANKING_OPTIONS.map(option => (
-              <div key={option.id} className="flex items-center">
-                <input
-                  id={option.id}
-                  name="ebankingChannels"
-                  type="checkbox"
-                  value={option.id}
-                  checked={formData.ebankingChannels.includes(option.id)}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-700 border-gray-300 rounded"
-                />
-                <label htmlFor={option.id} className="ml-2 block text-sm text-gray-700">
-                  {option.label}
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="mt-4">
-          <Field label="OTP Code">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                name="otpCode"
-                value={(formData as any).otpCode || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, otpCode: e.target.value } as any))}
-                className="mt-1 block w-full border-2 border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-fuchsia-500 focus:border-fuchsia-500 sm:text-sm"
-              />
-              <button type="button" onClick={async () => {
-                setOtpLoading(true); setOtpMessage(''); setOtpError('');
-                try {
-                  const raw = (formData.mobileNumber || phone || '').trim();
-                  const cleaned = raw.replace(/[^\d+]/g, '');
-                  let p = cleaned.startsWith('+') ? cleaned : (cleaned.startsWith('0') ? `+251${cleaned.slice(1)}` : `+${cleaned}`);
-                  try { await authService.requestOtp(p); } catch { p = '0' + p.slice(-9); await authService.requestOtp(p); }
-                  setFormData(prev => ({ ...prev, mobileNumber: p }));
-                  setOtpMessage('OTP sent successfully.');
-                } catch (e: any) { setOtpError(e?.message || 'Failed to send OTP'); }
-                finally { setOtpLoading(false); }
-              }} disabled={otpLoading} className="px-3 py-2 bg-fuchsia-700 text-white rounded disabled:opacity-50">{otpLoading ? 'Sending...' : 'Request OTP'}</button>
-              <button type="button" onClick={async () => {
-                setOtpLoading(true); setOtpMessage(''); setOtpError('');
-                try { const res = await authService.verifyOtp(formData.mobileNumber || phone || '', (formData as any).otpCode || ''); if (res.verified) { setOtpVerified(true); setOtpMessage(res.message || 'OTP verified.'); } else { setOtpVerified(false); setOtpError(res.message || 'OTP verification failed'); } }
-                catch (e: any) { setOtpVerified(false); setOtpError(e?.message || 'OTP verification failed'); }
-                finally { setOtpLoading(false); }
-              }} disabled={otpLoading || !(formData as any).otpCode} className="px-3 py-2 bg-gray-200 text-fuchsia-800 rounded disabled:opacity-50">{otpLoading ? 'Verifying...' : (otpVerified ? 'Verified' : 'Verify OTP')}</button>
+
+    if (errorAccounts) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
+                        <p className="text-gray-600 mb-4">{errorAccounts}</p>
+                        <button
+                            onClick={() => refreshAccounts()}
+                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                        >
+                            {t('tryAgain', 'Try Again')}
+                        </button>
+                    </div>
+                </div>
             </div>
-            {(otpMessage || otpError) && (
-              <div className="mt-2 text-sm">
-                {otpMessage && <p className="text-green-600">{otpMessage}</p>}
-                {otpError && <p className="text-red-600">{otpError}</p>}
-              </div>
-            )}
-          </Field>
+        );
+    }
+
+    if (!loadingAccounts && accounts.length === 0) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noAccounts', 'No Accounts')}</h3>
+                        <p className="text-gray-600 mb-4">{t('noAccountsMessage', 'No accounts found for your phone number.')}</p>
+                        <button
+                            onClick={() => refreshAccounts()}
+                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                        >
+                            {t('refresh', 'Refresh')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const renderStepContent = () => {
+        switch (step) {
+            case 1:
+                return renderStep1();
+            case 2:
+                return renderStep2();
+            case 3:
+                return renderStep3();
+            case 4:
+                return renderStep4();
+            case 5:
+                return renderStep5();
+            case 6:
+                return renderStep6();
+            case 7:
+                return renderStep7();
+            default:
+                return null;
+        }
+    };
+
+    const renderStep1 = () => (
+        <div className="border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <User className="h-5 w-5 text-fuchsia-700" />
+                {t('customerInformation', 'Customer Information')}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Field label={t('branchName', 'Branch Name')}>
+                    <input
+                        type="text"
+                        value={formData.branchName}
+                        disabled
+                        className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                    />
+                </Field>
+                <Field label={t('date', 'Date')}>
+                    <input
+                        type="date"
+                        value={formData.date}
+                        disabled
+                        className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                    />
+                </Field>
+                <Field 
+                    label={t('accountNumber', 'Account Number')} 
+                    required 
+                    error={errors.accountNumber}
+                >
+                    <input
+                        name="accountNumber"
+                        type="text"
+                        value={formData.accountNumber}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="accountNumber"
+                    />
+                </Field>
+                <Field 
+                    label={t('customerName', 'Customer Name')} 
+                    required 
+                    error={errors.customerName}
+                >
+                    <input
+                        name="customerName"
+                        type="text"
+                        value={formData.customerName}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="customerName"
+                    />
+                </Field>
+                <Field 
+                    label={t('mobileNumber', 'Mobile Number')} 
+                    required 
+                    error={errors.mobileNumber}
+                >
+                    <input
+                        name="mobileNumber"
+                        type="tel"
+                        value={formData.mobileNumber}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="mobileNumber"
+                    />
+                </Field>
+            </div>
         </div>
-      </div>
     );
-  }
-  if (step === 4) {
-    return (
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h2 className="text-lg font-semibold text-fuchsia-700 mb-4">ID Copy & Terms</h2>
-        <div className="flex items-start mb-4">
-          <div className="flex items-center h-5">
-            <input
-              id="idCopyAttached"
-              name="idCopyAttached"
-              type="checkbox"
-              checked={formData.idCopyAttached}
-              onChange={handleChange}
-              className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-700 border-gray-300 rounded"
-            />
-          </div>
-          <div className="ml-3 text-sm">
-            <label htmlFor="idCopyAttached" className="font-medium text-gray-700">
-              I have attached a copy of my ID
-            </label>
-            <p className="text-gray-500">
-              If checked, you can skip the address information section
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start">
-          <div className="flex items-center h-5">
-            <input
-              id="termsAccepted"
-              name="termsAccepted"
-              type="checkbox"
-              checked={formData.termsAccepted}
-              onChange={handleChange}
-              className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-700 border-gray-300 rounded"
-            />
-          </div>
-          <div className="ml-3 text-sm">
-            <label htmlFor="termsAccepted" className="font-medium text-gray-700">
-              I agree to the <button type="button" className="text-fuchsia-700 hover:text-fuchsia-800 underline" onClick={() => setShowTerms(true)}>Terms and Conditions</button> *
-            </label>
-            {errors.termsAccepted && (
-              <p className="mt-1 text-sm text-red-600">{errors.termsAccepted}</p>
-            )}
-          </div>
-        </div>
-        {showTerms && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full relative">
-              <h3 className="text-lg font-bold mb-2 text-fuchsia-700">Terms and Conditions</h3>
-              <div className="text-sm text-gray-700 mb-4 max-h-64 overflow-y-auto">
-                <p>By applying for E-Banking services, you agree to abide by the bank's policies and procedures. You are responsible for keeping your credentials secure. The bank is not liable for unauthorized access due to negligence. For full details, please contact your branch or visit our website.</p>
-                <ul className="list-disc pl-5 mt-2">
-                  <li>Do not share your PIN or password with anyone.</li>
-                  <li>Report suspicious activity immediately.</li>
-                  <li>Service availability is subject to bank approval.</li>
-                  <li>Fees and charges may apply.</li>
-                </ul>
-              </div>
-              <button type="button" className="absolute top-2 right-2 text-gray-500 hover:text-fuchsia-700" onClick={() => setShowTerms(false)}>&times;</button>
-              <button type="button" className="mt-4 px-4 py-2 bg-fuchsia-700 text-white rounded hover:bg-fuchsia-800" onClick={() => setShowTerms(false)}>Close</button>
+
+    const renderStep2 = () => (
+        <div className="border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-fuchsia-700" />
+                {t('idInformation', 'ID Information')}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Field label={t('idType', 'ID Type')} required>
+                    <select
+                        name="idType"
+                        value={formData.idType}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                    >
+                        <option value="national_id">{t('nationalId', 'National ID')}</option>
+                        <option value="passport">{t('passport', 'Passport')}</option>
+                        <option value="driving_license">{t('drivingLicense', 'Driving License')}</option>
+                    </select>
+                </Field>
+                <Field 
+                    label={t('idNumber', 'ID Number')} 
+                    required 
+                    error={errors.idNumber}
+                >
+                    <input
+                        name="idNumber"
+                        type="text"
+                        value={formData.idNumber}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="idNumber"
+                    />
+                </Field>
+                <Field 
+                    label={t('issuingAuthority', 'Issuing Authority')} 
+                    required 
+                    error={errors.issuingAuthority}
+                >
+                    <input
+                        name="issuingAuthority"
+                        type="text"
+                        value={formData.issuingAuthority}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="issuingAuthority"
+                    />
+                </Field>
+                <Field 
+                    label={t('issueDate', 'Issue Date')} 
+                    required 
+                    error={errors.idIssueDate}
+                >
+                    <input
+                        name="idIssueDate"
+                        type="date"
+                        value={formData.idIssueDate}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="idIssueDate"
+                    />
+                </Field>
+                <Field 
+                    label={t('expiryDate', 'Expiry Date')} 
+                    required 
+                    error={errors.idExpiryDate}
+                >
+                    <input
+                        name="idExpiryDate"
+                        type="date"
+                        value={formData.idExpiryDate}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="idExpiryDate"
+                    />
+                </Field>
             </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-  if (step === 5) {
-    return renderSummary();
-  }
-    return null;
-  }
-
-  const renderSummary = () => (
-    <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-      <div className="px-4 py-5 sm:px-6 bg-gray-50">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">
-          Application Summary
-        </h3>
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">
-          Review your E-Banking application details
-        </p>
-      </div>
-      <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-        <dl className="sm:divide-y sm:divide-gray-200">
-          <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Branch</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              {formData.branchName}
-            </dd>
-          </div>
-          <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Account Number</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              {formData.accountNumber ? `•••• ${formData.accountNumber.slice(-4)}` : 'N/A'}
-            </dd>
-          </div>
-          <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Customer Name</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              {formData.customerName}
-            </dd>
-          </div>
-          <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Mobile Number</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              {formData.mobileNumber}
-            </dd>
-          </div>
-          <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Selected Services</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              <ul className="list-disc pl-5">
-                {formData.ebankingChannels.map(channel => (
-                  <li key={channel}>
-                    {E_BANKING_OPTIONS.find(opt => opt.id === channel)?.label || channel}
-                  </li>
-                ))}
-              </ul>
-            </dd>
-          </div>
-        </dl>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <div className="text-center mb-6 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg">
-        <h1 className="text-2xl font-extrabold text-white">E-Banking Application</h1>
-      </div>
-      <form onSubmit={step === 5 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }} className="space-y-6">
-        {getStepContent()}
-        <div className="flex justify-between pt-4">
-          {step > 0 && (
-            <button
-              type="button"
-              onClick={handleBack}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-fuchsia-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-700"
-            >
-              Back
-            </button>
-          )}
-          {step < 5 && (
-            <button
-              type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-fuchsia-700 hover:bg-fuchsia-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-700"
-            >
-              Next
-            </button>
-          )}
-          {step === 5 && (
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-fuchsia-700 hover:bg-fuchsia-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-700 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Application'}
-            </button>
-          )}
         </div>
-      </form>
-    </div>
-  );
+    );
+
+    const renderStep3 = () => (
+        <div className="border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Home className="h-5 w-5 text-fuchsia-700" />
+                {t('addressInformation', 'Address Information')}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Field 
+                    label={t('region', 'Region')} 
+                    required 
+                    error={errors.region}
+                >
+                    <input
+                        name="region"
+                        type="text"
+                        value={formData.region}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="region"
+                    />
+                </Field>
+                <Field 
+                    label={t('city', 'City')} 
+                    required 
+                    error={errors.city}
+                >
+                    <input
+                        name="city"
+                        type="text"
+                        value={formData.city}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="city"
+                    />
+                </Field>
+                <Field 
+                    label={t('subCity', 'Sub-City')} 
+                    required 
+                    error={errors.subCity}
+                >
+                    <input
+                        name="subCity"
+                        type="text"
+                        value={formData.subCity}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="subCity"
+                    />
+                </Field>
+                <Field 
+                    label={t('wereda', 'Wereda')} 
+                    required 
+                    error={errors.wereda}
+                >
+                    <input
+                        name="wereda"
+                        type="text"
+                        value={formData.wereda}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="wereda"
+                    />
+                </Field>
+                <Field 
+                    label={t('houseNumber', 'House Number')} 
+                    required 
+                    error={errors.houseNumber}
+                >
+                    <input
+                        name="houseNumber"
+                        type="text"
+                        value={formData.houseNumber}
+                        onChange={handleChange}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        id="houseNumber"
+                    />
+                </Field>
+            </div>
+        </div>
+    );
+
+    const renderStep4 = () => (
+        <div className="border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Wifi className="h-5 w-5 text-fuchsia-700" />
+                {t('eBankingServices', 'E-Banking Services')}
+            </h2>
+            
+            <div className="space-y-4">
+                <p className="text-sm text-gray-600">{t('selectServices', 'Select the services you would like to apply for:')}</p>
+                
+                {errors.ebankingChannels && <ErrorMessage message={errors.ebankingChannels} />}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {E_BANKING_OPTIONS.map(option => (
+                        <label key={option.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                name="ebankingChannels"
+                                value={option.id}
+                                checked={formData.ebankingChannels.includes(option.id)}
+                                onChange={handleChange}
+                                className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-3 text-sm font-medium text-gray-700">
+                                <span className="mr-2">{option.icon}</span>
+                                {option.label}
+                            </span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderStep5 = () => (
+        <div className="border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-fuchsia-700" />
+                {t('termsAndConditions', 'Terms and Conditions')}
+            </h2>
+            
+            <div className="space-y-4">
+                <div className="flex items-start">
+                    <div className="flex items-center h-5">
+                        <input
+                            id="idCopyAttached"
+                            name="idCopyAttached"
+                            type="checkbox"
+                            checked={formData.idCopyAttached}
+                            onChange={handleChange}
+                            className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-500 border-gray-300 rounded"
+                        />
+                    </div>
+                    <div className="ml-3 text-sm">
+                        <label htmlFor="idCopyAttached" className="font-medium text-gray-700">
+                            {t('idCopyAttached', 'I have attached a copy of my ID')}
+                        </label>
+                        <p className="text-gray-500 mt-1">
+                            {t('idCopyExplanation', 'If checked, address information becomes optional')}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-start">
+                    <div className="flex items-center h-5">
+                        <input
+                            id="termsAccepted"
+                            name="termsAccepted"
+                            type="checkbox"
+                            checked={formData.termsAccepted}
+                            onChange={handleChange}
+                            className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-500 border-gray-300 rounded"
+                        />
+                    </div>
+                    <div className="ml-3 text-sm">
+                        <label htmlFor="termsAccepted" className="font-medium text-gray-700">
+                            {t('agreeToTerms', 'I agree to the')}{' '}
+                            <button
+                                type="button"
+                                onClick={() => setShowTerms(true)}
+                                className="text-fuchsia-700 hover:text-fuchsia-800 underline"
+                            >
+                                {t('termsAndConditions', 'Terms and Conditions')}
+                            </button>{' '}
+                            *
+                        </label>
+                        {errors.termsAccepted && (
+                            <p className="mt-1 text-sm text-red-600">{errors.termsAccepted}</p>
+                        )}
+                    </div>
+                </div>
+
+                {showTerms && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                        <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4">
+                            <h3 className="text-lg font-bold text-fuchsia-700 mb-4">{t('termsAndConditions', 'Terms and Conditions')}</h3>
+                            <div className="max-h-96 overflow-y-auto text-sm text-gray-700 space-y-3">
+                                <p>{t('termsIntroduction', 'By applying for E-Banking services, you agree to abide by the bank\'s policies and procedures.')}</p>
+                                
+                                <h4 className="font-semibold text-gray-900">{t('responsibilities', 'Your Responsibilities:')}</h4>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li>{t('term1', 'Do not share your PIN or password with anyone')}</li>
+                                    <li>{t('term2', 'Report suspicious activity immediately')}</li>
+                                    <li>{t('term3', 'Keep your contact information updated')}</li>
+                                    <li>{t('term4', 'Use secure networks when accessing banking services')}</li>
+                                </ul>
+
+                                <h4 className="font-semibold text-gray-900">{t('importantNotes', 'Important Notes:')}</h4>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li>{t('note1', 'Service availability is subject to bank approval')}</li>
+                                    <li>{t('note2', 'Fees and charges may apply for certain services')}</li>
+                                    <li>{t('note3', 'The bank reserves the right to modify terms and conditions')}</li>
+                                    <li>{t('note4', 'Transactions are subject to verification and approval')}</li>
+                                </ul>
+                            </div>
+                            <div className="flex justify-end mt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTerms(false)}
+                                    className="px-4 py-2 bg-fuchsia-700 text-white rounded-lg hover:bg-fuchsia-800"
+                                >
+                                    {t('close', 'Close')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderStep6 = () => (
+        <div className="border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                {t('reviewApplication', 'Review Application')}
+            </h2>
+            
+            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 className="font-medium text-gray-700 mb-2">{t('customerDetails', 'Customer Details')}</h4>
+                        <div className="space-y-1 text-sm">
+                            <p><span className="font-medium">Account:</span> {formData.accountNumber}</p>
+                            <p><span className="font-medium">Name:</span> {formData.customerName}</p>
+                            <p><span className="font-medium">Mobile:</span> {formData.mobileNumber}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 className="font-medium text-gray-700 mb-2">{t('selectedServices', 'Selected Services')}</h4>
+                        <ul className="text-sm space-y-1">
+                        {formData.ebankingChannels.map(channel => {
+                                const option = E_BANKING_OPTIONS.find(opt => opt.id === channel);
+                                return (
+                                    <li key={channel} className="flex items-center gap-2">
+                                        <span>{option?.icon}</span>
+                                        <span>{option?.label}</span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                </div>
+                
+                {!formData.idCopyAttached && (
+                    <div>
+                        <h4 className="font-medium text-gray-700 mb-2">{t('addressInformation', 'Address Information')}</h4>
+                        <div className="text-sm">
+                            <p>{formData.region}, {formData.city}, {formData.subCity}</p>
+                            <p>{formData.wereda}, {t('houseNumber', 'House')} {formData.houseNumber}</p>
+                        </div>
+                    </div>
+                )}
+
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                        {t('reviewInstructions', 'Please review your information carefully. Click "Continue" to proceed with OTP verification.')}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderStep7 = () => (
+        <div className="border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-fuchsia-700" />
+                {t('otpVerification', 'OTP Verification')}
+            </h2>
+            
+            <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-700">
+                        {t('otpInstructions', 'An OTP has been sent to your phone number:')} 
+                        <strong className="text-blue-900"> {formData.mobileNumber || phone}</strong>
+                    </p>
+                    {otpMessage && (
+                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {otpMessage}
+                        </p>
+                    )}
+                </div>
+
+                <div className="max-w-md">
+                    <Field 
+                        label={t('enterOtp', 'Enter OTP')} 
+                        required 
+                        error={errors.otp}
+                    >
+                        <input 
+                            type="text" 
+                            name="otpCode" 
+                            value={formData.otpCode} 
+                            onChange={handleChange} 
+                            maxLength={6}
+                            className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
+                            placeholder="000000"
+                            id="otpCode"
+                        />
+                    </Field>
+                    
+                    <div className="mt-2 flex justify-between items-center">
+                        <button
+                            type="button"
+                            onClick={handleResendOtp}
+                            disabled={resendCooldown > 0 || otpLoading}
+                            className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
+                        >
+                            {resendCooldown > 0 
+                                ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
+                                : t('resendOtp', 'Resend OTP')
+                            }
+                        </button>
+                        <span className="text-sm text-gray-500">
+                            {formData.otpCode.length}/6
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-4xl w-full mx-auto">
+                <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+                    {/* Header with Language Switcher */}
+                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-lg">
+                                        <Wifi className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold">{t('eBankingApplication', 'E-Banking Application')}</h1>
+                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>{branch?.name || t('branch', 'Branch')}</span>
+                                            <span>•</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
+                                        📱 {phone}
+                                    </div>
+                                    <div className="bg-white/20 rounded-lg p-1">
+                                        <LanguageSwitcher />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <div className="p-6">
+                        {successMessage && (
+                            <div className="mb-6">
+                                <SuccessMessage message={successMessage} />
+                            </div>
+                        )}
+
+                        {/* Progress Steps - 7 steps for E-Banking */}
+                        <div className="flex justify-center mb-6">
+                            <div className="flex items-center bg-gray-50 rounded-lg p-1 overflow-x-auto">
+                                {[1, 2, 3, 4, 5, 6, 7].map((stepNumber, index) => (
+                                    <div key={stepNumber} className="flex items-center">
+                                        <div className={`flex items-center px-3 py-2 rounded-md text-sm ${
+                                            step >= stepNumber ? 'bg-fuchsia-700 text-white' : 'text-gray-600'
+                                        }`}>
+                                            <span>{stepNumber}. {t(`step${stepNumber}`, 
+                                                stepNumber === 1 ? 'Customer' :
+                                                stepNumber === 2 ? 'ID Info' :
+                                                stepNumber === 3 ? 'Address' :
+                                                stepNumber === 4 ? 'Services' :
+                                                stepNumber === 5 ? 'Terms' :
+                                                stepNumber === 6 ? 'Review' : 'OTP'
+                                            )}</span>
+                                        </div>
+                                        {index < 6 && <div className="mx-1 text-gray-400 text-sm">→</div>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <form onSubmit={step === 7 ? handleSubmit : handleNext} className="space-y-6">
+                            {renderStepContent()}
+
+                            {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                            <div className="flex justify-between pt-4">
+                                {step > 1 ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleBack}
+                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                                    >
+                                        <ChevronRight className="h-4 w-4 rotate-180" />
+                                        {t('back', 'Back')}
+                                    </button>
+                                ) : (
+                                    <div></div> // Spacer for alignment
+                                )}
+                                
+                                {step < 6 ? (
+                                    <button
+                                        type="submit"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                    >
+                                        <span>{t('continue', 'Continue')}</span>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                ) : step === 6 ? (
+                                    <button
+                                        type="submit"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleRequestOtp();
+                                            setStep(7);
+                                        }}
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                    >
+                                        <Shield className="h-4 w-4" />
+                                        <span>{t('requestOtp', 'Request OTP')}</span>
+                                    </button>
+                                ) : (
+                                    <button 
+                                        type="submit" 
+                                        disabled={isSubmitting || formData.otpCode.length !== 6}
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                {t('processing', 'Processing...')}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                {t('verifyAndSubmit', 'Verify & Submit')}
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }

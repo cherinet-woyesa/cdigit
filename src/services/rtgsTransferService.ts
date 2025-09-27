@@ -14,6 +14,7 @@ export type RtgsTransferRequestDto = {
   CustomerTelephone?: string | null;
   DigitalSignature: string;
   OtpCode: string;
+  // REMOVED: Success: boolean; // This should only be in response
 };
 
 export type RtgsTransferResponseDto = {
@@ -31,9 +32,48 @@ export type RtgsTransferResponseDto = {
   PaymentNarrative: string;
   CustomerTelephone?: string | null;
   Status: string;
+  Success: boolean; // This stays here - it's a response property
 };
 
 export type ApiResponse<T> = { success: boolean; message?: string; data?: T };
+
+export async function requestRtgsTransferOtp(phoneNumber: string): Promise<ApiResponse<null>> {
+    try {
+        console.log(`Requesting RTGS OTP for phone: ${phoneNumber}`);
+        const res = await axios.post(`${API_BASE_URL}/RtgsTransfer/request-otp`, { phoneNumber }, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            timeout: 30000,
+            validateStatus: (status) => status < 500,
+        });
+
+        if (!res.data) {
+            console.error('Empty OTP response from server');
+            throw new Error('Empty OTP response from server');
+        }
+
+        return res.data;
+    } catch (error: any) {
+        console.error('Error in requestRtgsTransferOtp:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+        });
+
+        if (error.response) {
+            throw {
+                ...error,
+                message: error.response.data?.message || 'Server responded with an error during OTP request',
+                status: error.response.status,
+            };
+        } else if (error.request) {
+            throw new Error('No response received from OTP server. Please check your connection.');
+        } else {
+            throw new Error(`OTP request failed: ${error.message}`);
+        }
+    }
+}
 
 export async function submitRtgsTransfer(payload: RtgsTransferRequestDto): Promise<ApiResponse<RtgsTransferResponseDto>> {
   try {

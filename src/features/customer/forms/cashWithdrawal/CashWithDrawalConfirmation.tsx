@@ -1,12 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Fragment } from 'react';
 import { 
     getWithdrawalById, 
-    cancelWithdrawalByCustomer, 
-    updateWithdrawal
+    cancelWithdrawalByCustomer
 } from '../../../../services/withdrawalService';
 import { useTranslation } from 'react-i18next';
 import { useReactToPrint } from 'react-to-print';
+import { Dialog, Transition } from '@headlessui/react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useBranch } from '../../../../context/BranchContext';
 import { 
@@ -14,15 +14,20 @@ import {
     Printer, 
     AlertCircle,
     Loader2,
-    Edit,
     X,
     Plane,
     MapPin,
-    Calendar
+    Calendar,
+    Clock,
+    CreditCard,
+    DollarSign,
+    Building,
+    RefreshCw,
+    User
 } from 'lucide-react';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 
-// Success message component (consistent with deposit form)
+// Success message component
 function SuccessMessage({ message }: { message: string }) {
     return (
         <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -32,7 +37,7 @@ function SuccessMessage({ message }: { message: string }) {
     );
 }
 
-// Error message component (consistent with deposit form)
+// Error message component
 function ErrorMessage({ message }: { message: string }) {
     return (
         <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -56,98 +61,117 @@ interface WithdrawalData {
     submittedAt?: string;
 }
 
+interface LocationState {
+    serverData?: {
+        data?: WithdrawalData;
+        success?: boolean;
+        message?: string;
+    };
+    updateId?: string;
+    formData?: any;
+    tokenNumber?: string;
+    queueNumber?: number;
+}
+
 export default function WithdrawalConfirmation() {
     const { t } = useTranslation();
-    const { state } = useLocation() as { state?: any };
+    const { phone } = useAuth();
+    const { state } = useLocation() as { state?: LocationState };
     const navigate = useNavigate();
-    const { phone, user } = useAuth();
     const { branch } = useBranch();
-    
     const [withdrawalData, setWithdrawalData] = useState<WithdrawalData>({});
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isCancelling, setIsCancelling] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
-    const [editMode, setEditMode] = useState(false);
-    const [editAmount, setEditAmount] = useState<number | ''>('');
-    const [editRemark, setEditRemark] = useState<string>('');
+    const [showCancelModal, setShowCancelModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
-
+    const [printError, setPrintError] = useState('');
     const componentToPrintRef = useRef<HTMLDivElement>(null);
+    const branchName = branch?.name || t('selectedBranch', 'Selected Branch');
 
     const handlePrint = useReactToPrint({
         content: () => componentToPrintRef.current,
-        documentTitle: `Withdrawal-Confirmation-${withdrawalData.tokenNumber || ''}`,
+        documentTitle: t('withdrawalConfirmation', 'Withdrawal Confirmation'),
+        pageStyle: `
+            @page { size: auto; margin: 10mm; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+                .no-print { display: none !important; }
+            }
+        `,
+        onBeforeGetContent: () => setPrintError(''),
+        onPrintError: () => setPrintError(t('printError', 'Failed to print. Please check your printer settings.')),
     } as any);
 
     useEffect(() => {
         const initializeData = async () => {
             try {
                 setIsLoading(true);
+                setError('');
                 
-                if (state?.serverData) {
+                if (state?.serverData?.data) {
                     // Use data from navigation state
-                    const serverData = state.serverData;
+                    const serverData = state.serverData.data;
                     setWithdrawalData({
-                        id: serverData.data?.id,
-                        branchId: serverData.data?.branchId,
-                        formReferenceId: serverData.data?.formReferenceId,
-                        accountNumber: serverData.data?.accountNumber,
-                        accountHolderName: serverData.data?.accountHolderName,
-                        withdrawal_Amount: serverData.data?.withdrawal_Amount,
-                        tokenNumber: serverData.data?.tokenNumber,
-                        queueNumber: serverData.data?.queueNumber,
-                        remark: serverData.data?.remark,
-                        status: serverData.data?.status,
-                        submittedAt: serverData.data?.submittedAt,
+                        id: serverData.id,
+                        branchId: serverData.branchId,
+                        formReferenceId: serverData.formReferenceId,
+                        accountNumber: serverData.accountNumber,
+                        accountHolderName: serverData.accountHolderName,
+                        withdrawal_Amount: serverData.withdrawal_Amount,
+                        tokenNumber: serverData.tokenNumber,
+                        queueNumber: serverData.queueNumber,
+                        remark: serverData.remark,
+                        status: serverData.status,
+                        submittedAt: serverData.submittedAt,
                     });
                 } else if (state?.updateId) {
                     // Fetch withdrawal by ID for update flow
                     const response = await getWithdrawalById(state.updateId);
-                    if (response.success) {
-                        setWithdrawalData(response.data || {});
+                    if (response.success && response.data) {
+                        setWithdrawalData(response.data);
                     } else {
-                        setError(response.message || 'Failed to load withdrawal details');
+                        setError(response.message || t('loadFailed', 'Failed to load withdrawal details'));
                     }
                 } else {
-                    setError('Invalid request state. Please start over.');
+                    setError(t('invalidState', 'Invalid request state. Please start over.'));
                 }
             } catch (err: any) {
                 console.error('Error initializing withdrawal data:', err);
-                setError(err?.message || 'Failed to load withdrawal details');
+                setError(err?.message || t('loadFailed', 'Failed to load withdrawal details'));
             } finally {
                 setIsLoading(false);
             }
         };
 
         initializeData();
-    }, [state]);
+    }, [state, t]);
 
     const handleCancel = async () => {
         if (!withdrawalData.id) {
-            setError('No withdrawal ID available');
+            setError(t('noWithdrawalId', 'No withdrawal ID available'));
             return;
         }
-        
-        if (!window.confirm(t('confirmCancel', 'Are you sure you want to cancel this withdrawal request?'))) {
-            return;
-        }
-
         try {
             setIsCancelling(true);
+            setError('');
             const response = await cancelWithdrawalByCustomer(withdrawalData.id);
-            
             if (response.success) {
                 setSuccessMessage(response.message || t('withdrawalCancelled', 'Withdrawal request cancelled successfully'));
-                
+                setShowCancelModal(false);
                 setTimeout(() => {
-                    navigate('/dashboard');
-                }, 2000);
+                    navigate('/form/cash-withdrawal', {
+                        state: {
+                            showSuccess: true,
+                            successMessage: response.message || t('withdrawalCancelled', 'Withdrawal request cancelled successfully')
+                        }
+                    });
+                }, 1500);
             } else {
                 setError(response.message || t('cancelFailed', 'Failed to cancel withdrawal'));
             }
         } catch (err: any) {
-            console.error('Error cancelling withdrawal:', err);
             setError(err?.message || t('cancelFailed', 'Failed to cancel withdrawal'));
         } finally {
             setIsCancelling(false);
@@ -155,53 +179,38 @@ export default function WithdrawalConfirmation() {
     };
 
     const handleUpdate = async () => {
-        if (!withdrawalData.id || !editAmount) {
-            setError('Invalid update data');
+        if (!withdrawalData.id) {
+            setError(t('noWithdrawalId', 'No withdrawal ID available'));
             return;
         }
-
+        
+        setIsUpdating(true);
+        setError('');
         try {
-            setIsUpdating(true);
-            const updateData = {
-                withdrawal_Amount: Number(editAmount),
-                remark: editRemark,
-            };
-            
-            const result = await updateWithdrawal(withdrawalData.id, updateData);
-            if (result.success) {
-                setSuccessMessage(result.message || t('withdrawalUpdated', 'Withdrawal updated successfully'));
-                setWithdrawalData(prev => ({
-                    ...prev,
-                    withdrawal_Amount: Number(editAmount),
-                    remark: editRemark
-                }));
-                setEditMode(false);
-                
-                setTimeout(() => {
-                    setSuccessMessage('');
-                }, 3000);
+            // Fetch latest withdrawal data and navigate to edit form
+            const response = await getWithdrawalById(withdrawalData.id);
+            if (response.success && response.data) {
+                navigate('/form/cash-withdrawal', {
+                    state: {
+                        updateId: withdrawalData.id,
+                        formData: {
+                            accountNumber: response.data.accountNumber,
+                            accountHolderName: response.data.accountHolderName,
+                            amount: response.data.withdrawal_Amount,
+                            remark: response.data.remark,
+                        },
+                        tokenNumber: response.data.tokenNumber,
+                        queueNumber: response.data.queueNumber
+                    }
+                });
             } else {
-                setError(result.message || t('updateFailed', 'Failed to update withdrawal'));
+                setError(response.message || t('updateFailed', 'Failed to prepare withdrawal update.'));
             }
         } catch (err: any) {
-            setError(err?.message || t('updateFailed', 'Failed to update withdrawal'));
+            setError(err?.message || t('updateFailed', 'Failed to prepare withdrawal update.'));
         } finally {
             setIsUpdating(false);
         }
-    };
-
-    const startEdit = () => {
-        setEditAmount(withdrawalData.withdrawal_Amount || 0);
-        setEditRemark(withdrawalData.remark || '');
-        setEditMode(true);
-        setError('');
-        setSuccessMessage('');
-    };
-
-    const cancelEdit = () => {
-        setEditMode(false);
-        setEditAmount(withdrawalData.withdrawal_Amount || 0);
-        setEditRemark(withdrawalData.remark || '');
     };
 
     const handleNewWithdrawal = () => {
@@ -212,6 +221,16 @@ export default function WithdrawalConfirmation() {
         navigate('/dashboard');
     };
 
+    // Auto-redirect if error is due to invalid navigation state
+    useEffect(() => {
+        if (error && !withdrawalData.id && error === t('invalidState', 'Invalid request state. Please start over.')) {
+            const timer = setTimeout(() => {
+                navigate('/form/cash-withdrawal');
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, withdrawalData.id, navigate, t]);
+
     // Loading state
     if (isLoading) {
         return (
@@ -219,14 +238,14 @@ export default function WithdrawalConfirmation() {
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
-                        <p className="text-gray-600">{t('loading', 'Loading...')}</p>
+                        <p className="text-gray-600">{t('loading', 'Loading withdrawal details...')}</p>
                     </div>
                 </div>
             </div>
         );
     }
 
-    // Error state
+    // Error state with auto-redirect
     if (error && !withdrawalData.id) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -234,17 +253,21 @@ export default function WithdrawalConfirmation() {
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
-                        <p className="text-gray-600 mb-4">{error}</p>
+                        <p className="text-gray-600 mb-4">
+                            {error === t('invalidState', 'Invalid request state. Please start over.')
+                                ? t('redirectMessage', 'This page was loaded without a valid withdrawal. You will be redirected to the withdrawal form.')
+                                : error}
+                        </p>
                         <div className="flex flex-col sm:flex-row gap-3 justify-center">
                             <button
                                 onClick={() => navigate('/form/cash-withdrawal')}
-                                className="bg-fuchsia-700 text-white px-6 py-2 rounded-lg hover:bg-fuchsia-800"
+                                className="bg-fuchsia-700 text-white px-6 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors"
                             >
-                                {t('tryAgain', 'Try Again')}
+                                {t('goToWithdrawal', 'Go to Withdrawal')}
                             </button>
                             <button
                                 onClick={handleBackToDashboard}
-                                className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50"
+                                className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors"
                             >
                                 {t('backToDashboard', 'Back to Dashboard')}
                             </button>
@@ -255,8 +278,8 @@ export default function WithdrawalConfirmation() {
         );
     }
 
-    // Success state after cancellation/update
-    if (successMessage && !withdrawalData.id) {
+    // Success state after cancellation
+    if (successMessage) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
@@ -266,7 +289,7 @@ export default function WithdrawalConfirmation() {
                         <p className="text-gray-600 mb-4">{successMessage}</p>
                         <button
                             onClick={handleBackToDashboard}
-                            className="bg-fuchsia-700 text-white px-6 py-2 rounded-lg hover:bg-fuchsia-800"
+                            className="bg-fuchsia-700 text-white px-6 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors"
                         >
                             {t('backToDashboard', 'Back to Dashboard')}
                         </button>
@@ -278,193 +301,245 @@ export default function WithdrawalConfirmation() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-4xl w-full mx-auto">
-                <div ref={componentToPrintRef} className="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div className="max-w-2xl w-full">
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
                     {/* Header with Language Switcher */}
-                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
-                        <div className="px-6 py-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 p-2 rounded-lg">
-                                        <Plane className="h-5 w-5 text-white" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-lg font-bold">{t('withdrawalConfirmation', 'Withdrawal Confirmation')}</h1>
-                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-                                            <MapPin className="h-3 w-3" />
-                                            <span>{branch?.name || state?.branchName || t('branch', 'Branch')}</span>
-                                            <span>•</span>
-                                            <Calendar className="h-3 w-3" />
-                                            <span>{new Date().toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
+                    <div className="bg-fuchsia-700 text-white p-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <Plane className="h-5 w-5 text-white" />
                                 </div>
-                                
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
-                                        📱 {phone}
-                                    </div>
-                                    <div className="bg-white/20 rounded-lg p-1">
-                                        <LanguageSwitcher />
+                                <div>
+                                    <h1 className="text-lg font-bold">{t('withdrawalConfirmation', 'Withdrawal Confirmation')}</h1>
+                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{branchName}</span>
+                                        <span>•</span>
+                                        <Calendar className="h-3 w-3" />
+                                        <span>{new Date().toLocaleDateString()}</span>
                                     </div>
                                 </div>
                             </div>
+                            <div className="flex items-center gap-3">
+                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                    📱 {phone}
+                                </div>
+                                <div className="bg-white/20 rounded p-1">
+                                    <LanguageSwitcher />
+                                </div>
+                            </div>
                         </div>
-                    </header>
+                    </div>
 
                     {/* Main Content */}
-                    <div className="p-6">
-                        {successMessage && (
-                            <div className="mb-6">
-                                <SuccessMessage message={successMessage} />
+                    <div ref={componentToPrintRef} className="p-4">
+                        {/* Success Icon */}
+                        <div className="text-center py-4">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-green-500" />
                             </div>
-                        )}
-
-                        {error && (
-                            <div className="mb-6">
-                                <ErrorMessage message={error} />
-                            </div>
-                        )}
-
-                        {/* Success Header */}
-                        <div className="text-center mb-6">
-                            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-3" />
-                            <h2 className="text-2xl font-bold text-gray-900">{t('withdrawalSubmitted', 'Withdrawal Submitted Successfully!')}</h2>
-                            <p className="text-gray-600 mt-1">{t('thankYouForBanking', 'Thank you for banking with us!')}</p>
+                            <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
+                            <p className="text-gray-600 text-sm">{t('withdrawalSubmitted', 'Your withdrawal request has been submitted.')}</p>
                         </div>
 
-                        {/* Token and Queue Numbers */}
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                            <div className="bg-fuchsia-700 text-white p-4 rounded-lg text-center">
-                                <div className="text-sm font-medium opacity-90">{t('queueNumber', 'Queue Number')}</div>
-                                <div className="text-3xl font-bold mt-1">{withdrawalData.queueNumber || 'N/A'}</div>
-                            </div>
-                            <div className="bg-fuchsia-600 text-white p-4 rounded-lg text-center">
-                                <div className="text-sm font-medium opacity-90">{t('tokenNumber', 'Token Number')}</div>
-                                <div className="text-3xl font-bold mt-1">{withdrawalData.tokenNumber || 'N/A'}</div>
+                        {/* Queue and Token Cards */}
+                        <div className="mb-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-3 rounded-lg text-center text-white">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
+                                    </div>
+                                    <p className="text-2xl font-bold">{withdrawalData.queueNumber || 'N/A'}</p>
+                                </div>
+                                <div className="bg-gradient-to-r from-fuchsia-700 to-pink-700 p-3 rounded-lg text-center text-white">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                        <CreditCard className="h-3 w-3" />
+                                        <span className="text-xs font-medium">{t('token', 'Token')}</span>
+                                    </div>
+                                    <p className="text-2xl font-bold">{withdrawalData.tokenNumber || 'N/A'}</p>
+                                </div>
                             </div>
                         </div>
 
                         {/* Transaction Summary */}
-                        <div className="border border-gray-200 rounded-lg p-6 mb-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('transactionSummary', 'Transaction Summary')}</h3>
-                            
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="font-medium text-gray-700">{t('accountNumber', 'Account Number')}:</span>
-                                    <span className="font-mono">{withdrawalData.accountNumber || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="font-medium text-gray-700">{t('accountHolder', 'Account Holder')}:</span>
-                                    <span>{withdrawalData.accountHolderName || 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                    <span className="font-medium text-gray-700">{t('amount', 'Amount')}:</span>
-                                    <span className="text-lg font-bold text-fuchsia-700">
-                                        {withdrawalData.withdrawal_Amount?.toLocaleString() || '0'} ETB
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="font-medium text-gray-700">{t('status', 'Status')}:</span>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        withdrawalData.status === 'OnQueue' 
-                                            ? 'bg-blue-100 text-blue-800'
-                                            : 'bg-gray-100 text-gray-800'
-                                    }`}>
-                                        {withdrawalData.status || t('pending', 'Pending')}
-                                    </span>
+                        <div className="mb-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                                    <DollarSign className="h-4 w-4" />
+                                    {t('transactionSummary', 'Transaction Summary')}
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <User className="h-3 w-3" />
+                                            {t('accountHolder', 'Account Holder')}:
+                                        </span>
+                                        <span className="font-semibold text-right">{withdrawalData.accountHolderName || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <CreditCard className="h-3 w-3" />
+                                            {t('accountNumber', 'Account Number')}:
+                                        </span>
+                                        <span className="font-mono font-semibold">{withdrawalData.accountNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Building className="h-3 w-3" />
+                                            {t('branch', 'Branch')}:
+                                        </span>
+                                        <span>{branchName}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <DollarSign className="h-3 w-3" />
+                                            {t('amount', 'Amount')}:
+                                        </span>
+                                        <span className="text-lg font-bold text-fuchsia-700">
+                                            {withdrawalData.withdrawal_Amount != null 
+                                                ? `${Number(withdrawalData.withdrawal_Amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` 
+                                                : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            {t('status', 'Status')}:
+                                        </span>
+                                        <span className={`font-medium ${
+                                            withdrawalData.status === 'PENDING' ? 'text-yellow-600' : 
+                                            withdrawalData.status === 'APPROVED' ? 'text-green-600' : 
+                                            withdrawalData.status === 'CANCELLED' ? 'text-red-600' : 
+                                            'text-gray-600'
+                                        }`}>
+                                            {withdrawalData.status || 'N/A'}
+                                        </span>
+                                    </div>
+                                    {withdrawalData.remark && (
+                                        <div className="flex justify-between items-center py-1">
+                                            <span className="font-medium text-gray-700 flex items-center gap-1">
+                                                <AlertCircle className="h-3 w-3" />
+                                                {t('remark', 'Remark')}:
+                                            </span>
+                                            <span className="text-right max-w-xs">{withdrawalData.remark}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-
-                            {/* Edit Form */}
-                            {editMode && (
-                                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                                    <h4 className="font-medium text-gray-900 mb-3">{t('editWithdrawal', 'Edit Withdrawal')}</h4>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                {t('amount', 'Amount')} (ETB)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={editAmount}
-                                                onChange={(e) => setEditAmount(Number(e.target.value))}
-                                                className="w-full p-2 border border-gray-300 rounded-lg"
-                                                min="1"
-                                                step="0.01"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                {t('remark', 'Remark')} ({t('optional', 'Optional')})
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={editRemark}
-                                                onChange={(e) => setEditRemark(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 rounded-lg"
-                                                placeholder={t('enterRemark', 'Enter remark...')}
-                                            />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={handleUpdate}
-                                                disabled={isUpdating}
-                                                className="flex-1 bg-fuchsia-700 text-white py-2 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50"
-                                            >
-                                                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : t('save', 'Save')}
-                                            </button>
-                                            <button
-                                                onClick={cancelEdit}
-                                                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50"
-                                            >
-                                                {t('cancel', 'Cancel')}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <button
-                                onClick={handleNewWithdrawal}
-                                className="bg-fuchsia-700 text-white py-2 rounded-lg hover:bg-fuchsia-800 text-sm font-medium"
-                            >
-                                {t('newWithdrawal', 'New Withdrawal')}
-                            </button>
-                            
-                            <button
-                                onClick={handlePrint}
-                                className="border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm font-medium"
-                            >
-                                <Printer className="h-4 w-4" />
-                                {t('print', 'Print')}
-                            </button>
-                            
-                            {!editMode ? (
-                                <>
-                                    <button
-                                        onClick={startEdit}
-                                        className="border border-yellow-300 text-yellow-700 py-2 rounded-lg hover:bg-yellow-50 flex items-center justify-center gap-2 text-sm font-medium"
-                                    >
-                                        <Edit className="h-4 w-4" />
-                                        {t('update', 'Update')}
-                                    </button>
-                                    
-                                    <button
-                                        onClick={handleCancel}
-                                        disabled={isCancelling}
-                                        className="border border-red-300 text-red-700 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-medium"
-                                    >
-                                        {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                                        {t('cancel', 'Cancel')}
-                                    </button>
-                                </>
-                            ) : null}
+                        {/* Thank You Message */}
+                        <div className="text-center pt-3 border-t border-gray-200">
+                            <p className="text-gray-600 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
                         </div>
                     </div>
+
+                    {/* Action Buttons */}
+                    <div className="p-4 border-t border-gray-200 no-print">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={handleNewWithdrawal}
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                            >
+                                <RefreshCw className="h-3 w-3" />
+                                {t('newWithdrawal', 'New')}
+                            </button>
+                            <button
+                                onClick={handlePrint}
+                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                            >
+                                <Printer className="h-3 w-3" />
+                                {t('print', 'Print')}
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                            <button
+                                onClick={handleUpdate}
+                                disabled={isUpdating || withdrawalData.status !== 'PENDING'}
+                                className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors text-xs font-medium"
+                                title={withdrawalData.status !== 'PENDING' ? t('onlyPendingCanUpdate', 'Only pending withdrawals can be updated') : ''}
+                            >
+                                <RefreshCw className="h-3 w-3" />
+                                {isUpdating ? t('processing', 'Processing...') : t('update', 'Update')}
+                            </button>
+                            <button
+                                onClick={() => setShowCancelModal(true)}
+                                disabled={isCancelling || withdrawalData.status !== 'PENDING'}
+                                className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                                title={withdrawalData.status !== 'PENDING' ? t('onlyPendingCanCancel', 'Only pending withdrawals can be cancelled') : ''}
+                            >
+                                <X className="h-3 w-3" />
+                                {t('cancel', 'Cancel')}
+                            </button>
+                        </div>
+                        {/* Messages */}
+                        {error && <ErrorMessage message={error} />}
+                        {printError && <ErrorMessage message={printError} />}
+                        {successMessage && <SuccessMessage message={successMessage} />}
+                    </div>
+
+                    {/* Cancel Confirmation Modal */}
+                    <Transition appear show={showCancelModal} as={Fragment}>
+                        <Dialog as="div" className="relative z-10" onClose={() => !isCancelling && setShowCancelModal(false)}>
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0"
+                                enterTo="opacity-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100"
+                                leaveTo="opacity-0"
+                            >
+                                <div className="fixed inset-0 bg-black/25" />
+                            </Transition.Child>
+                            <div className="fixed inset-0 overflow-y-auto">
+                                <div className="flex min-h-full items-center justify-center p-4 text-center">
+                                    <Transition.Child
+                                        as={Fragment}
+                                        enter="ease-out duration-300"
+                                        enterFrom="opacity-0 scale-95"
+                                        enterTo="opacity-100 scale-100"
+                                        leave="ease-in duration-200"
+                                        leaveFrom="opacity-100 scale-100"
+                                        leaveTo="opacity-0 scale-95"
+                                    >
+                                        <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                                            <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
+                                                <AlertCircle className="h-5 w-5 text-red-500" />
+                                                {t('confirmCancellation', 'Confirm Cancellation')}
+                                            </Dialog.Title>
+                                            <div className="mt-4">
+                                                <p className="text-sm text-gray-500">
+                                                    {t('cancelWithdrawalPrompt', 'Are you sure you want to cancel this withdrawal? This action cannot be undone.')}
+                                                </p>
+                                            </div>
+                                            {error && <ErrorMessage message={error} />}
+                                            <div className="mt-6 flex justify-end gap-3">
+                                                <button
+                                                    type="button"
+                                                    className="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
+                                                    onClick={() => setShowCancelModal(false)}
+                                                    disabled={isCancelling}
+                                                >
+                                                    {t('goBack', 'Go Back')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                                                    onClick={handleCancel}
+                                                    disabled={isCancelling}
+                                                >
+                                                    {isCancelling ? t('cancelling', 'Cancelling...') : t('yesCancelWithdrawal', 'Yes, Cancel Withdrawal')}
+                                                </button>
+                                            </div>
+                                        </Dialog.Panel>
+                                    </Transition.Child>
+                                </div>
+                            </div>
+                        </Dialog>
+                    </Transition>
                 </div>
             </div>
         </div>
