@@ -5,12 +5,16 @@ type FieldProps = {
     required?: boolean;
     error?: string;
     children: React.ReactNode;
+    id?: string;
 };
 
-const Field: React.FC<FieldProps> = ({ label, required, error, children }) => {
+const Field: React.FC<FieldProps> = ({ label, required, error, children, id }) => {
     return (
         <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700">
+            <label 
+                htmlFor={id}
+                className="block text-sm font-medium text-gray-700"
+            >
                 {label}
                 {required && <span className="text-red-500">*</span>}
             </label>

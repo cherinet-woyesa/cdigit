@@ -1,98 +1,234 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useRef } from 'react';
-import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { useEffect, useState, useRef, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useReactToPrint } from 'react-to-print';
+import { Dialog, Transition } from '@headlessui/react';
+import { useAuth } from '../../../../context/AuthContext';
+import { useBranch } from '../../../../context/BranchContext';
+import { 
+    CheckCircle2, 
+    Printer, 
+    AlertCircle,
+    Loader2,
+    X,
+    Heart,
+    MapPin,
+    Calendar,
+    Clock,
+    User,
+    Phone,
+    IdCard,
+    BookOpen,
+    Users,
+    RefreshCw,
+    Building
+} from 'lucide-react';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 
+// Success message component
+function SuccessMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span className="text-sm text-green-700">{message}</span>
+        </div>
+    );
+}
 
-type RegistrationData = {
-    formReferenceId?: string;
-    phoneNumber?: string;
+// Error message component
+function ErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700">{message}</span>
+        </div>
+    );
+}
+
+interface RegistrationData {
+    id?: string;
+    customerPhoneNumber?: string;
     fullName?: string;
-    windowNumber?: string;
+    placeOfBirth?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    city?: string;
+    wereda?: string;
+    kebele?: string;
+    email?: string;
+    idNumber?: string;
+    issuedBy?: string;
+    maritalStatus?: string;
+    educationLevel?: string;
+    mothersFullName?: string;
     tokenNumber?: string;
+    queueNumber?: number;
+    status?: string;
     submittedAt?: string;
-};
+}
+
+interface LocationState {
+    api?: RegistrationData;
+    updateId?: string;
+    formData?: any;
+}
 
 export default function CbeBirrRegistrationConfirmation() {
-    const { state } = useLocation() as { state?: any };
+    const { t } = useTranslation();
+    const { phone } = useAuth();
+    const { state } = useLocation() as { state?: LocationState };
     const navigate = useNavigate();
-    const [isLoading, setIsLoading] = useState(true);
+    const { branch } = useBranch();
+    const [registrationData, setRegistrationData] = useState<RegistrationData>({});
     const [error, setError] = useState('');
-    const [data, setData] = useState<RegistrationData>({});
-    const printRef = useRef<HTMLDivElement>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+    const [printError, setPrintError] = useState('');
+    const componentToPrintRef = useRef<HTMLDivElement>(null);
+    const branchName = branch?.name || t('branch', 'Branch');
+
+    const handlePrint = useReactToPrint({
+        content: () => componentToPrintRef.current,
+        documentTitle: t('cbeBirrRegistrationConfirmation', 'CBE-Birr Registration Confirmation'),
+        pageStyle: `
+            @page { size: auto; margin: 10mm; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+                .no-print { display: none !important; }
+            }
+        `,
+        onBeforeGetContent: () => setPrintError(''),
+        onPrintError: () => setPrintError(t('printError', 'Failed to print. Please check your printer settings.')),
+    } as any);
 
     useEffect(() => {
-        // When navigating from the live API submit, we pass state.api (ReadDto)
-        if (state?.api) {
-            const api = state.api;
-            setData({
-                formReferenceId: api?.id || api?.Id,
-                phoneNumber: api?.customerPhoneNumber || api?.CustomerPhoneNumber,
-                fullName: api?.fullName || api?.FullName,
-                windowNumber: undefined,
-                tokenNumber: undefined,
-                submittedAt: new Date().toISOString(),
-            });
-            setIsLoading(false);
+        const initializeData = async () => {
+            try {
+                setIsLoading(true);
+                setError('');
+                
+                if (state?.api) {
+                    const apiData = state.api;
+                    setRegistrationData({
+                        id: apiData.id,
+                        customerPhoneNumber: apiData.customerPhoneNumber,
+                        fullName: apiData.fullName,
+                        placeOfBirth: apiData.placeOfBirth,
+                        dateOfBirth: apiData.dateOfBirth,
+                        gender: apiData.gender,
+                        city: apiData.city,
+                        wereda: apiData.wereda,
+                        kebele: apiData.kebele,
+                        email: apiData.email,
+                        idNumber: apiData.idNumber,
+                        issuedBy: apiData.issuedBy,
+                        maritalStatus: apiData.maritalStatus,
+                        educationLevel: apiData.educationLevel,
+                        mothersFullName: apiData.mothersFullName,
+                        tokenNumber: apiData.tokenNumber,
+                        queueNumber: apiData.queueNumber,
+                        status: apiData.status,
+                        submittedAt: apiData.submittedAt || new Date().toISOString(),
+                    });
+                } else if (state?.updateId) {
+                    setError(t('updateFlowNotSupported', 'Update flow not yet supported'));
+                } else {
+                    setError(t('invalidState', 'Invalid request state. Please start over.'));
+                }
+            } catch (err: any) {
+                console.error('Error initializing registration data:', err);
+                setError(err?.message || t('loadFailed', 'Failed to load registration details'));
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        initializeData();
+    }, [state, t]);
+
+    const handleUpdate = async () => {
+        if (!registrationData.id) {
+            setError(t('noRegistrationId', 'No registration ID available'));
             return;
         }
-
-        // Fallback to previous local-state flow
-        if (state?.formData) {
-            setData({
-                formReferenceId: state.formData.formReferenceId,
-                phoneNumber: state.formData.phoneNumber,
-                fullName: state.formData.fullName,
-                windowNumber: state.windowNumber || state.formData.windowNumber,
-                tokenNumber: state.formData.tokenNumber,
-                submittedAt: new Date().toISOString()
+        
+        setIsUpdating(true);
+        setError('');
+        try {
+            navigate('/form/cbe-birr', {
+                state: {
+                    updateId: registrationData.id,
+                    formData: {
+                        phoneNumber: registrationData.customerPhoneNumber,
+                        fullName: registrationData.fullName,
+                    }
+                }
             });
-            setIsLoading(false);
-            return;
+        } catch (err: any) {
+            setError(err?.message || t('updateFailed', 'Failed to prepare registration update.'));
+        } finally {
+            setIsUpdating(false);
         }
-
-        // If nothing in state, show error
-        setError('No registration data found. Please complete the registration form first.');
-        setIsLoading(false);
-    }, [state]);
+    };
 
     const handleNewRegistration = () => {
         navigate('/form/cbe-birr');
     };
 
-    const handlePrint = useReactToPrint({
-        contentRef: printRef,
-    documentTitle: `CBE-Birr-Registration-${data.formReferenceId || 'receipt'}`
-    });
+    const handleBackToDashboard = () => {
+        navigate('/dashboard');
+    };
+
+    useEffect(() => {
+        if (error && !registrationData.id && error === t('invalidState', 'Invalid request state. Please start over.')) {
+            const timer = setTimeout(() => {
+                navigate('/form/cbe-birr');
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, registrationData.id, navigate, t]);
 
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cbe-primary"></div>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
+                        <p className="text-gray-600">{t('loading', 'Loading registration details...')}</p>
+                    </div>
+                </div>
             </div>
         );
     }
 
-    if (error) {
+    if (error && !registrationData.id) {
         return (
-            <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-8">
-                <div className="text-center py-8">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                        <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h3 className="mt-3 text-lg font-medium text-gray-900">Error</h3>
-                    <div className="mt-2 text-sm text-gray-500">
-                        <p>{error}</p>
-                    </div>
-                    <div className="mt-6">
-                        <button
-                            onClick={() => navigate('/')}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-cbe-primary hover:bg-cbe-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cbe-primary"
-                        >
-                            Return to Dashboard
-                        </button>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
+                        <p className="text-gray-600 mb-4">
+                            {error === t('invalidState', 'Invalid request state. Please start over.')
+                                ? t('redirectMessage', 'This page was loaded without a valid registration. You will be redirected to the registration form.')
+                                : error}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button
+                                onClick={() => navigate('/form/cbe-birr')}
+                                className="bg-fuchsia-700 text-white px-6 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors"
+                            >
+                                {t('goToRegistration', 'Go to Registration')}
+                            </button>
+                            <button
+                                onClick={handleBackToDashboard}
+                                className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                {t('backToDashboard', 'Back to Dashboard')}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -100,58 +236,221 @@ export default function CbeBirrRegistrationConfirmation() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6">
-            <div ref={printRef} className="max-w-2xl w-full bg-white p-4 sm:p-6 rounded-lg shadow-lg">
-                <div className="mb-6 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg text-center">
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white">CBE-Birr Registration</h1>
-                </div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full">
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    {/* Header with Language Switcher */}
+                    <div className="bg-fuchsia-700 text-white p-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <Heart className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-bold">{t('cbeBirrRegistrationConfirmation', 'CBE-Birr Registration Confirmation')}</h1>
+                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{branchName}</span>
+                                        <span>•</span>
+                                        <Calendar className="h-3 w-3" />
+                                        <span>{new Date().toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                    📱 {phone}
+                                </div>
+                                <div className="bg-white/20 rounded p-1">
+                                    <LanguageSwitcher />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                <div className="text-center mb-4">
-                    <CheckCircleIcon className="h-14 w-14 mx-auto text-green-500" />
-                    <h1 className="text-xl font-extrabold text-fuchsia-800 mt-2">Success!</h1>
-                    <p className="text-gray-600 text-sm">Your registration has been submitted.</p>
-                </div>
+                    {/* Main Content */}
+                    <div ref={componentToPrintRef} className="p-4">
+                        {/* Success Icon */}
+                        <div className="text-center py-4">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                            </div>
+                            <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
+                            <p className="text-gray-600 text-sm">{t('registrationSubmitted', 'Your CBE-Birr registration has been submitted.')}</p>
+                        </div>
 
-                <div className="bg-gray-50 p-3 rounded-lg shadow-inner mb-4">
-                    <h3 className="text-base font-bold text-fuchsia-700 mb-2">Details</h3>
-                    <div className="space-y-2 text-sm sm:text-base text-gray-700">
-                        <div className="flex justify-between"><strong>Reference:</strong> <span>{data.formReferenceId || 'N/A'}</span></div>
-                        <div className="flex justify-between"><strong>Phone:</strong> <span>{data.phoneNumber || 'N/A'}</span></div>
-                        <div className="flex justify-between"><strong>Name:</strong> <span>{data.fullName || 'N/A'}</span></div>
-                        {data.windowNumber && (
-                            <div className="flex justify-between"><strong>Window #:</strong> <span>{data.windowNumber}</span></div>
+                        {/* Queue and Token Cards */}
+                        {(registrationData.queueNumber || registrationData.tokenNumber) && (
+                            <div className="mb-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    {registrationData.queueNumber && (
+                                        <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-3 rounded-lg text-center text-white">
+                                            <div className="flex items-center justify-center gap-1 mb-1">
+                                                <MapPin className="h-3 w-3" />
+                                                <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
+                                            </div>
+                                            <p className="text-2xl font-bold">{registrationData.queueNumber}</p>
+                                        </div>
+                                    )}
+                                    {registrationData.tokenNumber && (
+                                        <div className="bg-gradient-to-r from-fuchsia-700 to-pink-700 p-3 rounded-lg text-center text-white">
+                                            <div className="flex items-center justify-center gap-1 mb-1">
+                                                <IdCard className="h-3 w-3" />
+                                                <span className="text-xs font-medium">{t('token', 'Token')}</span>
+                                            </div>
+                                            <p className="text-2xl font-bold">{registrationData.tokenNumber}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         )}
-                        {data.tokenNumber && (
-                            <div className="flex justify-between"><strong>Token:</strong> <span>{data.tokenNumber}</span></div>
-                        )}
-                        <div className="flex justify-between"><strong>Date:</strong> <span>{data.submittedAt ? new Date(data.submittedAt).toLocaleString() : 'N/A'}</span></div>
+
+                        {/* Registration Summary */}
+                        <div className="mb-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    {t('registrationSummary', 'Registration Summary')}
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Phone className="h-3 w-3" />
+                                            {t('phoneNumber', 'Phone Number')}:
+                                        </span>
+                                        <span className="font-semibold">{registrationData.customerPhoneNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <User className="h-3 w-3" />
+                                            {t('fullName', 'Full Name')}:
+                                        </span>
+                                        <span className="font-semibold text-right">{registrationData.fullName || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700">
+                                            {t('gender', 'Gender')}:
+                                        </span>
+                                        <span>{registrationData.gender || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700">
+                                            {t('dateOfBirth', 'Date of Birth')}:
+                                        </span>
+                                        <span>{registrationData.dateOfBirth ? new Date(registrationData.dateOfBirth).toLocaleDateString() : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700">
+                                            {t('placeOfBirth', 'Place of Birth')}:
+                                        </span>
+                                        <span>{registrationData.placeOfBirth || 'N/A'}</span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Building className="h-3 w-3" />
+                                            {t('address', 'Address')}:
+                                        </span>
+                                        <span className="text-right">
+                                            {[registrationData.city, registrationData.wereda, registrationData.kebele]
+                                                .filter(Boolean).join(', ') || 'N/A'}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <IdCard className="h-3 w-3" />
+                                            {t('idNumber', 'ID Number')}:
+                                        </span>
+                                        <span className="font-mono font-semibold">{registrationData.idNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700">
+                                            {t('issuedBy', 'Issued By')}:
+                                        </span>
+                                        <span>{registrationData.issuedBy || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700">
+                                            {t('maritalStatus', 'Marital Status')}:
+                                        </span>
+                                        <span>{registrationData.maritalStatus || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <BookOpen className="h-3 w-3" />
+                                            {t('educationLevel', 'Education Level')}:
+                                        </span>
+                                        <span>{registrationData.educationLevel || 'N/A'}</span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Users className="h-3 w-3" />
+                                            {t('mothersName', 'Mother\'s Name')}:
+                                        </span>
+                                        <span className="text-right">{registrationData.mothersFullName || 'N/A'}</span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center py-1 border-t border-gray-200 mt-2 pt-2">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            {t('status', 'Status')}:
+                                        </span>
+                                        <span className={`font-medium ${
+                                            registrationData.status === 'PENDING' ? 'text-yellow-600' : 
+                                            registrationData.status === 'APPROVED' ? 'text-green-600' : 
+                                            registrationData.status === 'REJECTED' ? 'text-red-600' : 
+                                            'text-gray-600'
+                                        }`}>
+                                            {registrationData.status || 'SUBMITTED'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Thank You Message */}
+                        <div className="text-center pt-3 border-t border-gray-200">
+                            <p className="text-gray-600 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="p-4 border-t border-gray-200 no-print">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={handleNewRegistration}
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                            >
+                                <RefreshCw className="h-3 w-3" />
+                                {t('newRegistration', 'New')}
+                            </button>
+                            <button
+                                onClick={handlePrint}
+                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                            >
+                                <Printer className="h-3 w-3" />
+                                {t('print', 'Print')}
+                            </button>
+                        </div>
+                        <div className="mt-2">
+                            <button
+                                onClick={handleUpdate}
+                                disabled={isUpdating}
+                                className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors text-xs font-medium"
+                            >
+                                <RefreshCw className="h-3 w-3" />
+                                {isUpdating ? t('processing', 'Processing...') : t('update', 'Update')}
+                            </button>
+                        </div>
+                        
+                        {/* Messages */}
+                        {error && <ErrorMessage message={error} />}
+                        {printError && <ErrorMessage message={printError} />}
+                        {successMessage && <SuccessMessage message={successMessage} />}
                     </div>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <button 
-                        onClick={handleNewRegistration} 
-                        className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition"
-                    >
-                        <ArrowPathIcon className="h-3.5 w-3.5" />
-                        New
-                    </button>
-                    <button 
-                        onClick={handlePrint} 
-                        className="flex items-center justify-center gap-1 w-full bg-gray-200 text-fuchsia-800 text-sm px-2 py-1.5 rounded-md shadow hover:bg-gray-300 transition"
-                    >
-                        <PrinterIcon className="h-3.5 w-3.5" />
-                        Print
-                    </button>
-                    <button 
-                        onClick={() => navigate('/form/cbe-birr', { state: { updateId: data.formReferenceId } })} 
-                        className="flex items-center justify-center gap-1 w-full bg-yellow-500 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-yellow-600 transition"
-                    >
-                        Update
-                    </button>
-                </div>
-
-                <p className="text-sm text-gray-500 mt-6 text-center">Thank you for banking with us!</p>
             </div>
         </div>
     );

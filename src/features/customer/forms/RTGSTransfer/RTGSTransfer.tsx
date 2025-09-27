@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../../context/AuthContext';
 import { useBranch } from '../../../../context/BranchContext';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
-import { submitRtgsTransfer, requestRtgsTransferOtp } from '../../../../services/rtgsTransferService';
+import { submitRtgsTransfer } from '../../../../services/rtgsTransferService';
+import authService from '../../../../services/authService';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 import { 
     Loader2, 
@@ -157,49 +158,6 @@ export default function RTGSTransferForm() {
         };
     }, [resendTimer]);
 
-    const handleRequestOtp = async () => {
-        if (!phone) {
-            setErrors({ submit: t('missingPhoneNumber', 'Phone number not found. Please log in again.') });
-            return;
-        }
-
-        setOtpLoading(true);
-        setErrors({});
-        setOtpMessage('');
-
-        try {
-            const response = await requestRtgsTransferOtp(phone);
-            if (response.success) {
-                setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
-                setOtpRequested(true);
-                setResendCooldown(30);
-                
-                const timer = setInterval(() => {
-                    setResendCooldown(prev => {
-                        if (prev <= 1) {
-                            clearInterval(timer);
-                            return 0;
-                        }
-                        return prev - 1;
-                    });
-                }, 1000);
-                setResendTimer(timer);
-            } else {
-                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
-            }
-        } catch (error: any) {
-            setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
-        } finally {
-            setOtpLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (step === 3 && !otpRequested) {
-            handleRequestOtp();
-        }
-    }, [step, otpRequested]);
-
     // Step validation
     const validateStep1 = (): boolean => {
         const errs: Errors = {};
@@ -269,9 +227,46 @@ export default function RTGSTransferForm() {
         setStep(2);
     };
 
-    const handleReviewNext = (e: FormEvent) => {
+    const handleStep2Next = (e: FormEvent) => {
         e.preventDefault();
         setStep(3);
+    };
+
+    const handleRequestOtp = async () => {
+        if (!phone) {
+            setErrors({ submit: t('missingPhoneNumber', 'Phone number not found. Please log in again.') });
+            return;
+        }
+
+        setOtpLoading(true);
+        setErrors({});
+        setOtpMessage('');
+
+        try {
+            const response = await authService.requestOtp(phone);
+            if (response.success) {
+                setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
+                setOtpRequested(true);
+                setResendCooldown(30);
+                
+                const timer = setInterval(() => {
+                    setResendCooldown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                setResendTimer(timer);
+            } else {
+                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
+            }
+        } catch (error: any) {
+            setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
+        } finally {
+            setOtpLoading(false);
+        }
     };
 
     const handleResendOtp = async () => {
@@ -282,7 +277,7 @@ export default function RTGSTransferForm() {
         setOtpMessage('');
 
         try {
-            const response = await requestRtgsTransferOtp(phone);
+            const response = await authService.requestOtp(phone);
             if (response.success) {
                 setOtpMessage(t('otpResent', 'OTP resent successfully.'));
                 setResendCooldown(30);
@@ -663,9 +658,9 @@ export default function RTGSTransferForm() {
                             </form>
                         )}
 
-                        {/* Step 2: Review Only (No OTP here) */}
+                        {/* Step 2: Review Only (Just Next button) */}
                         {step === 2 && (
-                            <form onSubmit={handleReviewNext} className="space-y-6">
+                            <form onSubmit={handleStep2Next} className="space-y-6">
                                 <div className="border border-gray-200 rounded-lg p-6">
                                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                         <FileText className="h-5 w-5 text-fuchsia-700" />
@@ -703,8 +698,6 @@ export default function RTGSTransferForm() {
                                     </div>
                                 </div>
 
-                                {errors.submit && <ErrorMessage message={errors.submit} />}
-
                                 <div className="grid grid-cols-2 gap-4">
                                     <button 
                                         type="button" 
@@ -718,14 +711,14 @@ export default function RTGSTransferForm() {
                                         type="submit" 
                                         className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
                                     >
-                                        <span>{t('continue', 'Continue')}</span>
+                                        <span>{t('next', 'Next')}</span>
                                         <ChevronRight className="h-4 w-4" />
                                     </button>
                                 </div>
                             </form>
                         )}
 
-                        {/* Step 3: OTP Verification & Digital Signature (Everything together) */}
+                        {/* Step 3: OTP Request, Verification & Digital Signature */}
                         {step === 3 && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="border border-gray-200 rounded-lg p-6">
@@ -765,53 +758,85 @@ export default function RTGSTransferForm() {
                                             {t('otpVerification', 'OTP Verification')}
                                         </h3>
                                         
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                            <p className="text-sm text-blue-700">
-                                                {otpLoading ? t('requestingOtp', 'Requesting OTP...') : t('otpSentMessage', 'An OTP has been sent to your phone number:')}
-                                                {!otpLoading && <strong className="text-blue-900"> {phone}</strong>}
-                                            </p>
-                                            {otpMessage && (
-                                                <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-                                                    <CheckCircle2 className="h-3 w-3" />
-                                                    {otpMessage}
+                                        {!otpRequested ? (
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                                <p className="text-sm text-blue-700">
+                                                    {t('otpRequestMessage', 'Click the button below to request an OTP to your phone number:')} 
+                                                    <strong className="text-blue-900"> {phone}</strong>
                                                 </p>
-                                            )}
-                                        </div>
-
-                                        <div className="max-w-md">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                {t('enterOtp', 'Enter OTP Code')}
-                                            </label>
-                                            <input 
-                                                type="text" 
-                                                name="otpCode" 
-                                                value={formData.otpCode} 
-                                                onChange={handleChange} 
-                                                maxLength={6}
-                                                className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
-                                                placeholder="000000"
-                                            />
-                                            {errors.otpCode && (
-                                                <span className="text-red-500 text-xs mt-1">{errors.otpCode}</span>
-                                            )}
-                                            
-                                            <div className="mt-2 flex justify-between items-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={handleResendOtp}
-                                                    disabled={resendCooldown > 0 || otpLoading}
-                                                    className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
-                                                >
-                                                    {resendCooldown > 0 
-                                                        ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
-                                                        : t('resendOtp', 'Resend OTP')
-                                                    }
-                                                </button>
-                                                <span className="text-sm text-gray-500">
-                                                    {formData.otpCode.length}/6
-                                                </span>
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                                <p className="text-sm text-blue-700">
+                                                    {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
+                                                    <strong className="text-blue-900"> {phone}</strong>
+                                                </p>
+                                                {otpMessage && (
+                                                    <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                                                        <CheckCircle2 className="h-3 w-3" />
+                                                        {otpMessage}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {!otpRequested ? (
+                                            <div className="flex justify-center mb-4">
+                                                <button 
+                                                    type="button"
+                                                    onClick={handleRequestOtp}
+                                                    disabled={otpLoading}
+                                                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                                                >
+                                                    {otpLoading ? (
+                                                        <>
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                            {t('requestingOtp', 'Requesting OTP...')}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Shield className="h-4 w-4" />
+                                                            {t('requestOtp', 'Request OTP')}
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="max-w-md">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    {t('enterOtp', 'Enter OTP Code')}
+                                                </label>
+                                                <input 
+                                                    type="text" 
+                                                    name="otpCode" 
+                                                    value={formData.otpCode} 
+                                                    onChange={handleChange} 
+                                                    maxLength={6}
+                                                    className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
+                                                    placeholder="000000"
+                                                />
+                                                {errors.otpCode && (
+                                                    <span className="text-red-500 text-xs mt-1">{errors.otpCode}</span>
+                                                )}
+                                                
+                                                <div className="mt-2 flex justify-between items-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleResendOtp}
+                                                        disabled={resendCooldown > 0 || otpLoading}
+                                                        className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
+                                                    >
+                                                        {resendCooldown > 0 
+                                                            ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
+                                                            : t('resendOtp', 'Resend OTP')
+                                                        }
+                                                    </button>
+                                                    <span className="text-sm text-gray-500">
+                                                        {formData.otpCode.length}/6
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -828,7 +853,7 @@ export default function RTGSTransferForm() {
                                     </button>
                                     <button 
                                         type="submit" 
-                                        disabled={isSubmitting || formData.otpCode.length !== 6 || !formData.digitalSignature.trim()}
+                                        disabled={isSubmitting || !otpRequested || formData.otpCode.length !== 6 || !formData.digitalSignature.trim()}
                                         className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
                                     >
                                         {isSubmitting ? (
