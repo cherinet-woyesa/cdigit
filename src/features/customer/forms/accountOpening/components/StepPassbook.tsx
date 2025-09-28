@@ -1,7 +1,7 @@
-// src/components/accountOpening/StepPassbook.tsx
 import React from "react";
 import Field from '../../../../../components/Field';
-import type { PassbookMudayRequest, Errors } from "../../../../../types/formTypes";
+import type { PassbookMudayRequest, Errors } from "../types/formTypes";
+import { Loader2, ChevronRight, Book, PiggyBank, Package } from 'lucide-react';
 
 export const validate = (data: PassbookMudayRequest): Errors<PassbookMudayRequest> => {
     const newErrors: Errors<PassbookMudayRequest> = {};
@@ -20,17 +20,49 @@ type StepPassbookProps = {
     submitting: boolean;
 };
 
-const ToggleSwitch = ({ name, checked, onChange, label }: { name: string, checked: boolean, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, label: string }) => (
-    <label htmlFor={name} className="flex items-center cursor-pointer">
-        <div className="relative">
-            <input id={name} name={name} type="checkbox" className="sr-only" checked={checked} onChange={onChange} />
-            <div className={`block w-14 h-8 rounded-full ${checked ? 'bg-fuchsia-700' : 'bg-gray-300'}`}></div>
-            <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${checked ? 'transform translate-x-6' : ''}`}></div>
-        </div>
-        <div className="ml-3 text-gray-700 font-medium">
-            {label}
-        </div>
-    </label>
+const ItemToggle = ({ 
+    name, 
+    checked, 
+    onChange, 
+    label, 
+    description, 
+    icon: Icon 
+}: { 
+    name: string; 
+    checked: boolean; 
+    onChange: (checked: boolean) => void; 
+    label: string; 
+    description: string; 
+    icon: React.ComponentType<any>;
+}) => (
+    <div className={`p-4 border-2 rounded-lg transition-all duration-200 ${
+        checked 
+            ? 'border-fuchsia-500 bg-fuchsia-50 shadow-sm' 
+            : 'border-gray-200 hover:border-gray-300'
+    }`}>
+        <label className="flex items-start gap-3 cursor-pointer">
+            <div className="flex items-center h-5 mt-0.5">
+                <input
+                    type="checkbox"
+                    name={name}
+                    checked={checked}
+                    onChange={(e) => onChange(e.target.checked)}
+                    className="w-4 h-4 text-fuchsia-600 border-gray-300 rounded focus:ring-fuchsia-500"
+                />
+            </div>
+            <div className="flex items-center gap-3 flex-1">
+                <div className={`p-2 rounded-lg ${
+                    checked ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-gray-100 text-gray-600'
+                }`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                    <span className="font-medium text-gray-900 block">{label}</span>
+                    <span className="text-sm text-gray-600">{description}</span>
+                </div>
+            </div>
+        </label>
+    </div>
 );
 
 export function StepPassbook({ data, setData, errors, onNext, onBack, submitting }: StepPassbookProps) {
@@ -40,7 +72,11 @@ export function StepPassbook({ data, setData, errors, onNext, onBack, submitting
 
         if (type === "checkbox") {
             if (name === "needsMudayBox") {
-                setData({ ...data, needsMudayBox: checked, mudayBoxDeliveryBranch: checked ? data.mudayBoxDeliveryBranch : "" });
+                setData({ 
+                    ...data, 
+                    needsMudayBox: checked, 
+                    mudayBoxDeliveryBranch: checked ? data.mudayBoxDeliveryBranch : "" 
+                });
                 return;
             }
             setData({ ...data, [name]: checked } as PassbookMudayRequest);
@@ -55,50 +91,97 @@ export function StepPassbook({ data, setData, errors, onNext, onBack, submitting
     };
 
     return (
-        <div className="container mx-auto px-2 py-6 max-w-4xl">
-            <div className="text-xl font-bold mb-3 text-fuchsia-800">Passbook & Muday Request</div>
-            <p className="text-gray-600 mb-6">Select the physical items you would like to request.</p>
-
-            <div className="space-y-6">
-                <div className="p-4 border rounded-lg shadow-sm">
-                    <ToggleSwitch name="needsPassbook" checked={!!data.needsPassbook} onChange={handleChange} label="Request Passbook" />
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+                <div className="bg-fuchsia-100 p-2 rounded-lg">
+                    <Book className="h-5 w-5 text-fuchsia-700" />
                 </div>
-
-                <div className="p-4 border rounded-lg shadow-sm">
-                    <ToggleSwitch name="needsMudayBox" checked={!!data.needsMudayBox} onChange={handleChange} label="Request Muday Box (Coin Bank)" />
-                    {data.needsMudayBox && (
-                        <div className="mt-4 pl-8">
-                            <Field label="Muday Box Delivery Branch" required error={errors.mudayBoxDeliveryBranch}>
-                                <input
-                                    type="text"
-                                    name="mudayBoxDeliveryBranch"
-                                    className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                                    value={data.mudayBoxDeliveryBranch || ""}
-                                    onChange={handleChange}
-                                    placeholder="Enter delivery branch"
-                                />
-                            </Field>
-                        </div>
-                    )}
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900">Physical Items Request</h2>
+                    <p className="text-gray-600 text-sm">Request physical banking items</p>
                 </div>
             </div>
 
-            <div className="flex justify-between mt-10">
+            <div className="space-y-4">
+                {/* Passbook */}
+                <ItemToggle
+                    name="needsPassbook"
+                    checked={!!data.needsPassbook}
+                    onChange={(checked) => handleChange({ target: { name: "needsPassbook", type: "checkbox", checked } } as any)}
+                    label="Passbook"
+                    description="Physical record of your account transactions"
+                    icon={Book}
+                />
+
+                {/* Muday Box */}
+                <ItemToggle
+                    name="needsMudayBox"
+                    checked={!!data.needsMudayBox}
+                    onChange={(checked) => handleChange({ target: { name: "needsMudayBox", type: "checkbox", checked } } as any)}
+                    label="Muday Box (Coin Bank)"
+                    description="Traditional savings box for coin collection"
+                    icon={PiggyBank}
+                />
+
+                {data.needsMudayBox && (
+                    <div className="ml-8 space-y-4 bg-gray-50 p-4 rounded-lg">
+                        <Field label="Muday Box Delivery Branch" required error={errors.mudayBoxDeliveryBranch}>
+                            <div className="relative">
+                                <Package className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    name="mudayBoxDeliveryBranch"
+                                    className="w-full pl-10 p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
+                                    value={data.mudayBoxDeliveryBranch || ""}
+                                    onChange={handleChange}
+                                    placeholder="Enter branch name for pickup"
+                                />
+                            </div>
+                        </Field>
+                    </div>
+                )}
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
+                <p className="text-yellow-800 text-sm">
+                    <strong>Important:</strong> Requested items will be available for pickup at your selected branch 
+                    after account approval. You will be notified when they are ready.
+                </p>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
                 <button
                     type="button"
-                    className="bg-gray-300 text-fuchsia-700 px-6 py-2 rounded-lg shadow hover:bg-gray-400 transition"
+                    className="px-8 py-3 rounded-lg font-semibold border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2"
                     onClick={onBack}
+                    disabled={submitting}
                 >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
                     Back
                 </button>
                 <button
                     type="button"
-                    className={`w-full md:w-auto px-10 py-3 rounded-lg font-semibold shadow-lg transition transform duration-200 
-                        ${submitting ? 'bg-fuchsia-300 cursor-not-allowed' : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
+                    className={`px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                        submitting 
+                            ? 'bg-fuchsia-300 cursor-not-allowed text-white' 
+                            : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'
+                    }`}
                     onClick={handleNext}
                     disabled={submitting}
                 >
-                    {submitting ? 'Processing...' : 'Next'}
+                    {submitting ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            Continue
+                            <ChevronRight className="h-4 w-4" />
+                        </>
+                    )}
                 </button>
             </div>
         </div>

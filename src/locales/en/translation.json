@@ -83,6 +83,7 @@
   "applicationDetails": "Application Details",
   "requestedServices": "Requested Services",
   "newApplication": "New Application",
+  "posRequest": "Pos Request",
 
 "forms": {
     "accountOpening": "Account Opening",

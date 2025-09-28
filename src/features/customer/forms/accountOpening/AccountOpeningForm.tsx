@@ -1,68 +1,138 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useBranch } from "../../../../context/BranchContext";
+import { useAuth } from "../../../../context/AuthContext";
 import * as accountOpeningService from "../../../../services/accountOpeningService";
 import { checkAccountExistsByPhone } from "../../../../services/accountsService";
 import ProgressBar from '../../../../components/ProgressBar';
 import Field from '../../../../components/Field';
-import type {
-    Errors,
-    FormData,
-    FormErrors,
-    FormSummary,
-} from "./types/formTypes";
-import { INITIAL_DATA } from "./types/formTypes";
-import { StepPersonal, validate as validatePersonalDetail } from "./components/StepPersonal";
-import { StepAddress, validate as validateAddressDetail } from "./components/StepAddress";
-import { StepFinancial, validate as validateFinancialDetail } from "./components/StepFinancial";
-import { StepOther, validate as validateOtherDetail } from "./components/StepOther";
-import { StepDocument, validate as validateDocumentDetail } from "./components/StepDocument";
-import { StepEPayment, validate as validateEPaymentDetail } from "./components/StepEPayment";
-import { StepPassbook, validate as validatePassbookDetail } from "./components/StepPassbook";
-import { StepSignature, validate as validateSignatureDetail } from "./components/StepSignature";
-import { StepReview } from "./components/StepReview"; // Import the new review step
+import type { FormData, FormErrors, FormSummary } from "./types/formTypes";
+import { INITIAL_DATA, INITIAL_FORM_ERRORS } from "./types/formTypes";
+import { StepPersonal } from "./components/StepPersonal";
+import { StepAddress } from "./components/StepAddress";
+import { StepFinancial } from "./components/StepFinancial";
+import { StepOther } from "./components/StepOther";
+import { StepDocument } from "./components/StepDocument";
+import { StepEPayment } from "./components/StepEPayment";
+import { StepPassbook } from "./components/StepPassbook";
+import { StepSignature } from "./components/StepSignature";
+import { StepReview } from "./components/StepReview";
 import { useMultiStepForm } from '../../../../hooks/useMultiStepForm';
+import { 
+    Loader2, 
+    AlertCircle, 
+    CheckCircle2, 
+    ChevronRight,
+    User,
+    MapPin,
+    CreditCard,
+    FileText,
+    Shield,
+    Gift,
+    PenTool,
+    Plane,
+    Calendar
+} from 'lucide-react';
+
+// Enhanced error message component
+function ErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700">{message}</span>
+        </div>
+    );
+}
+
+// Success message component
+function SuccessMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span className="text-sm text-green-700">{message}</span>
+        </div>
+    );
+}
 
 const steps = [
-    "Personal",
-    "Address",
-    "Financial",
-    "Other",
-    "Document",
-    "Payment", // Shortened from E-Payment
-    "Items",   // Shortened from Passbook
-    "Signature",
-    "Review",
+    "Personal", "Address", "Financial", "Other", 
+    "Document", "Payment", "Items", "Signature", "Review"
 ];
+
+const stepIcons = [User, MapPin, CreditCard, Shield, FileText, CreditCard, Gift, PenTool, CheckCircle2];
+
+// FIX 1: Enhanced phone number validation
+const isValidPhoneNumber = (phone: string): boolean => {
+    if (!phone.trim()) return false;
+    
+    // Remove all non-digit characters first
+    const cleanPhone = phone.replace(/[^\d]/g, '');
+    
+    // Ethiopian mobile numbers can be:
+    // - 09xxxxxxxx (10 digits) - traditional format
+    // - 07xxxxxxxx (10 digits) - new format  
+    // - 9xxxxxxxx (9 digits) - without leading 0 (traditional)
+    // - 7xxxxxxxx (9 digits) - without leading 0 (new)
+    // - 2519xxxxxxxx (12 digits) - international without +
+    // - 2517xxxxxxxx (12 digits) - new format international
+    
+    if (cleanPhone.length === 9) {
+        // 9xxxxxxxx or 7xxxxxxxx (without leading 0)
+        return /^[97]\d{8}$/.test(cleanPhone);
+    } else if (cleanPhone.length === 10) {
+        // 09xxxxxxxx or 07xxxxxxxx (with leading 0)
+        return /^0[97]\d{8}$/.test(cleanPhone);
+    } else if (cleanPhone.length === 12) {
+        // 2519xxxxxxxx or 2517xxxxxxxx (international without +)
+        return /^251[97]\d{8}$/.test(cleanPhone);
+    }
+    
+    return false;
+};
+
+// Normalize phone number to consistent backend format (2519xxxxxxxx)
+const normalizePhoneNumber = (phone: string): string => {
+    const cleanPhone = phone.replace(/[^\d]/g, '');
+    
+    if (cleanPhone.length === 9) {
+        // 9xxxxxxxx → 2519xxxxxxxx
+        return `251${cleanPhone}`;
+    } else if (cleanPhone.length === 10) {
+        // 09xxxxxxxx → 2519xxxxxxxx  
+        return `251${cleanPhone.substring(1)}`;
+    } else if (cleanPhone.length === 12) {
+        // 2519xxxxxxxx or 2517xxxxxxxx → keep as is
+        return cleanPhone;
+    }
+    
+    return cleanPhone;
+};
+
+// Format phone for display
+const formatPhoneForDisplay = (phone: string): string => {
+    const normalized = normalizePhoneNumber(phone);
+    return `+${normalized}`;
+};
 
 export function AccountOpeningForm() {
     const navigate = useNavigate();
-    const [errors, setErrors] = useState<FormErrors>({
-        personalDetails: {},
-        addressDetails: {},
-        financialDetails: {},
-        otherDetails: {},
-        documentDetails: {},
-        ePaymentService: {},
-        passbookMudayRequest: {},
-        digitalSignature: {},
-        apiError: undefined,
-    });
+    const { branch } = useBranch();
+    const { user } = useAuth();
+    
+    const [errors, setErrors] = useState<FormErrors>(INITIAL_FORM_ERRORS);
     const [submitting, setSubmitting] = useState(false);
+    
+    // FIX 2: Enhanced state management for session persistence
     const [phoneNumberScreenActive, setPhoneNumberScreenActive] = useState(true);
     const [phoneNumberInput, setPhoneNumberInput] = useState("");
     const [phoneCheckLoading, setPhoneCheckLoading] = useState(false);
-    const [phoneInputError, setPhoneInputError] = useState<string | undefined>(undefined);
+    const [phoneInputError, setPhoneInputError] = useState<string | undefined>();
+    const [successMessage, setSuccessMessage] = useState('');
+    const [resumeStep, setResumeStep] = useState<number>(0); // Track where to resume
 
     const stepKeys = [
-        "personalDetails",
-        "addressDetails",
-        "financialDetails",
-        "otherDetails",
-        "documentDetails",
-        "ePaymentService",
-        "passbookMudayRequest",
-        "digitalSignature",
-        "review", // Add a key for the review step (though it has no data)
+        "personalDetails", "addressDetails", "financialDetails", "otherDetails",
+        "documentDetails", "ePaymentService", "passbookMudayRequest", "digitalSignature", "review"
     ];
 
     const {
@@ -75,45 +145,120 @@ export function AccountOpeningForm() {
         goTo,
     } = useMultiStepForm<FormData>(INITIAL_DATA, steps.length);
 
+    // Fix: Proper PascalCase conversion for backend
+    const toPascalCase = (obj: any): any => {
+        if (!obj || typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) return obj.map(toPascalCase);
+        
+        const pascalObj: any = {};
+        for (const key in obj) {
+            if (obj[key] !== undefined && obj[key] !== null) {
+                const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+                pascalObj[pascalKey] = toPascalCase(obj[key]);
+            }
+        }
+        return pascalObj;
+    };
+
+    // Fix: Proper date formatting for backend
+    const formatDateForBackend = (dateString: string | undefined): string => {
+        if (!dateString) return '';
+        try {
+            return new Date(dateString).toISOString();
+        } catch {
+            return dateString;
+        }
+    };
+
     const updateSectionData = <K extends keyof FormData>(section: K, data: Partial<FormData[K]>) => {
         setFormData((prev) => {
             const prevSectionData = prev[section];
             if (typeof prevSectionData === 'object' && prevSectionData !== null && !Array.isArray(prevSectionData)) {
-                return {
-                    ...prev,
-                    [section]: { ...prevSectionData, ...data },
-                };
-            } else {
-                return {
-                    ...prev,
-                    [section]: data,
-                };
+                return { ...prev, [section]: { ...prevSectionData, ...data } };
             }
+            return { ...prev, [section]: data };
         });
         setErrors((prev) => ({ ...prev, [section]: {} }));
     };
 
-    function isValidPhoneNumber(phone: string) {
-        return /^09\d{8}$|^\+2519\d{8}$/.test(phone);
-    }
-
-    // Sync step to URL and restore from localStorage on mount
+    // FIX 2: Enhanced session persistence - restore application state on mount
     useEffect(() => {
-        try {
-            const params = new URLSearchParams(window.location.search);
-            const stepParam = params.get('step');
-            if (stepParam) {
-                const s = parseInt(stepParam, 10);
-                if (!Number.isNaN(s) && s >= 0 && s < steps.length) {
-                    goTo(s);
+        const restoreApplicationState = async () => {
+            try {
+                // Check if we have a saved phone number and step
+                const savedPhone = localStorage.getItem('accountOpeningPhone');
+                const savedStep = localStorage.getItem('accountOpeningCurrentStep');
+                const savedFormData = localStorage.getItem('accountOpeningFormData');
+                
+                if (savedPhone && savedStep) {
+                    const step = parseInt(savedStep, 10);
+                    const normalizedPhone = normalizePhoneNumber(savedPhone);
+                    
+                    if (!isNaN(step) && step >= 0 && step < steps.length) {
+                        // We have a saved application in progress
+                        setPhoneNumberInput(savedPhone);
+                        setResumeStep(step);
+                        
+                        // Try to load the saved form data from backend
+                        try {
+                            const formSummary: FormSummary | null = await accountOpeningService.getSavedForm(normalizedPhone);
+                            if (formSummary) {
+                                const transformedData: FormData = {
+                                    customerId: formSummary.customerId,
+                                    personalDetails: formSummary.personalDetails || INITIAL_DATA.personalDetails,
+                                    addressDetails: { ...INITIAL_DATA.addressDetails, ...formSummary.addressDetails, mobilePhone: formSummary.addressDetails?.mobilePhone || normalizedPhone },
+                                    financialDetails: formSummary.financialDetails || INITIAL_DATA.financialDetails,
+                                    otherDetails: formSummary.otherDetails || INITIAL_DATA.otherDetails,
+                                    documentDetails: { ...INITIAL_DATA.documentDetails, ...formSummary.documentDetails, mobilePhoneNo: formSummary.documentDetails?.mobilePhoneNo || normalizedPhone },
+                                    ePaymentService: formSummary.ePaymentService || INITIAL_DATA.ePaymentService,
+                                    passbookMudayRequest: formSummary.passbookMudayRequest || INITIAL_DATA.passbookMudayRequest,
+                                    digitalSignature: formSummary.digitalSignature || INITIAL_DATA.digitalSignature,
+                                };
+                                setFormData(transformedData);
+                                
+                                // Check URL parameter for step override
+                                const params = new URLSearchParams(window.location.search);
+                                const stepParam = params.get('step');
+                                const urlStep = stepParam ? parseInt(stepParam, 10) : step;
+                                
+                                const finalStep = !isNaN(urlStep) && urlStep >= 0 && urlStep < steps.length ? urlStep : step;
+                                setResumeStep(finalStep);
+                                
+                                // Auto-continue to the saved step
+                                setPhoneNumberScreenActive(false);
+                                setTimeout(() => goTo(finalStep), 100);
+                            }
+                        } catch (error) {
+                            console.log('No saved form found or error loading form:', error);
+                            // If backend doesn't have saved form, check URL step
+                            const params = new URLSearchParams(window.location.search);
+                            const stepParam = params.get('step');
+                            if (stepParam) {
+                                const urlStep = parseInt(stepParam, 10);
+                                if (!isNaN(urlStep) && urlStep >= 0 && urlStep < steps.length) {
+                                    setResumeStep(urlStep);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Check URL for step parameter for new applications
+                    const params = new URLSearchParams(window.location.search);
+                    const stepParam = params.get('step');
+                    if (stepParam) {
+                        const urlStep = parseInt(stepParam, 10);
+                        if (!isNaN(urlStep) && urlStep >= 0 && urlStep < steps.length) {
+                            setResumeStep(urlStep);
+                        }
+                    }
                 }
+            } catch (error) {
+                console.error('Error restoring application state:', error);
             }
-            const storedPhone = localStorage.getItem('accountOpeningPhone');
-            if (storedPhone && phoneNumberScreenActive) {
-                setPhoneNumberInput(storedPhone);
-            }
-        } catch {}
-        // warn on unsaved close during active editing
+        };
+
+        restoreApplicationState();
+        
         const handler = (e: BeforeUnloadEvent) => {
             if (!phoneNumberScreenActive && currentStep < steps.length) {
                 e.preventDefault();
@@ -124,50 +269,109 @@ export function AccountOpeningForm() {
         return () => window.removeEventListener('beforeunload', handler);
     }, []);
 
-    // Reflect step changes in URL and persist phone for resume
+    // FIX 2: Save application progress whenever step changes
     useEffect(() => {
+        if (!phoneNumberScreenActive && currentStep < steps.length) {
+            // Save current progress
+            localStorage.setItem('accountOpeningCurrentStep', currentStep.toString());
+            
+            // Update URL to reflect current step
+            try {
+                const params = new URLSearchParams(window.location.search);
+                params.set('step', String(currentStep));
+                const newUrl = `${window.location.pathname}?${params.toString()}`;
+                window.history.replaceState({}, '', newUrl);
+            } catch (error) {
+                console.error('Error updating URL:', error);
+            }
+        }
+    }, [currentStep, phoneNumberScreenActive]);
+
+    const handlePhoneNumberSubmit = async () => {
+        if (!phoneNumberInput.trim() || !isValidPhoneNumber(phoneNumberInput.trim())) {
+            setPhoneInputError("Please enter a valid Ethiopian mobile number (09, 07, +2519, +2517 formats accepted).");
+            return;
+        }
+        
+        setPhoneInputError(undefined);
+        setPhoneCheckLoading(true);
+        
         try {
-            const params = new URLSearchParams(window.location.search);
-            params.set('step', String(currentStep));
-            const newUrl = `${window.location.pathname}?${params.toString()}`;
-            window.history.replaceState({}, '', newUrl);
-        } catch {}
-    }, [currentStep]);
+            // Normalize the phone number to consistent format for backend
+            const normalizedPhone = normalizePhoneNumber(phoneNumberInput.trim());
+            
+            // Save phone number for session persistence
+            localStorage.setItem('accountOpeningPhone', normalizedPhone);
+            localStorage.setItem('accountOpeningPhoneDisplay', phoneNumberInput.trim());
+            
+            const accountExists = await checkAccountExistsByPhone(normalizedPhone);
+            if (accountExists) {
+                setPhoneInputError("An account already exists for this phone number.");
+                setPhoneCheckLoading(false);
+                return;
+            }
+            
+            const savedFormData: FormSummary | null = await accountOpeningService.getSavedForm(normalizedPhone);
+            if (savedFormData) {
+                // Resume existing application
+                const transformedData: FormData = {
+                    customerId: savedFormData.customerId,
+                    personalDetails: savedFormData.personalDetails || INITIAL_DATA.personalDetails,
+                    addressDetails: { ...INITIAL_DATA.addressDetails, ...savedFormData.addressDetails, mobilePhone: savedFormData.addressDetails?.mobilePhone || normalizedPhone },
+                    financialDetails: savedFormData.financialDetails || INITIAL_DATA.financialDetails,
+                    otherDetails: savedFormData.otherDetails || INITIAL_DATA.otherDetails,
+                    documentDetails: { ...INITIAL_DATA.documentDetails, ...savedFormData.documentDetails, mobilePhoneNo: savedFormData.documentDetails?.mobilePhoneNo || normalizedPhone },
+                    ePaymentService: savedFormData.ePaymentService || INITIAL_DATA.ePaymentService,
+                    passbookMudayRequest: savedFormData.passbookMudayRequest || INITIAL_DATA.passbookMudayRequest,
+                    digitalSignature: savedFormData.digitalSignature || INITIAL_DATA.digitalSignature,
+                };
+                setFormData(transformedData);
+                
+                // Determine the step to resume to
+                let lastFilledStep = resumeStep; // Start with URL/resume step
+                if (savedFormData.digitalSignature?.id) lastFilledStep = 8;
+                else if (savedFormData.passbookMudayRequest?.id) lastFilledStep = 7;
+                else if (savedFormData.ePaymentService?.id) lastFilledStep = 6;
+                else if (savedFormData.documentDetails?.id) lastFilledStep = 5;
+                else if (savedFormData.otherDetails?.id) lastFilledStep = 4;
+                else if (savedFormData.financialDetails?.id) lastFilledStep = 3;
+                else if (savedFormData.addressDetails?.id) lastFilledStep = 2;
+                else if (savedFormData.personalDetails?.id) lastFilledStep = 1;
+                else lastFilledStep = 0;
+                
+                // Use the highest of resume step and calculated step
+                const finalStep = Math.max(resumeStep, lastFilledStep);
+                setResumeStep(finalStep);
+                
+                setPhoneNumberScreenActive(false);
+                setTimeout(() => goTo(finalStep), 100);
+            } else {
+                // Start new application
+                setFormData({ 
+                    ...INITIAL_DATA, 
+                    addressDetails: { ...INITIAL_DATA.addressDetails, mobilePhone: normalizedPhone }, 
+                    documentDetails: { ...INITIAL_DATA.documentDetails, mobilePhoneNo: normalizedPhone } 
+                });
+                setPhoneNumberScreenActive(false);
+                setTimeout(() => goTo(resumeStep), 100);
+            }
+        } catch (error: any) {
+            setPhoneInputError("An unexpected error occurred. Please try again.");
+        } finally {
+            setPhoneCheckLoading(false);
+        }
+    };
 
     const handleNext = async () => {
-        // If we are on the review step, just proceed to the success screen.
-        if (currentStep === 8) {
-            next();
-            return;
-        }
+        if (currentStep === 8) { next(); return; }
 
         const stepDataKey = stepKeys[currentStep];
-        const currentStepData = formData[stepDataKey as keyof FormData];
-
-        if (!currentStepData) {
-            console.error(`Data for step ${currentStep} (${stepDataKey}) is undefined.`);
-            return;
-        }
-
-        let currentStepErrors;
-        if (currentStep === 0) currentStepErrors = validatePersonalDetail(formData.personalDetails);
-        else if (currentStep === 1) currentStepErrors = validateAddressDetail(formData.addressDetails);
-        else if (currentStep === 2) currentStepErrors = validateFinancialDetail(formData.financialDetails);
-        else if (currentStep === 3) currentStepErrors = validateOtherDetail(formData.otherDetails);
-        else if (currentStep === 4) currentStepErrors = validateDocumentDetail(formData.documentDetails);
-        else if (currentStep === 5) currentStepErrors = validateEPaymentDetail(formData.ePaymentService);
-        else if (currentStep === 6) currentStepErrors = validatePassbookDetail(formData.passbookMudayRequest);
-        else if (currentStep === 7) currentStepErrors = validateSignatureDetail(formData.digitalSignature);
-        else currentStepErrors = {};
-
-        setErrors((prevErrors) => ({ ...prevErrors, [stepDataKey]: currentStepErrors }));
-
-        if (Object.keys(currentStepErrors).length > 0) {
+        if (!formData[stepDataKey as keyof FormData]) {
+            console.error(`Data for step ${currentStep} is undefined.`);
             return;
         }
 
         setSubmitting(true);
-
         try {
             let response: any;
             let updatedCustomerData: Partial<FormData> = {};
@@ -179,58 +383,96 @@ export function AccountOpeningForm() {
                 return;
             }
 
-            const toPascal = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-            const mapKeys = (obj: any): any => {
-                if (!obj || typeof obj !== 'object') return obj;
-                if (Array.isArray(obj)) return obj.map(mapKeys);
-                const mapped: any = {};
-                for (const key in obj) {
-                    if (obj[key] !== undefined) mapped[toPascal(key)] = obj[key];
-                }
-                return mapped;
+            const transformDataForBackend = (data: any) => {
+                const transformed = toPascalCase(data);
+                if (data.dateOfBirth) transformed.DateOfBirth = formatDateForBackend(data.dateOfBirth);
+                if (data.issueDate) transformed.IssueDate = formatDateForBackend(data.issueDate);
+                if (data.expiryDate) transformed.ExpiryDate = formatDateForBackend(data.expiryDate);
+                if (nextCustomerId) transformed.CustomerId = nextCustomerId;
+                return transformed;
             };
 
             switch (currentStep) {
-                case 0: // Personal
-                    response = await accountOpeningService.savePersonalDetails(mapKeys(formData.personalDetails), phoneNumberInput);
+                case 0:
+                    const personalData = transformDataForBackend({
+                        ...formData.personalDetails,
+                        mobilePhone: normalizePhoneNumber(phoneNumberInput)
+                    });
+                    response = await accountOpeningService.savePersonalDetails(personalData, normalizePhoneNumber(phoneNumberInput));
                     nextCustomerId = response.id;
-                    updatedCustomerData = { customerId: nextCustomerId, personalDetails: { ...formData.personalDetails, id: response.id } };
+                    updatedCustomerData = { 
+                        customerId: nextCustomerId, 
+                        personalDetails: { ...formData.personalDetails, id: response.id } 
+                    };
                     break;
-                case 1: // Address
-                    response = await accountOpeningService.saveAddressDetails({ ...mapKeys(formData.addressDetails), CustomerId: nextCustomerId, MobilePhone: formData.addressDetails.mobilePhone });
+
+                case 1:
+                    const addressData = transformDataForBackend({
+                        ...formData.addressDetails,
+                        mobilePhone: formData.addressDetails.mobilePhone || normalizePhoneNumber(phoneNumberInput)
+                    });
+                    response = await accountOpeningService.saveAddressDetails(addressData);
                     updatedCustomerData = { addressDetails: { ...formData.addressDetails, id: response.id } };
                     break;
-                case 2: // Financial
-                    response = await accountOpeningService.saveFinancialDetails({ ...mapKeys(formData.financialDetails), CustomerId: nextCustomerId });
+
+                case 2:
+                    response = await accountOpeningService.saveFinancialDetails(
+                        transformDataForBackend(formData.financialDetails)
+                    );
                     updatedCustomerData = { financialDetails: { ...formData.financialDetails, id: response.id } };
                     break;
-                case 3: // Other
-                    response = await accountOpeningService.saveOtherDetails({ ...mapKeys(formData.otherDetails), CustomerId: nextCustomerId });
+
+                case 3:
+                    response = await accountOpeningService.saveOtherDetails(
+                        transformDataForBackend(formData.otherDetails)
+                    );
                     updatedCustomerData = { otherDetails: { ...formData.otherDetails, id: response.id } };
                     break;
-                case 4: // Document
+
+                case 4:
                     let docPhotoUrl = formData.documentDetails.docPhotoUrl;
                     if (formData.documentDetails.photoIdFile) {
                         docPhotoUrl = await accountOpeningService.uploadDocumentPhoto(formData.documentDetails.photoIdFile);
                     }
-                    response = await accountOpeningService.saveDocumentDetails({ ...mapKeys(formData.documentDetails), CustomerId: nextCustomerId, DocPhotoUrl: docPhotoUrl });
-                    updatedCustomerData = { documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl: docPhotoUrl } };
+                    const documentData = transformDataForBackend({
+                        ...formData.documentDetails,
+                        docPhotoUrl,
+                        mobilePhoneNo: formData.documentDetails.mobilePhoneNo || normalizePhoneNumber(phoneNumberInput)
+                    });
+                    response = await accountOpeningService.saveDocumentDetails(documentData);
+                    updatedCustomerData = { 
+                        documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl } 
+                    };
                     break;
-                case 5: // E-Payment
-                    response = await accountOpeningService.saveEPaymentService({ ...mapKeys(formData.ePaymentService), CustomerId: nextCustomerId });
+
+                case 5:
+                    response = await accountOpeningService.saveEPaymentService(
+                        transformDataForBackend(formData.ePaymentService)
+                    );
                     updatedCustomerData = { ePaymentService: { ...formData.ePaymentService, id: response.id } };
                     break;
-                case 6: // Passbook
-                    response = await accountOpeningService.savePassbookMudayRequest({ ...mapKeys(formData.passbookMudayRequest), CustomerId: nextCustomerId });
+
+                case 6:
+                    response = await accountOpeningService.savePassbookMudayRequest(
+                        transformDataForBackend(formData.passbookMudayRequest)
+                    );
                     updatedCustomerData = { passbookMudayRequest: { ...formData.passbookMudayRequest, id: response.id } };
                     break;
-                case 7: // Signature
+
+                case 7:
                     let signatureUrl = formData.digitalSignature.signatureUrl;
                     if (formData.digitalSignature.signatureFile) {
                         signatureUrl = await accountOpeningService.uploadDigitalSignature(formData.digitalSignature.signatureFile);
                     }
-                    response = await accountOpeningService.saveDigitalSignature({ ...mapKeys(formData.digitalSignature), SignatureUrl: signatureUrl, CustomerId: nextCustomerId });
-                    updatedCustomerData = { digitalSignature: { ...formData.digitalSignature, id: response.id, signatureUrl: signatureUrl } };
+                    const signatureData = transformDataForBackend({
+                        ...formData.digitalSignature,
+                        signatureUrl,
+                        termsAccepted: true
+                    });
+                    response = await accountOpeningService.saveDigitalSignature(signatureData);
+                    updatedCustomerData = { 
+                        digitalSignature: { ...formData.digitalSignature, id: response.id, signatureUrl } 
+                    };
                     break;
             }
 
@@ -238,7 +480,10 @@ export function AccountOpeningForm() {
             next();
         } catch (error) {
             console.error("Error saving form data:", error);
-            setErrors((prevErrors) => ({ ...prevErrors, apiError: "Failed to save data. Please try again." }));
+            setErrors((prev) => ({ 
+                ...prev, 
+                apiError: error instanceof Error ? error.message : "Failed to save data. Please try again." 
+            }));
         } finally {
             setSubmitting(false);
         }
@@ -257,13 +502,14 @@ export function AccountOpeningForm() {
         setErrors(prev => ({ ...prev, apiError: undefined }));
         
         try {
-            console.log("Submitting application for customer ID:", formData.customerId);
-            
-            // Submit the application and proceed to success screen on success
             await accountOpeningService.submitApplication(formData.customerId);
-            console.log("Application submitted successfully!");
             
-            // Proceed to success screen
+            // Clear saved application data after successful submission
+            localStorage.removeItem('accountOpeningPhone');
+            localStorage.removeItem('accountOpeningPhoneDisplay');
+            localStorage.removeItem('accountOpeningCurrentStep');
+            localStorage.removeItem('accountOpeningFormData');
+            
             next();
         } catch (error) {
             console.error("Failed to submit application:", error);
@@ -275,9 +521,6 @@ export function AccountOpeningForm() {
                 ...prev,
                 apiError: errorMessage,
             }));
-            
-            // Optionally, you could add automatic retry logic here
-            // or provide more specific error messages based on error type/status
         } finally {
             setSubmitting(false);
         }
@@ -291,136 +534,307 @@ export function AccountOpeningForm() {
         back();
     };
 
-    const handlePhoneNumberSubmit = async () => {
-        if (!phoneNumberInput.trim() || !isValidPhoneNumber(phoneNumberInput.trim())) {
-            setPhoneInputError("Please enter a valid Ethiopian mobile phone number.");
-            return;
-        }
-        setPhoneInputError(undefined);
-        setPhoneCheckLoading(true);
-        try {
-            // persist for resume across refresh
-            localStorage.setItem('accountOpeningPhone', phoneNumberInput.trim());
-            const accountExists = await checkAccountExistsByPhone(phoneNumberInput.trim());
-            if (accountExists) {
-                setPhoneInputError("An account already exists for this phone number.");
-                setPhoneCheckLoading(false);
-                return;
-            }
-            const savedFormData: FormSummary | null = await accountOpeningService.getSavedForm(phoneNumberInput);
-            if (savedFormData) {
-                const transformedData: FormData = {
-                    customerId: savedFormData.customerId,
-                    personalDetails: savedFormData.personalDetails || INITIAL_DATA.personalDetails,
-                    addressDetails: { ...INITIAL_DATA.addressDetails, ...savedFormData.addressDetails, mobilePhone: savedFormData.addressDetails?.mobilePhone || phoneNumberInput },
-                    financialDetails: savedFormData.financialDetails || INITIAL_DATA.financialDetails,
-                    otherDetails: savedFormData.otherDetails || INITIAL_DATA.otherDetails,
-                    documentDetails: { ...INITIAL_DATA.documentDetails, ...savedFormData.documentDetails, mobilePhoneNo: savedFormData.documentDetails?.mobilePhoneNo || phoneNumberInput },
-                    ePaymentService: savedFormData.ePaymentService || INITIAL_DATA.ePaymentService,
-                    passbookMudayRequest: savedFormData.passbookMudayRequest || INITIAL_DATA.passbookMudayRequest,
-                    digitalSignature: savedFormData.digitalSignature || INITIAL_DATA.digitalSignature,
-                };
-                setFormData(transformedData);
-                let lastFilledStep = 0;
-                if (savedFormData.digitalSignature?.id) lastFilledStep = 8; // Go to review if fully complete
-                else if (savedFormData.passbookMudayRequest?.id) lastFilledStep = 7;
-                else if (savedFormData.ePaymentService?.id) lastFilledStep = 6;
-                else if (savedFormData.documentDetails?.id) lastFilledStep = 5;
-                else if (savedFormData.otherDetails?.id) lastFilledStep = 4;
-                else if (savedFormData.financialDetails?.id) lastFilledStep = 3;
-                else if (savedFormData.addressDetails?.id) lastFilledStep = 2;
-                else if (savedFormData.personalDetails?.id) lastFilledStep = 1;
-                goTo(lastFilledStep);
-            } else {
-                setFormData({ ...INITIAL_DATA, addressDetails: { ...INITIAL_DATA.addressDetails, mobilePhone: phoneNumberInput }, documentDetails: { ...INITIAL_DATA.documentDetails, mobilePhoneNo: phoneNumberInput } });
-                goTo(0);
-            }
-            setPhoneNumberScreenActive(false);
-        } catch (error: any) {
-            setPhoneInputError("An unexpected error occurred. Please try again.");
-        } finally {
-            setPhoneCheckLoading(false);
-        }
+    // Enhanced phone screen with better formatting
+    const renderPhoneScreen = () => {
+        const isValid = isValidPhoneNumber(phoneNumberInput);
+        const CurrentIcon = stepIcons[0];
+        const displayPhone = phoneNumberInput && isValid ? formatPhoneForDisplay(phoneNumberInput) : '';
+        
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] p-8">
+                <div className="text-center mb-8">
+                    <div className="bg-fuchsia-100 p-4 rounded-full inline-flex mb-4">
+                        <CurrentIcon className="h-12 w-12 text-fuchsia-700" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-2 text-fuchsia-800">Welcome to CBE Account Opening</h2>
+                    <p className="text-gray-600 text-lg max-w-md">
+                        {localStorage.getItem('accountOpeningPhone') ? 'Resume your application' : 'Start your application'}
+                    </p>
+                </div>
+                
+                <div className="w-full max-w-md">
+                    <Field label="Ethiopian Mobile Number" error={phoneInputError} required>
+                        <div className="relative">
+                            <input
+                                type="tel"
+                                className={`w-full p-3 rounded-lg border-2 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors text-lg ${
+                                    phoneInputError ? 'border-red-300 bg-red-50' : 
+                                    phoneNumberInput && isValid ? 'border-green-300 bg-green-50' : 'border-gray-300'
+                                }`}
+                                value={phoneNumberInput}
+                                onChange={(e) => setPhoneNumberInput(e.target.value)}
+                                placeholder="09xxxxxxx, 07xxxxxxx, +251..."
+                                autoFocus
+                            />
+                            {phoneNumberInput && isValid && (
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                    <span className="text-green-600 text-sm ml-1 hidden sm:inline">
+                                        {displayPhone}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </Field>
+                    
+                    <div className="mt-2 text-xs text-gray-500 mb-4">
+                        <p>Accepted formats: 09xxxxxxx, 07xxxxxxx, 9xxxxxxx, +2519xxxxxxx, +2517xxxxxxx</p>
+                    </div>
+                    
+                    <button
+                        type="button"
+                        className="w-full bg-fuchsia-700 text-white px-6 py-4 rounded-lg font-semibold hover:bg-fuchsia-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                        onClick={handlePhoneNumberSubmit}
+                        disabled={phoneCheckLoading || !isValid}
+                    >
+                        {phoneCheckLoading ? (
+                            <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                {localStorage.getItem('accountOpeningPhone') ? 'Resuming...' : 'Verifying...'}
+                            </>
+                        ) : (
+                            <>
+                                {localStorage.getItem('accountOpeningPhone') ? 'Resume Application' : 'Continue to Application'}
+                                <ChevronRight className="h-5 w-5" />
+                            </>
+                        )}
+                    </button>
+                    
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-start gap-3">
+                            <div className="bg-blue-100 p-1 rounded-full mt-0.5">
+                                <Shield className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-blue-800 text-sm font-medium">
+                                    {localStorage.getItem('accountOpeningPhone') ? 'Application Saved' : 'Your Privacy Matters'}
+                                </p>
+                                <p className="text-blue-600 text-xs">
+                                    {localStorage.getItem('accountOpeningPhone') 
+                                        ? 'Your application progress is saved. You can resume anytime.' 
+                                        : 'We save your progress automatically. You can pause and resume later.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
-    const handleUpdateApplication = () => {
-        goTo(0);
-        setPhoneNumberScreenActive(false);
-        setPhoneInputError(undefined);
+    const renderSuccessScreen = () => {
+        return (
+            <div className="text-center p-8 py-12">
+                <div className="bg-green-100 p-4 rounded-full inline-flex mb-6">
+                    <CheckCircle2 className="h-16 w-16 text-green-600" />
+                </div>
+                
+                <h2 className="text-3xl font-extrabold text-green-800 mb-4">Application Submitted Successfully!</h2>
+                
+                <p className="text-lg text-gray-700 mb-6 max-w-md mx-auto">
+                    Your account opening application has been received and is being processed.
+                </p>
+                
+                {formData.customerId && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-8 max-w-md mx-auto">
+                        <p className="text-gray-600 mb-2">Your application reference:</p>
+                        <p className="text-2xl font-bold text-fuchsia-700 font-mono">{formData.customerId}</p>
+                    </div>
+                )}
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md mx-auto">
+                    <button 
+                        onClick={() => navigate("/")}
+                        className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                    >
+                        Go to Home
+                    </button>
+                    <button 
+                        onClick={() => {
+                            // Clear everything and start fresh
+                            localStorage.removeItem('accountOpeningPhone');
+                            localStorage.removeItem('accountOpeningPhoneDisplay');
+                            localStorage.removeItem('accountOpeningCurrentStep');
+                            localStorage.removeItem('accountOpeningFormData');
+                            
+                            setPhoneNumberScreenActive(true);
+                            setPhoneNumberInput("");
+                            setFormData(INITIAL_DATA);
+                            setErrors(INITIAL_FORM_ERRORS);
+                            goTo(0);
+                        }}
+                        className="bg-fuchsia-100 text-fuchsia-700 px-6 py-3 rounded-lg font-semibold hover:bg-fuchsia-200 transition-colors"
+                    >
+                        New Application
+                    </button>
+                </div>
+                
+                <div className="mt-8 p-4 bg-blue-50 rounded-lg max-w-md mx-auto">
+                    <p className="text-blue-800 text-sm">
+                        <strong>Next Steps:</strong> You will receive an SMS confirmation shortly. 
+                        Please visit your selected branch with original documents for verification.
+                    </p>
+                </div>
+            </div>
+        );
     };
 
     const renderStep = () => {
         if (phoneNumberScreenActive) {
-            const isValid = isValidPhoneNumber(phoneNumberInput.trim());
-            return (
-                <div className="flex flex-col items-center justify-center min-h-[400px]">
-                    <h2 className="text-2xl font-bold mb-4 text-fuchsia-800">Welcome!</h2>
-                    <p className="mb-6 text-gray-700 text-center">Enter your <b>mobile phone number</b> to begin or resume an application.</p>
-                    <Field label="Mobile Phone Number" error={phoneInputError}>
-                        <input
-                            type="tel"
-                            name="phoneNumberInput"
-                            className={`form-input w-full p-3 pl-4 rounded border text-center text-lg transition focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 ${phoneNumberInput ? (isValid ? 'border-green-500' : 'border-red-500') : ''}`}
-                            value={phoneNumberInput}
-                            onChange={(e) => setPhoneNumberInput(e.target.value)}
-                            placeholder="09XXXXXXXX"
-                            autoFocus
-                            onKeyPress={(e) => e.key === 'Enter' && handlePhoneNumberSubmit()}
-                        />
-                    </Field>
-                    <button
-                        type="button"
-                        className="bg-fuchsia-700 text-white px-6 py-3 mt-4 rounded-lg shadow-md hover:bg-fuchsia-800 transition disabled:opacity-50 text-lg font-semibold"
-                        onClick={handlePhoneNumberSubmit}
-                        disabled={phoneCheckLoading || !isValid}
-                    >
-                        {phoneCheckLoading ? "Checking..." : "Continue"}
-                    </button>
-                </div>
-            );
+            return renderPhoneScreen();
+        }
+
+        if (currentStep >= steps.length) {
+            return renderSuccessScreen();
         }
 
         switch (currentStep) {
-            case 0: return <StepPersonal data={formData.personalDetails} setData={(d) => updateSectionData("personalDetails", d)} errors={errors.personalDetails} onNext={handleNext} submitting={submitting} />;
-            case 1: return <StepAddress data={formData.addressDetails} setData={(d) => updateSectionData("addressDetails", d)} errors={errors.addressDetails} setErrors={(e) => setErrors((prev) => ({ ...prev, addressDetails: e }))} onNext={handleNext} onBack={handleBack} submitting={submitting} />;
-            case 2: return <StepFinancial data={formData.financialDetails} setData={(d) => updateSectionData("financialDetails", d)} errors={errors.financialDetails} onNext={handleNext} onBack={handleBack} submitting={submitting} />;
-            case 3: return <StepOther data={formData.otherDetails} setData={(d) => updateSectionData("otherDetails", d)} errors={errors.otherDetails} onNext={handleNext} onBack={handleBack} submitting={submitting} />;
-            case 4: return <StepDocument data={formData.documentDetails} setData={(d) => updateSectionData("documentDetails", d)} errors={errors.documentDetails} onNext={handleNext} onBack={handleBack} submitting={submitting} />;
-            case 5: return <StepEPayment data={formData.ePaymentService} setData={(d) => updateSectionData("ePaymentService", d)} errors={errors.ePaymentService} onNext={handleNext} onBack={handleBack} submitting={submitting} />;
-            case 6: return <StepPassbook data={formData.passbookMudayRequest} setData={(d) => updateSectionData("passbookMudayRequest", d)} errors={errors.passbookMudayRequest} onNext={handleNext} onBack={handleBack} submitting={submitting} />;
-            case 7: return <StepSignature data={formData.digitalSignature} setData={(d) => updateSectionData("digitalSignature", d)} errors={errors.digitalSignature} onNext={handleNext} onBack={handleBack} submitting={submitting} />;
-            case 8: return <StepReview formData={formData} goTo={goTo} onBack={handleBack} onSubmit={handleFinalSubmit} submitting={submitting} />;
-            default:
-                return (
-                    <div className="text-center p-8">
-                        <svg className="mx-auto h-24 w-24 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <h2 className="text-3xl font-extrabold text-fuchsia-800 mt-4 mb-2">Application Submitted Successfully!</h2>
-                        <p className="text-lg text-gray-700 mb-6">Your application reference ID is: <span className="font-semibold text-fuchsia-700">{formData.customerId}</span></p>
-                        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
-                            <button onClick={() => navigate("/")} className="bg-gray-300 text-fuchsia-700 px-8 py-3 rounded-lg shadow-md hover:bg-gray-400 transition">Go to Home</button>
-                        </div>
-                    </div>
-                );
+            case 0: return <StepPersonal 
+                data={formData.personalDetails} 
+                setData={(d) => updateSectionData("personalDetails", d)} 
+                errors={errors.personalDetails} 
+                onNext={handleNext} 
+                submitting={submitting} 
+            />;
+            case 1: return <StepAddress 
+                data={formData.addressDetails} 
+                setData={(d) => updateSectionData("addressDetails", d)} 
+                errors={errors.addressDetails} 
+                setErrors={(e) => setErrors((prev) => ({ ...prev, addressDetails: e }))} 
+                onNext={handleNext} 
+                onBack={handleBack} 
+                submitting={submitting} 
+            />;
+            case 2: return <StepFinancial 
+                data={formData.financialDetails} 
+                setData={(d) => updateSectionData("financialDetails", d)} 
+                errors={errors.financialDetails} 
+                onNext={handleNext} 
+                onBack={handleBack} 
+                submitting={submitting} 
+            />;
+            case 3: return <StepOther 
+                data={formData.otherDetails} 
+                setData={(d) => updateSectionData("otherDetails", d)} 
+                errors={errors.otherDetails} 
+                onNext={handleNext} 
+                onBack={handleBack} 
+                submitting={submitting} 
+            />;
+            case 4: return <StepDocument 
+                data={formData.documentDetails} 
+                setData={(d) => updateSectionData("documentDetails", d)} 
+                errors={errors.documentDetails} 
+                onNext={handleNext} 
+                onBack={handleBack} 
+                submitting={submitting} 
+            />;
+            case 5: return <StepEPayment 
+                data={formData.ePaymentService} 
+                setData={(d) => updateSectionData("ePaymentService", d)} 
+                errors={errors.ePaymentService} 
+                onNext={handleNext} 
+                onBack={handleBack} 
+                submitting={submitting} 
+            />;
+            case 6: return <StepPassbook 
+                data={formData.passbookMudayRequest} 
+                setData={(d) => updateSectionData("passbookMudayRequest", d)} 
+                errors={errors.passbookMudayRequest} 
+                onNext={handleNext} 
+                onBack={handleBack} 
+                submitting={submitting} 
+            />;
+            case 7: return <StepSignature 
+                data={formData.digitalSignature} 
+                setData={(d) => updateSectionData("digitalSignature", d)} 
+                errors={errors.digitalSignature} 
+                onNext={handleNext} 
+                onBack={handleBack} 
+                submitting={submitting} 
+            />;
+            case 8: return <StepReview 
+                formData={formData} 
+                goTo={goTo} 
+                onBack={handleBack} 
+                onSubmit={handleFinalSubmit} 
+                submitting={submitting} 
+            />;
+            default: return <div className="text-center p-8">Invalid step</div>;
         }
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
-            {!phoneNumberScreenActive && currentStep < steps.length && (
-                <>
-                    <div className="hidden sm:block">
-                        <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />
-                    </div>
-                    <div className="block sm:hidden mb-4">
-                        <div className="text-lg font-semibold text-fuchsia-700 bg-fuchsia-50 rounded px-4 py-2 border border-fuchsia-100 text-center">
-                            {steps[currentStep]}
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-4xl w-full mx-auto">
+                <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-lg">
+                                        <Plane className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold">
+                                            {localStorage.getItem('accountOpeningPhone') ? 'Resume Application' : 'Account Opening'}
+                                        </h1>
+                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>{branch?.name || 'Selected Branch'}</span>
+                                            <span>•</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                    {!phoneNumberScreenActive && (
+                                        <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
+                                            📱 {localStorage.getItem('accountOpeningPhoneDisplay') || phoneNumberInput || 'Phone Required'}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
+                    </header>
+
+                    {!phoneNumberScreenActive && currentStep < steps.length && (
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700">
+                                    Step {currentStep + 1} of {steps.length}
+                                </span>
+                                <span className="text-sm text-fuchsia-700 font-semibold">
+                                    {steps[currentStep]}
+                                </span>
+                            </div>
+                            <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />
+                        </div>
+                    )}
+
+                    <div className="p-6">
+                        {successMessage && (
+                            <div className="mb-6">
+                                <SuccessMessage message={successMessage} />
+                            </div>
+                        )}
+
+                        {errors.apiError && (
+                            <div className="mb-6">
+                                <ErrorMessage message={errors.apiError} />
+                            </div>
+                        )}
+
+                        <form onSubmit={(e) => e.preventDefault()}>
+                            {renderStep()}
+                        </form>
                     </div>
-                </>
-            )}
-            <hr className="my-6" />
-            <form onSubmit={(e) => e.preventDefault()}>{renderStep()}</form>
+                </div>
+            </div>
         </div>
     );
 }
+
 export default AccountOpeningForm;

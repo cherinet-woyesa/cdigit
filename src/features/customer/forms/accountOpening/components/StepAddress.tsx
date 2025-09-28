@@ -1,20 +1,17 @@
-// src/components/accountOpening/StepAddress.tsx
 import React, { useEffect, useState } from "react";
-// Helper to get the phone number the user started with from localStorage
-function getStartedPhoneNumber() {
-    return localStorage.getItem("accountOpeningPhoneNumberInput") || "";
-}
 import { getRegions, getZones, getWoredas } from "../../../../../services/addressService";
 import Field from '../../../../../components/Field';
-import type { AddressDetail, Errors } from "../../../../../types/formTypes";
+import type { AddressDetail, Errors } from "../types/formTypes";
+import { Loader2, ChevronRight, MapPin, Phone, Mail } from 'lucide-react';
+
+function getStartedPhoneNumber() {
+    return localStorage.getItem("accountOpeningPhone") || "";
+}
 
 export const validate = (data: AddressDetail): Errors<AddressDetail> => {
     const newErrors: Errors<AddressDetail> = {};
     if (!data.regionCityAdministration) newErrors.regionCityAdministration = "Region / City is required"; 
-    // if (!data.subCity) newErrors.subCity = "Sub-City is required";
     if (!data.weredaKebele) newErrors.weredaKebele = "Wereda / Kebele is required";
-    // if (!data.houseNumber) newErrors.houseNumber = "House Number is required";
-    // if (!data.emailAddress) newErrors.emailAddress = "Email Address is required";
     if (!data.mobilePhone) newErrors.mobilePhone = "Mobile Phone is required";
     return newErrors;
 };
@@ -23,37 +20,32 @@ type StepAddressProps = {
     data: AddressDetail;
     setData: (d: AddressDetail) => void;
     errors: Errors<AddressDetail>;
-    setErrors?: (e: Errors<AddressDetail>) => void; // Optional, for parent error state
+    setErrors?: (e: Errors<AddressDetail>) => void;
     onNext: (errors: Errors<AddressDetail>) => void;
     onBack: () => void;
     submitting: boolean;
 };
 
 export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, submitting }: StepAddressProps) {
-
-    // Autofill mobilePhone with the started phone number if empty
-    useEffect(() => {
-        const startedPhone = getStartedPhoneNumber();
-        if (!data.mobilePhone && startedPhone) {
-            setData({ ...data, mobilePhone: startedPhone });
-        }
-    }, []); // Only on mount
-
     const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
     const [zones, setZones] = useState<{ id: number; name: string; regionId: number }[]>([]);
     const [woredas, setWoredas] = useState<{ id: number; name: string; zoneId: number }[]>([]);
     const [regionLoading, setRegionLoading] = useState(false);
     const [zoneLoading, setZoneLoading] = useState(false);
     const [woredaLoading, setWoredaLoading] = useState(false);
-    const [regionError, setRegionError] = useState<string | undefined>(undefined);
-    const [zoneError, setZoneError] = useState<string | undefined>(undefined);
-    const [woredaError, setWoredaError] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+        const startedPhone = getStartedPhoneNumber();
+        if (!data.mobilePhone && startedPhone) {
+            setData({ ...data, mobilePhone: startedPhone });
+        }
+    }, []);
 
     useEffect(() => {
         setRegionLoading(true);
         getRegions()
             .then(res => setRegions(Array.isArray(res) ? res : (res.data || [])))
-            .catch(() => setRegionError("Failed to load regions"))
+            .catch(() => console.error("Failed to load regions"))
             .finally(() => setRegionLoading(false));
     }, []);
 
@@ -63,7 +55,6 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
             return;
         }
         setZoneLoading(true);
-        setZoneError(undefined);
         const selectedRegion = regions.find(r => r.name === data.regionCityAdministration);
         if (!selectedRegion) {
             setZones([]);
@@ -72,7 +63,7 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
         }
         getZones(selectedRegion.id)
             .then(res => setZones(Array.isArray(res) ? res : (res.data || [])))
-            .catch(() => setZoneError("Failed to load zones"))
+            .catch(() => console.error("Failed to load zones"))
             .finally(() => setZoneLoading(false));
     }, [data.regionCityAdministration, regions]);
 
@@ -82,7 +73,6 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
             return;
         }
         setWoredaLoading(true);
-        setWoredaError(undefined);
         const selectedZone = zones.find(z => z.name === data.zone);
         if (!selectedZone) {
             setWoredas([]);
@@ -91,7 +81,7 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
         }
         getWoredas(selectedZone.id)
             .then(res => setWoredas(Array.isArray(res) ? res : (res.data || [])))
-            .catch(() => setWoredaError("Failed to load woredas"))
+            .catch(() => console.error("Failed to load woredas"))
             .finally(() => setWoredaLoading(false));
     }, [data.zone, zones]);
 
@@ -100,203 +90,169 @@ export function StepAddress({ data, setData, errors, setErrors, onNext, onBack, 
         setData({ ...data, [name]: value });
     };
 
-    // Email and phone validation helpers
-    // function isValidEmail(email: string) {
-    //     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    // }
-    function isValidPhone(phone: string) {
-        // Ethiopian mobile: starts with 09 or +2519, 10 digits
+    const isValidPhone = (phone: string) => {
         return /^09\d{8}$|^07\d{8}$|^\+2519\d{8}$|^2519\d{8}$|^9\d{8}$/.test(phone);
-    }
-    // function isValidOfficePhone(phone: string) {
-    //     // Allow empty, or must start with +251 and be numeric (Ethiopian format)
-    //     if (!phone) return true;
-    //     return /^\+251\d{8,9}$/.test(phone);
-    // }
-
-    const [touchedNext, setTouchedNext] = useState(false);
-
-    function validateOnNext() {
-        const nextErrors: Partial<typeof errors> = { ...errors };
-
-        // Conditional validation for email and office phone
-        // if (data.emailAddress && !isValidEmail(data.emailAddress)) {
-        //     nextErrors.emailAddress = "Invalid email format";
-        // } else {
-        //     delete nextErrors.emailAddress;
-        // }
-
-        // if (data.officePhone && !isValidOfficePhone(data.officePhone)) {
-        //     nextErrors.officePhone = "Office phone must start with +251 and be numeric";
-        // } else {
-        //     delete nextErrors.officePhone;
-        // }
-
-        // Required field checks
-        if (!data.regionCityAdministration) { nextErrors.regionCityAdministration = "Region is required"; }
-        if (!data.subCity) { nextErrors.subCity = "Sub-City is required"; }
-        if (!data.weredaKebele) { nextErrors.weredaKebele = "Wereda/Kebele is required"; }
-        if (!data.mobilePhone) { nextErrors.mobilePhone = "Mobile phone is required"; }
-        
-        // No longer required: emailAddress, houseNumber
-        if (data.mobilePhone && !isValidPhone(data.mobilePhone)) {
-            nextErrors.mobilePhone = "Invalid Ethiopian mobile phone number";
-        }
-
-        return nextErrors;
-    }
+    };
 
     const handleNext = () => {
         const validationErrors = validate(data);
         onNext(validationErrors);
     };
 
+    const LoadingState = ({ message }: { message: string }) => (
+        <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">{message}</span>
+        </div>
+    );
+
     return (
-        <div className="container mx-auto px-3 py-6 max-w-4xl">
-            
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                {/* Region Field */}
-                <Field label="Region / City Administration" required error={errors.regionCityAdministration}>
-                    {regionLoading ? (
-                        <div className="text-sm text-gray-500 animate-pulse">Mapping out regions...</div>
-                    ) : regionError ? (
-                        <div className="text-sm text-red-600">{regionError}</div>
-                    ) : (
-                        <select
-                            className="form-select w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
-                            name="regionCityAdministration"
-                            value={data.regionCityAdministration || ""}
-                            onChange={handleChange}
-                        >
-                            <option value="">Select your region</option>
-                            {regions.map(r => (
-                                <option key={r.id} value={r.name}>{r.name}</option>
-                            ))}
-                        </select>
-                    )}
-                </Field>
-
-                {/* Zone Field */}
-                <Field label="Zone" error={errors.zone || zoneError || undefined}>
-                    {zoneLoading ? (
-                        <div className="text-sm text-gray-500 animate-pulse">Charting zones...</div>
-                    ) : (
-                        <select
-                            className="form-select w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
-                            name="zone"
-                            value={data.zone || ""}
-                            onChange={handleChange}
-                            disabled={!data.regionCityAdministration || zoneLoading || zones.length === 0}
-                        >
-                            <option value="">Select your zone</option>
-                            {zones.map(z => (
-                                <option key={z.id} value={z.name}>{z.name}</option>
-                            ))}
-                        </select>
-                    )}
-                </Field>
-
-                {/* Sub-City Field */}
-                {/* <Field label="Sub-City" required error={errors.subCity}>
-                    <input
-                        type="text"
-                        name="subCity"
-                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.subCity || ""}
-                        onChange={handleChange}
-                        placeholder="e.g., Arada"
-                    />
-                </Field> */}
-
-                {/* Wereda / Kebele Field */}
-                <Field label="Wereda / Kebele" required error={errors.weredaKebele || woredaError || undefined}>
-                    {woredaLoading ? (
-                        <div className="text-sm text-gray-500 animate-pulse">Finding woredas...</div>
-                    ) : (
-                        <select
-                            className="form-select w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
-                            name="weredaKebele"
-                            value={data.weredaKebele || ""}
-                            onChange={handleChange}
-                            disabled={!data.zone || woredaLoading || woredas.length === 0}
-                        >
-                            <option value="">Select your woreda</option>
-                            {woredas.map(w => (
-                                <option key={w.id} value={w.name}>{w.name}</option>
-                            ))}
-                        </select>
-                    )}
-                </Field>
-
-                {/* House Number Field (Now OPTIONAL) */}
-                {/* <Field label="House Number" error={errors.houseNumber}>
-                    <input
-                        type="text"
-                        name="houseNumber"
-                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.houseNumber || ""}
-                        onChange={handleChange}
-                        placeholder="Optional"
-                    />
-                </Field> */}
-
-                {/* Mobile Phone Field */}
-                <Field label="Mobile Phone" required error={errors.mobilePhone}>
-                    <input
-                        type="tel"
-                        name="mobilePhone"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.mobilePhone}
-                        onChange={handleChange}
-                        placeholder="e.g., 0912345678"
-                    />
-                </Field>
-
-                {/* Office Phone Field */}
-                {/* <Field label="Office Phone" error={touchedNext ? errors.officePhone : undefined}>
-                    <input
-                        type="tel"
-                        name="officePhone"
-                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.officePhone || ""}
-                        onChange={handleChange}
-                        placeholder="Optional"
-                    />
-                </Field> */}
-
-                {/* Email Address Field (Now OPTIONAL) */}
-                {/* <Field label="Email Address" error={errors.emailAddress}>
-                    <input
-                        type="email"
-                        name="emailAddress"
-                        className="form-input w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.emailAddress || ""}
-                        onChange={handleChange}
-                        placeholder="Optional"
-                    />
-                </Field> */}
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+                <div className="bg-fuchsia-100 p-2 rounded-lg">
+                    <MapPin className="h-5 w-5 text-fuchsia-700" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900">Address Information</h2>
+                    <p className="text-gray-600 text-sm">Where can we reach you?</p>
+                </div>
             </div>
 
-            <div className="flex flex-col md:flex-row md:justify-between gap-4 mt-10">
-  <button
-    type="button"
-    className="px-6 py-2 rounded-lg font-semibold border-2 border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors duration-200"
-    onClick={onBack}
-  >
-    <span className="mr-2">⬅️</span> Go Back
-  </button>
-  <button
-    type="button"
-    className={`w-full md:w-auto px-6 py-2 rounded-lg font-semibold shadow-lg transition transform duration-200 
-      ${submitting ? 'bg-fuchsia-300 cursor-not-allowed' : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
-    onClick={handleNext}
-    disabled={submitting}
-  >
-    {submitting ? 'Moving to next step...' : 'Confirm Location'}
-  </button>
-</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Region */}
+                <Field label="Region / City Administration" required error={errors.regionCityAdministration}>
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        {regionLoading ? (
+                            <LoadingState message="Loading regions..." />
+                        ) : (
+                            <select
+                                className="w-full pl-10 p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors bg-white"
+                                name="regionCityAdministration"
+                                value={data.regionCityAdministration || ""}
+                                onChange={handleChange}
+                            >
+                                <option value="">Select your region</option>
+                                {regions.map(r => (
+                                    <option key={r.id} value={r.name}>{r.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                </Field>
 
+                {/* Zone */}
+                <Field label="Zone" error={errors.zone}>
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        {zoneLoading ? (
+                            <LoadingState message="Loading zones..." />
+                        ) : (
+                            <select
+                                className="w-full pl-10 p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors bg-white"
+                                name="zone"
+                                value={data.zone || ""}
+                                onChange={handleChange}
+                                disabled={!data.regionCityAdministration || zoneLoading}
+                            >
+                                <option value="">Select your zone</option>
+                                {zones.map(z => (
+                                    <option key={z.id} value={z.name}>{z.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                </Field>
+
+                {/* Wereda / Kebele */}
+                <Field label="Wereda / Kebele" required error={errors.weredaKebele}>
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        {woredaLoading ? (
+                            <LoadingState message="Loading woredas..." />
+                        ) : (
+                            <select
+                                className="w-full pl-10 p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors bg-white"
+                                name="weredaKebele"
+                                value={data.weredaKebele || ""}
+                                onChange={handleChange}
+                                disabled={!data.zone || woredaLoading}
+                            >
+                                <option value="">Select your woreda</option>
+                                {woredas.map(w => (
+                                    <option key={w.id} value={w.name}>{w.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                </Field>
+
+                {/* Mobile Phone */}
+                <Field label="Mobile Phone" required error={errors.mobilePhone}>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="tel"
+                            name="mobilePhone"
+                            className="w-full pl-10 p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
+                            value={data.mobilePhone}
+                            onChange={handleChange}
+                            placeholder="09XXXXXXXX"
+                        />
+                    </div>
+                </Field>
+
+                {/* Email Address */}
+                <Field label="Email Address" error={errors.emailAddress}>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="email"
+                            name="emailAddress"
+                            className="w-full pl-10 p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
+                            value={data.emailAddress || ""}
+                            onChange={handleChange}
+                            placeholder="Optional"
+                        />
+                    </div>
+                </Field>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+                <button
+                    type="button"
+                    className="px-8 py-3 rounded-lg font-semibold border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2"
+                    onClick={onBack}
+                    disabled={submitting}
+                >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
+                    Back
+                </button>
+                <button
+                    type="button"
+                    className={`px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                        submitting 
+                            ? 'bg-fuchsia-300 cursor-not-allowed text-white' 
+                            : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'
+                    }`}
+                    onClick={handleNext}
+                    disabled={submitting}
+                >
+                    {submitting ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            Continue
+                            <ChevronRight className="h-4 w-4" />
+                        </>
+                    )}
+                </button>
+            </div>
         </div>
     );
 }

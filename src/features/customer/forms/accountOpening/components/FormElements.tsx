@@ -1,21 +1,31 @@
-// src/components/common/FormElements.tsx
+// src/features/customer/forms/accountOpening/components/FormElements.tsx
 import React from "react";
+import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 type FieldProps = {
   label: string;
   required?: boolean;
   error?: string;
   children: React.ReactNode;
+  className?: string;
 };
 
-export function Field({ label, required, error, children }: FieldProps) {
+export function Field({ label, required, error, children, className = "" }: FieldProps) {
   return (
-    <div className="mb-3">
-      <label className="block text-sm font-semibold text-gray-700 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
+    <div className={`mb-4 ${className}`}>
+      <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500 text-lg">*</span>}
       </label>
-      {children}
-      {error && <div className="text-xs text-red-600 mt-1">{error}</div>}
+      <div className="relative">
+        {children}
+        {error && (
+          <div className="flex items-center gap-2 mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+            <span className="text-xs text-red-700">{error}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -28,34 +38,32 @@ type ProgressBarProps = {
 
 export function ProgressBar({ currentStep, totalSteps, stepTitles }: ProgressBarProps) {
   return (
-    <div className="flex justify-between items-start mb-6">
-      {Array.from({ length: totalSteps }).map((_, index) => (
-        <React.Fragment key={index}>
-          <div className="flex flex-col items-center flex-1">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                index <= currentStep ? "bg-fuchsia-600" : "bg-gray-400"
-              }`}
-            >
-              {index + 1}
-            </div>
-            <div
-              className={`text-xs mt-1 text-center break-words ${
-                index <= currentStep ? "text-fuchsia-700 font-semibold" : "text-gray-500"
-              }`}
-            >
-              {stepTitles[index]}
-            </div>
-          </div>
-          {index < totalSteps - 1 && (
-            <div
-              className={`flex-1 h-1 mt-4 ${
-                index < currentStep ? "bg-fuchsia-600" : "bg-gray-300"
-              }`}
-            />
-          )}
-        </React.Fragment>
-      ))}
+    <div className="w-full bg-gray-100 rounded-full h-2 mb-4">
+      <div 
+        className="bg-fuchsia-600 h-2 rounded-full transition-all duration-300 ease-in-out"
+        style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }}
+      ></div>
+    </div>
+  );
+}
+
+export function LoadingSpinner({ message = "Loading..." }: { message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-8">
+      <Loader2 className="h-8 w-8 text-fuchsia-700 animate-spin mb-2" />
+      <p className="text-gray-600 text-sm">{message}</p>
+    </div>
+  );
+}
+
+export function SuccessState({ message, icon: Icon = CheckCircle2 }: { 
+  message: string; 
+  icon?: React.ComponentType<any>;
+}) {
+  return (
+    <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+      <Icon className="h-5 w-5 text-green-500 flex-shrink-0" />
+      <span className="text-green-700 text-sm">{message}</span>
     </div>
   );
 }

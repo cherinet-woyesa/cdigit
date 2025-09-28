@@ -1,17 +1,13 @@
-// src/components/accountOpening/StepEPayment.tsx
 import React from "react";
 import Field from '../../../../../components/Field';
-import type { EPaymentService, Errors } from "../../../../../types/formTypes";
+import type { EPaymentService, Errors } from "../types/formTypes";
+import { Loader2, ChevronRight, CreditCard, Smartphone, Laptop, MessageSquare } from 'lucide-react';
 
 export const validate = (data: EPaymentService): Errors<EPaymentService> => {
     const newErrors: Errors<EPaymentService> = {};
     if (data.hasAtmCard) {
-        if (!data.atmCardType) {
-            newErrors.atmCardType = "Card Type is required";
-        }
-        if (!data.atmCardDeliveryBranch) {
-            newErrors.atmCardDeliveryBranch = "Delivery Branch is required";
-        }
+        if (!data.atmCardType) newErrors.atmCardType = "Card Type is required";
+        if (!data.atmCardDeliveryBranch) newErrors.atmCardDeliveryBranch = "Delivery Branch is required";
     }
     return newErrors;
 };
@@ -25,17 +21,49 @@ type StepEPaymentProps = {
     submitting: boolean;
 };
 
-const ToggleSwitch = ({ name, checked, onChange, label }: { name: string, checked: boolean, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, label: string }) => (
-    <label htmlFor={name} className="flex items-center cursor-pointer">
-        <div className="relative">
-            <input id={name} name={name} type="checkbox" className="sr-only" checked={checked} onChange={onChange} />
-            <div className={`block w-14 h-8 rounded-full ${checked ? 'bg-fuchsia-700' : 'bg-gray-300'}`}></div>
-            <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${checked ? 'transform translate-x-6' : ''}`}></div>
-        </div>
-        <div className="ml-3 text-gray-700 font-medium">
-            {label}
-        </div>
-    </label>
+const ServiceToggle = ({ 
+    name, 
+    checked, 
+    onChange, 
+    label, 
+    description, 
+    icon: Icon 
+}: { 
+    name: string; 
+    checked: boolean; 
+    onChange: (checked: boolean) => void; 
+    label: string; 
+    description: string; 
+    icon: React.ComponentType<any>;
+}) => (
+    <div className={`p-4 border-2 rounded-lg transition-all duration-200 ${
+        checked 
+            ? 'border-fuchsia-500 bg-fuchsia-50 shadow-sm' 
+            : 'border-gray-200 hover:border-gray-300'
+    }`}>
+        <label className="flex items-start gap-3 cursor-pointer">
+            <div className="flex items-center h-5 mt-0.5">
+                <input
+                    type="checkbox"
+                    name={name}
+                    checked={checked}
+                    onChange={(e) => onChange(e.target.checked)}
+                    className="w-4 h-4 text-fuchsia-600 border-gray-300 rounded focus:ring-fuchsia-500"
+                />
+            </div>
+            <div className="flex items-center gap-3 flex-1">
+                <div className={`p-2 rounded-lg ${
+                    checked ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-gray-100 text-gray-600'
+                }`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                    <span className="font-medium text-gray-900 block">{label}</span>
+                    <span className="text-sm text-gray-600">{description}</span>
+                </div>
+            </div>
+        </label>
+    </div>
 );
 
 export function StepEPayment({ data, setData, errors, onNext, onBack, submitting }: StepEPaymentProps) {
@@ -45,12 +73,11 @@ export function StepEPayment({ data, setData, errors, onNext, onBack, submitting
 
         if (type === "checkbox") {
             if (name === "hasAtmCard") {
-                const nextHasAtm = checked;
                 setData({
                     ...data,
-                    hasAtmCard: nextHasAtm,
-                    atmCardType: nextHasAtm ? data.atmCardType : "",
-                    atmCardDeliveryBranch: nextHasAtm ? data.atmCardDeliveryBranch : "",
+                    hasAtmCard: checked,
+                    atmCardType: checked ? data.atmCardType : "",
+                    atmCardDeliveryBranch: checked ? data.atmCardDeliveryBranch : "",
                 });
                 return;
             }
@@ -66,71 +93,138 @@ export function StepEPayment({ data, setData, errors, onNext, onBack, submitting
     };
 
     return (
-        <div className="container mx-auto px-2 py-6 max-w-4xl">
-            <div className="text-xl font-bold mb-3 text-fuchsia-800">E-Payment Services</div>
-            <p className="text-gray-600 mb-6">Select the e-payment services you would like to subscribe to.</p>
-            
-            <div className="space-y-6">
-                <div className="p-4 border rounded-lg shadow-sm">
-                    <ToggleSwitch name="hasAtmCard" checked={!!data.hasAtmCard} onChange={handleChange} label="Request ATM Card" />
-                    {data.hasAtmCard && (
-                        <div className="mt-4 pl-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Field label="Card Type" required error={errors.atmCardType}>
-                                <select
-                                    className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
-                                    name="atmCardType"
-                                    value={data.atmCardType || ""}
-                                    onChange={handleChange}
-                                >
-                                    <option value="">Select Card Type</option>
-                                    <option value="Visa">Visa</option>
-                                    <option value="Mastercard">Mastercard</option>
-                                </select>
-                            </Field>
-                            <Field label="Delivery Branch" required error={errors.atmCardDeliveryBranch}>
-                                <input
-                                    type="text"
-                                    name="atmCardDeliveryBranch"
-                                    className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                                    value={data.atmCardDeliveryBranch || ""}
-                                    onChange={handleChange}
-                                    placeholder="Enter delivery branch"
-                                />
-                            </Field>
-                        </div>
-                    )}
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+                <div className="bg-fuchsia-100 p-2 rounded-lg">
+                    <CreditCard className="h-5 w-5 text-fuchsia-700" />
                 </div>
-
-                <div className="p-4 border rounded-lg shadow-sm">
-                    <ToggleSwitch name="hasMobileBanking" checked={!!data.hasMobileBanking} onChange={handleChange} label="Mobile Banking" />
-                </div>
-                <div className="p-4 border rounded-lg shadow-sm">
-                    <ToggleSwitch name="hasInternetBanking" checked={!!data.hasInternetBanking} onChange={handleChange} label="Internet Banking" />
-                </div>
-                <div className="p-4 border rounded-lg shadow-sm">
-                    <ToggleSwitch name="hasCbeBirr" checked={!!data.hasCbeBirr} onChange={handleChange} label="CBE Birr" />
-                </div>
-                <div className="p-4 border rounded-lg shadow-sm">
-                    <ToggleSwitch name="hasSmsBanking" checked={!!data.hasSmsBanking} onChange={handleChange} label="SMS Banking" />
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900">E-Payment Services</h2>
+                    <p className="text-gray-600 text-sm">Choose your digital banking services</p>
                 </div>
             </div>
 
-            <div className="flex justify-between mt-10">
+            <div className="space-y-4">
+                {/* ATM Card */}
+                <ServiceToggle
+                    name="hasAtmCard"
+                    checked={!!data.hasAtmCard}
+                    onChange={(checked) => handleChange({ target: { name: "hasAtmCard", type: "checkbox", checked } } as any)}
+                    label="ATM Card"
+                    description="Debit card for cash withdrawals and payments"
+                    icon={CreditCard}
+                />
+
+                {data.hasAtmCard && (
+                    <div className="ml-8 space-y-4 bg-gray-50 p-4 rounded-lg">
+                        <Field label="Card Type" required error={errors.atmCardType}>
+                            <select
+                                className="w-full p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors bg-white"
+                                name="atmCardType"
+                                value={data.atmCardType || ""}
+                                onChange={handleChange}
+                            >
+                                <option value="">Select Card Type</option>
+                                <option value="Visa">Visa</option>
+                                <option value="Mastercard">Mastercard</option>
+                                <option value="Local">Local Card</option>
+                            </select>
+                        </Field>
+
+                        <Field label="Delivery Branch" required error={errors.atmCardDeliveryBranch}>
+                            <input
+                                type="text"
+                                name="atmCardDeliveryBranch"
+                                className="w-full p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
+                                value={data.atmCardDeliveryBranch || ""}
+                                onChange={handleChange}
+                                placeholder="Enter branch name for card pickup"
+                            />
+                        </Field>
+                    </div>
+                )}
+
+                {/* Mobile Banking */}
+                <ServiceToggle
+                    name="hasMobileBanking"
+                    checked={!!data.hasMobileBanking}
+                    onChange={(checked) => handleChange({ target: { name: "hasMobileBanking", type: "checkbox", checked } } as any)}
+                    label="Mobile Banking"
+                    description="Banking services on your mobile phone"
+                    icon={Smartphone}
+                />
+
+                {/* Internet Banking */}
+                <ServiceToggle
+                    name="hasInternetBanking"
+                    checked={!!data.hasInternetBanking}
+                    onChange={(checked) => handleChange({ target: { name: "hasInternetBanking", type: "checkbox", checked } } as any)}
+                    label="Internet Banking"
+                    description="Online banking through web browser"
+                    icon={Laptop}
+                />
+
+                {/* CBE Birr */}
+                <ServiceToggle
+                    name="hasCbeBirr"
+                    checked={!!data.hasCbeBirr}
+                    onChange={(checked) => handleChange({ target: { name: "hasCbeBirr", type: "checkbox", checked } } as any)}
+                    label="CBE Birr"
+                    description="Mobile money transfer service"
+                    icon={Smartphone}
+                />
+
+                {/* SMS Banking */}
+                <ServiceToggle
+                    name="hasSmsBanking"
+                    checked={!!data.hasSmsBanking}
+                    onChange={(checked) => handleChange({ target: { name: "hasSmsBanking", type: "checkbox", checked } } as any)}
+                    label="SMS Banking"
+                    description="Account alerts via SMS"
+                    icon={MessageSquare}
+                />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                <p className="text-blue-800 text-sm">
+                    <strong>Note:</strong> Selected services will be activated after account approval. 
+                    You may need to visit the branch for some service activations.
+                </p>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
                 <button
                     type="button"
-                    className="bg-gray-300 text-fuchsia-700 px-6 py-2 rounded-lg shadow hover:bg-gray-400 transition"
+                    className="px-8 py-3 rounded-lg font-semibold border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2"
                     onClick={onBack}
+                    disabled={submitting}
                 >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
                     Back
                 </button>
                 <button
                     type="button"
-                    className={`px-6 py-3 rounded-lg font-semibold shadow-lg transition transform duration-200 
-                        ${submitting ? 'bg-fuchsia-300 cursor-not-allowed' : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
+                    className={`px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                        submitting 
+                            ? 'bg-fuchsia-300 cursor-not-allowed text-white' 
+                            : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'
+                    }`}
                     onClick={handleNext}
                     disabled={submitting}
                 >
-                    {submitting ? 'Submitting...' : 'Submit'}
+                    {submitting ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            Continue
+                            <ChevronRight className="h-4 w-4" />
+                        </>
+                    )}
                 </button>
             </div>
         </div>

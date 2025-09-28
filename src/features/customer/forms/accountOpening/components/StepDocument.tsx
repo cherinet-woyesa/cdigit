@@ -1,7 +1,7 @@
-// src/components/accountOpening/StepDocument.tsx
 import React, { useState } from "react";
 import Field from '../../../../../components/Field';
-import type { DocumentDetail, Errors } from "../../../../../types/formTypes";
+import type { DocumentDetail, Errors } from "../types/formTypes";
+import { Loader2, ChevronRight, FileText, Calendar, Upload, CheckCircle2 } from 'lucide-react';
 
 export const validate = (data: DocumentDetail): Errors<DocumentDetail> => {
     const newErrors: Errors<DocumentDetail> = {};
@@ -14,21 +14,12 @@ export const validate = (data: DocumentDetail): Errors<DocumentDetail> => {
         try {
             const issue = new Date(data.issueDate);
             const expiry = new Date(data.expiryDate);
-            if (expiry < issue) {
-                newErrors.expiryDate = 'Expiry date must be after issue date';
-            }
+            if (expiry < issue) newErrors.expiryDate = 'Expiry date must be after issue date';
         } catch {}
     }
-    if (!data.mobilePhoneNo) {
-        newErrors.mobilePhoneNo = "Mobile Phone is required";
-    } else if (!/^09\d{8}$|^\+2519\d{8}$/.test(data.mobilePhoneNo)) {
-        newErrors.mobilePhoneNo = 'Invalid Ethiopian phone number';
-    }
+    if (!data.mobilePhoneNo) newErrors.mobilePhoneNo = "Mobile Phone is required";
+    else if (!/^09\d{8}$|^\+2519\d{8}$/.test(data.mobilePhoneNo)) newErrors.mobilePhoneNo = 'Invalid Ethiopian phone number';
     if (!data.photoIdFile && !data.docPhotoUrl) newErrors.docPhotoUrl = "Document photo is required";
-    // Email is now optional
-    // if (data.docEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.docEmail)) {
-    //     newErrors.docEmail = 'Invalid email format';
-    // }
     return newErrors;
 };
 
@@ -56,7 +47,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
             if (!file.type.startsWith('image/')) {
-                setFileError('Only image files are allowed.');
+                setFileError('Only image files (JPEG, PNG) are allowed.');
                 setData({ ...data, photoIdFile: undefined });
                 return;
             }
@@ -67,9 +58,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
             }
             setData({ ...data, photoIdFile: file });
             const reader = new FileReader();
-            reader.onload = (ev) => {
-                setFilePreview(ev.target?.result as string);
-            };
+            reader.onload = (ev) => setFilePreview(ev.target?.result as string);
             reader.readAsDataURL(file);
         } else {
             setData({ ...data, photoIdFile: undefined });
@@ -78,12 +67,7 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
 
     const formatDateForInput = (isoDate: string | undefined): string => {
         if (!isoDate) return "";
-        try {
-            return isoDate.split("T")[0];
-        } catch (e) {
-            console.error("Invalid date format:", isoDate);
-            return "";
-        }
+        try { return isoDate.split("T")[0]; } catch { return ""; }
     };
 
     const handleNext = () => {
@@ -92,12 +76,23 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
     };
 
     return (
-        <div className="container mx-auto px-2 py-6 max-w-4xl">
-            <div className="text-xl font-bold mb-3 text-fuchsia-800">Document Details</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-1">
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+                <div className="bg-fuchsia-100 p-2 rounded-lg">
+                    <FileText className="h-5 w-5 text-fuchsia-700" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900">Document Verification</h2>
+                    <p className="text-gray-600 text-sm">Upload your identification documents</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* ID Type */}
                 <Field label="ID Type" required error={errors.idType}>
                     <select
-                        className="form-select w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors bg-white shadow-sm"
+                        className="w-full p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors bg-white"
                         name="idType"
                         value={data.idType}
                         onChange={handleChange}
@@ -109,151 +104,147 @@ export function StepDocument({ data, setData, errors, onNext, onBack, submitting
                         <option value="Resident Permit">Resident Permit</option>
                     </select>
                 </Field>
+
+                {/* ID Number */}
                 <Field label="ID / Passport No." required error={errors.idPassportNo}>
                     <input
                         type="text"
                         name="idPassportNo"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
+                        className="w-full p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
                         value={data.idPassportNo}
                         onChange={handleChange}
+                        placeholder="Enter your ID number"
                     />
                 </Field>
+
+                {/* Issued By */}
                 <Field label="Issued By" required error={errors.issuedBy}>
                     <input
                         type="text"
                         name="issuedBy"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
+                        className="w-full p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
                         value={data.issuedBy}
                         onChange={handleChange}
+                        placeholder="Issuing authority"
                     />
                 </Field>
-                <Field label="ID Issue Date" required error={errors.issueDate}>
-                    <input
-                        type="date"
-                        name="issueDate"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={formatDateForInput(data.issueDate)}
-                        onChange={handleChange}
-                    />
+
+                {/* Issue Date */}
+                <Field label="Issue Date" required error={errors.issueDate}>
+                    <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="date"
+                            name="issueDate"
+                            className="w-full pl-10 p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
+                            value={formatDateForInput(data.issueDate)}
+                            onChange={handleChange}
+                        />
+                    </div>
                 </Field>
-                <Field label="ID Expiry Date" required error={errors.expiryDate}>
-                    <input
-                        type="date"
-                        name="expiryDate"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={formatDateForInput(data.expiryDate)}
-                        onChange={handleChange}
-                    />
+
+                {/* Expiry Date */}
+                <Field label="Expiry Date" required error={errors.expiryDate}>
+                    <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="date"
+                            name="expiryDate"
+                            className="w-full pl-10 p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
+                            value={formatDateForInput(data.expiryDate)}
+                            onChange={handleChange}
+                        />
+                    </div>
                 </Field>
+
+                {/* Mobile Phone */}
                 <Field label="Mobile Phone" required error={errors.mobilePhoneNo}>
                     <input
                         type="tel"
                         name="mobilePhoneNo"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
+                        className="w-full p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
                         value={data.mobilePhoneNo}
                         onChange={handleChange}
+                        placeholder="09XXXXXXXX"
                     />
                 </Field>
-                
-                {/* <Field label="Document Region / City / Sub-City" error={errors.docRegionCitySubCity}>
-                    <input
-                        type="text"
-                        name="docRegionCitySubCity"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.docRegionCitySubCity || ''}
-                        onChange={handleChange}
-                    />
-                </Field> */}
 
-                {/* <Field label="Document Zone" error={errors.docZone}>
-                    <input
-                        type="text"
-                        name="docZone"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.docZone || ''}
-                        onChange={handleChange}
-                    />
-                </Field> */}
-
-                {/* <Field label="Document Woreda" error={errors.docWeredaKebele}>
-                    <input
-                        type="text"
-                        name="docWeredaKebele"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.docWeredaKebele || ''}
-                        onChange={handleChange}
-                    />
-                </Field> */}
-
-                {/* <Field label="Document House Number" error={errors.docHouseNumber}>
-                    <input
-                        type="text"
-                        name="docHouseNumber"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.docHouseNumber || ''}
-                        onChange={handleChange}
-                    />
-                </Field> */}
-
+                {/* Email */}
                 <Field label="Email" error={errors.docEmail}>
                     <input
                         type="email"
                         name="docEmail"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
+                        className="w-full p-3 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-colors"
                         value={data.docEmail || ''}
                         onChange={handleChange}
-                        placeholder="email (optional)"
+                        placeholder="email@example.com"
                     />
                 </Field>
 
-                {/* <Field label="Document Office Telephone" error={errors.docOfficeTelephone}>
-                    <input
-                        type="tel"
-                        name="docOfficeTelephone"
-                        className="form-input w-full p-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                        value={data.docOfficeTelephone || ''}
-                        onChange={handleChange}
-                    />
-                </Field> */}
-
-                <Field label="Upload Photo of ID" required error={errors.docPhotoUrl || fileError}>
-                    <input
-                        type="file"
-                        name="photoIdFile"
-                        className="form-input w-full p-2 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-fuchsia-50 file:text-fuchsia-700 hover:file:bg-fuchsia-100"
-                        onChange={handleFileChange}
-                        accept="image/*"
-                    />
-                    {filePreview && (
-                        <div className="mt-2 flex flex-col items-center">
-                            <img src={filePreview} alt="Preview" className="max-h-32 rounded shadow border-2 border-fuchsia-200" />
+                {/* Document Upload */}
+                <div className="md:col-span-2">
+                    <Field label="Upload Photo of ID" required error={errors.docPhotoUrl || fileError}>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-fuchsia-400 transition-colors">
+                            <input
+                                type="file"
+                                name="photoIdFile"
+                                className="hidden"
+                                id="photoIdFile"
+                                onChange={handleFileChange}
+                                accept="image/*"
+                            />
+                            <label htmlFor="photoIdFile" className="cursor-pointer">
+                                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                                <p className="text-gray-600 font-medium">Click to upload ID photo</p>
+                                <p className="text-gray-500 text-sm">JPEG or PNG, max 2MB</p>
+                            </label>
                         </div>
-                    )}
-                    {data.docPhotoUrl && !filePreview && (
-                        <p className="text-sm text-gray-500 mt-1">Current: <span className="break-all">{data.docPhotoUrl}</span></p>
-                    )}
-                </Field>
+                        {filePreview && (
+                            <div className="mt-4 flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                <span className="text-green-700 text-sm">File selected successfully</span>
+                            </div>
+                        )}
+                        {data.docPhotoUrl && !filePreview && (
+                            <p className="text-sm text-gray-500 mt-2">Document already uploaded</p>
+                        )}
+                    </Field>
+                </div>
             </div>
-            <div className="flex justify-between mt-10">
-                <button
-  type="button"
-  className="px-6 py-2 rounded-lg font-semibold shadow bg-gray-300 text-fuchsia-700 hover:bg-gray-400 transition"
-  onClick={onBack}
->
-  Back
-</button>
-<button
-  type="button"
-  className={`px-6 py-2 rounded-lg font-semibold shadow-lg transition transform duration-200 
-    ${submitting 
-      ? 'bg-fuchsia-300 cursor-not-allowed text-white' 
-      : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'}`}
-  onClick={handleNext}
-  disabled={submitting}
->
-  {submitting ? 'Saving...' : 'Next'}
-</button>
 
+            {/* Navigation */}
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+                <button
+                    type="button"
+                    className="px-8 py-3 rounded-lg font-semibold border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2"
+                    onClick={onBack}
+                    disabled={submitting}
+                >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
+                    Back
+                </button>
+                <button
+                    type="button"
+                    className={`px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                        submitting 
+                            ? 'bg-fuchsia-300 cursor-not-allowed text-white' 
+                            : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'
+                    }`}
+                    onClick={handleNext}
+                    disabled={submitting}
+                >
+                    {submitting ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Uploading...
+                        </>
+                    ) : (
+                        <>
+                            Continue
+                            <ChevronRight className="h-4 w-4" />
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );
