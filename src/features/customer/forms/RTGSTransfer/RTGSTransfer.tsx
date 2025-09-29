@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../../context/AuthContext';
 import { useBranch } from '../../../../context/BranchContext';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
-import { submitRtgsTransfer } from '../../../../services/rtgsTransferService';
-import authService from '../../../../services/authService';
+import { submitRtgsTransfer, requestRtgsTransferOtp } from '../../../../services/rtgsTransferService';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 import { 
     Loader2, 
@@ -14,15 +13,11 @@ import {
     ChevronRight,
     ChevronLeft,
     CreditCard,
-    Building,
     User,
-    Banknote,
     FileText,
     Shield,
     Plane,
     MapPin,
-    Calendar,
-    Landmark,
     Signature
 } from 'lucide-react';
 
@@ -69,7 +64,6 @@ type FormData = {
     beneficiaryName: string;
     transferAmount: string;
     paymentNarrative: string;
-    customerTelephone: string;
     digitalSignature: string;
     otpCode: string;
 };
@@ -92,7 +86,6 @@ export default function RTGSTransferForm() {
         beneficiaryName: '',
         transferAmount: '',
         paymentNarrative: '',
-        customerTelephone: phone || '',
         digitalSignature: '',
         otpCode: '',
     });
@@ -106,15 +99,8 @@ export default function RTGSTransferForm() {
     const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
     const [customerAccounts, setCustomerAccounts] = useState<Array<{ accountNumber: string; accountName: string }>>([]);
     const [showAccountSelection, setShowAccountSelection] = useState(false);
-    const [otpRequested, setOtpRequested] = useState(false);
 
-    // Phone normalization for backend (max 12 characters)
-    const normalizePhoneForBackend = (phoneNumber: string): string => {
-        const digitsOnly = phoneNumber.replace(/\D/g, '');
-        return digitsOnly.slice(0, 12);
-    };
-
-    // Load customer accounts
+    // Load customer accounts - SAME AS WITHDRAWAL
     useEffect(() => {
         if (loadingAccounts) return;
         
@@ -140,16 +126,15 @@ export default function RTGSTransferForm() {
             }));
         } else {
             setShowAccountSelection(true);
+            // Set first account as default like withdrawal
+            const firstAccount = accounts[0];
+            setFormData(prev => ({
+                ...prev,
+                orderingAccountNumber: firstAccount.accountNumber,
+                orderingCustomerName: firstAccount.accountHolderName || ''
+            }));
         }
     }, [accounts, loadingAccounts]);
-
-    // Prefill phone and normalize it
-    useEffect(() => {
-        if (phone) {
-            const normalizedPhone = normalizePhoneForBackend(phone);
-            setFormData(prev => ({ ...prev, customerTelephone: normalizedPhone }));
-        }
-    }, [phone]);
 
     // Handle cleanup of timers
     useEffect(() => {
@@ -158,7 +143,38 @@ export default function RTGSTransferForm() {
         };
     }, [resendTimer]);
 
-    // Step validation
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        
+        if (errors[name as keyof Errors]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+
+        if (name === 'otpCode') {
+            const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
+            setFormData(prev => ({ ...prev, [name]: digitsOnly }));
+        } else if (name === 'transferAmount') {
+            const sanitizedValue = value.replace(/[^\d.]/g, '');
+            const parts = sanitizedValue.split('.');
+            if (parts.length > 2) return;
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
+
+    const handleAccountSelect = (account: { accountNumber: string; accountName: string }) => {
+        setFormData(prev => ({
+            ...prev,
+            orderingAccountNumber: account.accountNumber,
+            orderingCustomerName: account.accountName
+        }));
+        if (accounts.length > 1) {
+            localStorage.setItem('selectedRtgsAccount', account.accountNumber);
+        }
+    };
+
+    // Step validation - SIMPLIFIED LIKE WITHDRAWAL
     const validateStep1 = (): boolean => {
         const errs: Errors = {};
         
@@ -227,12 +243,9 @@ export default function RTGSTransferForm() {
         setStep(2);
     };
 
-    const handleStep2Next = (e: FormEvent) => {
+    // Request OTP using Auth endpoint (works across forms)
+    const handleStep2Next = async (e: FormEvent) => {
         e.preventDefault();
-        setStep(3);
-    };
-
-    const handleRequestOtp = async () => {
         if (!phone) {
             setErrors({ submit: t('missingPhoneNumber', 'Phone number not found. Please log in again.') });
             return;
@@ -243,10 +256,10 @@ export default function RTGSTransferForm() {
         setOtpMessage('');
 
         try {
-            const response = await authService.requestOtp(phone);
-            if (response.success) {
+            const response = await requestRtgsTransferOtp(phone);
+            if (response && response.success) {
                 setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
-                setOtpRequested(true);
+                setStep(3);
                 setResendCooldown(30);
                 
                 const timer = setInterval(() => {
@@ -260,7 +273,7 @@ export default function RTGSTransferForm() {
                 }, 1000);
                 setResendTimer(timer);
             } else {
-                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
+                setErrors({ submit: response?.message || t('otpRequestFailed', 'Failed to send OTP.') });
             }
         } catch (error: any) {
             setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
@@ -269,6 +282,7 @@ export default function RTGSTransferForm() {
         }
     };
 
+    // Resend OTP using Auth endpoint
     const handleResendOtp = async () => {
         if (!phone || resendCooldown > 0) return;
 
@@ -277,8 +291,8 @@ export default function RTGSTransferForm() {
         setOtpMessage('');
 
         try {
-            const response = await authService.requestOtp(phone);
-            if (response.success) {
+            const response = await requestRtgsTransferOtp(phone);
+            if (response && response.success) {
                 setOtpMessage(t('otpResent', 'OTP resent successfully.'));
                 setResendCooldown(30);
                 
@@ -293,7 +307,7 @@ export default function RTGSTransferForm() {
                 }, 1000);
                 setResendTimer(timer);
             } else {
-                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
+                setErrors({ submit: response?.message || t('otpRequestFailed', 'Failed to send OTP.') });
             }
         } catch (error: any) {
             setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
@@ -302,6 +316,7 @@ export default function RTGSTransferForm() {
         }
     };
 
+    // Submit with OTP bundled in payload
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!validateStep3()) return;
@@ -315,16 +330,19 @@ export default function RTGSTransferForm() {
         setErrors({});
 
         try {
+            const rawPhone = (phone || '').toString();
             const payload = {
                 BranchId: branch.id,
                 OrderingAccountNumber: formData.orderingAccountNumber,
+                OrderingCustomerName: formData.orderingCustomerName,
                 BeneficiaryBank: formData.beneficiaryBank,
                 BeneficiaryBranch: formData.beneficiaryBranch,
                 BeneficiaryAccountNumber: formData.beneficiaryAccountNumber,
                 BeneficiaryName: formData.beneficiaryName,
                 TransferAmount: parseFloat(formData.transferAmount),
                 PaymentNarrative: formData.paymentNarrative,
-                CustomerTelephone: normalizePhoneForBackend(formData.customerTelephone || phone),
+                CustomerTelephone: rawPhone.slice(0, 12),
+                PhoneNumber: rawPhone,
                 DigitalSignature: formData.digitalSignature,
                 OtpCode: formData.otpCode,
             };
@@ -344,53 +362,16 @@ export default function RTGSTransferForm() {
                 throw new Error(response.message || t('submissionFailed', 'Submission failed'));
             }
         } catch (error: any) {
-            setErrors({ 
-                submit: error?.message || t('submissionError', 'An error occurred during submission') 
-            });
+            const errorMessage = error?.message || t('submissionFailed', 'Submission failed');
+            if (errorMessage.toLowerCase().includes('otp') || errorMessage.toLowerCase().includes('invalid')) {
+                setErrors({ otpCode: errorMessage });
+            } else {
+                setErrors({ submit: errorMessage });
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        
-        if (name === 'otpCode') {
-            const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
-            setFormData(prev => ({ ...prev, [name]: digitsOnly }));
-        } else if (name === 'customerTelephone') {
-            const normalized = normalizePhoneForBackend(value);
-            setFormData(prev => ({ ...prev, [name]: normalized }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
-        
-        if (errors[name as keyof Errors]) {
-            setErrors(prev => ({ ...prev, [name]: undefined }));
-        }
-    };
-
-    const handleAccountSelect = (account: { accountNumber: string; accountName: string }) => {
-        setFormData(prev => ({
-            ...prev,
-            orderingAccountNumber: account.accountNumber,
-            orderingCustomerName: account.accountName
-        }));
-    };
-
-    // Loading states
-    if (loadingAccounts) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="max-w-4xl w-full">
-                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                        <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
-                        <p className="text-gray-600">{t('loading', 'Loading...')}</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -456,20 +437,17 @@ export default function RTGSTransferForm() {
                                     </h2>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                {t('phoneNumber', 'Phone Number')}
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                name="customerTelephone"
-                                                value={formData.customerTelephone}
-                                                onChange={handleChange}
-                                                className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                placeholder="0912345678"
-                                                maxLength={12}
-                                            />
-                                        </div>
+                                    <div className="md:col-span-2">
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+        {t('phoneNumber', 'Phone Number')}
+    </label>
+    <input
+        type="tel"
+        value={phone || ''} 
+        disabled
+        className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+    />
+</div>
 
                                         {showAccountSelection && (
                                             <div className="md:col-span-2">
@@ -658,7 +636,7 @@ export default function RTGSTransferForm() {
                             </form>
                         )}
 
-                        {/* Step 2: Review Only (Just Next button) */}
+                        {/* Step 2: Review Only */}
                         {step === 2 && (
                             <form onSubmit={handleStep2Next} className="space-y-6">
                                 <div className="border border-gray-200 rounded-lg p-6">
@@ -709,16 +687,26 @@ export default function RTGSTransferForm() {
                                     </button>
                                     <button 
                                         type="submit" 
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
+                                        disabled={otpLoading}
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
                                     >
-                                        <span>{t('next', 'Next')}</span>
-                                        <ChevronRight className="h-4 w-4" />
+                                        {otpLoading ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                {t('requestingOtp', 'Requesting OTP...')}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Shield className="h-4 w-4" />
+                                                {t('requestOtp', 'Request OTP')}
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </form>
                         )}
 
-                        {/* Step 3: OTP Request, Verification & Digital Signature */}
+                        {/* Step 3: OTP Request, Verification & Digital Signature (Final Step) */}
                         {step === 3 && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="border border-gray-200 rounded-lg p-6">
@@ -758,85 +746,55 @@ export default function RTGSTransferForm() {
                                             {t('otpVerification', 'OTP Verification')}
                                         </h3>
                                         
-                                        {!otpRequested ? (
-                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                                <p className="text-sm text-blue-700">
-                                                    {t('otpRequestMessage', 'Click the button below to request an OTP to your phone number:')} 
-                                                    <strong className="text-blue-900"> {phone}</strong>
+                                        {/* OTP Status Message */}
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                            <p className="text-sm text-blue-700">
+                                                {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
+                                                <strong className="text-blue-900"> {phone}</strong>
+                                            </p>
+                                            {otpMessage && (
+                                                <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                                                    <CheckCircle2 className="h-3 w-3" />
+                                                    {otpMessage}
                                                 </p>
-                                            </div>
-                                        ) : (
-                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                                <p className="text-sm text-blue-700">
-                                                    {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
-                                                    <strong className="text-blue-900"> {phone}</strong>
-                                                </p>
-                                                {otpMessage && (
-                                                    <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-                                                        <CheckCircle2 className="h-3 w-3" />
-                                                        {otpMessage}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
 
-                                        {!otpRequested ? (
-                                            <div className="flex justify-center mb-4">
-                                                <button 
+                                        {/* OTP Input Field */}
+                                        <div className="max-w-md">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                {t('enterOtp', 'Enter OTP Code')}
+                                            </label>
+                                            <input 
+                                                type="text" 
+                                                name="otpCode" 
+                                                value={formData.otpCode} 
+                                                onChange={handleChange} 
+                                                maxLength={6}
+                                                className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
+                                                placeholder="000000"
+                                            />
+                                            {errors.otpCode && (
+                                                <span className="text-red-500 text-xs mt-1">{errors.otpCode}</span>
+                                            )}
+                                            
+                                            <div className="mt-2 flex justify-between items-center">
+                                                <button
                                                     type="button"
-                                                    onClick={handleRequestOtp}
-                                                    disabled={otpLoading}
-                                                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                                                    onClick={handleResendOtp}
+                                                    disabled={resendCooldown > 0 || otpLoading}
+                                                    className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
                                                 >
-                                                    {otpLoading ? (
-                                                        <>
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                            {t('requestingOtp', 'Requesting OTP...')}
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Shield className="h-4 w-4" />
-                                                            {t('requestOtp', 'Request OTP')}
-                                                        </>
-                                                    )}
+                                                    {resendCooldown > 0 
+                                                        ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
+                                                        : t('resendOtp', 'Resend OTP')
+                                                    }
                                                 </button>
+                                                <span className="text-sm text-gray-500">
+                                                    {formData.otpCode.length}/6
+                                                </span>
                                             </div>
-                                        ) : (
-                                            <div className="max-w-md">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    {t('enterOtp', 'Enter OTP Code')}
-                                                </label>
-                                                <input 
-                                                    type="text" 
-                                                    name="otpCode" 
-                                                    value={formData.otpCode} 
-                                                    onChange={handleChange} 
-                                                    maxLength={6}
-                                                    className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
-                                                    placeholder="000000"
-                                                />
-                                                {errors.otpCode && (
-                                                    <span className="text-red-500 text-xs mt-1">{errors.otpCode}</span>
-                                                )}
-                                                
-                                                <div className="mt-2 flex justify-between items-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleResendOtp}
-                                                        disabled={resendCooldown > 0 || otpLoading}
-                                                        className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
-                                                    >
-                                                        {resendCooldown > 0 
-                                                            ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
-                                                            : t('resendOtp', 'Resend OTP')
-                                                        }
-                                                    </button>
-                                                    <span className="text-sm text-gray-500">
-                                                        {formData.otpCode.length}/6
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -853,7 +811,7 @@ export default function RTGSTransferForm() {
                                     </button>
                                     <button 
                                         type="submit" 
-                                        disabled={isSubmitting || !otpRequested || formData.otpCode.length !== 6 || !formData.digitalSignature.trim()}
+                                        disabled={isSubmitting || formData.otpCode.length !== 6 || !formData.digitalSignature.trim()}
                                         className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
                                     >
                                         {isSubmitting ? (

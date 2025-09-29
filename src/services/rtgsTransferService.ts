@@ -12,6 +12,7 @@ export type RtgsTransferRequestDto = {
   TransferAmount: number;
   PaymentNarrative: string;
   CustomerTelephone?: string | null;
+  PhoneNumber?: string | null; // Some endpoints expect PhoneNumber with OtpCode
   DigitalSignature: string;
   OtpCode: string;
   // REMOVED: Success: boolean; // This should only be in response
@@ -37,42 +38,64 @@ export type RtgsTransferResponseDto = {
 
 export type ApiResponse<T> = { success: boolean; message?: string; data?: T };
 
+type RtgsOtpAttempt =
+  | { method: 'POST'; url: string; body: { phoneNumber: string } }
+  | { method: 'GET'; url: string; params: { phoneNumber: string } };
+
 export async function requestRtgsTransferOtp(phoneNumber: string): Promise<ApiResponse<null>> {
+  const endpoints: RtgsOtpAttempt[] = [
+    { method: 'POST', url: `${API_BASE_URL}/RtgsTransfer/request-otp`, body: { phoneNumber } },
+    { method: 'POST', url: `${API_BASE_URL}/RtgsTransfer/RequestOtp`, body: { phoneNumber } },
+    { method: 'GET', url: `${API_BASE_URL}/RtgsTransfer/request-otp`, params: { phoneNumber } },
+  ];
+
+  let lastError: any = null;
+
+  for (const attempt of endpoints) {
     try {
-        console.log(`Requesting RTGS OTP for phone: ${phoneNumber}`);
-        const res = await axios.post(`${API_BASE_URL}/RtgsTransfer/request-otp`, { phoneNumber }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            timeout: 30000,
-            validateStatus: (status) => status < 500,
-        });
+      console.log(`Requesting RTGS OTP via ${attempt.method} ${attempt.url}`);
+      const config: any = {
+        method: attempt.method,
+        url: attempt.url,
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+        validateStatus: (status: number) => status < 500,
+      };
+      if (attempt.method === 'POST') {
+        config.data = (attempt as Extract<RtgsOtpAttempt, { method: 'POST' }>).body;
+      } else {
+        config.params = (attempt as Extract<RtgsOtpAttempt, { method: 'GET' }>).params;
+      }
+      const res = await axios.request(config);
 
-        if (!res.data) {
-            console.error('Empty OTP response from server');
-            throw new Error('Empty OTP response from server');
-        }
-
-        return res.data;
+      if (!res.data) {
+        throw new Error('Empty OTP response from server');
+      }
+      return res.data;
     } catch (error: any) {
-        console.error('Error in requestRtgsTransferOtp:', {
-            message: error.message,
-            response: error.response?.data,
-            status: error.response?.status,
-        });
-
-        if (error.response) {
-            throw {
-                ...error,
-                message: error.response.data?.message || 'Server responded with an error during OTP request',
-                status: error.response.status,
-            };
-        } else if (error.request) {
-            throw new Error('No response received from OTP server. Please check your connection.');
-        } else {
-            throw new Error(`OTP request failed: ${error.message}`);
-        }
+      lastError = error;
+      console.warn('RTGS OTP attempt failed:', {
+        methodTried: attempt.method,
+        urlTried: attempt.url,
+        status: error?.response?.status,
+        data: error?.response?.data,
+      });
+      // Try next pattern
     }
+  }
+
+  console.error('All RTGS OTP request attempts failed');
+  if (lastError?.response) {
+    throw {
+      ...lastError,
+      message: lastError.response.data?.message || 'RTGS OTP request failed',
+      status: lastError.response.status,
+    };
+  }
+  if (lastError?.request) {
+    throw new Error('No response received from RTGS OTP server. Please check your connection.');
+  }
+  throw new Error(`RTGS OTP request failed: ${lastError?.message || 'Unknown error'}`);
 }
 
 export async function submitRtgsTransfer(payload: RtgsTransferRequestDto): Promise<ApiResponse<RtgsTransferResponseDto>> {

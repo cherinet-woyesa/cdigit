@@ -55,12 +55,17 @@ const makerService = {
   /** WINDOWS */
   getWindowsByBranchId: async (branchId: string, token: string) => {
     const res = await axios.get(`${API_BASE_URL}/Window/bybranch/${branchId}`, authHeader(token));
-    return res.data as any[]; // plain array
+    //return res.data as any[]; // plain array
+    return res.data?.data as any[]; // <-- pick .data
+
   },
 
   getAssignedWindowForMaker: async (makerId: string, token: string) => {
     const res = await axios.get(`${API_BASE_URL}/Window/assigned-to-maker/${makerId}`, authHeader(token));
-    return res.data || null; // plain object or null
+    // return res.data || null; // plain object or null
+    return res.data?.data || null; // <-- pick .data
+
+
   },
 
   assignMakerToWindow: async (windowId: string, makerId: string, token: string) => {
@@ -69,8 +74,23 @@ const makerService = {
       {},
       authHeader(token)
     );
-    return res.data as { message: string };
+    // return res.data as { message: string };
+    return res.data;
+
   },
+
+  changeMakerToWindow: async (windowId: string, makerId: string, token: string) => {
+    console.log("makerService.changeMakerToWindow called with:", { windowId, makerId });
+    const res = await axios.put(
+      `${API_BASE_URL}/Window/${windowId}/change-window/${makerId}`,
+      {},
+      authHeader(token)
+    );
+    // return res.data as { message: string };
+    return res.data;
+
+  },
+
 
   /** QUEUE & TELLER */
   getAllCustomersOnQueueByBranch: async (branchId: string, token: string) => {
@@ -88,6 +108,33 @@ const makerService = {
     );
     return res.data; // ApiResponse<object>
   },
+
+  // callNextCustomer: async (
+  //   makerId: string,
+  //   windowId: string,
+  //   branchId: string,
+  //   windowType: string,
+  //   token: string
+  // ) => {
+  //   console.log("makerService.callNextCustomer called with:", { makerId, windowId, branchId, windowType });
+  //   const payload = {
+  //     frontMakerId: makerId,
+  //     windowId: windowId,
+  //     branchId: branchId,
+  //     customerSegment: windowType, // e.g., "Retail", "Corporate"
+  //     // priorityLevel: 0,            // default to 0; adjust as needed
+  //     serviceType: windowType  // e.g., "Deposit", "Withdrawal"
+  //   };
+
+  //   const res = await axios.post<ApiResponse<NextCustomerData>>(
+  //     `${API_BASE_URL}/Teller/Next`,
+  //     payload,
+  //     authHeader(token)
+  //   );
+
+  //   return res.data;
+  // },
+
 
   completeTransaction: async (id: string, token: string) => {
     const res = await axios.post<ApiResponse<null>>(
@@ -114,7 +161,7 @@ const makerService = {
     token: string
   ) => {
     const res = await axios.put<ApiResponse<object>>(
-       `${API_BASE_URL}/Deposits/denominations/${formReferenceId}`,
+      `${API_BASE_URL}/Deposits/denominations/${formReferenceId}`,
 
       updateDto,
       {
@@ -130,22 +177,30 @@ const makerService = {
 
   //get total served by current logged in maker
   getTotalServed: async (makerId: string, token: string) => {
-  const res = await axios.get<ApiResponse<number>>(
-    `${API_BASE_URL}/Teller/TotalServed/${makerId}`,
-    authHeader(token)
-  );
-  return res.data;
-},
+    const res = await axios.get<ApiResponse<number>>(
+      `${API_BASE_URL}/Teller/TotalServed/${makerId}`,
+      authHeader(token)
+    );
+    return res.data;
+  },
 
-//get by form reference id
-searchCustomerByFormReferenceId: async (formReferenceId: string, token: string) => {
-  const res = await axios.get<ApiResponse<NextCustomerData>>(
-    `${API_BASE_URL}/Teller/SearchByFormReference/${formReferenceId}`,
-    authHeader(token)
-  );
-  return res.data;
-},
+  //get by form reference id
+  searchCustomerByFormReferenceId: async (formReferenceId: string, token: string) => {
+    const res = await axios.get<ApiResponse<NextCustomerData>>(
+      `${API_BASE_URL}/Teller/SearchByFormReference/${formReferenceId}`,
+      authHeader(token)
+    );
+    return res.data;
+  },
 
+  //get branch info
+  getBranchById: async (branchId: string, token: string) => {
+    const res = await axios.get<ApiResponse<any>>(
+      `${API_BASE_URL}/branches/${branchId}`,
+      authHeader(token)
+    );
+    return res.data;
+  },
 
 };
 

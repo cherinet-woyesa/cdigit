@@ -6,6 +6,8 @@ export type PosRequestCreateDto = {
   BranchId: string;
   OtpCode: string;
   AccountNumber: string;
+  CustomerName: string;
+  PhoneNumber: string;
   ContactNumber: string;
   SecondaryContactNumber?: string | null;
   Address: string;

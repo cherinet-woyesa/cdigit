@@ -5,9 +5,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   message: string;
+  amount?: string;
 }
 
-export default function QueueNotifyModal({ isOpen, onClose, title, message }: ModalProps) {
+export default function QueueNotifyModal({ isOpen, onClose, title, message, amount }: ModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -22,7 +23,10 @@ export default function QueueNotifyModal({ isOpen, onClose, title, message }: Mo
         </button>
 
         <h2 className="text-xl font-bold text-gray-900 mb-3">{title}</h2>
-        <p className="text-gray-700 mb-6">{message}</p>
+        <p className="text-gray-700 mb-1">{message}</p>
+        {amount && (
+          <p className="text-gray-900 font-semibold mb-6">{amount}</p>
+        )}
 
         <div className="flex justify-end">
           <button

@@ -115,6 +115,7 @@ const authService: AuthService = {
         try {
             const response = await axios.post<ApiResponse<{ accounts: any[] }>>(`${API_BASE_URL}/auth/request-otp`, { phoneNumber });
             return {
+                success: response.data.success,
                 message: response.data.message,
                 accounts: response.data.data?.accounts,
             };

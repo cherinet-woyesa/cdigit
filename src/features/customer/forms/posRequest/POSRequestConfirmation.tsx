@@ -1,7 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Clock, MapPin, Smartphone, Mail, Home, User, FileText, CreditCard } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher';
+import { useAuth } from '../../../../context/AuthContext';
+import { 
+  CheckCircle2, 
+  Clock, 
+  MapPin, 
+  Smartphone, 
+  User, 
+  FileText, 
+  CreditCard,
+  Plane,
+  Calendar,
+  Printer,
+  RefreshCw
+} from 'lucide-react';
 
 interface FormData {
   formRefId: string;
@@ -32,6 +46,8 @@ const POSRequestConfirmation: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
+  const { phone } = useAuth();
+  const printRef = useRef<HTMLDivElement>(null);
   
   // Get the form data from location state
   const formData = location.state?.formData as FormData | undefined;
@@ -66,21 +82,43 @@ const POSRequestConfirmation: React.FC = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
   
+  const serverData: any = location.state?.serverData?.data;
+  const branchName = location.state?.branchName as string | undefined;
+  const queueNumber = serverData?.queueNumber != null ? String(serverData.queueNumber) : 'N/A';
+  const tokenNumber = serverData?.tokenNumber || 'N/A';
+  const formReferenceId = serverData?.formReferenceId || formData.formRefId;
+
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        {/* Header */}
-        <div className="bg-fuchsia-800 px-4 py-5 sm:px-6">
-          <h2 className="text-xl font-semibold text-white">
-            {t('posRequestSubmitted', 'POS Request Submitted')}
-          </h2>
-          <p className="mt-1 text-sm text-fuchsia-100">
-            {t('thankYouForYourRequest', 'Thank you for your request. We will process it shortly.')}
-          </p>
-        </div>
-        
-        {/* Confirmation Content */}
-        <div className="p-6">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Header with Language Switcher */}
+          <div className="bg-fuchsia-700 text-white p-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-lg">
+                  <Plane className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">{t('posRequestSubmitted', 'POS Request Submitted')}</h1>
+                  <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>{branchName || t('branch', 'Branch')}</span>
+                    <span>•</span>
+                    <Calendar className="h-3 w-3" />
+                    <span>{new Date().toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">📱 {phone}</div>
+                <div className="bg-white/20 rounded p-1"><LanguageSwitcher /></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div ref={printRef} className="p-4">
           {/* Success Message */}
           <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
             <div className="flex">
@@ -95,50 +133,51 @@ const POSRequestConfirmation: React.FC = () => {
             </div>
           </div>
           
-          {/* Reference Information */}
-          <div className="bg-gray-50 p-6 rounded-lg mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              {t('referenceInformation', 'Reference Information')}
-            </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 h-6 w-6 text-fuchsia-600">
-                  <FileText className="h-5 w-5" />
+            {/* Queue and Token Cards */}
+            <div className="mb-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-3 rounded-lg text-center text-white">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <MapPin className="h-3 w-3" />
+                    <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
+                  </div>
+                  <p className="text-2xl font-bold">{queueNumber}</p>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">{t('referenceNumber', 'Reference Number')}</p>
-                  <p className="text-sm text-gray-900 font-mono">{formData.formRefId}</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="flex-shrink-0 h-6 w-6 text-fuchsia-600">
-                  <Clock className="h-5 w-5" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">{t('submissionDate', 'Submission Date')}</p>
-                  <p className="text-sm text-gray-900">{formatDate(formData.date)}</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="flex-shrink-0 h-6 w-6 text-fuchsia-600">
-                  <MapPin className="h-5 w-5" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">{t('branch', 'Branch')}</p>
-                  <p className="text-sm text-gray-900">{formData.branchName}</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="flex-shrink-0 h-6 w-6 text-fuchsia-600">
-                  <CreditCard className="h-5 w-5" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">{t('accountNumber', 'Account Number')}</p>
-                  <p className="text-sm text-gray-900">{formatAccountNumber(formData.accountNumber)}</p>
+                <div className="bg-gradient-to-r from-fuchsia-700 to-pink-700 p-3 rounded-lg text-center text-white">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <CreditCard className="h-3 w-3" />
+                    <span className="text-xs font-medium">{t('token', 'Token')}</span>
+                  </div>
+                  <p className="text-2xl font-bold">{tokenNumber}</p>
                 </div>
               </div>
             </div>
-          </div>
+
+            {/* Reference Information */}
+            <div className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200">
+              <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                {t('referenceInformation', 'Reference Information')}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">{t('referenceNumber', 'Reference Number')}:</span>
+                  <span className="font-mono font-semibold">{formReferenceId}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">{t('submissionDate', 'Submission Date')}:</span>
+                  <span>{new Date().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">{t('branch', 'Branch')}:</span>
+                  <span>{branchName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">{t('accountNumber', 'Account Number')}:</span>
+                  <span className="font-mono font-semibold">{formatAccountNumber(formData.accountNumber)}</span>
+                </div>
+              </div>
+            </div>
           
           {/* Request Details */}
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -260,22 +299,27 @@ const POSRequestConfirmation: React.FC = () => {
             </div>
           </div>
           
-          {/* Actions */}
-          <div className="mt-8 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-500"
-            >
-              {t('printThisPage', 'Print this page')}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-fuchsia-700 hover:bg-fuchsia-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-500"
-            >
-              {t('backToDashboard', 'Back to Dashboard')}
-            </button>
+            {/* Actions */}
+            <div className="p-4 border-t border-gray-200">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/form/pos-request')}
+                  className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  {t('newRequest', 'New')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                >
+                  <Printer className="h-3 w-3" />
+                  {t('print', 'Print')}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

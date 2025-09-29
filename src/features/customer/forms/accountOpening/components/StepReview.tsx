@@ -215,7 +215,7 @@ export function StepReview({ formData, goTo, onBack, onSubmit, submitting }: Ste
                     ) : (
                         <>
                             <CheckCircle2 className="h-4 w-4" />
-                            Confirm & Submit
+                            Review
                         </>
                     )}
                 </button>

@@ -1,4 +1,4 @@
-import React from 'react'; // Add this import
+import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +24,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import QueueNotifyModal from '../../modals/QueueNotifyModal';
+import TransactionFeedbackModal from '../../modals/TransactionFeedbackModal';
 import clsx from 'clsx';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 
@@ -175,6 +176,16 @@ export default function Dashboard() {
   const [signalRError, setSignalRError] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  // Transaction Feedback Modal state - ADDED FROM OLDER CODE
+  const [isTransactionFeedbackModalOpen, setTransactionFeedbackModalOpen] = useState(false);
+  const [TransactionCompletdModalTransactionId, setTransactionCompletdModalTransactionId] = useState('');
+  const [transactionCompletdModalFrontMakerId, setTransactionCompletdModalFrontMakerId] = useState('');
+  const [transactionCompletdModalBranchId, setTransactionCompletdModalBranchId] = useState('');
+  const [TransactionCompletdModalTransactionType, setTransactionCompletdModalTransactionType] = useState('');
+  const [TransactionCompletdModalTransactionAmount, setTransactionCompletdModalTransactionAmount] = useState('');
+  const [TransactionCompletdModalMessage, setTransactionCompletdModalMessage] = useState('');
+  const [TransactionCompletdModalCustomerPhone, setTransactionCompletdModalCustomerPhone] = useState('');
   
   // Refs
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -211,7 +222,7 @@ export default function Dashboard() {
     return filtered;
   }, [debouncedQuery, selectedCategory, t]);
 
-  // SignalR connection with better error handling
+  // SignalR connection with better error handling - UPDATED WITH TRANSACTION COMPLETED HANDLER
   useEffect(() => {
     if (!phone) {
       navigate('/otp-login');
@@ -237,6 +248,23 @@ export default function Dashboard() {
           setIsQueueNotifyModalOpen(true);
         });
 
+        // ADDED FROM OLDER CODE: Transaction Completed handler
+        connection.on("TransactionCompleted", (data: any) => {
+          // Close the queue notify modal automatically
+          setIsQueueNotifyModalOpen(false);
+
+          setTransactionFeedbackModalOpen(true);
+          setTransactionCompletdModalTransactionId(data.transactionId);
+          setTransactionCompletdModalFrontMakerId(data.frontMakerId);
+          setTransactionCompletdModalBranchId(data.branchId);
+          setTransactionCompletdModalCustomerPhone(data.customerPhone);
+          setTransactionCompletdModalTransactionType(data.transactionType);
+          setTransactionCompletdModalTransactionAmount(data.amount);
+          setTransactionCompletdModalMessage(data.message);
+
+          console.log("Signal R data for completed transaction:", data);
+        });
+
         setSignalRError(null);
       } catch (error) {
         console.warn('SignalR connection failed:', error);
@@ -251,6 +279,7 @@ export default function Dashboard() {
     return () => {
       if (connection) {
         connection.off('CustomerCalled');
+        connection.off('TransactionCompleted'); // ADDED: Clean up transaction completed listener
         connection.stop().catch(console.warn);
       }
     };
@@ -334,7 +363,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100" ref={containerRef}>
-      {/* Notification Modal */}
+      {/* Notification Modals */}
       <QueueNotifyModal
         isOpen={isQueueNotifyModalOpen}
         onClose={() => setIsQueueNotifyModalOpen(false)}
@@ -342,36 +371,47 @@ export default function Dashboard() {
         message={queueNotifyModalMessage}
       />
 
+      {/* ADDED FROM OLDER CODE: Transaction Feedback Modal */}
+      <TransactionFeedbackModal
+        isOpen={isTransactionFeedbackModalOpen}
+        onClose={() => setTransactionFeedbackModalOpen(false)}
+        transactionId={TransactionCompletdModalTransactionId}
+        frontMakerId={transactionCompletdModalFrontMakerId}
+        branchId={transactionCompletdModalBranchId}
+        customerPhone={TransactionCompletdModalCustomerPhone}
+        transactionType={TransactionCompletdModalTransactionType}
+        transactionAmount={TransactionCompletdModalTransactionAmount}
+        message={TransactionCompletdModalMessage}
+      />
+
       {/* Header */}
-     
-<header className="bg-fuchsia-700 text-white shadow-lg sticky top-0 z-50">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-      <div>
-        <h1 className="text-2xl font-bold">{t('dashboardTitle', 'CBE Digital Banking')}</h1>
-        <p className="text-fuchsia-200 text-sm mt-1">
-          {t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}
-        </p>
-      </div>
-      
-      {/* Integrated Language Switcher */}
-      <div className="flex items-center gap-3">
-      <div className="bg-fuchsia-800/80 px-3 py-1.5 rounded-full text-sm">
-          📱 {phone}
+      <header className="bg-fuchsia-700 text-white shadow-lg sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold">{t('dashboardTitle', 'CBE Digital Banking')}</h1>
+              <p className="text-fuchsia-200 text-sm mt-1">
+                {t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}
+              </p>
+            </div>
+            
+            {/* Integrated Language Switcher */}
+            <div className="flex items-center gap-3">
+              <div className="bg-fuchsia-800/80 px-3 py-1.5 rounded-full text-sm">
+                📱 {phone}
+              </div>
+              <div className="bg-fuchsia-700/30 rounded-lg p-1">
+                <LanguageSwitcher />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="bg-fuchsia-700/30 rounded-lg p-1">
-          <LanguageSwitcher />
-        </div>
-       
-      </div>
-    </div>
-  </div>
-</header>
+      </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Welcome Banner */}
-  <div className="bg-fuchsia-700 text-white rounded-2xl p-6 mb-6 shadow-lg">
+        <div className="bg-fuchsia-700 text-white rounded-2xl p-6 mb-6 shadow-lg">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold mb-2">{t('welcomeBanner', 'Welcome to CBE Digital Services')}</h2>
@@ -391,7 +431,7 @@ export default function Dashboard() {
         </div>
 
         {/* Search and Filters */}
-  <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           {/* Search Bar */}
           <div className="relative mb-4">
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />

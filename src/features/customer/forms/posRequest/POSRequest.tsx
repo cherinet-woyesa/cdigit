@@ -243,11 +243,13 @@ export default function POSRequestForm() {
             if (formData.landmark) addressParts.push(formData.landmark);
             const fullAddress = addressParts.join(', ');
 
+            const rawPhone = (formData.phoneNumber || phone || '').toString();
             const posRequestData = {
                 BranchId: branch.id,
                 OtpCode: formData.otpCode,
                 AccountNumber: formData.accountNumber,
                 CustomerName: formData.customerName,
+                PhoneNumber: rawPhone,
                 ContactNumber: formData.phoneNumber,
                 SecondaryContactNumber: null,
                 Address: fullAddress,

@@ -31,10 +31,15 @@ import {
     Gift,
     PenTool,
     Plane,
-    Calendar
+    Calendar,
+    Languages
 } from 'lucide-react';
 
-// Enhanced error message component
+// Import translation hooks and components
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher';
+
+// Enhanced error message component with translation
 function ErrorMessage({ message }: { message: string }) {
     return (
         <div className="flex items-center gap-2 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -44,7 +49,7 @@ function ErrorMessage({ message }: { message: string }) {
     );
 }
 
-// Success message component
+// Success message component with translation
 function SuccessMessage({ message }: { message: string }) {
     return (
         <div className="flex items-center gap-2 mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -55,60 +60,43 @@ function SuccessMessage({ message }: { message: string }) {
 }
 
 const steps = [
-    "Personal", "Address", "Financial", "Other", 
-    "Document", "Payment", "Items", "Signature", "Review"
+    "personal", "address", "financial", "other", 
+    "document", "payment", "items", "signature", "review"
 ];
 
 const stepIcons = [User, MapPin, CreditCard, Shield, FileText, CreditCard, Gift, PenTool, CheckCircle2];
 
-// FIX 1: Enhanced phone number validation
+// Enhanced phone number validation
 const isValidPhoneNumber = (phone: string): boolean => {
     if (!phone.trim()) return false;
     
-    // Remove all non-digit characters first
     const cleanPhone = phone.replace(/[^\d]/g, '');
     
-    // Ethiopian mobile numbers can be:
-    // - 09xxxxxxxx (10 digits) - traditional format
-    // - 07xxxxxxxx (10 digits) - new format  
-    // - 9xxxxxxxx (9 digits) - without leading 0 (traditional)
-    // - 7xxxxxxxx (9 digits) - without leading 0 (new)
-    // - 2519xxxxxxxx (12 digits) - international without +
-    // - 2517xxxxxxxx (12 digits) - new format international
-    
     if (cleanPhone.length === 9) {
-        // 9xxxxxxxx or 7xxxxxxxx (without leading 0)
         return /^[97]\d{8}$/.test(cleanPhone);
     } else if (cleanPhone.length === 10) {
-        // 09xxxxxxxx or 07xxxxxxxx (with leading 0)
         return /^0[97]\d{8}$/.test(cleanPhone);
     } else if (cleanPhone.length === 12) {
-        // 2519xxxxxxxx or 2517xxxxxxxx (international without +)
         return /^251[97]\d{8}$/.test(cleanPhone);
     }
     
     return false;
 };
 
-// Normalize phone number to consistent backend format (2519xxxxxxxx)
 const normalizePhoneNumber = (phone: string): string => {
     const cleanPhone = phone.replace(/[^\d]/g, '');
     
     if (cleanPhone.length === 9) {
-        // 9xxxxxxxx → 2519xxxxxxxx
         return `251${cleanPhone}`;
     } else if (cleanPhone.length === 10) {
-        // 09xxxxxxxx → 2519xxxxxxxx  
         return `251${cleanPhone.substring(1)}`;
     } else if (cleanPhone.length === 12) {
-        // 2519xxxxxxxx or 2517xxxxxxxx → keep as is
         return cleanPhone;
     }
     
     return cleanPhone;
 };
 
-// Format phone for display
 const formatPhoneForDisplay = (phone: string): string => {
     const normalized = normalizePhoneNumber(phone);
     return `+${normalized}`;
@@ -119,16 +107,17 @@ export function AccountOpeningForm() {
     const { branch } = useBranch();
     const { user } = useAuth();
     
+    // Add translation hook
+    const { t } = useTranslation();
+    
     const [errors, setErrors] = useState<FormErrors>(INITIAL_FORM_ERRORS);
     const [submitting, setSubmitting] = useState(false);
-    
-    // FIX 2: Enhanced state management for session persistence
     const [phoneNumberScreenActive, setPhoneNumberScreenActive] = useState(true);
     const [phoneNumberInput, setPhoneNumberInput] = useState("");
     const [phoneCheckLoading, setPhoneCheckLoading] = useState(false);
     const [phoneInputError, setPhoneInputError] = useState<string | undefined>();
     const [successMessage, setSuccessMessage] = useState('');
-    const [resumeStep, setResumeStep] = useState<number>(0); // Track where to resume
+    const [resumeStep, setResumeStep] = useState<number>(0);
 
     const stepKeys = [
         "personalDetails", "addressDetails", "financialDetails", "otherDetails",
@@ -160,7 +149,6 @@ export function AccountOpeningForm() {
         return pascalObj;
     };
 
-    // Fix: Proper date formatting for backend
     const formatDateForBackend = (dateString: string | undefined): string => {
         if (!dateString) return '';
         try {
@@ -181,25 +169,21 @@ export function AccountOpeningForm() {
         setErrors((prev) => ({ ...prev, [section]: {} }));
     };
 
-    // FIX 2: Enhanced session persistence - restore application state on mount
+    // Enhanced session persistence with translation
     useEffect(() => {
         const restoreApplicationState = async () => {
             try {
-                // Check if we have a saved phone number and step
                 const savedPhone = localStorage.getItem('accountOpeningPhone');
                 const savedStep = localStorage.getItem('accountOpeningCurrentStep');
-                const savedFormData = localStorage.getItem('accountOpeningFormData');
                 
                 if (savedPhone && savedStep) {
                     const step = parseInt(savedStep, 10);
                     const normalizedPhone = normalizePhoneNumber(savedPhone);
                     
                     if (!isNaN(step) && step >= 0 && step < steps.length) {
-                        // We have a saved application in progress
                         setPhoneNumberInput(savedPhone);
                         setResumeStep(step);
                         
-                        // Try to load the saved form data from backend
                         try {
                             const formSummary: FormSummary | null = await accountOpeningService.getSavedForm(normalizedPhone);
                             if (formSummary) {
@@ -216,7 +200,6 @@ export function AccountOpeningForm() {
                                 };
                                 setFormData(transformedData);
                                 
-                                // Check URL parameter for step override
                                 const params = new URLSearchParams(window.location.search);
                                 const stepParam = params.get('step');
                                 const urlStep = stepParam ? parseInt(stepParam, 10) : step;
@@ -224,13 +207,11 @@ export function AccountOpeningForm() {
                                 const finalStep = !isNaN(urlStep) && urlStep >= 0 && urlStep < steps.length ? urlStep : step;
                                 setResumeStep(finalStep);
                                 
-                                // Auto-continue to the saved step
                                 setPhoneNumberScreenActive(false);
                                 setTimeout(() => goTo(finalStep), 100);
                             }
                         } catch (error) {
                             console.log('No saved form found or error loading form:', error);
-                            // If backend doesn't have saved form, check URL step
                             const params = new URLSearchParams(window.location.search);
                             const stepParam = params.get('step');
                             if (stepParam) {
@@ -242,7 +223,6 @@ export function AccountOpeningForm() {
                         }
                     }
                 } else {
-                    // Check URL for step parameter for new applications
                     const params = new URLSearchParams(window.location.search);
                     const stepParam = params.get('step');
                     if (stepParam) {
@@ -269,13 +249,10 @@ export function AccountOpeningForm() {
         return () => window.removeEventListener('beforeunload', handler);
     }, []);
 
-    // FIX 2: Save application progress whenever step changes
     useEffect(() => {
         if (!phoneNumberScreenActive && currentStep < steps.length) {
-            // Save current progress
             localStorage.setItem('accountOpeningCurrentStep', currentStep.toString());
             
-            // Update URL to reflect current step
             try {
                 const params = new URLSearchParams(window.location.search);
                 params.set('step', String(currentStep));
@@ -289,7 +266,7 @@ export function AccountOpeningForm() {
 
     const handlePhoneNumberSubmit = async () => {
         if (!phoneNumberInput.trim() || !isValidPhoneNumber(phoneNumberInput.trim())) {
-            setPhoneInputError("Please enter a valid Ethiopian mobile number (09, 07, +2519, +2517 formats accepted).");
+            setPhoneInputError(t('accountOpening.phoneValidationError', 'Please enter a valid Ethiopian mobile number (09, 07, +2519, +2517 formats accepted).'));
             return;
         }
         
@@ -297,23 +274,20 @@ export function AccountOpeningForm() {
         setPhoneCheckLoading(true);
         
         try {
-            // Normalize the phone number to consistent format for backend
             const normalizedPhone = normalizePhoneNumber(phoneNumberInput.trim());
             
-            // Save phone number for session persistence
             localStorage.setItem('accountOpeningPhone', normalizedPhone);
             localStorage.setItem('accountOpeningPhoneDisplay', phoneNumberInput.trim());
             
             const accountExists = await checkAccountExistsByPhone(normalizedPhone);
             if (accountExists) {
-                setPhoneInputError("An account already exists for this phone number.");
+                setPhoneInputError(t('accountOpening.phoneExistsError', 'An account already exists for this phone number.'));
                 setPhoneCheckLoading(false);
                 return;
             }
             
             const savedFormData: FormSummary | null = await accountOpeningService.getSavedForm(normalizedPhone);
             if (savedFormData) {
-                // Resume existing application
                 const transformedData: FormData = {
                     customerId: savedFormData.customerId,
                     personalDetails: savedFormData.personalDetails || INITIAL_DATA.personalDetails,
@@ -327,8 +301,7 @@ export function AccountOpeningForm() {
                 };
                 setFormData(transformedData);
                 
-                // Determine the step to resume to
-                let lastFilledStep = resumeStep; // Start with URL/resume step
+                let lastFilledStep = resumeStep;
                 if (savedFormData.digitalSignature?.id) lastFilledStep = 8;
                 else if (savedFormData.passbookMudayRequest?.id) lastFilledStep = 7;
                 else if (savedFormData.ePaymentService?.id) lastFilledStep = 6;
@@ -339,14 +312,12 @@ export function AccountOpeningForm() {
                 else if (savedFormData.personalDetails?.id) lastFilledStep = 1;
                 else lastFilledStep = 0;
                 
-                // Use the highest of resume step and calculated step
                 const finalStep = Math.max(resumeStep, lastFilledStep);
                 setResumeStep(finalStep);
                 
                 setPhoneNumberScreenActive(false);
                 setTimeout(() => goTo(finalStep), 100);
             } else {
-                // Start new application
                 setFormData({ 
                     ...INITIAL_DATA, 
                     addressDetails: { ...INITIAL_DATA.addressDetails, mobilePhone: normalizedPhone }, 
@@ -356,7 +327,7 @@ export function AccountOpeningForm() {
                 setTimeout(() => goTo(resumeStep), 100);
             }
         } catch (error: any) {
-            setPhoneInputError("An unexpected error occurred. Please try again.");
+            setPhoneInputError(t('accountOpening.generalError', 'An unexpected error occurred. Please try again.'));
         } finally {
             setPhoneCheckLoading(false);
         }
@@ -378,7 +349,7 @@ export function AccountOpeningForm() {
             let nextCustomerId = formData.customerId;
 
             if (currentStep > 0 && (!formData.customerId || formData.customerId <= 0)) {
-                setErrors((prev) => ({ ...prev, apiError: "Customer ID is missing. Please complete Personal Details first." }));
+                setErrors((prev) => ({ ...prev, apiError: t('accountOpening.missingCustomerId', 'Customer ID is missing. Please complete Personal Details first.') }));
                 setSubmitting(false);
                 return;
             }
@@ -482,7 +453,7 @@ export function AccountOpeningForm() {
             console.error("Error saving form data:", error);
             setErrors((prev) => ({ 
                 ...prev, 
-                apiError: error instanceof Error ? error.message : "Failed to save data. Please try again." 
+                apiError: error instanceof Error ? error.message : t('accountOpening.saveError', 'Failed to save data. Please try again.') 
             }));
         } finally {
             setSubmitting(false);
@@ -493,7 +464,7 @@ export function AccountOpeningForm() {
         if (!formData.customerId) {
             setErrors((prev) => ({
                 ...prev,
-                apiError: "Could not submit application: Customer ID is missing. Please complete all previous steps first.",
+                apiError: t('accountOpening.submissionError', 'Could not submit application: Customer ID is missing. Please complete all previous steps first.'),
             }));
             return;
         }
@@ -504,7 +475,6 @@ export function AccountOpeningForm() {
         try {
             await accountOpeningService.submitApplication(formData.customerId);
             
-            // Clear saved application data after successful submission
             localStorage.removeItem('accountOpeningPhone');
             localStorage.removeItem('accountOpeningPhoneDisplay');
             localStorage.removeItem('accountOpeningCurrentStep');
@@ -514,8 +484,8 @@ export function AccountOpeningForm() {
         } catch (error) {
             console.error("Failed to submit application:", error);
             const errorMessage = error instanceof Error 
-                ? `Failed to submit the application: ${error.message}` 
-                : "An unknown error occurred while submitting the application.";
+                ? t('accountOpening.submissionFailed', 'Failed to submit the application: {{message}}', { message: error.message })
+                : t('accountOpening.unknownError', 'An unknown error occurred while submitting the application.');
                 
             setErrors((prev) => ({
                 ...prev,
@@ -534,11 +504,12 @@ export function AccountOpeningForm() {
         back();
     };
 
-    // Enhanced phone screen with better formatting
+    // Enhanced phone screen with translation
     const renderPhoneScreen = () => {
         const isValid = isValidPhoneNumber(phoneNumberInput);
         const CurrentIcon = stepIcons[0];
         const displayPhone = phoneNumberInput && isValid ? formatPhoneForDisplay(phoneNumberInput) : '';
+        const hasSavedApplication = localStorage.getItem('accountOpeningPhone');
         
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] p-8">
@@ -546,14 +517,16 @@ export function AccountOpeningForm() {
                     <div className="bg-fuchsia-100 p-4 rounded-full inline-flex mb-4">
                         <CurrentIcon className="h-12 w-12 text-fuchsia-700" />
                     </div>
-                    <h2 className="text-2xl font-bold mb-2 text-fuchsia-800">Welcome to CBE Account Opening</h2>
+                    <h2 className="text-2xl font-bold mb-2 text-fuchsia-800">
+                        {hasSavedApplication ? t('accountOpening.resumeWelcome', 'Resume Your Application') : t('accountOpening.welcome', 'Welcome to CBE Account Opening')}
+                    </h2>
                     <p className="text-gray-600 text-lg max-w-md">
-                        {localStorage.getItem('accountOpeningPhone') ? 'Resume your application' : 'Start your application'}
+                        {hasSavedApplication ? t('accountOpening.resumeDescription', 'Continue from where you left off') : t('accountOpening.startDescription', 'Enter your mobile number to begin')}
                     </p>
                 </div>
                 
                 <div className="w-full max-w-md">
-                    <Field label="Ethiopian Mobile Number" error={phoneInputError} required>
+                    <Field label={t('accountOpening.phoneLabel', 'Ethiopian Mobile Number')} error={phoneInputError} required>
                         <div className="relative">
                             <input
                                 type="tel"
@@ -563,7 +536,7 @@ export function AccountOpeningForm() {
                                 }`}
                                 value={phoneNumberInput}
                                 onChange={(e) => setPhoneNumberInput(e.target.value)}
-                                placeholder="09xxxxxxx, 07xxxxxxx, +251..."
+                                placeholder={t('accountOpening.phonePlaceholder', '09xxxxxxx, 07xxxxxxx, +251...')}
                                 autoFocus
                             />
                             {phoneNumberInput && isValid && (
@@ -578,7 +551,7 @@ export function AccountOpeningForm() {
                     </Field>
                     
                     <div className="mt-2 text-xs text-gray-500 mb-4">
-                        <p>Accepted formats: 09xxxxxxx, 07xxxxxxx, 9xxxxxxx, +2519xxxxxxx, +2517xxxxxxx</p>
+                        <p>{t('accountOpening.phoneFormats', 'Accepted formats: 09xxxxxxx, 07xxxxxxx, 9xxxxxxx, +2519xxxxxxx, +2517xxxxxxx')}</p>
                     </div>
                     
                     <button
@@ -590,11 +563,11 @@ export function AccountOpeningForm() {
                         {phoneCheckLoading ? (
                             <>
                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                {localStorage.getItem('accountOpeningPhone') ? 'Resuming...' : 'Verifying...'}
+                                {hasSavedApplication ? t('accountOpening.resuming', 'Resuming...') : t('accountOpening.verifying', 'Verifying...')}
                             </>
                         ) : (
                             <>
-                                {localStorage.getItem('accountOpeningPhone') ? 'Resume Application' : 'Continue to Application'}
+                                {hasSavedApplication ? t('accountOpening.resumeButton', 'Resume Application') : t('accountOpening.continueButton', 'Continue to Application')}
                                 <ChevronRight className="h-5 w-5" />
                             </>
                         )}
@@ -607,12 +580,12 @@ export function AccountOpeningForm() {
                             </div>
                             <div>
                                 <p className="text-blue-800 text-sm font-medium">
-                                    {localStorage.getItem('accountOpeningPhone') ? 'Application Saved' : 'Your Privacy Matters'}
+                                    {hasSavedApplication ? t('accountOpening.savedNotice', 'Application Saved') : t('accountOpening.privacyNotice', 'Your Privacy Matters')}
                                 </p>
                                 <p className="text-blue-600 text-xs">
-                                    {localStorage.getItem('accountOpeningPhone') 
-                                        ? 'Your application progress is saved. You can resume anytime.' 
-                                        : 'We save your progress automatically. You can pause and resume later.'}
+                                    {hasSavedApplication 
+                                        ? t('accountOpening.savedDescription', 'Your application progress is saved. You can resume anytime.') 
+                                        : t('accountOpening.privacyDescription', 'We save your progress automatically. You can pause and resume later.')}
                                 </p>
                             </div>
                         </div>
@@ -622,6 +595,7 @@ export function AccountOpeningForm() {
         );
     };
 
+    // Success screen with translation
     const renderSuccessScreen = () => {
         return (
             <div className="text-center p-8 py-12">
@@ -629,15 +603,17 @@ export function AccountOpeningForm() {
                     <CheckCircle2 className="h-16 w-16 text-green-600" />
                 </div>
                 
-                <h2 className="text-3xl font-extrabold text-green-800 mb-4">Application Submitted Successfully!</h2>
+                <h2 className="text-3xl font-extrabold text-green-800 mb-4">
+                    {t('accountOpening.successTitle', 'Application Submitted Successfully!')}
+                </h2>
                 
                 <p className="text-lg text-gray-700 mb-6 max-w-md mx-auto">
-                    Your account opening application has been received and is being processed.
+                    {t('accountOpening.successDescription', 'Your account opening application has been received and is being processed.')}
                 </p>
                 
                 {formData.customerId && (
                     <div className="bg-gray-50 rounded-lg p-6 mb-8 max-w-md mx-auto">
-                        <p className="text-gray-600 mb-2">Your application reference:</p>
+                        <p className="text-gray-600 mb-2">{t('accountOpening.referenceLabel', 'Your application reference:')}</p>
                         <p className="text-2xl font-bold text-fuchsia-700 font-mono">{formData.customerId}</p>
                     </div>
                 )}
@@ -647,11 +623,10 @@ export function AccountOpeningForm() {
                         onClick={() => navigate("/")}
                         className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
                     >
-                        Go to Home
+                        {t('accountOpening.goHome', 'Go to Home')}
                     </button>
                     <button 
                         onClick={() => {
-                            // Clear everything and start fresh
                             localStorage.removeItem('accountOpeningPhone');
                             localStorage.removeItem('accountOpeningPhoneDisplay');
                             localStorage.removeItem('accountOpeningCurrentStep');
@@ -665,14 +640,13 @@ export function AccountOpeningForm() {
                         }}
                         className="bg-fuchsia-100 text-fuchsia-700 px-6 py-3 rounded-lg font-semibold hover:bg-fuchsia-200 transition-colors"
                     >
-                        New Application
+                        {t('accountOpening.newApplication', 'New Application')}
                     </button>
                 </div>
                 
                 <div className="mt-8 p-4 bg-blue-50 rounded-lg max-w-md mx-auto">
                     <p className="text-blue-800 text-sm">
-                        <strong>Next Steps:</strong> You will receive an SMS confirmation shortly. 
-                        Please visit your selected branch with original documents for verification.
+                        <strong>{t('accountOpening.nextSteps', 'Next Steps:')}</strong> {t('accountOpening.nextStepsDescription', 'You will receive an SMS confirmation shortly. Please visit your selected branch with original documents for verification.')}
                     </p>
                 </div>
             </div>
@@ -688,6 +662,7 @@ export function AccountOpeningForm() {
             return renderSuccessScreen();
         }
 
+        // Step components will need to be updated to use translation
         switch (currentStep) {
             case 0: return <StepPersonal 
                 data={formData.personalDetails} 
@@ -760,7 +735,7 @@ export function AccountOpeningForm() {
                 onSubmit={handleFinalSubmit} 
                 submitting={submitting} 
             />;
-            default: return <div className="text-center p-8">Invalid step</div>;
+            default: return <div className="text-center p-8">{t('accountOpening.invalidStep', 'Invalid step')}</div>;
         }
     };
 
@@ -768,6 +743,7 @@ export function AccountOpeningForm() {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
             <div className="max-w-4xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+                    {/* Enhanced Header with Language Switcher */}
                     <header className="bg-fuchsia-700 text-white rounded-t-lg">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -777,11 +753,13 @@ export function AccountOpeningForm() {
                                     </div>
                                     <div>
                                         <h1 className="text-lg font-bold">
-                                            {localStorage.getItem('accountOpeningPhone') ? 'Resume Application' : 'Account Opening'}
+                                            {localStorage.getItem('accountOpeningPhone') 
+                                                ? t('accountOpening.resumeHeader', 'Resume Application') 
+                                                : t('accountOpening.header', 'Account Opening')}
                                         </h1>
                                         <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
                                             <MapPin className="h-3 w-3" />
-                                            <span>{branch?.name || 'Selected Branch'}</span>
+                                            <span>{branch?.name || t('accountOpening.selectedBranch', 'Selected Branch')}</span>
                                             <span>•</span>
                                             <Calendar className="h-3 w-3" />
                                             <span>{new Date().toLocaleDateString()}</span>
@@ -792,9 +770,13 @@ export function AccountOpeningForm() {
                                 <div className="flex items-center gap-3">
                                     {!phoneNumberScreenActive && (
                                         <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
-                                            📱 {localStorage.getItem('accountOpeningPhoneDisplay') || phoneNumberInput || 'Phone Required'}
+                                            📱 {localStorage.getItem('accountOpeningPhoneDisplay') || phoneNumberInput || t('accountOpening.phoneRequired', 'Phone Required')}
                                         </div>
                                     )}
+                                    {/* Language Switcher */}
+                                    <div className="bg-white/20 rounded-lg p-1">
+                                        <LanguageSwitcher />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -804,13 +786,16 @@ export function AccountOpeningForm() {
                         <div className="px-6 py-4 border-b border-gray-200">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-medium text-gray-700">
-                                    Step {currentStep + 1} of {steps.length}
+                                    {t('accountOpening.stepIndicator', 'Step {{current}} of {{total}}', {
+                                        current: currentStep + 1,
+                                        total: steps.length
+                                    })}
                                 </span>
                                 <span className="text-sm text-fuchsia-700 font-semibold">
-                                    {steps[currentStep]}
+                                    {t(`accountOpening.steps.${steps[currentStep]}`, steps[currentStep])}
                                 </span>
                             </div>
-                            <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps} />
+                            <ProgressBar currentStep={currentStep} totalSteps={steps.length} stepTitles={steps.map(step => t(`accountOpening.steps.${step}`, step))} />
                         </div>
                     )}
 
