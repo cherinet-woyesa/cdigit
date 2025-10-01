@@ -333,132 +333,128 @@ export function AccountOpeningForm() {
         }
     };
 
-    const handleNext = async () => {
-        if (currentStep === 8) { next(); return; }
+  const handleNext = async () => {
+    if (currentStep === 8) { next(); return; }
 
-        const stepDataKey = stepKeys[currentStep];
-        if (!formData[stepDataKey as keyof FormData]) {
-            console.error(`Data for step ${currentStep} is undefined.`);
+    const stepDataKey = stepKeys[currentStep];
+    if (!formData[stepDataKey as keyof FormData]) {
+        console.error(`Data for step ${currentStep} is undefined.`);
+        return;
+    }
+
+    setSubmitting(true);
+    try {
+        let response: any;
+        let updatedCustomerData: Partial<FormData> = {};
+        let nextCustomerId = formData.customerId;
+
+        if (currentStep > 0 && (!formData.customerId || formData.customerId <= 0)) {
+            setErrors((prev) => ({ ...prev, apiError: t('accountOpening.missingCustomerId', 'Customer ID is missing. Please complete Personal Details first.') }));
+            setSubmitting(false);
             return;
         }
 
-        setSubmitting(true);
-        try {
-            let response: any;
-            let updatedCustomerData: Partial<FormData> = {};
-            let nextCustomerId = formData.customerId;
+        const transformDataForBackend = (data: any) => {
+            const transformed = toPascalCase(data);
+            if (data.dateOfBirth) transformed.DateOfBirth = formatDateForBackend(data.dateOfBirth);
+            if (data.issueDate) transformed.IssueDate = formatDateForBackend(data.issueDate);
+            if (data.expiryDate) transformed.ExpiryDate = formatDateForBackend(data.expiryDate);
+            if (nextCustomerId) transformed.CustomerId = nextCustomerId;
+            return transformed;
+        };
 
-            if (currentStep > 0 && (!formData.customerId || formData.customerId <= 0)) {
-                setErrors((prev) => ({ ...prev, apiError: t('accountOpening.missingCustomerId', 'Customer ID is missing. Please complete Personal Details first.') }));
-                setSubmitting(false);
-                return;
-            }
+        switch (currentStep) {
+            case 0:
+                const personalData = transformDataForBackend({
+                    ...formData.personalDetails,
+                    mobilePhone: normalizePhoneNumber(phoneNumberInput)
+                });
+                response = await accountOpeningService.savePersonalDetails(personalData, normalizePhoneNumber(phoneNumberInput));
+                nextCustomerId = response.id;
+                updatedCustomerData = { 
+                    customerId: nextCustomerId, 
+                    personalDetails: { ...formData.personalDetails, id: response.id } 
+                };
+                break;
 
-            const transformDataForBackend = (data: any) => {
-                const transformed = toPascalCase(data);
-                if (data.dateOfBirth) transformed.DateOfBirth = formatDateForBackend(data.dateOfBirth);
-                if (data.issueDate) transformed.IssueDate = formatDateForBackend(data.issueDate);
-                if (data.expiryDate) transformed.ExpiryDate = formatDateForBackend(data.expiryDate);
-                if (nextCustomerId) transformed.CustomerId = nextCustomerId;
-                return transformed;
-            };
+            case 1:
+                const addressData = transformDataForBackend({
+                    ...formData.addressDetails,
+                    mobilePhone: formData.addressDetails.mobilePhone || normalizePhoneNumber(phoneNumberInput)
+                });
+                response = await accountOpeningService.saveAddressDetails(addressData);
+                updatedCustomerData = { addressDetails: { ...formData.addressDetails, id: response.id } };
+                break;
 
-            switch (currentStep) {
-                case 0:
-                    const personalData = transformDataForBackend({
-                        ...formData.personalDetails,
-                        mobilePhone: normalizePhoneNumber(phoneNumberInput)
-                    });
-                    response = await accountOpeningService.savePersonalDetails(personalData, normalizePhoneNumber(phoneNumberInput));
-                    nextCustomerId = response.id;
-                    updatedCustomerData = { 
-                        customerId: nextCustomerId, 
-                        personalDetails: { ...formData.personalDetails, id: response.id } 
-                    };
-                    break;
+            case 2:
+                response = await accountOpeningService.saveFinancialDetails(
+                    transformDataForBackend(formData.financialDetails)
+                );
+                updatedCustomerData = { financialDetails: { ...formData.financialDetails, id: response.id } };
+                break;
 
-                case 1:
-                    const addressData = transformDataForBackend({
-                        ...formData.addressDetails,
-                        mobilePhone: formData.addressDetails.mobilePhone || normalizePhoneNumber(phoneNumberInput)
-                    });
-                    response = await accountOpeningService.saveAddressDetails(addressData);
-                    updatedCustomerData = { addressDetails: { ...formData.addressDetails, id: response.id } };
-                    break;
+            case 3:
+                response = await accountOpeningService.saveOtherDetails(
+                    transformDataForBackend(formData.otherDetails)
+                );
+                updatedCustomerData = { otherDetails: { ...formData.otherDetails, id: response.id } };
+                break;
 
-                case 2:
-                    response = await accountOpeningService.saveFinancialDetails(
-                        transformDataForBackend(formData.financialDetails)
-                    );
-                    updatedCustomerData = { financialDetails: { ...formData.financialDetails, id: response.id } };
-                    break;
+            case 4:
+                let docPhotoUrl = formData.documentDetails.docPhotoUrl;
+                if (formData.documentDetails.photoIdFile) {
+                    docPhotoUrl = await accountOpeningService.uploadDocumentPhoto(formData.documentDetails.photoIdFile);
+                }
+                const documentData = transformDataForBackend({
+                    ...formData.documentDetails,
+                    docPhotoUrl,
+                    mobilePhoneNo: formData.documentDetails.mobilePhoneNo || normalizePhoneNumber(phoneNumberInput)
+                });
+                response = await accountOpeningService.saveDocumentDetails(documentData);
+                updatedCustomerData = { 
+                    documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl } 
+                };
+                break;
 
-                case 3:
-                    response = await accountOpeningService.saveOtherDetails(
-                        transformDataForBackend(formData.otherDetails)
-                    );
-                    updatedCustomerData = { otherDetails: { ...formData.otherDetails, id: response.id } };
-                    break;
+            case 5:
+                response = await accountOpeningService.saveEPaymentService(
+                    transformDataForBackend(formData.ePaymentService)
+                );
+                updatedCustomerData = { ePaymentService: { ...formData.ePaymentService, id: response.id } };
+                break;
 
-                case 4:
-                    let docPhotoUrl = formData.documentDetails.docPhotoUrl;
-                    if (formData.documentDetails.photoIdFile) {
-                        docPhotoUrl = await accountOpeningService.uploadDocumentPhoto(formData.documentDetails.photoIdFile);
-                    }
-                    const documentData = transformDataForBackend({
-                        ...formData.documentDetails,
-                        docPhotoUrl,
-                        mobilePhoneNo: formData.documentDetails.mobilePhoneNo || normalizePhoneNumber(phoneNumberInput)
-                    });
-                    response = await accountOpeningService.saveDocumentDetails(documentData);
-                    updatedCustomerData = { 
-                        documentDetails: { ...formData.documentDetails, id: response.id, docPhotoUrl } 
-                    };
-                    break;
+            case 6:
+                response = await accountOpeningService.savePassbookMudayRequest(
+                    transformDataForBackend(formData.passbookMudayRequest)
+                );
+                updatedCustomerData = { passbookMudayRequest: { ...formData.passbookMudayRequest, id: response.id } };
+                break;
 
-                case 5:
-                    response = await accountOpeningService.saveEPaymentService(
-                        transformDataForBackend(formData.ePaymentService)
-                    );
-                    updatedCustomerData = { ePaymentService: { ...formData.ePaymentService, id: response.id } };
-                    break;
-
-                case 6:
-                    response = await accountOpeningService.savePassbookMudayRequest(
-                        transformDataForBackend(formData.passbookMudayRequest)
-                    );
-                    updatedCustomerData = { passbookMudayRequest: { ...formData.passbookMudayRequest, id: response.id } };
-                    break;
-
-                case 7:
-                    let signatureUrl = formData.digitalSignature.signatureUrl;
-                    if (formData.digitalSignature.signatureFile) {
-                        signatureUrl = await accountOpeningService.uploadDigitalSignature(formData.digitalSignature.signatureFile);
-                    }
-                    const signatureData = transformDataForBackend({
-                        ...formData.digitalSignature,
-                        signatureUrl,
-                        termsAccepted: true
-                    });
-                    response = await accountOpeningService.saveDigitalSignature(signatureData);
-                    updatedCustomerData = { 
-                        digitalSignature: { ...formData.digitalSignature, id: response.id, signatureUrl } 
-                    };
-                    break;
-            }
-
-            setFormData(prev => ({ ...prev, ...updatedCustomerData, customerId: nextCustomerId }));
-            next();
-        } catch (error) {
-            console.error("Error saving form data:", error);
-            setErrors((prev) => ({ 
-                ...prev, 
-                apiError: error instanceof Error ? error.message : t('accountOpening.saveError', 'Failed to save data. Please try again.') 
-            }));
-        } finally {
-            setSubmitting(false);
+            case 7:
+                // FIXED: Remove file upload logic since we're using signature canvas
+                const signatureData = transformDataForBackend({
+                    ...formData.digitalSignature,
+                    termsAccepted: true
+                });
+                response = await accountOpeningService.saveDigitalSignature(signatureData);
+                updatedCustomerData = { 
+                    digitalSignature: { ...formData.digitalSignature, id: response.id } 
+                };
+                break;
         }
-    };
+
+        setFormData(prev => ({ ...prev, ...updatedCustomerData, customerId: nextCustomerId }));
+        next();
+    } catch (error) {
+        console.error("Error saving form data:", error);
+        setErrors((prev) => ({ 
+            ...prev, 
+            apiError: error instanceof Error ? error.message : t('accountOpening.saveError', 'Failed to save data. Please try again.') 
+        }));
+    } finally {
+        setSubmitting(false);
+    }
+};
 
     const handleFinalSubmit = async () => {
         if (!formData.customerId) {

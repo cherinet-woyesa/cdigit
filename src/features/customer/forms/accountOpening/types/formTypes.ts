@@ -96,9 +96,9 @@ export interface PassbookMudayRequest {
 
 export interface DigitalSignature {
     id?: number;
-    signatureFile?: File | null;
-    signatureUrl?: string;
+    signatureUrl: string; // Backend expects this field
     termsAccepted: boolean;
+    signatureData?: string; // For frontend canvas (optional)
 }
 
 // Main form data type
@@ -229,9 +229,9 @@ export const INITIAL_DATA: FormData = {
         mudayBoxDeliveryBranch: ''
     },
     digitalSignature: {
-        signatureFile: null,
-        signatureUrl: '',
-        termsAccepted: false
+        signatureUrl: '', // Backend expects this field
+        termsAccepted: false,
+        signatureData: '' // For frontend canvas
     }
 };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useBranch } from '../../../../context/BranchContext';
@@ -8,6 +8,7 @@ import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 import { requestWithdrawalOtp, submitWithdrawal } from '../../../../services/withdrawalService';
 import authService from '../../../../services/authService';
 import Field from '../../../../components/Field';
+import SignatureCanvas from 'react-signature-canvas';
 import { 
     Loader2, 
     AlertCircle, 
@@ -19,7 +20,9 @@ import {
     Shield,
     Plane,
     MapPin,
-    Calendar
+    Calendar,
+    PenTool,
+    Eraser
 } from 'lucide-react';
 
 // Error message component (consistent with deposit form)
@@ -36,6 +39,7 @@ interface FormData {
     accountNumber: string;
     accountHolderName: string;
     amount: string;
+    signature: string;
     otp: string;
 }
 
@@ -59,6 +63,7 @@ export default function CashWithdrawalForm() {
         accountNumber: '',
         accountHolderName: '',
         amount: '',
+        signature: '',
         otp: '',
     });
     const [errors, setErrors] = useState<Errors>({});
@@ -68,6 +73,8 @@ export default function CashWithdrawalForm() {
     const [otpMessage, setOtpMessage] = useState('');
     const [resendCooldown, setResendCooldown] = useState(0);
     const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
+    const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
+    const signaturePadRef = useRef<any>(null);
 
     // Account selection logic (consistent with deposit form)
     useEffect(() => {
@@ -160,6 +167,11 @@ export default function CashWithdrawalForm() {
     };
 
     const validateStep3 = (): boolean => {
+        // Signature is optional for now, so always return true
+        return true;
+    };
+
+    const validateStep4 = (): boolean => {
         const errs: Errors = {};
         
         if (!formData.otp || formData.otp.length !== 6) {
@@ -182,8 +194,21 @@ export default function CashWithdrawalForm() {
         setStep(2);
     };
 
-    const handleStep2Next = async (e: FormEvent) => {
+    const handleStep2Next = (e: FormEvent) => {
         e.preventDefault();
+        setStep(3);
+    };
+
+    const handleStep3Next = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!validateStep3()) return;
+
+        // Save signature if drawn
+        if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
+            const signatureData = signaturePadRef.current.toDataURL();
+            setFormData(prev => ({ ...prev, signature: signatureData }));
+        }
+
         if (!phone) {
             setErrors({ submit: t('missingPhoneNumber', 'Phone number not found. Please log in again.') });
             return;
@@ -197,7 +222,7 @@ export default function CashWithdrawalForm() {
             const response = await requestWithdrawalOtp(phone);
             if (response.success) {
                 setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
-                setStep(3);
+                setStep(4);
                 setResendCooldown(30);
                 
                 const timer = setInterval(() => {
@@ -217,6 +242,20 @@ export default function CashWithdrawalForm() {
             setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
         } finally {
             setOtpLoading(false);
+        }
+    };
+
+    const handleSignatureClear = () => {
+        if (signaturePadRef.current) {
+            signaturePadRef.current.clear();
+            setIsSignatureEmpty(true);
+            setFormData(prev => ({ ...prev, signature: '' }));
+        }
+    };
+
+    const handleSignatureEnd = () => {
+        if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
+            setIsSignatureEmpty(false);
         }
     };
 
@@ -255,7 +294,7 @@ export default function CashWithdrawalForm() {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!validateStep3()) return;
+        if (!validateStep4()) return;
         if (!formData.otp || formData.otp.length !== 6) {
             setErrors({ otp: t('validOtpRequired', 'Please enter the 6-digit OTP') });
             return;
@@ -275,6 +314,7 @@ export default function CashWithdrawalForm() {
                 accountNumber: formData.accountNumber,
                 accountHolderName: formData.accountHolderName,
                 withdrawal_Amount: Number(formData.amount),
+                signature: formData.signature, // Include signature in submission
                 otpCode: formData.otp || '', // for type
                 OtpCode: formData.otp || '' // for backend
             };
@@ -401,7 +441,7 @@ export default function CashWithdrawalForm() {
 
                     {/* Main Content */}
                     <div className="p-6">
-                        {/* Progress Steps - 3 steps for withdrawal */}
+                        {/* Progress Steps - 4 steps now with signature */}
                         <div className="flex justify-center mb-6">
                             <div className="flex items-center bg-gray-50 rounded-lg p-1">
                                 <div className={`flex items-center px-4 py-2 rounded-md ${step >= 1 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
@@ -413,7 +453,11 @@ export default function CashWithdrawalForm() {
                                 </div>
                                 <div className="mx-1 text-gray-400 text-sm">→</div>
                                 <div className={`flex items-center px-4 py-2 rounded-md ${step >= 3 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">3. {t('otp', 'OTP')}</span>
+                                    <span className="font-medium text-sm">3. {t('signature', 'Signature')}</span>
+                                </div>
+                                <div className="mx-1 text-gray-400 text-sm">→</div>
+                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 4 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
+                                    <span className="font-medium text-sm">4. {t('otp', 'OTP')}</span>
                                 </div>
                             </div>
                         </div>
@@ -562,27 +606,104 @@ export default function CashWithdrawalForm() {
                                     </button>
                                     <button 
                                         type="submit" 
-                                        disabled={otpLoading}
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
                                     >
-                                        {otpLoading ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                {t('requestingOtp', 'Requesting OTP...')}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Shield className="h-4 w-4" />
-                                                {t('requestOtp', 'Request OTP')}
-                                            </>
-                                        )}
+                                        <PenTool className="h-4 w-4" />
+                                        {t('addSignature', 'Add Signature')}
                                     </button>
                                 </div>
                             </form>
                         )}
+                        {/* Step 3: Digital Signature */}
+{step === 3 && (
+    <form onSubmit={handleStep3Next} className="space-y-6">
+        <div className="border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <PenTool className="h-5 w-5 text-fuchsia-700" />
+                {t('digitalSignature', 'Digital Signature')}
+            </h2>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-700">
+                    {t('signatureInstructions', 'Please provide your signature using your finger or stylus. This signature will be used to authorize your withdrawal transaction.')}
+                </p>
+                
+            </div>
 
-                        {/* Step 3: OTP Verification */}
-                        {step === 3 && (
+            <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <div className="bg-gray-100 rounded-lg p-2 mb-4">
+                    <SignatureCanvas
+                        ref={signaturePadRef}
+                        onEnd={handleSignatureEnd}
+                        canvasProps={{
+                            className: "w-full h-48 bg-white border border-gray-300 rounded-md cursor-crosshair"
+                        }}
+                        penColor="black"
+                        backgroundColor="white"
+                        clearOnResize={false}
+                    />
+                </div>
+                
+                <div className="flex justify-between items-center">
+                    <button
+                        type="button"
+                        onClick={handleSignatureClear}
+                        className="flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                        <Eraser className="h-4 w-4" />
+                        {t('clearSignature', 'Clear Signature')}
+                    </button>
+                    
+                    <div className="text-sm text-gray-500">
+                        {!isSignatureEmpty ? (
+                            <span className="text-green-600 flex items-center gap-1">
+                                <CheckCircle2 className="h-4 w-4" />
+                                {t('signatureProvided', 'Signature provided')}
+                            </span>
+                        ) : (
+                            <span className="text-gray-400">
+                                {t('noSignature', 'No signature provided')}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {errors.submit && <ErrorMessage message={errors.submit} />}
+
+        <div className="grid grid-cols-2 gap-4">
+            <button 
+                type="button" 
+                onClick={() => setStep(2)}
+                className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+            >
+                <ChevronRight className="h-4 w-4 rotate-180" />
+                {t('back', 'Back')}
+            </button>
+            <button 
+                type="submit" 
+                disabled={otpLoading}
+                className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+            >
+                {otpLoading ? (
+                    <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {t('requestingOtp', 'Requesting OTP...')}
+                    </>
+                ) : (
+                    <>
+                        <Shield className="h-4 w-4" />
+                        {t('requestOtp', 'Request OTP')}
+                    </>
+                )}
+            </button>
+        </div>
+    </form>
+)}
+
+                        {/* Step 4: OTP Verification */}
+                        {step === 4 && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="border border-gray-200 rounded-lg p-6">
                                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -645,7 +766,7 @@ export default function CashWithdrawalForm() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <button 
                                         type="button" 
-                                        onClick={() => setStep(2)}
+                                        onClick={() => setStep(3)}
                                         className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
                                     >
                                         <ChevronRight className="h-4 w-4 rotate-180" />

@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Field from '../../../../../components/Field';
 import type { DigitalSignature, Errors } from "../types/formTypes";
-import { Loader2, ChevronRight, PenTool, Upload, CheckCircle2, FileText, Shield } from 'lucide-react';
+import { Loader2, ChevronRight, PenTool, CheckCircle2, Shield, Eraser } from 'lucide-react';
+import SignatureCanvas from 'react-signature-canvas';
 
 export const validate = (data: DigitalSignature): Errors<DigitalSignature> => {
     const newErrors: Errors<DigitalSignature> = {};
-    if (!data.signatureFile && !data.signatureUrl) newErrors.signatureUrl = "Digital signature is required";
+    if (!data.signatureUrl) newErrors.signatureUrl = "Digital signature is required";
     if (!data.termsAccepted) newErrors.termsAccepted = "You must accept the terms and conditions";
     return newErrors;
 };
@@ -21,25 +22,30 @@ type StepSignatureProps = {
 
 export function StepSignature({ data, setData, errors, onNext, onBack, submitting }: StepSignatureProps) {
     const [showTermsModal, setShowTermsModal] = useState(false);
-    const [fileError, setFileError] = useState<string | undefined>(undefined);
+    const [isSignatureEmpty, setIsSignatureEmpty] = useState(!data.signatureUrl);
+    const signaturePadRef = useRef<SignatureCanvas | null>(null);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFileError(undefined);
-        if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
-            if (!file.type.startsWith('image/')) {
-                setFileError('Only image files (JPEG, PNG) are allowed.');
-                setData({ ...data, signatureFile: undefined });
-                return;
-            }
-            if (file.size > 1 * 1024 * 1024) {
-                setFileError('File size must be less than 1MB.');
-                setData({ ...data, signatureFile: undefined });
-                return;
-            }
-            setData({ ...data, signatureFile: file });
-        } else {
-            setData({ ...data, signatureFile: undefined });
+    const handleSignatureClear = () => {
+        if (signaturePadRef.current) {
+            signaturePadRef.current.clear();
+            setIsSignatureEmpty(true);
+            setData({ 
+                ...data, 
+                signatureData: '',
+                signatureUrl: '' // Clear both fields
+            });
+        }
+    };
+
+    const handleSignatureEnd = () => {
+        if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
+            setIsSignatureEmpty(false);
+            const signatureData = signaturePadRef.current.toDataURL();
+            setData({ 
+                ...data, 
+                signatureData,
+                signatureUrl: signatureData // Populate signatureUrl for backend
+            });
         }
     };
 
@@ -51,8 +57,6 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
         const validationErrors = validate(data);
         onNext(validationErrors);
     };
-
-    const backendBaseUrl = "http://localhost:5268";
 
     return (
         <div className="space-y-6">
@@ -68,32 +72,52 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
             </div>
 
             <div className="space-y-6">
-                {/* Signature Upload */}
-                <Field label="Upload Digital Signature" required error={errors.signatureUrl || fileError}>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-fuchsia-400 transition-colors">
-                        <input
-                            type="file"
-                            name="signatureFile"
-                            className="hidden"
-                            id="signatureFile"
-                            onChange={handleFileChange}
-                            accept="image/*"
-                        />
-                        <label htmlFor="signatureFile" className="cursor-pointer">
-                            <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-gray-600 font-medium">Click to upload your signature</p>
-                            <p className="text-gray-500 text-sm">JPEG or PNG, max 1MB</p>
-                        </label>
-                    </div>
-                    {data.signatureFile && (
-                        <div className="mt-4 flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                            <CheckCircle2 className="h-5 w-5 text-green-500" />
-                            <span className="text-green-700 text-sm">Signature file selected</span>
+                {/* Digital Signature Canvas */}
+                <Field label="Digital Signature" required error={errors.signatureUrl}>
+                    <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-blue-700">
+                                Please provide your signature using your finger or stylus. This signature will be used to authorize your application.
+                            </p>
                         </div>
-                    )}
-                    {data.signatureUrl && !data.signatureFile && (
-                        <p className="text-sm text-gray-500 mt-2">Signature already uploaded</p>
-                    )}
+
+                        <div className="bg-gray-100 rounded-lg p-2 mb-4">
+                            <SignatureCanvas
+                                ref={signaturePadRef}
+                                onEnd={handleSignatureEnd}
+                                canvasProps={{
+                                    className: "w-full h-48 bg-white border border-gray-300 rounded-md cursor-crosshair"
+                                }}
+                                penColor="black"
+                                backgroundColor="white"
+                                clearOnResize={false}
+                            />
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                            <button
+                                type="button"
+                                onClick={handleSignatureClear}
+                                className="flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                            >
+                                <Eraser className="h-4 w-4" />
+                                Clear Signature
+                            </button>
+                            
+                            <div className="text-sm text-gray-500">
+                                {!isSignatureEmpty ? (
+                                    <span className="text-green-600 flex items-center gap-1">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        Signature provided
+                                    </span>
+                                ) : (
+                                    <span className="text-gray-400">
+                                        No signature provided
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </Field>
 
                 {/* Terms and Conditions */}
@@ -187,12 +211,12 @@ export function StepSignature({ data, setData, errors, onNext, onBack, submittin
                 <button
                     type="button"
                     className={`px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 flex items-center gap-2 ${
-                        (!data.termsAccepted || submitting) 
+                        (!data.termsAccepted || !data.signatureUrl || submitting) 
                             ? 'bg-fuchsia-300 cursor-not-allowed text-white' 
                             : 'bg-fuchsia-700 text-white hover:bg-fuchsia-800 hover:scale-105'
                     }`}
                     onClick={handleNext}
-                    disabled={!data.termsAccepted || submitting}
+                    disabled={!data.termsAccepted || !data.signatureUrl || submitting}
                 >
                     {submitting ? (
                         <>
