@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { type TFunction } from 'i18next';
-import { speak } from '../../lib/speechSynthesis';
+import speechService from '../../services/speechService';
 import logo from '../../assets/logo.jpg';
 import React from 'react';
 import authService from '../../services/authService';
@@ -592,7 +592,7 @@ const OTPLogin: React.FC = () => {
           {/* Speech Button */}
           <button
             type="button"
-            onClick={() => speak(`${t('bankName')}. ${t('welcome')}. ${t('enterPhonePrompt')}`, i18n.language.startsWith('am') ? 'am' : 'en')}
+            onClick={() => speechService.speak(`${t('bankName')}. ${t('welcome')}. ${t('enterPhonePrompt')}`, i18n.language.startsWith('am') ? 'am' : 'en')}
             className="inline-flex items-center px-4 py-2 bg-white border border-fuchsia-200 text-fuchsia-700 rounded-full hover:bg-fuchsia-50 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
             aria-label="Speak welcome message"
           >
@@ -657,7 +657,7 @@ const OTPLogin: React.FC = () => {
           />
         )}
 
-        {/* Footer */}
+                {/* Footer */}
         <div className="text-center pt-4 border-t border-gray-100">
           <p className="text-xs text-gray-500">
             Secure authentication • {new Date().getFullYear()} • CBE Digital Services

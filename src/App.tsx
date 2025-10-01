@@ -42,6 +42,7 @@ import StopPaymentForm from './features/customer/forms/stopPayment/StopPaymentFo
 import StopPaymentConfirmation from './features/customer/forms/stopPayment/StopPaymentConfirmation';
 import PettyCashForm from './features/internal/forms/pettyCash/PettyCashForm';
 import PettyCashConfirmation from './features/internal/forms/pettyCash/PettyCashConfirmation';
+import LanguageSelection from './components/LanguageSelection';
 
 // A simple protected route component
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
@@ -121,7 +122,8 @@ function App() {
         <LanguageSwitcher />
       </div> */}
       <Routes>
-        <Route path="/" element={<Navigate to="/select-branch" replace />} />
+        <Route path="/" element={<Navigate to="/language-selection" replace />} />
+        <Route path="/language-selection" element={<LanguageSelection />} />
         <Route path="/select-branch" element={<BranchSelectionEnhanced />} />
         <Route path="/otp-login" element={<OTPLogin />} />
         <Route path="/staff-login" element={<StaffLogin />} />

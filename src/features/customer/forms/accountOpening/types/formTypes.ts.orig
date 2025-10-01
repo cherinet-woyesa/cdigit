@@ -1,0 +1,364 @@
+<<<<<<< HEAD
+// Base form data types aligned with backend models
+export interface PersonalDetail {
+    id?: number;
+    accountType: string;
+    title: string;
+    firstName: string;
+    middleName?: string;
+    grandfatherName: string;
+    motherFullName?: string;
+    sex: string;
+    dateOfBirth?: string;
+    placeOfBirth?: string;
+    maritalStatus: string;
+    educationQualification?: string;
+    nationality: string;
+}
+
+export interface AddressDetail {
+    id?: number;
+    regionCityAdministration?: string;
+    zone?: string;
+    subCity?: string;
+    weredaKebele?: string;
+    houseNumber?: string;
+    mobilePhone: string;
+    officePhone?: string;
+    emailAddress?: string;
+}
+
+export interface FinancialDetail {
+    id?: number;
+    typeOfWork: string;
+    businessSector?: string;
+    incomeFrequencyAnnual_Private?: boolean;
+    incomeFrequencyMonthly_Private?: boolean;
+    incomeFrequencyDaily_Private?: boolean;
+    incomeDetails_Private?: string;
+    otherIncome?: string;
+    sectorOfEmployer?: string;
+    jobPosition?: string;
+    incomeFrequencyAnnual_Employee?: boolean;
+    incomeFrequencyMonthly_Employee?: boolean;
+    incomeFrequencyDaily_Employee?: boolean;
+    incomeDetails_Employee?: string;
+}
+
+export interface OtherDetail {
+    id?: number;
+    isPoliticallyExposed: boolean;
+    requiresPepForm?: boolean;
+    isUSCitizenOrResident: boolean;
+    requiresIRSFormW9?: boolean;
+    accountOpenedByLegalDelegate: boolean;
+    requiresLegalDelegateForm?: boolean;
+    hasBeenConvicted?: boolean;
+    convictionReason?: string;
+    pepPosition?: string;
+    sourceOfFund?: string;
+    otherSourceOfFund?: string;
+}
+
+export interface DocumentDetail {
+    id?: number;
+    docRegionCitySubCity?: string;
+    docWeredaKebele?: string;
+    docHouseNumber?: string;
+    docEmail?: string;
+    docOfficeTelephone?: string;
+    idType: string;
+    idPassportNo: string;
+    issuedBy: string;
+    issueDate?: string;
+    expiryDate?: string;
+    mobilePhoneNo: string;
+    photoIdFile?: File | null;
+    docPhotoUrl?: string;
+=======
+// Base form data types
+export interface PersonalDetails {
+    id?: number;
+    // Add personal details fields here
+    firstName: string;
+    lastName: string;
+    // Add other personal details fields as needed
+}
+
+export interface AddressDetails {
+    id?: number;
+    mobilePhone: string;
+    // Add other address details fields as needed
+}
+
+export interface FinancialDetails {
+    id?: number;
+    // Add financial details fields here
+}
+
+export interface OtherDetails {
+    id?: number;
+    // Add other details fields here
+}
+
+export interface DocumentDetails {
+    id?: number;
+    mobilePhoneNo: string;
+    photoIdFile?: File | null;
+    docPhotoUrl?: string;
+    // Add other document details fields here
+>>>>>>> origin/sept25
+}
+
+export interface EPaymentService {
+    id?: number;
+<<<<<<< HEAD
+    hasAtmCard: boolean;
+    atmCardType?: string;
+    atmCardDeliveryBranch?: string;
+    hasMobileBanking: boolean;
+    hasInternetBanking: boolean;
+    hasCbeBirr: boolean;
+    hasSmsBanking: boolean;
+=======
+    // Add e-payment service fields here
+>>>>>>> origin/sept25
+}
+
+export interface PassbookMudayRequest {
+    id?: number;
+<<<<<<< HEAD
+    needsPassbook: boolean;
+    needsMudayBox: boolean;
+    mudayBoxDeliveryBranch?: string;
+=======
+    // Add passbook muday request fields here
+>>>>>>> origin/sept25
+}
+
+export interface DigitalSignature {
+    id?: number;
+    signatureFile?: File | null;
+    signatureUrl?: string;
+<<<<<<< HEAD
+    termsAccepted: boolean;
+=======
+    // Add digital signature fields here
+>>>>>>> origin/sept25
+}
+
+// Main form data type
+export interface FormData {
+    customerId?: number;
+<<<<<<< HEAD
+    personalDetails: PersonalDetail;
+    addressDetails: AddressDetail;
+    financialDetails: FinancialDetail;
+    otherDetails: OtherDetail;
+    documentDetails: DocumentDetail;
+=======
+    personalDetails: PersonalDetails;
+    addressDetails: AddressDetails;
+    financialDetails: FinancialDetails;
+    otherDetails: OtherDetails;
+    documentDetails: DocumentDetails;
+>>>>>>> origin/sept25
+    ePaymentService: EPaymentService;
+    passbookMudayRequest: PassbookMudayRequest;
+    digitalSignature: DigitalSignature;
+}
+
+// Error types
+<<<<<<< HEAD
+export interface Errors<T> {
+    [key: string]: string;
+}
+
+// PERMANENT FIX: Make all error properties required
+export interface FormErrors {
+    personalDetails: Errors<PersonalDetail>;
+    addressDetails: Errors<AddressDetail>;
+    financialDetails: Errors<FinancialDetail>;
+    otherDetails: Errors<OtherDetail>;
+    documentDetails: Errors<DocumentDetail>;
+    ePaymentService: Errors<EPaymentService>;
+    passbookMudayRequest: Errors<PassbookMudayRequest>;
+    digitalSignature: Errors<DigitalSignature>;
+=======
+export interface Errors {
+    [key: string]: string;
+}
+
+export interface FormErrors {
+    personalDetails?: Errors;
+    addressDetails?: Errors;
+    financialDetails?: Errors;
+    otherDetails?: Errors;
+    documentDetails?: Errors;
+    ePaymentService?: Errors;
+    passbookMudayRequest?: Errors;
+    digitalSignature?: Errors;
+>>>>>>> origin/sept25
+    apiError?: string;
+}
+
+export interface FormSummary {
+    customerId?: number;
+<<<<<<< HEAD
+    personalDetails?: PersonalDetail;
+    addressDetails?: AddressDetail;
+    financialDetails?: FinancialDetail;
+    otherDetails?: OtherDetail;
+    documentDetails?: DocumentDetail;
+=======
+    personalDetails?: PersonalDetails;
+    addressDetails?: AddressDetails;
+    financialDetails?: FinancialDetails;
+    otherDetails?: OtherDetails;
+    documentDetails?: DocumentDetails;
+>>>>>>> origin/sept25
+    ePaymentService?: EPaymentService;
+    passbookMudayRequest?: PassbookMudayRequest;
+    digitalSignature?: DigitalSignature;
+}
+
+<<<<<<< HEAD
+// Initial form data aligned with backend DTOs
+export const INITIAL_DATA: FormData = {
+    customerId: undefined,
+    personalDetails: {
+        accountType: '',
+        title: '',
+        firstName: '',
+        middleName: '',
+        grandfatherName: '',
+        motherFullName: '',
+        sex: '',
+        dateOfBirth: '',
+        placeOfBirth: '',
+        maritalStatus: '',
+        educationQualification: '',
+        nationality: ''
+    },
+    addressDetails: {
+        regionCityAdministration: '',
+        zone: '',
+        subCity: '',
+        weredaKebele: '',
+        houseNumber: '',
+        mobilePhone: '',
+        officePhone: '',
+        emailAddress: ''
+    },
+    financialDetails: {
+        typeOfWork: '',
+        businessSector: '',
+        incomeFrequencyAnnual_Private: false,
+        incomeFrequencyMonthly_Private: false,
+        incomeFrequencyDaily_Private: false,
+        incomeDetails_Private: '',
+        otherIncome: '',
+        sectorOfEmployer: '',
+        jobPosition: '',
+        incomeFrequencyAnnual_Employee: false,
+        incomeFrequencyMonthly_Employee: false,
+        incomeFrequencyDaily_Employee: false,
+        incomeDetails_Employee: ''
+    },
+    otherDetails: {
+        isPoliticallyExposed: false,
+        requiresPepForm: false,
+        isUSCitizenOrResident: false,
+        requiresIRSFormW9: false,
+        accountOpenedByLegalDelegate: false,
+        requiresLegalDelegateForm: false,
+        hasBeenConvicted: false,
+        convictionReason: '',
+        pepPosition: '',
+        sourceOfFund: '',
+        otherSourceOfFund: ''
+    },
+    documentDetails: {
+        docRegionCitySubCity: '',
+        docWeredaKebele: '',
+        docHouseNumber: '',
+        docEmail: '',
+        docOfficeTelephone: '',
+        idType: '',
+        idPassportNo: '',
+        issuedBy: '',
+        issueDate: '',
+        expiryDate: '',
+        mobilePhoneNo: '',
+        photoIdFile: null,
+        docPhotoUrl: ''
+    },
+    ePaymentService: {
+        hasAtmCard: false,
+        atmCardType: '',
+        atmCardDeliveryBranch: '',
+        hasMobileBanking: false,
+        hasInternetBanking: false,
+        hasCbeBirr: false,
+        hasSmsBanking: false
+    },
+    passbookMudayRequest: {
+        needsPassbook: false,
+        needsMudayBox: false,
+        mudayBoxDeliveryBranch: ''
+=======
+// Initial form data
+export const INITIAL_DATA: FormData = {
+    customerId: undefined,
+    personalDetails: {
+        firstName: '',
+        lastName: '',
+        // Initialize other personal details fields with default values
+    },
+    addressDetails: {
+        mobilePhone: '',
+        // Initialize other address details with default values
+    },
+    financialDetails: {
+        // Initialize financial details with default values
+    },
+    otherDetails: {
+        // Initialize other details with default values
+    },
+    documentDetails: {
+        mobilePhoneNo: '',
+        photoIdFile: null,
+        docPhotoUrl: '',
+        // Initialize other document details with default values
+    },
+    ePaymentService: {
+        // Initialize e-payment service with default values
+    },
+    passbookMudayRequest: {
+        // Initialize passbook muday request with default values
+>>>>>>> origin/sept25
+    },
+    digitalSignature: {
+        signatureFile: null,
+        signatureUrl: '',
+<<<<<<< HEAD
+        termsAccepted: false
+    }
+};
+
+// PERMANENT FIX: Initial errors with empty objects for all required properties
+export const INITIAL_FORM_ERRORS: FormErrors = {
+    personalDetails: {},
+    addressDetails: {},
+    financialDetails: {},
+    otherDetails: {},
+    documentDetails: {},
+    ePaymentService: {},
+    passbookMudayRequest: {},
+    digitalSignature: {},
+    apiError: undefined
+=======
+        // Initialize digital signature with default values
+    },
+>>>>>>> origin/sept25
+};
