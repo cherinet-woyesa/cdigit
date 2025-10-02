@@ -81,7 +81,9 @@ export default function CreateWindowModal({ open, onClose, branchId, onCreated }
               className="border rounded px-2 py-2"
             >
               <option>Transaction</option>
-              <option>Service</option>
+              <option>IFB</option>
+              <option>Corporate</option>
+              <option>E-Banking</option>
             </select>
           </div>
 
