@@ -1,83 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from "jwt-decode";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    faDoorOpen,
-    faSpinner,
-    faCheckCircle,
-    faUserClock,
-    faMoneyBillWave,
-    faShuffle,
-    faSackDollar,
-} from "@fortawesome/free-solid-svg-icons";
-
-import makerService, {
-    type CustomerQueueItem,
-    type NextCustomerResponse,
-    type TransactionType,
-} from "../../services/makerService";
-
+import { faDoorOpen, faSpinner, faCheckCircle, faUserClock, faMoneyBillWave, faShuffle, faSackDollar, } from "@fortawesome/free-solid-svg-icons";
+import makerService, { type CustomerQueueItem, type NextCustomerResponse, type TransactionType, } from "../../services/makerService";
 import { useAuth } from "../../context/AuthContext";
 import DenominationModal from "../../modals/DenominationModal";
 import CurrentCustomerModal from "./CurrentCustomerModal";
 import FormReferenceSearchModal from "./FormReferenceSearchModal";
-import WindowSelectionModal from "./WindowSelectionModal";
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import QueueNotifyModal from "../../modals/QueueNotifyModal";
 import pettyCashMakerService from "../../services/pettyCashMakerService";
 import PettyDenominationModal from "../../modals/PettyDenominationModal";
 import ForeignCurrencyModal from "../../modals/ForeignCurrencyModal";
-
-
-/** Token claims we need */
-type DecodedToken = {
-    BranchId: string;
-    nameid: string; // makerId
-    role?: string;
-    unique_name?: string;
-    email?: string;
-    exp?: number;
-    iss?: string;
-    aud?: string;
-};
-
-type WindowDto = {
-    id: string;
-    branchId: string;
-    windowNumber: number;
-    description?: string | null;
-    windowType: string;
-};
-
-interface PettyCashFormResponseDto {
-    id: string;
-    formReferenceId: string;
-    cashReceivedFromVault: number;
-    initialApprovalByMaker?: boolean;
-    cashSurrenderedToVault: number;
-    initialApprovalByVManager?: boolean;
-    cashReceivedFromCustomers: number;
-    cashPaidToCustomers: number;
-    totalCoins: number;
-    subtotal: number;
-    totalPettyCash: number;
-    previousDayBalance: number;
-    todayBalance: number;
-    submittedAt: string; // Use string for date serialization
-    updatedAt: string; // Use string for date serialization
-    branchId: string;
-    branchName?: string;
-    frontMakerId?: string;
-    frontMakerName?: string;
-    voultManagerId?: string;
-    voultManagerName?: string;
-}
-
-type ActionMessage = {
-    type: 'success' | 'error';
-    content: string;
-};
+import type { InitialRequestDto } from "types/PettyCash/InitialRequestDto";
+import type { PettyCashFormResponseDto } from "types/PettyCash/PettyCashFormResponseDto"
+import StatCard from "../../components/StatCard";
+import CancelConfirmationModal from "../../modals/CancelConfirmationModal";
+import type { DecodedToken } from "types/DecodedToken";
+import type { ActionMessage } from "types/ActionMessage";
+import type { WindowDto } from "types/WindowDto";
 
 const statIconMap: Record<TransactionType, any> = {
     Deposit: faMoneyBillWave,
@@ -85,25 +26,28 @@ const statIconMap: Record<TransactionType, any> = {
     FundTransfer: faShuffle,
 };
 
-const MakerDashboard: React.FC = () => {
+// const MakerDashboard: React.FC = () => {
+type Props = {
+    activeSection?: string;
+    assignedWindow?: WindowDto;
+
+};
+
+const MakerDashboard: React.FC<Props> = ({ activeSection, assignedWindow }) => {
+
     const { token, logout } = useAuth();
     const [decoded, setDecoded] = useState<DecodedToken | null>(null);
 
-    // Windows
-    const [assignedWindow, setAssignedWindow] = useState<WindowDto | null>(null);
-    const [windows, setWindows] = useState<WindowDto[]>([]);
-    const [showWindowSelectionModal, setShowWindowSelectionModal] = useState(false);
-    const [showWindowChangeModal, setShowWindowChangeSelectionModal] = useState(false);
 
-    const [selectedWindowId, setSelectedWindowId] = useState("");
 
     // Queue
+
     const [queue, setQueue] = useState<CustomerQueueItem[]>([]);
     const [loadingQueue, setLoadingQueue] = useState(false);
     const [queueError, setQueueError] = useState("");
 
+
     //petty cash related states
-    const [showPettyServices, setShowPettyServices] = useState(false);
     const [showPettyModal, setShowPettyModal] = useState(false);
     const [showForeignModal, setShowForeignModal] = useState<boolean>(false);
     const [foreignDenomForm, setForeignDenomForm] = useState<{ makerId: string; formId: string } | null>(null);
@@ -213,40 +157,7 @@ const MakerDashboard: React.FC = () => {
     }, [decoded?.BranchId]);
 
 
-    /** Load windows */
-    useEffect(() => {
-        const initWindows = async () => {
-            if (!token || !decoded?.nameid) return;
-            try {
-                const w = await makerService.getAssignedWindowForMaker(
-                    decoded.nameid,
-                    token
-                );
-                if (w && w.id) {
-                    setAssignedWindow(w);
-                    setShowWindowSelectionModal(false);
-                } else if (decoded.BranchId) {
-                    const list = await makerService.getWindowsByBranchId(
-                        decoded.BranchId,
-                        token
-                    );
-                    setWindows(Array.isArray(list) ? list : []);
-                    setShowWindowSelectionModal(true);
-                }
-            } catch {
-                if (decoded?.BranchId) {
-                    const list = await makerService.getWindowsByBranchId(
-                        decoded.BranchId,
-                        token
-                    );
-                    setWindows(Array.isArray(list) ? list : []);
-                    setShowWindowSelectionModal(true);
-                }
-            }
-        };
-        if (decoded?.nameid) void initWindows();
-    }, [decoded, token]);
-
+  
     //save current customer to local storage
     // Persist current customer in localStorage
     useEffect(() => {
@@ -269,8 +180,6 @@ const MakerDashboard: React.FC = () => {
             }
         }
     }, []);
-
-
 
     /** Refresh queue */
     const refreshQueue = async () => {
@@ -325,11 +234,11 @@ const MakerDashboard: React.FC = () => {
         if (decoded?.nameid) void refreshTotalServed();
     }, [decoded?.nameid]);
 
-
     // fetching petty cash data
     useEffect(() => {
         const fetchFormData = async () => {
-            if (!token || !decoded?.nameid || !selectedWindowId) return;
+            console.log("get petty Cash Called");
+            if (!token || !decoded?.nameid) return;
 
             try {
                 const response = await pettyCashMakerService.getByFrontMaker(decoded?.nameid, decoded?.BranchId, token);
@@ -347,83 +256,6 @@ const MakerDashboard: React.FC = () => {
     }, [decoded?.nameid, decoded?.BranchId]);
 
 
-
-    /** Assign window submit */
-    const handleAssignWindow = async () => {
-        console.log("calling handleAssignWindow:", selectedWindowId);
-        if (!token || !decoded?.nameid || !selectedWindowId) return;
-        try {
-            const res = await makerService.assignMakerToWindow(
-                selectedWindowId,
-                decoded.nameid,
-                token
-            );
-            if (!res.success) {
-                // setActionMessage("Failed: " + res.message);
-                setActionMessage({ type: 'error', content: res.message });
-
-            }
-            else {
-                // setActionMessage("Successfull" + res.message );
-                setActionMessage({ type: 'success', content: res.message });
-
-                const found = windows.find((w) => w.id === selectedWindowId) || null;
-                setAssignedWindow(found);
-                setShowWindowSelectionModal(false);
-            }
-        } catch {
-            setActionMessage({ type: 'error', content: "Failed" });
-
-        } finally {
-            setTimeout(() => setActionMessage({ type: 'error', content: "" }), 4000);
-        }
-    };
-
-    //change window submit
-
-    const handleChangeWindow = async () => {
-        console.log("calling change window..., selectedWindowId:", selectedWindowId);
-
-        if (!token || !decoded?.nameid || !selectedWindowId) return;
-        try {
-            const res = await makerService.changeMakerToWindow(
-                selectedWindowId,
-                decoded.nameid,
-                token
-            );
-            if (res.success) {
-                setActionMessage({ type: 'success', content: res.message || "Window Changed Successfully" });
-
-                const found = windows.find((w) => w.id === selectedWindowId) || null;
-                setAssignedWindow(found);
-                setShowWindowChangeSelectionModal(false);
-            } else {
-                setActionMessage({ type: 'error', content: res.message || "changing window failed." });
-            }
-        } catch {
-            setActionMessage({ type: 'error', content: "Window Change failed." });
-
-        } finally {
-            setTimeout(() => setActionMessage({ type: 'error', content: " " }), 4000);
-        }
-    };
-
-    // change window, because it is opend from button, but assign window open when this component start, so no need to have "open handler" 
-    const handleOpenChangeWindow = async () => {
-        if (!token || !decoded?.BranchId) return;
-
-        try {
-            const list = await makerService.getWindowsByBranchId(decoded.BranchId, token);
-
-            setWindows(Array.isArray(list) ? list : []);
-            setShowWindowChangeSelectionModal(true);
-            setSelectedWindowId(""); // reset selection
-        } catch (err) {
-            console.error("Failed to load windows:", err);
-            setWindows([]);
-            setShowWindowChangeSelectionModal(true);
-        }
-    };
 
 
     /** Call next */
@@ -493,7 +325,6 @@ const MakerDashboard: React.FC = () => {
         }
     };
 
-
     /** Cancel */
     const handleCancel = async () => {
         if (!token || !current?.id) return;
@@ -519,7 +350,6 @@ const MakerDashboard: React.FC = () => {
         }
     };
 
-
     // --- Petty Cash Handlers ---
     const handlePettyAction = async (
         action: keyof typeof pettyCashMakerService,
@@ -543,6 +373,22 @@ const MakerDashboard: React.FC = () => {
             setTimeout(() => setActionMessage(null), 4000);
         }
     };
+    const handleInitialRequest = async () => {
+        if (!token || !decoded) return;
+        const dto: InitialRequestDto = {
+            FrontMakerId: decoded.nameid,
+            BranchId: decoded.BranchId
+        };
+
+        try {
+            const response = await pettyCashMakerService.requestInitial(dto, token);
+            console.log("Response from initial request:", response);
+            // Handle the response as needed
+        } catch (error) {
+            console.error("Error making initial request:", error);
+            // Handle the error as needed
+        }
+    };
 
     const handleOpenForeignModal = (makerId: string, formId: string) => {
         setForeignDenomForm({ makerId, formId });
@@ -562,9 +408,6 @@ const MakerDashboard: React.FC = () => {
         setShowDenomModal(true);
     };
 
-
-
-
     if (!token || !decoded) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-purple-200">
@@ -580,35 +423,7 @@ const MakerDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-100">
             {/* Header */}
-            <header className="bg-purple-800 text-white py-5 px-6 shadow-lg sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-extrabold">Maker Dashboard</h1>
-                        <p className="text-purple-100 text-sm">
-                            Branch:{" "}
-                            <span className="font-semibold">
-                                {branchName || decoded.BranchId}
-                            </span>
-                            {assignedWindow && (
-                                <span className="ml-3">
-                                    • Window{" "}
-                                    <span className="font-semibold">
-                                        {assignedWindow.windowNumber}
-                                    </span>
-                                </span>
-                            )}
-
-                            <button
-                                onClick={handleOpenChangeWindow}
-                                className="ml-4 bg-purple-700 text-white font-semibold px-4 py-2 rounded-xl shadow hover:bg-purple-800 transition disabled:opacity-60"
-                            >
-                                {assignedWindow ? "Change Window" : "Select Window"}
-                            </button>
-                        </p>
-                    </div>
-                </div>
-            </header>
-
+        
             <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
                 {/* Alert */}
                 {actionMessage?.content && (
@@ -625,131 +440,142 @@ const MakerDashboard: React.FC = () => {
                     amount={amount}
                 />
 
-                {/* Stats */}
-                <section>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <StatCard
-                            title="Deposits"
-                            value={stats.Deposit}
-                            icon={statIconMap.Deposit}
-                            bgColor="bg-fuchsia-600"
-                            textColor="bg-fuchsia-100"
+                {activeSection === "transactions" && (
+                    // your transactions UI (queue, call next, current modal...)
+                    <div>
+                        {/* Stats */}
+                        <section>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <StatCard
+                                    title="Deposits"
+                                    value={stats.Deposit}
+                                    icon={statIconMap.Deposit}
+                                    bgColor="bg-fuchsia-600"
+                                    textColor="bg-fuchsia-100"
+                                />
+
+                                <StatCard
+                                    title="Withdrawals"
+                                    value={stats.Withdrawal}
+                                    icon={statIconMap.Withdrawal}
+                                    bgColor="bg-fuchsia-600"
+                                    textColor="bg-fuchsia-100"
+                                />
+                                <StatCard
+                                    title="Transfers"
+                                    value={stats.FundTransfer}
+                                    icon={statIconMap.FundTransfer}
+                                    bgColor="bg-fuchsia-600"
+                                    textColor="bg-fuchsia-100"
+                                />
+                                <StatCard title="Total Requests" value={stats.total} icon={faUserClock} bgColor="bg-fuchsia-700"
+                                    textColor="bg-fuchsia-100" />
+                            </div>
+                        </section>
+
+                        {/* Current customer modal */}
+                        <CurrentCustomerModal
+                            isOpen={!!current}
+                            current={current}
+                            busyAction={busyAction}
+                            onClose={() => setCurrent(null)}
+                            onComplete={handleComplete}
+                            onCancel={() => setShowCancelConfirm(true)}
+                            onOpenDenom={openDenom}
                         />
 
-                        <StatCard
-                            title="Withdrawals"
-                            value={stats.Withdrawal}
-                            icon={statIconMap.Withdrawal}
-                            bgColor="bg-fuchsia-600"
-                            textColor="bg-fuchsia-100"
-                        />
-                        <StatCard
-                            title="Transfers"
-                            value={stats.FundTransfer}
-                            icon={statIconMap.FundTransfer}
-                            bgColor="bg-fuchsia-600"
-                            textColor="bg-fuchsia-100"
-                        />
-                        <StatCard title="Total Requests" value={stats.total} icon={faUserClock} bgColor="bg-fuchsia-700"
-                            textColor="bg-fuchsia-100" />
-                    </div>
-                </section>
+                        {/* Actions */}
+                        <section className="flex gap-3">
+                            <button
+                                onClick={handleCallNext}
+                                disabled={!assignedWindow || busyAction === "calling"}
+                                className="bg-purple-700 text-white font-semibold px-4 py-2 rounded-xl shadow hover:bg-purple-800 transition disabled:opacity-60"
+                            >
+                                <FontAwesomeIcon icon={faDoorOpen} className="mr-2" />
+                                {busyAction === "calling" ? "Calling…" : "Call Next"}
+                            </button>
 
-                {/* Current customer modal */}
-                <CurrentCustomerModal
-                    isOpen={!!current}
-                    current={current}
-                    busyAction={busyAction}
-                    onClose={() => setCurrent(null)}
-                    onComplete={handleComplete}
-                    onCancel={() => setShowCancelConfirm(true)}
-                    onOpenDenom={openDenom}
-                />
+                            <button
+                                onClick={() => setShowFormRefModal(true)}
+                                className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow hover:bg-blue-700 transition"
+                            >
+                                Search by Form Ref ID
+                            </button>
+                            {/* New Other Services Button */}
+                            <button
+                                onClick={() => setShowServices((prev) => !prev)}
+                                className="px-4 py-2 rounded-xl bg-fuchsia-600 text-white shadow hover:bg-fuchsia-700 transition"
+                            >
+                                {showServices ? "Hide Services" : "Other Services"}
+                            </button>
+                        </section>
 
-                {/* Actions */}
-                <section className="flex gap-3">
-                    <button
-                        onClick={handleCallNext}
-                        disabled={!assignedWindow || busyAction === "calling"}
-                        className="bg-purple-700 text-white font-semibold px-4 py-2 rounded-xl shadow hover:bg-purple-800 transition disabled:opacity-60"
-                    >
-                        <FontAwesomeIcon icon={faDoorOpen} className="mr-2" />
-                        {busyAction === "calling" ? "Calling…" : "Call Next"}
-                    </button>
-
-                    <button
-                        onClick={() => setShowFormRefModal(true)}
-                        className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow hover:bg-blue-700 transition"
-                    >
-                        Search by Form Ref ID
-                    </button>
-                    {/* New Other Services Button */}
-                    <button
-                        onClick={() => setShowServices((prev) => !prev)}
-                        className="px-4 py-2 rounded-xl bg-fuchsia-600 text-white shadow hover:bg-fuchsia-700 transition"
-                    >
-                        {showServices ? "Hide Services" : "Other Services"}
-                    </button>
-                </section>
-
-                {/* Queue */}
-                <section>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                        Waiting Queue (Today)
-                    </h3>
-                    {queue.length === 0 ? (
-                        <div className="bg-white rounded-xl p-6 text-center text-gray-500 shadow">
-                            No customers in queue.
-                        </div>
-                    ) : (
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                            {queue.map((q) => (
-                                <div
-                                    key={q.id}
-                                    // className="bg-fuchsia-300 rounded-xl shadow p-4 border border-gray-100 hover:shadow-md transition"
-                                    className="rounded-xl shadow p-4 border border-gray-100 hover:shadow-md transition"
-                                >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span
-                                            className={`text-xs px-2 py-1 rounded-full ${q.transactionType === "Deposit"
-                                                ? "bg-blue-50 text-blue-700"
-                                                : q.transactionType === "Withdrawal"
-                                                    ? "bg-amber-50 text-amber-700"
-                                                    : "bg-purple-50 text-purple-700"
-                                                }`}
-                                        >
-                                            {q.transactionType}
-                                        </span>
-                                        <span className="text-sm text-gray-500">
-                                            Q#{q.queueNumber}
-                                        </span>
-                                    </div>
-                                    <div className="font-semibold text-gray-800">
-                                        {q.accountHolderName}
-                                    </div>
-                                    <div className="text-sm text-gray-500 mt-1">
-                                        ETB {Number(q.amount).toLocaleString()}
-                                    </div>
-                                    <div className="text-xs text-gray-400 mt-2">
-                                        {new Date(q.submittedAt).toLocaleTimeString()}
-                                    </div>
+                        {/* Queue */}
+                        <section>
+                            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                                Waiting Queue (Today)
+                            </h3>
+                            {queue.length === 0 ? (
+                                <div className="bg-white rounded-xl p-6 text-center text-gray-500 shadow">
+                                    No customers in queue.
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                            ) : (
+                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
 
-                {/* Served */}
-                <section className="w-fit mx-auto">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                        Total served by you (Today)
-                    </h3>
-                    <StatCard title="Total Served" value={totalServed} icon={faCheckCircle} bgColor="bg-fuchsia-600"
-                        textColor="bg-fuchsia-100" />
-                </section>
+                                    {queue.map((q) => (
+                                        <div
+                                            key={q.id}
+                                            // className="bg-fuchsia-300 rounded-xl shadow p-4 border border-gray-100 hover:shadow-md transition"
+                                            className="rounded-xl shadow p-4 border border-gray-100 hover:shadow-md transition"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span
+                                                    className={`text-xs px-2 py-1 rounded-full ${q.transactionType === "Deposit"
+                                                        ? "bg-blue-50 text-blue-700"
+                                                        : q.transactionType === "Withdrawal"
+                                                            ? "bg-amber-50 text-amber-700"
+                                                            : "bg-purple-50 text-purple-700"
+                                                        }`}
+                                                >
+                                                    {q.transactionType}
+                                                </span>
+                                                <span className="text-sm text-gray-500">
+                                                    Q#{q.queueNumber}
+                                                </span>
+                                            </div>
+                                            <div className="font-semibold text-gray-800">
+                                                {q.accountHolderName}
+                                            </div>
+                                            <div className="text-sm text-gray-500 mt-1">
+                                                ETB {Number(q.amount).toLocaleString()}
+                                            </div>
+                                            <div className="text-xs text-gray-400 mt-2">
+                                                {new Date(q.submittedAt).toLocaleTimeString()}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
 
-                {showServices && (
+                        {/* Served */}
+                        <section className="w-fit mx-auto">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                                Total served by you (Today)
+                            </h3>
+                            <StatCard title="Total Served" value={totalServed} icon={faCheckCircle} bgColor="bg-fuchsia-600"
+                                textColor="bg-fuchsia-100" />
+                        </section>
+
+
+                    </div>
+                )}
+
+
+
+                {activeSection === "other" && (
+                    // your "Other Services" section
+
                     <section className="mt-6 animate-fadeIn">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Other Services</h3>
                         <div className="grid md:grid-cols-3 gap-6">
@@ -774,21 +600,16 @@ const MakerDashboard: React.FC = () => {
 
 
                 {/* Toggle Petty Cash Services */}
-                <section>
-                    <button
-                        onClick={() => setShowPettyServices((prev) => !prev)}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white shadow hover:bg-emerald-700 transition"
-                    >
-                        {showPettyServices ? "Hide Petty Cash" : "Petty Cash Services"}
-                    </button>
-                </section>
 
-                {showPettyServices && (
+
+                {activeSection === "petty" && (
+                    // your Petty Cash Services section
+
                     <section className="mt-6 animate-fadeIn">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Petty Cash Actions</h3>
                         <div className="grid md:grid-cols-2 gap-4">
                             <button
-                                onClick={() => handlePettyAction("requestInitial")}
+                                onClick={() => handleInitialRequest()}
                                 className="bg-emerald-600 text-white px-4 py-2 rounded-lg shadow hover:bg-emerald-700"
                             >
                                 Request Initial
@@ -835,7 +656,7 @@ const MakerDashboard: React.FC = () => {
                             </button>
 
                             {/* Submit Foreign Currency -> open modal */}
-                            <button onClick={() => handleOpenForeignModal(pettyCashData?.frontMakerId || '', pettyCashData?.id || '')}  className="bg-teal-700 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-800"
+                            <button onClick={() => handleOpenForeignModal(pettyCashData?.frontMakerId || '', pettyCashData?.id || '')} className="bg-teal-700 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-800"
                             >
                                 Submit Foreign Currency
                             </button>
@@ -843,47 +664,21 @@ const MakerDashboard: React.FC = () => {
                     </section>
                 )}
 
+                {/* {activeSection === "performance" && (
+   // served stats, performance, ratings...
+)}
+
+                {activeSection === "settings" && (
+   // change window, maybe profile, etc.
+)} */}
+
 
             </main>
 
-            {/* initial Window selection modal */}
-            {showWindowSelectionModal && (
-                <WindowSelectionModal
-                    isOpen={showWindowSelectionModal}
-                    windows={windows}
-                    message={actionMessage}
-                    selectedWindowId={selectedWindowId}
-                    onSelect={setSelectedWindowId}
-                    onAssign={handleAssignWindow}
-                    onClose={() => setShowWindowSelectionModal(false)}
-                />
 
-            )}
-
-            {/* later Window change modal */}
-            {showWindowChangeModal && (
-                <WindowSelectionModal
-                    isOpen={showWindowChangeModal}
-                    windows={windows}
-                    message={actionMessage}
-                    selectedWindowId={selectedWindowId}
-                    onSelect={setSelectedWindowId}
-                    onAssign={handleChangeWindow}
-                    onClose={() => setShowWindowChangeSelectionModal(false)}
-                />
-
-            )}
 
             {/* Petty Cash Modal */}
-            {/* <PettyDenominationModal
-                isOpen={showPettyModal}
-                onClose={() => setShowPettyModal(false)}
-                onSave={async (dto) => {
-                    await handlePettyAction("submitPettyCash", dto);
-                    setShowPettyModal(false);
-                }}
-                form={pettyForm}
-            /> */}
+
             <PettyDenominationModal
                 isOpen={showPettyModal}
 
@@ -891,16 +686,6 @@ const MakerDashboard: React.FC = () => {
                 onSave={() => { }}
                 form={denomForm}
             />
-
-            {/* <ForeignCurrencyModal
-                isOpen={showPettyModal}
-                onClose={() => setShowPettyModal(false)}
-                onSave={async (dto) => {
-                    await handlePettyAction("submitForeignCurrency", dto);
-                    setShowPettyModal(false);
-                }}
-                form={pettyForm}
-            /> */}
             <ForeignCurrencyModal
                 isOpen={showForeignModal}
                 onClose={() => setShowForeignModal(false)}
@@ -911,32 +696,14 @@ const MakerDashboard: React.FC = () => {
 
             {/* Cancel confirm */}
             {showCancelConfirm && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
-                        <h2 className="text-lg font-bold text-gray-800 mb-2">Are you sure?</h2>
-                        <p className="text-gray-600 mb-4">
-                            Do you really want to cancel this transaction? This action cannot
-                            be undone.
-                        </p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowCancelConfirm(false)}
-                                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
-                            >
-                                No, Keep
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    await handleCancel();
-                                    setShowCancelConfirm(false);
-                                }}
-                                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
-                            >
-                                Yes, Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <CancelConfirmationModal
+                    isOpen={showCancelConfirm}
+                    onClose={() => setShowCancelConfirm(false)}
+                    onConfirm={async () => {
+                        await handleCancel();
+                        setShowCancelConfirm(false);
+                    }}
+                />
             )}
 
             {/* Denominations */}
@@ -957,36 +724,6 @@ const MakerDashboard: React.FC = () => {
         </div>
     );
 };
-
-/** Stat card */
-/** Stat card */
-const StatCard = ({
-    title,
-    value,
-    icon,
-    bgColor, // default fallback
-    textColor, // optional text color
-}: {
-    title: string;
-    value: number;
-    icon: any;
-    bgColor?: string;
-    textColor?: string;
-}) => (
-    <div
-        className={`${bgColor} rounded-2xl shadow p-5 border border-gray-100 hover:shadow-md transition`}
-    >
-        <div className="flex items-center justify-between">
-            <div>
-                <p className="text-sm text-gray-200 font-bold">{title}</p>
-                <p className={`text-2xl text-gray-200 font-extrabold `}>{value}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-white/20">
-                <FontAwesomeIcon icon={icon} className="text-white" />
-            </div>
-        </div>
-    </div>
-);
 
 
 export default MakerDashboard;
