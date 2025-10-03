@@ -68,6 +68,7 @@ const BRANCH_TRANSLATIONS: { [key: string]: { [key: string]: string } } = {
     so: 'CBE Laanta Magaalada',
     en: 'CBE City Center'
   }
+  
 };
 
 // Common address translations
@@ -174,24 +175,19 @@ const BranchSelectionEnhanced: React.FC = () => {
     );
   }, [branches, nearbyBranches]);
 
-  // Find the nearest branch to given coordinates
-  const findNearestBranch = useCallback((branchesList: BranchWithDistance[], lat: number, lng: number): BranchWithDistance | null => {
-    const branchesWithDistance = branchesList
-      .filter((branch): branch is BranchWithDistance & { latitude: number; longitude: number } => 
-        branch.latitude !== undefined && 
-        branch.longitude !== undefined
-      )
-      .map(branch => ({
-        ...branch,
-        distance: calculateDistance(lat, lng, branch.latitude, branch.longitude)
-      }));
+  // Find the nearest branch from a list of branches that already have distances.
+  const findNearestBranch = useCallback((branchesWithDist: BranchWithDistance[]): BranchWithDistance | null => {
+    const validBranches = branchesWithDist.filter(branch => branch.distance !== undefined);
 
-    if (branchesWithDistance.length === 0) {
+    if (validBranches.length === 0) {
       return null;
     }
 
-    const [nearest] = [...branchesWithDistance].sort((a, b) => a.distance - b.distance);
-    return nearest.distance <= 50 ? nearest : null;
+    // Sort to find the nearest one
+    const [nearest] = [...validBranches].sort((a, b) => a.distance! - b.distance!);
+    
+    // Only recommend if it's within a reasonable distance
+    return nearest.distance! <= 50 ? nearest : null;
   }, []);
 
   // Select default branch (last used or first active)
@@ -209,14 +205,13 @@ const BranchSelectionEnhanced: React.FC = () => {
     }
   }, []);
 
-  // Get user's current location
+  // Get user's current location and update branch distances
   const getUserLocation = useCallback(async (branchesList: Branch[]) => {
     if (!navigator.geolocation) {
       setLocationStatus({
         loading: false,
         error: t('branchSelection.geolocationNotSupported', 'Geolocation is not supported by your browser.')
       });
-      selectDefaultBranch(branchesList);
       return;
     }
 
@@ -254,21 +249,19 @@ const BranchSelectionEnhanced: React.FC = () => {
 
       setBranches(branchesWithDistance);
 
-      const nearestBranch = findNearestBranch(branchesWithDistance, latitude, longitude);
+      const nearestBranch = findNearestBranch(branchesWithDistance);
       if (nearestBranch) {
         setSelectedId(nearestBranch.id);
-      } else {
-        selectDefaultBranch(branchesList);
       }
+      // No 'else' needed, as a default is already selected.
     } catch (error) {
       console.warn('Geolocation error:', error);
       setLocationStatus({
         loading: false,
         error: t('branchSelection.locationError', 'Could not determine your location. Using default branch selection.')
       });
-      selectDefaultBranch(branchesList);
     }
-  }, [findNearestBranch, selectDefaultBranch, t]);
+  }, [findNearestBranch, t]);
 
   // Fetch branches
   const loadBranches = useCallback(async () => {
@@ -288,19 +281,21 @@ const BranchSelectionEnhanced: React.FC = () => {
       
       const sortedBranches = [...list].sort((a, b) => a.name.localeCompare(b.name));
       
+      // --- PERFORMANCE FIX: Set branches for immediate render ---
+      setBranches(sortedBranches);
+      selectDefaultBranch(sortedBranches);
+      setIsLoading(false);
+
+      // --- Then, get location and distances in the background ---
       const hasBranchesWithCoords = sortedBranches.some(b => b.latitude && b.longitude);
-      
       if (hasBranchesWithCoords) {
-        await getUserLocation(sortedBranches);
-      } else {
-        setBranches(sortedBranches);
-        selectDefaultBranch(sortedBranches);
+        getUserLocation(sortedBranches); // No 'await'
       }
       
     } catch (e) {
       console.error('Failed to load branches from API:', e);
       
-      // Mock data with translations
+      // Mock data fallback
       const mockBranches: BranchWithDistance[] = [
         {
           id: 'branch-001',
@@ -351,9 +346,7 @@ const BranchSelectionEnhanced: React.FC = () => {
       
       setError(t('branchSelection.demoMode', 'Connected to demo mode. Using sample branch data for testing.'));
       toast.info(t('branchSelection.demoNotification', 'Demo mode: Using sample branch data'));
-      
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Set loading false in catch block
     }
   }, [getUserLocation, selectDefaultBranch, t]);
 

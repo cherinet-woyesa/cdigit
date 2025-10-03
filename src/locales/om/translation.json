@@ -3,20 +3,19 @@
   "selectLanguage": "Afaan Filadhu",
   "chooseYourPreferredLanguage": "Afaan jaalatu filadhu",
   "searchLanguages": "Afaanota barbaadi",
-  "noLanguagesFound": "Afaanota hin argamne",
+  "noLanguagesFound": "Tajaajilli Hin Argamne",
   "secureAuthentication": "Mirkaneessaa tasgabbaa'aa",
   "cbeDigitalServices": "Tajaajila Dijitaala Baanka Eeropoo",
   "voice": "Dhaggeeffadhu",
   "logoAlt": "Laago Baanka Eeropoo",
   "welcome_message": "Baga nagaan dhuftan Koomishinii Baanka Eeropoo. Afaan filadhu itti fufuuf.",
   "language_selected": "{{language}} filatte",
-  
   "branchSelection": {
     "title": "Biraacha Filadhu",
     "subtitle": "Biraacha gara deemtutti filadhu",
     "loading": "Biraachawwan ni loading",
     "loadingDescription": "Yaali odoo odeeffannoo biraachaa fudhannu",
-    "searchPlaceholder": "Biraachaa barbaadi...",
+    "searchPlaceholder": "Tajaajila Barbaadi...",
     "nearbyBranches": "BIRAACHOOTTI DHIHOOTTI",
     "nearYou": "Si dhihootti",
     "selectNearby": "Biraacha dhihoo filadhu",
@@ -37,5 +36,23 @@
     "selectionError": "Biraacha filachuuf hin dandeenye. Yaali.",
     "errorTitle": "Error Biraachaa Loading",
     "retry": "Yaali"
-  }
+  },
+  "forms": {
+    "posRequest": "Gaaffii POS",
+    "statementRequest": "Gaaffii Tarree Hojii (Statement)",
+    "stopPayment": "Kaffaltii Dhaabi",
+    "cbeBirrLink": "CBE Birr Hidhaa"
+  },
+  "viewHistory": "Ilaali",
+  "welcomeBack": "Deebitee Nagaan Dhuufte",
+  "transactionHistory": "Seenaa",
+  "servicesFound": "Tajaajilootni Argaman",
+  "noResultsForQuery": "Yaaliin Keessan Yookaan Filitara Keessan Fooyyeessaa",
+  "noServicesAvailable": "Tajaajilli Gosa Kana Keessa Hin Jiru",
+  "beingCalled": "Isin Waamamaa Jirtu",
+  "signalRError": "Beeksifni Yeroof Hin Jiru",
+  "welcomeSubtitle": "Tajaajila Baankii Hunda Bakka Tokkotti Argadhaa.",
+  "searchPlaceholder": "Tajaajila Barbaadi...",
+  "noResults": "Tajaajilli Hin Argamne",
+  "startForm": "Eegali"
 }

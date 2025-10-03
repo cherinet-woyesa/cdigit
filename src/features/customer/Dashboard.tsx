@@ -97,44 +97,37 @@ const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={clsx(
-        'group relative bg-white p-4 rounded-2xl shadow-sm border-2 border-gray-100 transition-all duration-300 ease-out',
-        'hover:shadow-xl hover:border-fuchsia-300 hover:transform hover:scale-105',
-        'focus:outline-none focus:ring-4 focus:ring-fuchsia-200 focus:border-fuchsia-500',
-        isFocused && 'ring-4 ring-fuchsia-200 border-fuchsia-500 scale-105',
+        'group relative bg-white p-3 rounded-xl shadow-sm border border-gray-200 transition-all duration-300 ease-out',
+        'hover:shadow-md hover:border-fuchsia-300 hover:transform hover:-translate-y-1',
+        'focus:outline-none focus:ring-4 focus:ring-fuchsia-100 focus:border-fuchsia-700',
+        isFocused && 'ring-4 ring-fuchsia-100 border-fuchsia-700 -translate-y-1',
         'active:scale-95'
       )}
     >
-      {/* Gradient overlay on hover */}
-      <div className={clsx(
-        'absolute inset-0 rounded-2xl bg-gradient-to-br from-fuchsia-50 to-pink-50 opacity-0 transition-opacity duration-300',
-        'group-hover:opacity-100'
-      )} />
-      
-      <div className="relative z-10">
-        <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-500 mb-3 group-hover:from-fuchsia-600 group-hover:to-pink-600 transition-all">
-          <form.icon className="h-6 w-6 text-white" />
-        </div>
-        
-        <h3 className="text-base font-semibold text-gray-900 mb-1 line-clamp-2 leading-tight">
-          {label}
-        </h3>
-        
-        <p className="text-xs text-gray-600 mb-3 line-clamp-2 leading-relaxed">
-          {form.description}
-        </p>
-        
-        <div className="flex items-center justify-between">
+      <div className="relative z-10 flex flex-col h-full">
+        <div className="flex-shrink-0 flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-fuchsia-700 group-hover:bg-fuchsia-800 transition-all">
+            <form.icon className="h-5 w-5 text-white" />
+          </div>
           <span className={clsx(
-            'px-2 py-1 rounded-full text-xs font-medium capitalize',
-            form.category === 'transactions' && 'bg-blue-100 text-blue-800',
-            form.category === 'services' && 'bg-green-100 text-green-800',
-            form.category === 'requests' && 'bg-orange-100 text-orange-800',
-            form.category === 'history' && 'bg-purple-100 text-purple-800'
+            'px-2 py-1 rounded-full text-[10px] font-medium capitalize',
+            'bg-fuchsia-100 text-fuchsia-800'
           )}>
             {form.category}
           </span>
-          
-          <div className="flex items-center gap-1 text-fuchsia-600 group-hover:text-fuchsia-700 transition-colors">
+        </div>
+        
+        <div className="flex-grow">
+          <h3 className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2 leading-tight">
+            {label}
+          </h3>
+          <p className="text-[12px] text-gray-500 line-clamp-2 leading-snug">
+            {form.description}
+          </p>
+        </div>
+        
+        <div className="flex-shrink-0 flex items-center justify-end mt-2">
+          <div className="flex items-center gap-1 text-fuchsia-700 group-hover:text-fuchsia-800 transition-colors">
             <span className="text-xs font-semibold">
               {form.name === 'history' ? t('viewHistory', 'View') : t('startForm', 'Start')}
             </span>
@@ -150,12 +143,15 @@ FormCard.displayName = 'FormCard';
 
 // Skeleton loader for better loading states
 const FormCardSkeleton: React.FC = () => (
-  <div className="bg-white p-4 rounded-2xl shadow-sm border-2 border-gray-100 animate-pulse">
-    <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-gray-200 mb-3"></div>
-    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-    <div className="h-3 bg-gray-200 rounded mb-3"></div>
-    <div className="flex justify-between">
-      <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
+  <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 animate-pulse">
+    <div className="flex items-center gap-3 mb-2">
+      <div className="h-10 w-10 rounded-lg bg-gray-200"></div>
+      <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
+    </div>
+    <div className="h-4 bg-gray-200 rounded mb-1 w-3/4"></div>
+    <div className="h-3 bg-gray-200 rounded mb-3 w-full"></div>
+    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+    <div className="flex justify-end mt-2">
       <div className="h-4 w-12 bg-gray-200 rounded"></div>
     </div>
   </div>
@@ -172,7 +168,7 @@ export default function Dashboard() {
   const [isQueueNotifyModalOpen, setIsQueueNotifyModalOpen] = useState(false);
   const [queueNotifyModalMessage, setQueueNotifyModalMessage] = useState('');
   const [queueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [signalRError, setSignalRError] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -232,7 +228,6 @@ export default function Dashboard() {
     let connection: any;
     const connectSignalR = async () => {
       try {
-        setLoading(true);
         connection = new HubConnectionBuilder()
           .withUrl('http://localhost:5268/hub/queueHub')
           .withAutomaticReconnect([0, 1000, 5000, 10000])
@@ -269,8 +264,6 @@ export default function Dashboard() {
       } catch (error) {
         console.warn('SignalR connection failed:', error);
         setSignalRError(t('signalRError', 'Notifications temporarily unavailable'));
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -387,20 +380,28 @@ export default function Dashboard() {
       {/* Header */}
       <header className="bg-fuchsia-700 text-white shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            {/* Left Side: Welcome Message */}
             <div>
-              <h1 className="text-2xl font-bold">{t('dashboardTitle', 'CBE Digital Banking')}</h1>
-              <p className="text-fuchsia-200 text-sm mt-1">
-                {t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}
+              <h1 className="text-xl sm:text-2xl font-bold">{t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}!</h1>
+              <p className="text-fuchsia-100 text-sm mt-1 hidden sm:block">
+                {t('welcomeSubtitle', 'Access all banking services in one place.')}
               </p>
             </div>
             
-            {/* Integrated Language Switcher */}
-            <div className="flex items-center gap-3">
-              <div className="bg-fuchsia-800/80 px-3 py-1.5 rounded-full text-sm">
-                📱 {phone}
+            {/* Right Side: Actions */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => openForm(forms.find(f => f.name === 'history')!)}
+                className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm"
+              >
+                <ClockIcon className="h-5 w-5" />
+                <span>{t('transactionHistory', 'History')}</span>
+              </button>
+              <div className="bg-white/10 px-3 py-2 rounded-lg text-sm font-mono flex items-center gap-2">
+                <DevicePhoneMobileIcon className="h-5 w-5" /> {phone}
               </div>
-              <div className="bg-fuchsia-700/30 rounded-lg p-1">
+              <div className="bg-white/10 rounded-lg">
                 <LanguageSwitcher />
               </div>
             </div>
@@ -410,28 +411,9 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Welcome Banner */}
-        <div className="bg-fuchsia-700 text-white rounded-2xl p-6 mb-6 shadow-lg">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">{t('welcomeBanner', 'Welcome to CBE Digital Services')}</h2>
-              <p className="text-fuchsia-100 opacity-90">
-                {t('welcomeSubtitle', 'Access all banking services in one place')}
-              </p>
-            </div>
-            <button
-              onClick={() => openForm(forms.find(f => f.name === 'history')!)}
-              className="bg-fuchsia-800 hover:bg-fuchsia-900 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 group"
-            >
-              <ClockIcon className="h-5 w-5" />
-              {t('viewHistory', 'Transaction History')}
-              <ArrowRightIcon className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </div>
-
+        
         {/* Search and Filters */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
           {/* Search Bar */}
           <div className="relative mb-4">
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -441,7 +423,7 @@ export default function Dashboard() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('searchPlaceholder', 'Search for services...')}
-              className="w-full pl-12 pr-10 py-4 border-2 border-gray-200 rounded-xl text-lg focus:outline-none focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-100 transition-all"
+              className="w-full pl-12 pr-10 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-fuchsia-700 focus:ring-4 focus:ring-fuchsia-100 transition-all"
             />
             {searchQuery && (
               <button
@@ -455,7 +437,7 @@ export default function Dashboard() {
           </div>
 
           {/* Category Filters */}
-          <div className="flex flex-wrap gap-2">
+          <div className="hidden md:flex flex-wrap gap-2">
             {categories.map((category) => (
               <button
                 key={category.id}
@@ -464,7 +446,7 @@ export default function Dashboard() {
                   'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
                   selectedCategory === category.id
                     ? 'bg-fuchsia-700 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-fuchsia-100 hover:text-fuchsia-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-fuchsia-50 hover:text-fuchsia-700'
                 )}
               >
                 <FunnelIcon className="h-4 w-4" />
@@ -473,7 +455,7 @@ export default function Dashboard() {
                   'px-1.5 py-0.5 rounded-full text-xs',
                   selectedCategory === category.id
                     ? 'bg-white/20'
-                    : 'bg-fuchsia-50'
+                    : 'bg-fuchsia-100 text-fuchsia-700'
                 )}>
                   {category.count}
                 </span>
@@ -483,7 +465,7 @@ export default function Dashboard() {
         </div>
 
         {/* Results Count */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="hidden md:flex justify-between items-center mb-3">
           <p className="text-gray-600">
             {filteredForms.length} {t('servicesFound', 'services found')}
           </p>
@@ -499,35 +481,22 @@ export default function Dashboard() {
 
         {/* Loading State */}
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {[...Array(10)].map((_, i) => (
               <FormCardSkeleton key={i} />
             ))}
           </div>
         )}
 
-        {/* Error State */}
-        {signalRError && !loading && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-yellow-100 p-2 rounded-full">
-                <DevicePhoneMobileIcon className="h-5 w-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-yellow-800 font-medium">{signalRError}</p>
-                <p className="text-yellow-600 text-sm">You can still use all services</p>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Services Grid */}
         {!loading && (
           <>
             {filteredForms.length === 0 ? (
               <div className="text-center py-12">
-                <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MagnifyingGlassIcon className="h-8 w-8 text-gray-400" />
+                <div className="bg-fuchsia-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MagnifyingGlassIcon className="h-8 w-8 text-fuchsia-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {t('noResults', 'No services found')}
@@ -540,7 +509,7 @@ export default function Dashboard() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {filteredForms.map((form, idx) => (
                   <FormCard
                     key={form.name}
