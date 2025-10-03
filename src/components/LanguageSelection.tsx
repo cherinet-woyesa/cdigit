@@ -15,6 +15,16 @@ const LanguageSelection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Get last used language from localStorage
+  const getLastUsedLanguage = (): string | null => {
+    return localStorage.getItem('lastUsedLanguage');
+  };
+
+  // Save last used language to localStorage
+  const saveLastUsedLanguage = (langCode: string) => {
+    localStorage.setItem('lastUsedLanguage', langCode);
+  };
+
   // Filter languages based on search
   const filteredLanguages = LANGUAGES.filter(lang =>
     lang.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -24,11 +34,14 @@ const LanguageSelection: React.FC = () => {
   const handleLanguageSelect = async (langCode: LanguageCode) => {
     setSelectedLanguage(langCode);
     
+    // Save to localStorage
+    saveLastUsedLanguage(langCode);
+    
     // Stop any ongoing speech
     speechService.stop();
     
     // Speak selection confirmation
-    const confirmationText = t('language_selected', { language: LANGUAGE_CONFIG[langCode].name });
+    const confirmationText = LANGUAGE_CONFIG[langCode].name;
     await speechService.speak(confirmationText, langCode);
     
     // Add selection animation delay
@@ -50,36 +63,31 @@ const LanguageSelection: React.FC = () => {
     speechService.speak(welcomeMessage, i18n.language);
   };
 
-  // Keyboard navigation
+  // Auto-select last used language and speak welcome
   useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setSearchTerm('');
-      }
-      // Number shortcuts for quick selection (1-0 for first 10 languages)
-      if (event.key >= '1' && event.key <= '9') {
-        const index = parseInt(event.key) - 1;
-        if (index < filteredLanguages.length) {
-          handleLanguageSelect(filteredLanguages[index].code);
-        }
-      }
-      if (event.key === '0' && filteredLanguages.length >= 10) {
-        handleLanguageSelect(filteredLanguages[9].code);
-      }
-    };
+    const lastUsedLanguage = getLastUsedLanguage();
+    if (lastUsedLanguage && LANGUAGES.some(lang => lang.code === lastUsedLanguage)) {
+      setSelectedLanguage(lastUsedLanguage);
+      // Auto-speak welcome in last used language after a delay
+      const timer = setTimeout(() => {
+        const welcomeMessage = t('welcome_message') || 'Welcome to Commercial Bank of Ethiopia. Choose language to proceed.';
+        speechService.speak(welcomeMessage, lastUsedLanguage);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      // Default welcome message
+      const timer = setTimeout(() => {
+        speakWelcomeMessage();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [filteredLanguages]);
-
-  // Auto-speak welcome message on component mount
+  // Cleanup speech on unmount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      speakWelcomeMessage();
-    }, 1000);
-
     return () => {
-      clearTimeout(timer);
       speechService.stop();
     };
   }, []);
@@ -93,7 +101,7 @@ const LanguageSelection: React.FC = () => {
         {/* Header Section */}
         <div className="language-selection__header text-center space-y-4">
           <div className="flex items-center justify-center space-x-3">
-            <div className="logo-container w-12 h-12 bg-gradient-to-br from-fuchsia-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg">
+            <div className="logo-container w-12 h-12 bg-gradient-to-br from-fuchsia-700 to-pink-600 rounded-full flex items-center justify-center shadow-lg">
               <img 
                 src={logo} 
                 alt={t('logoAlt')} 
@@ -106,27 +114,27 @@ const LanguageSelection: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-3xl font-extrabold bg-gradient-to-r from-fuchsia-600 to-pink-600 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-extrabold bg-gradient-to-r from-fuchsia-700 to-pink-600 bg-clip-text text-transparent">
               {t('selectLanguage')}
             </h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-fuchsia-400 to-pink-400 rounded-full mx-auto"></div>
+            <div className="w-24 h-1 bg-gradient-to-r from-fuchsia-700 to-pink-600 rounded-full mx-auto"></div>
           </div>
 
           <p className="text-gray-600 text-sm">
             {t('chooseYourPreferredLanguage')}
           </p>
 
-          {/* Single Voice Button */}
+          {/* Voice Button */}
           {speechService.isSupported && (
             <button
               onClick={speakWelcomeMessage}
-              className="voice-button mx-auto flex items-center gap-2 px-6 py-3 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 transition-colors shadow-md hover:shadow-lg"
+              className="voice-button mx-auto flex items-center gap-2 px-6 py-3 bg-fuchsia-700 text-white rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 transition-colors shadow-md hover:shadow-lg"
               disabled={isSpeaking}
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
               </svg>
-              {t('voice') || 'Voice'}
+              {t('voice') || 'Listen Welcome'}
             </button>
           )}
         </div>
@@ -138,7 +146,7 @@ const LanguageSelection: React.FC = () => {
             placeholder={t('searchLanguages') || "Search languages..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+            className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-700 focus:border-transparent transition-colors"
           />
           <svg 
             className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" 
@@ -151,7 +159,7 @@ const LanguageSelection: React.FC = () => {
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -164,17 +172,16 @@ const LanguageSelection: React.FC = () => {
         <div className="language-selection__grid">
           {filteredLanguages.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
-              {filteredLanguages.map((lang, index) => (
+              {filteredLanguages.map((lang) => (
                 <button
                   key={lang.code}
                   onClick={() => handleLanguageSelect(lang.code)}
-                  className={`language-card w-full text-left p-4 rounded-lg border-2 transition-all duration-200 hover:border-fuchsia-500 hover:shadow-md ${
+                  className={`language-card w-full text-left p-4 rounded-lg border-2 transition-all duration-200 hover:border-fuchsia-700 hover:shadow-md ${
                     selectedLanguage === lang.code 
-                      ? 'border-fuchsia-500 bg-fuchsia-50 shadow-md' 
+                      ? 'border-fuchsia-700 bg-fuchsia-50 shadow-md' 
                       : 'border-gray-200 bg-white'
                   }`}
                   aria-label={`Select ${lang.name} language`}
-                  data-shortcut={index < 9 ? index + 1 : index === 9 ? 0 : null}
                 >
                   <div className="language-card__content flex items-center gap-4">
                     <span className="language-card__flag text-2xl">
@@ -189,18 +196,11 @@ const LanguageSelection: React.FC = () => {
                       </span>
                     </div>
                     <div className="language-card__indicator">
-                      <svg className="w-5 h-5 text-fuchsia-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-fuchsia-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
                   </div>
-                  
-                  {/* Keyboard shortcut hint */}
-                  {index < 10 && (
-                    <div className="language-card__shortcut absolute top-2 right-2 bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
-                      {index === 9 ? '0' : index + 1}
-                    </div>
-                  )}
                 </button>
               ))}
             </div>
@@ -218,9 +218,6 @@ const LanguageSelection: React.FC = () => {
         <div className="language-selection__footer text-center pt-4 border-t border-gray-100">
           <p className="text-xs text-gray-500">
             {t('secureAuthentication')} • {new Date().getFullYear()} • {t('cbeDigitalServices')}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {t('keyboardShortcutsAvailable') || 'Press 1-0 for quick selection'}
           </p>
         </div>
       </div>

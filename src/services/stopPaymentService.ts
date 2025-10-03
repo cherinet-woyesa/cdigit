@@ -1,229 +1,284 @@
-// Types
-export interface StopPaymentOrder {
-  id: string;
-  formRefId: string;
-  type: 'SPO' | 'RSPO';
-  status: 'pending' | 'approved' | 'rejected' | 'revoked';
+// src/services/stopPaymentService.ts
+
+// Types matching backend DTOs
+export interface StopPaymentOrderCreateDto {
   accountNumber: string;
-  customerName: string;
-  accountBalance: number;
   chequeNumber: string;
-  amount: number;
+  chequeBookRequestId: string;
+  chequeAmount: number;
   chequeDate: string;
   reason: string;
-  branchName: string;
-  dateCreated: string;
-  dateProcessed?: string;
-  signatureData?: string;
-  verifiedBy?: string;
-  approvedBy?: string;
-  relatedSpoId?: string; // For RSPO to reference original SPO
-  auditLog: Array<{
-    action: string;
-    timestamp: string;
-    performedBy: string;
-    details?: string;
-  }>;
+  signature: string;
+  branchId: string;
+  otpCode: string;
+  phoneNumber: string;
 }
 
-// Mock data for development
-const mockCustomerAccounts = {
-  '1000123456': {
-    accountNumber: '1000123456',
-    customerName: 'John Doe',
-    balance: 50000,
-    branchName: 'Addis Ababa Main Branch',
-    activeCheques: [
-      { number: '123456', amount: 5000, date: '2025-09-15', status: 'active' },
-      { number: '123457', amount: 7500, date: '2025-09-20', status: 'active' },
-    ],
-  },
-};
+export interface RevokeStopPaymentOrderDto {
+  stopPaymentOrderId: string;
+  chequeNumber: string;
+  signature: string;
+  otpCode: string;
+  phoneNumber: string;
+}
 
-// In-memory storage for development
-let stopPaymentOrders: StopPaymentOrder[] = [];
+export interface StopPaymentOrderResponseDto {
+  id: string;
+  formReferenceId: string;
+  accountNumber: string;
+  customerName: string;
+  chequeNumber: string;
+  chequeAmount: number;
+  chequeDate: string;
+  reason: string;
+  isRevoked: boolean;
+  revokedAt?: string;
+  revokedBy?: string;
+  branchName?: string;
+  windowNumber?: number;
+  frontMakerName?: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Revoked';
+}
 
-// Generate a random reference ID
-const generateReferenceId = (): string => {
-  const prefix = 'SPO';
-  const randomNum = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}${randomNum}`;
-};
+export interface StopPaymentOrder {
+  id: string;
+  formReferenceId: string;
+  accountNumber: string;
+  customerName: string;
+  chequeNumber: string;
+  chequeAmount: number;
+  chequeDate: string;
+  reason: string;
+  isRevoked: boolean;
+  revokedAt?: string;
+  revokedBy?: string;
+  branchName?: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Revoked';
+  dateCreated: string;
+  signature?: string;
+}
 
-// Simulate API call delay
-const simulateApiCall = <T>(data: T): Promise<T> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(data), 500);
-  });
-};
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}
 
 // Service methods
-export const stopPaymentService = {
-  // Get customer account details
-  getCustomerAccount: async (accountNumber: string) => {
-    return simulateApiCall({
-      success: true,
-      data: mockCustomerAccounts[accountNumber as keyof typeof mockCustomerAccounts] || null,
-    });
-  },
+class StopPaymentService {
+  private baseURL = '/api/StopPaymentOrder'; // Adjust based on your API base URL
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error: any) {
+      console.error('API request failed:', error);
+      return {
+        success: false,
+        error: error.message || 'Network request failed',
+      };
+    }
+  }
 
   // Submit Stop Payment Order
-  submitStopPaymentOrder: async (data: Omit<StopPaymentOrder, 'id' | 'formRefId' | 'dateCreated' | 'auditLog' | 'status'>) => {
-    const newOrder: StopPaymentOrder = {
-      ...data,
-      id: `order_${Date.now()}`,
-      formRefId: generateReferenceId(),
-      dateCreated: new Date().toISOString(),
-      status: 'pending',
-      auditLog: [
-        {
-          action: 'SPO_CREATED',
-          timestamp: new Date().toISOString(),
-          performedBy: data.verifiedBy || 'system',
-          details: 'Stop Payment Order created',
-        },
-      ],
-    };
-
-    stopPaymentOrders.push(newOrder);
-    return simulateApiCall({
-      success: true,
-      data: newOrder,
+  async submitStopPaymentOrder(data: StopPaymentOrderCreateDto): Promise<ApiResponse<StopPaymentOrderResponseDto>> {
+    return this.request<StopPaymentOrderResponseDto>('/submit', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
-  },
+  }
 
-  // Submit Revoke Stop Payment Order
-  submitRevokeStopPaymentOrder: async (spoId: string, data: {
-    verifiedBy: string;
-    approvedBy: string;
-    signatureData: string;
-  }) => {
-    const spoIndex = stopPaymentOrders.findIndex(order => order.id === spoId);
-    
-    if (spoIndex === -1) {
-      return simulateApiCall({
-        success: false,
-        error: 'Stop Payment Order not found',
-      });
-    }
-
-    const updatedOrder = {
-      ...stopPaymentOrders[spoIndex],
-      status: 'revoked',
-      dateProcessed: new Date().toISOString(),
-      verifiedBy: data.verifiedBy,
-      approvedBy: data.approvedBy,
-      auditLog: [
-        ...(stopPaymentOrders[spoIndex].auditLog || []),
-        {
-          action: 'SPO_REVOKED',
-          timestamp: new Date().toISOString(),
-          performedBy: data.verifiedBy,
-          details: 'Stop Payment Order revoked',
-        },
-      ],
-    };
-
-    stopPaymentOrders[spoIndex] = updatedOrder;
-
-    // Create RSPO record
-    const rspoOrder: StopPaymentOrder = {
-      id: `order_${Date.now()}`,
-      formRefId: generateReferenceId(),
-      type: 'RSPO',
-      status: 'approved',
-      accountNumber: updatedOrder.accountNumber,
-      customerName: updatedOrder.customerName,
-      accountBalance: updatedOrder.accountBalance,
-      chequeNumber: updatedOrder.chequeNumber,
-      amount: updatedOrder.amount,
-      chequeDate: updatedOrder.chequeDate,
-      reason: 'Revoked by customer request',
-      branchName: updatedOrder.branchName,
-      dateCreated: new Date().toISOString(),
-      dateProcessed: new Date().toISOString(),
-      signatureData: data.signatureData,
-      verifiedBy: data.verifiedBy,
-      approvedBy: data.approvedBy,
-      relatedSpoId: spoId,
-      auditLog: [
-        {
-          action: 'RSPO_CREATED',
-          timestamp: new Date().toISOString(),
-          performedBy: data.verifiedBy,
-          details: 'Revoke Stop Payment Order created',
-        },
-      ],
-    };
-
-    stopPaymentOrders.push(rspoOrder);
-
-    return simulateApiCall({
-      success: true,
-      data: {
-        spo: updatedOrder,
-        rspo: rspoOrder,
-      },
+  // Revoke Stop Payment Order
+  async submitRevokeStopPaymentOrder(data: RevokeStopPaymentOrderDto): Promise<ApiResponse<{ spo: StopPaymentOrderResponseDto; rspo: StopPaymentOrderResponseDto }>> {
+    return this.request<{ spo: StopPaymentOrderResponseDto; rspo: StopPaymentOrderResponseDto }>('/revoke', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
-  },
+  }
+
+  // Get all Stop Payment Orders
+  async getAllStopPaymentOrders(): Promise<ApiResponse<StopPaymentOrderResponseDto[]>> {
+    return this.request<StopPaymentOrderResponseDto[]>('', {
+      method: 'GET',
+    });
+  }
 
   // Get Stop Payment Order by ID
-  getStopPaymentOrder: async (id: string) => {
-    const order = stopPaymentOrders.find(order => order.id === id);
-    return simulateApiCall({
-      success: !!order,
-      data: order || null,
-      error: order ? undefined : 'Stop Payment Order not found',
+  async getStopPaymentOrderById(id: string): Promise<ApiResponse<StopPaymentOrderResponseDto>> {
+    return this.request<StopPaymentOrderResponseDto>(`/${id}`, {
+      method: 'GET',
     });
-  },
+  }
+
+  // Cancel Stop Payment Order
+  async cancelStopPaymentOrder(id: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(`/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Get Stop Payment Orders by Branch
+  async getStopPaymentOrdersByBranch(branchId: string): Promise<ApiResponse<StopPaymentOrderResponseDto[]>> {
+    return this.request<StopPaymentOrderResponseDto[]>(`/branch/${branchId}`, {
+      method: 'GET',
+    });
+  }
+
+  // Get Stop Payment Orders by Maker and Branch
+  async getStopPaymentOrdersByMakerAndBranch(makerId: string, branchId: string): Promise<ApiResponse<StopPaymentOrderResponseDto[]>> {
+    return this.request<StopPaymentOrderResponseDto[]>(`/maker/${makerId}/branch/${branchId}`, {
+      method: 'GET',
+    });
+  }
 
   // Search Stop Payment Orders
-  searchStopPaymentOrders: async (criteria: {
+  async searchStopPaymentOrders(criteria: {
     accountNumber?: string;
     chequeNumber?: string;
     customerName?: string;
-  }) => {
-    let results = [...stopPaymentOrders];
-    
-    if (criteria.accountNumber) {
-      results = results.filter(order => 
-        order.accountNumber.includes(criteria.accountNumber!)
-      );
-    }
-    
-    if (criteria.chequeNumber) {
-      results = results.filter(order => 
-        order.chequeNumber.includes(criteria.chequeNumber!)
-      );
-    }
-    
-    if (criteria.customerName) {
-      const searchTerm = criteria.customerName.toLowerCase();
-      results = results.filter(order => 
-        order.customerName.toLowerCase().includes(searchTerm)
-      );
-    }
-    
-    return simulateApiCall({
-      success: true,
-      data: results,
-    });
-  },
+  }): Promise<ApiResponse<StopPaymentOrderResponseDto[]>> {
+    // Since backend doesn't have a dedicated search endpoint, we'll filter client-side from all orders
+    try {
+      const response = await this.getAllStopPaymentOrders();
+      
+      if (!response.success || !response.data) {
+        return response;
+      }
 
-  // Get all active (not revoked) Stop Payment Orders for an account
-  getActiveStopPaymentOrders: async (accountNumber: string) => {
-    const activeOrders = stopPaymentOrders.filter(
-      order => 
-        order.accountNumber === accountNumber && 
-        order.status !== 'revoked' &&
-        order.type === 'SPO'
-    );
-    
-    return simulateApiCall({
-      success: true,
-      data: activeOrders,
-    });
-  },
-};
+      let results = response.data;
+      
+      if (criteria.accountNumber) {
+        results = results.filter(order => 
+          order.accountNumber.includes(criteria.accountNumber!)
+        );
+      }
+      
+      if (criteria.chequeNumber) {
+        results = results.filter(order => 
+          order.chequeNumber.includes(criteria.chequeNumber!)
+        );
+      }
+      
+      if (criteria.customerName) {
+        const searchTerm = criteria.customerName.toLowerCase();
+        results = results.filter(order => 
+          order.customerName.toLowerCase().includes(searchTerm)
+        );
+      }
 
+      return {
+        success: true,
+        data: results,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  // Get active (not revoked) Stop Payment Orders for an account
+  async getActiveStopPaymentOrders(accountNumber: string): Promise<ApiResponse<StopPaymentOrderResponseDto[]>> {
+    try {
+      const response = await this.getAllStopPaymentOrders();
+      
+      if (!response.success || !response.data) {
+        return response;
+      }
+
+      const activeOrders = response.data.filter(
+        order => 
+          order.accountNumber === accountNumber && 
+          !order.isRevoked &&
+          order.status === 'Approved'
+      );
+
+      return {
+        success: true,
+        data: activeOrders,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  // Update Stop Payment Order
+  async updateStopPaymentOrder(id: string, data: { reason: string; signature: string }): Promise<ApiResponse<StopPaymentOrderResponseDto>> {
+    return this.request<StopPaymentOrderResponseDto>(`/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Delete Stop Payment Order
+  async deleteStopPaymentOrder(id: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // OTP Service Integration (Mock - replace with actual OTP service)
+  async requestOtp(phoneNumber: string): Promise<ApiResponse<{ message: string }>> {
+    // TODO: Replace with actual OTP service integration
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          data: { message: 'OTP sent successfully' },
+        });
+      }, 1000);
+    });
+  }
+
+  // Verify OTP (Mock - replace with actual OTP service)
+  async verifyOtp(phoneNumber: string, otpCode: string): Promise<ApiResponse<{ verified: boolean }>> {
+    // TODO: Replace with actual OTP service integration
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          data: { verified: otpCode.length === 6 }, // Simple mock verification
+        });
+      }, 500);
+    });
+  }
+}
+
+// Export singleton instance
+const stopPaymentService = new StopPaymentService();
+
+// Export individual methods with different names to avoid conflicts
+export const submitStopPaymentOrder = stopPaymentService.submitStopPaymentOrder.bind(stopPaymentService);
+export const submitRevokeStopPaymentOrder = stopPaymentService.submitRevokeStopPaymentOrder.bind(stopPaymentService);
+export const getAllStopPaymentOrders = stopPaymentService.getAllStopPaymentOrders.bind(stopPaymentService);
+export const getStopPaymentOrderById = stopPaymentService.getStopPaymentOrderById.bind(stopPaymentService);
+export const cancelStopPaymentOrder = stopPaymentService.cancelStopPaymentOrder.bind(stopPaymentService);
+export const getStopPaymentOrdersByBranch = stopPaymentService.getStopPaymentOrdersByBranch.bind(stopPaymentService);
+export const getStopPaymentOrdersByMakerAndBranch = stopPaymentService.getStopPaymentOrdersByMakerAndBranch.bind(stopPaymentService);
+export const searchStopPaymentOrders = stopPaymentService.searchStopPaymentOrders.bind(stopPaymentService);
+export const getActiveStopPaymentOrders = stopPaymentService.getActiveStopPaymentOrders.bind(stopPaymentService);
+export const updateStopPaymentOrder = stopPaymentService.updateStopPaymentOrder.bind(stopPaymentService);
+export const deleteStopPaymentOrder = stopPaymentService.deleteStopPaymentOrder.bind(stopPaymentService);
+export const requestOtp = stopPaymentService.requestOtp.bind(stopPaymentService);
+export const verifyOtp = stopPaymentService.verifyOtp.bind(stopPaymentService);
+
+// Export the service instance as default
 export default stopPaymentService;

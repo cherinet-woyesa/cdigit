@@ -64,7 +64,13 @@ class SpeechService {
       return false;
     }
 
-    // Simplified strategy: always try native speech synthesis
+    if (textKey) {
+      const played = await this.playPreRecordedAudio(langCode, textKey);
+      if (played) {
+        return true;
+      }
+    }
+
     return this.speakNative(text, langCode);
   }
 

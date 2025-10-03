@@ -1,234 +1,576 @@
-import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Printer, ArrowLeft, FileText, AlertCircle } from 'lucide-react';
-import type { StopPaymentOrder } from '../../../../services/stopPaymentService';
+import { useEffect, useState, useRef, Fragment } from 'react';
+import { 
+    getStopPaymentOrderById,
+    cancelStopPaymentOrder 
+} from '../../../../services/stopPaymentService';
+import { useTranslation } from 'react-i18next';
+import { useReactToPrint } from 'react-to-print';
+import { Dialog, Transition } from '@headlessui/react';
+import { useAuth } from '../../../../context/AuthContext';
+import { useBranch } from '../../../../context/BranchContext';
+import { 
+    CheckCircle2, 
+    Printer, 
+    AlertCircle,
+    Loader2,
+    X,
+    FileText,
+    MapPin,
+    Calendar,
+    Clock,
+    CreditCard,
+    DollarSign,
+    Building,
+    RefreshCw,
+    User,
+    Shield,
+    Ban
+} from 'lucide-react';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 
-const StopPaymentConfirmation: React.FC = () => {
-  const navigate = useNavigate();
-  const { state } = useLocation();
-  
-  // Type assertion for the request data
-  const request = state?.request as StopPaymentOrder | undefined;
-  const isRevoke = state?.isRevoke || false;
-  
-  // Redirect if no request data is found
-  useEffect(() => {
-    if (!request) {
-      navigate('/form/stop-payment');
-    }
-  }, [request, navigate]);
-  
-  // Handle print
-  const handlePrint = () => {
-    window.print();
-  };
-  
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-  
-  if (!request) {
-    return null;
-  }
-  
-  return (
-    <div className="container mx-auto p-4 max-w-3xl print-confirmation">
-      <div className="bg-white p-6 rounded-lg shadow-lg print:shadow-none">
-        {/* Success Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="bg-green-100 p-3 rounded-full">
-              <CheckCircle2 className="h-12 w-12 text-green-600" />
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            {isRevoke 
-              ? 'Stop Payment Order Revoked Successfully' 
-              : 'Stop Payment Order Submitted Successfully'}
-          </h1>
-          <p className="text-gray-600">
-            {isRevoke
-              ? `Cheque number ${request.chequeNumber} is now payable again.`
-              : `Cheque number ${request.chequeNumber} has been blocked until further notice.`}
-          </p>
+// Success message component
+function SuccessMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span className="text-sm text-green-700">{message}</span>
         </div>
-        
-        {/* Request Summary */}
-        <div className="border border-gray-200 rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-4 pb-2 border-b">
-            {isRevoke ? 'Revocation Details' : 'Request Details'}
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <p className="text-sm text-gray-500">Reference Number</p>
-              <p className="font-medium">{request.formRefId}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Date & Time</p>
-              <p className="font-medium">{formatDate(request.dateCreated)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">
-                {isRevoke ? 'Date Revoked' : 'Date Payment Stopped'}
-              </p>
-              <p className="font-medium">
-                {formatDate(isRevoke ? request.dateProcessed! : request.dateCreated)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Branch</p>
-              <p className="font-medium">{request.branchName}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Account Number</p>
-              <p className="font-mono">••••{request.accountNumber.slice(-4)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Customer Name</p>
-              <p className="font-medium">{request.customerName}</p>
-            </div>
-            {!isRevoke && (
-              <>
-                <div>
-                  <p className="text-sm text-gray-500">Cheque Number</p>
-                  <p className="font-mono">{request.chequeNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Amount</p>
-                  <p className="font-medium">ETB {request.amount?.toLocaleString()}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <p className="text-sm text-gray-500">Reason</p>
-                  <p className="font-medium">{request.reason}</p>
-                </div>
-              </>
-            )}
-            
-            {isRevoke && request.relatedSpoId && (
-              <div className="md:col-span-2">
-                <p className="text-sm text-gray-500">Original SPO Reference</p>
-                <p className="font-mono">{request.relatedSpoId}</p>
-              </div>
-            )}
-            
-            <div className="md:col-span-2 border-t border-gray-200 pt-4 mt-2">
-              <p className="text-sm text-gray-500">Verified By</p>
-              <p className="font-medium">{request.verifiedBy || 'System'}</p>
-              
-              <p className="text-sm text-gray-500 mt-2">Approved By</p>
-              <p className="font-medium">{request.approvedBy || 'System'}</p>
-            </div>
-          </div>
-          
-          {!isRevoke && (
-            <div className="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-400">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <AlertCircle className="h-5 w-5 text-yellow-400" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-yellow-700">
-                    <span className="font-medium">Important:</span> This stop payment order will remain in 
-                    effect until the cheque expires or is revoked. Please retain this reference number 
-                    for future correspondence.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {isRevoke && (
-            <div className="bg-green-50 p-4 rounded-md border-l-4 border-green-400">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <CheckCircle2 className="h-5 w-5 text-green-400" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-green-700">
-                    <span className="font-medium">Note:</span> The stop payment order has been successfully 
-                    revoked. The cheque is now payable again. Please retain this reference number for 
-                    your records.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+    );
+}
+
+// Error message component
+function ErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700">{message}</span>
         </div>
-        
-        {/* Next Steps */}
-        <div className="bg-blue-50 p-4 rounded-lg mb-8">
-          <h3 className="font-medium text-blue-800 mb-2">What happens next?</h3>
-          <p className="text-blue-700 text-sm">
-            {isRevoke 
-              ? 'The stop payment order has been revoked, and the cheque is now payable again. The payee may present the cheque for payment.'
-              : 'Your stop payment request has been processed. The cheque will be returned if presented for payment. Please allow up to 24 hours for the stop payment to take full effect across all channels.'}
-          </p>
-        </div>
-        
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-4">
-          <button
-            onClick={() => navigate('/customer/dashboard')}
-            className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </button>
-          
-          <div className="space-x-3">
-            <button
-              onClick={handlePrint}
-              className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Print Receipt
-            </button>
-            
-            <button
-              onClick={() => navigate('/form/stop-payment')}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-            >
-              New {isRevoke ? 'Revocation' : 'Stop Payment'}
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* Print-only styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print-confirmation,
-          .print-confirmation * {
-            visibility: visible;
-          }
-          .print-confirmation {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            padding: 0;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print\:shadow-none {
-            box-shadow: none !important;
-          }
+    );
+}
+
+interface StopPaymentData {
+    id?: string;
+    formReferenceId?: string;
+    accountNumber?: string;
+    customerName?: string;
+    chequeNumber?: string;
+    chequeAmount?: number;
+    chequeDate?: string;
+    reason?: string;
+    branchName?: string;
+    status?: 'Pending' | 'Approved' | 'Rejected' | 'Revoked';
+    isRevoked?: boolean;
+    revokedAt?: string;
+    revokedBy?: string;
+    dateCreated?: string;
+    windowNumber?: number;
+    frontMakerName?: string;
+}
+
+interface LocationState {
+    request?: StopPaymentData;
+    isRevoke?: boolean;
+    branchName?: string;
+    formData?: any;
+    originalSpo?: StopPaymentData;
+}
+
+export default function StopPaymentConfirmation() {
+    const { t } = useTranslation();
+    const { phone } = useAuth();
+    const { state } = useLocation() as { state?: LocationState };
+    const navigate = useNavigate();
+    const { branch } = useBranch();
+    const [stopPaymentData, setStopPaymentData] = useState<StopPaymentData>({});
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [isCancelling, setIsCancelling] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+    const [printError, setPrintError] = useState('');
+    const componentToPrintRef = useRef<HTMLDivElement>(null);
+    const branchName = branch?.name || state?.branchName || t('selectedBranch', 'Selected Branch');
+    const isRevoke = state?.isRevoke || false;
+
+    const handlePrint = useReactToPrint({
+        content: () => componentToPrintRef.current,
+        documentTitle: isRevoke 
+            ? t('revokeStopPaymentConfirmation', 'Revoke Stop Payment Confirmation')
+            : t('stopPaymentConfirmation', 'Stop Payment Confirmation'),
+        pageStyle: `
+            @page { size: auto; margin: 10mm; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+                .no-print { display: none !important; }
+            }
+        `,
+        onBeforeGetContent: () => setPrintError(''),
+        onPrintError: () => setPrintError(t('printError', 'Failed to print. Please check your printer settings.')),
+    } as any);
+
+    useEffect(() => {
+        const initializeData = async () => {
+            try {
+                setIsLoading(true);
+                setError('');
+                
+                if (state?.request) {
+                    // Use data from navigation state
+                    const requestData = state.request;
+                    setStopPaymentData({
+                        id: requestData.id,
+                        formReferenceId: requestData.formReferenceId,
+                        accountNumber: requestData.accountNumber,
+                        customerName: requestData.customerName,
+                        chequeNumber: requestData.chequeNumber,
+                        chequeAmount: requestData.chequeAmount,
+                        chequeDate: requestData.chequeDate,
+                        reason: requestData.reason,
+                        branchName: requestData.branchName,
+                        status: requestData.status,
+                        isRevoked: requestData.isRevoked,
+                        revokedAt: requestData.revokedAt,
+                        revokedBy: requestData.revokedBy,
+                        dateCreated: requestData.dateCreated,
+                        windowNumber: requestData.windowNumber,
+                        frontMakerName: requestData.frontMakerName,
+                    });
+                } else {
+                    setError(t('invalidState', 'Invalid request state. Please start over.'));
+                }
+            } catch (err: any) {
+                console.error('Error initializing stop payment data:', err);
+                setError(err?.message || t('loadFailed', 'Failed to load stop payment details'));
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        initializeData();
+    }, [state, t]);
+
+    const handleCancel = async () => {
+        if (!stopPaymentData.id) {
+            setError(t('noStopPaymentId', 'No stop payment ID available'));
+            return;
         }
-      `}</style>
-    </div>
-  );
-};
+        try {
+            setIsCancelling(true);
+            setError('');
+            const response = await cancelStopPaymentOrder(stopPaymentData.id);
+            if (response.success) {
+                setSuccessMessage(response.message || t('stopPaymentCancelled', 'Stop Payment request cancelled successfully'));
+                setShowCancelModal(false);
+                setTimeout(() => {
+                    navigate('/form/stop-payment', {
+                        state: {
+                            showSuccess: true,
+                            successMessage: response.message || t('stopPaymentCancelled', 'Stop Payment request cancelled successfully')
+                        }
+                    });
+                }, 1500);
+            } else {
+                setError(response.message || t('cancelFailed', 'Failed to cancel stop payment'));
+            }
+        } catch (err: any) {
+            setError(err?.message || t('cancelFailed', 'Failed to cancel stop payment'));
+        } finally {
+            setIsCancelling(false);
+        }
+    };
 
-export default StopPaymentConfirmation;
+    const handleNewStopPayment = () => {
+        navigate('/form/stop-payment');
+    };
+
+    const handleBackToDashboard = () => {
+        navigate('/dashboard');
+    };
+
+    // Auto-redirect if error is due to invalid navigation state
+    useEffect(() => {
+        if (error && !stopPaymentData.id && error === t('invalidState', 'Invalid request state. Please start over.')) {
+            const timer = setTimeout(() => {
+                navigate('/form/stop-payment');
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, stopPaymentData.id, navigate, t]);
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
+                        <p className="text-gray-600">{t('loading', 'Loading stop payment details...')}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state with auto-redirect
+    if (error && !stopPaymentData.id) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
+                        <p className="text-gray-600 mb-4">
+                            {error === t('invalidState', 'Invalid request state. Please start over.')
+                                ? t('redirectMessage', 'This page was loaded without a valid stop payment. You will be redirected to the stop payment form.')
+                                : error}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button
+                                onClick={() => navigate('/form/stop-payment')}
+                                className="bg-fuchsia-700 text-white px-6 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors"
+                            >
+                                {t('goToStopPayment', 'Go to Stop Payment')}
+                            </button>
+                            <button
+                                onClick={handleBackToDashboard}
+                                className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                {t('backToDashboard', 'Back to Dashboard')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Success state after cancellation
+    if (successMessage) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-4xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('success', 'Success!')}</h3>
+                        <p className="text-gray-600 mb-4">{successMessage}</p>
+                        <button
+                            onClick={handleBackToDashboard}
+                            className="bg-fuchsia-700 text-white px-6 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors"
+                        >
+                            {t('backToDashboard', 'Back to Dashboard')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'Approved': return 'text-green-600';
+            case 'Pending': return 'text-yellow-600';
+            case 'Rejected': return 'text-red-600';
+            case 'Revoked': return 'text-purple-600';
+            default: return 'text-gray-600';
+        }
+    };
+
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'Approved': return <CheckCircle2 className="h-4 w-4" />;
+            case 'Pending': return <Clock className="h-4 w-4" />;
+            case 'Rejected': return <X className="h-4 w-4" />;
+            case 'Revoked': return <Ban className="h-4 w-4" />;
+            default: return <AlertCircle className="h-4 w-4" />;
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full">
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    {/* Header with Language Switcher */}
+                    <div className="bg-fuchsia-700 text-white p-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <FileText className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-bold">
+                                        {isRevoke 
+                                            ? t('revokeStopPaymentConfirmation', 'Revoke Stop Payment Confirmation')
+                                            : t('stopPaymentConfirmation', 'Stop Payment Confirmation')
+                                        }
+                                    </h1>
+                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{branchName}</span>
+                                        <span>•</span>
+                                        <Calendar className="h-3 w-3" />
+                                        <span>{new Date().toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                    📱 {phone}
+                                </div>
+                                <div className="bg-white/20 rounded p-1">
+                                    <LanguageSwitcher />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div ref={componentToPrintRef} className="p-4">
+                        {/* Success Icon */}
+                        <div className="text-center py-4">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                            </div>
+                            <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
+                            <p className="text-gray-600 text-sm">
+                                {isRevoke 
+                                    ? t('stopPaymentRevoked', 'Your stop payment has been successfully revoked.')
+                                    : t('stopPaymentSubmitted', 'Your stop payment request has been submitted.')
+                                }
+                            </p>
+                        </div>
+
+                        {/* Reference ID Card */}
+                        <div className="mb-4">
+                            <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-4 rounded-lg text-center text-white">
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                    <Shield className="h-4 w-4" />
+                                    <span className="text-sm font-medium">
+                                        {t('referenceNumber', 'Reference Number')}
+                                    </span>
+                                </div>
+                                <p className="text-2xl font-bold font-mono">
+                                    {stopPaymentData.formReferenceId || 'N/A'}
+                                </p>
+                                {stopPaymentData.windowNumber && (
+                                    <p className="text-sm mt-1 opacity-90">
+                                        {t('window', 'Window')}: {stopPaymentData.windowNumber}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Transaction Summary */}
+                        <div className="mb-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                                    <FileText className="h-4 w-4" />
+                                    {isRevoke 
+                                        ? t('revocationSummary', 'Revocation Summary')
+                                        : t('stopPaymentSummary', 'Stop Payment Summary')
+                                    }
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <User className="h-3 w-3" />
+                                            {t('customerName', 'Customer Name')}:
+                                        </span>
+                                        <span className="font-semibold text-right">{stopPaymentData.customerName || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <CreditCard className="h-3 w-3" />
+                                            {t('accountNumber', 'Account Number')}:
+                                        </span>
+                                        <span className="font-mono font-semibold">{stopPaymentData.accountNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <FileText className="h-3 w-3" />
+                                            {t('chequeNumber', 'Cheque Number')}:
+                                        </span>
+                                        <span className="font-mono font-semibold">{stopPaymentData.chequeNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <DollarSign className="h-3 w-3" />
+                                            {t('chequeAmount', 'Cheque Amount')}:
+                                        </span>
+                                        <span className="font-semibold text-fuchsia-700">
+                                            {stopPaymentData.chequeAmount != null 
+                                                ? `${Number(stopPaymentData.chequeAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` 
+                                                : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            {t('chequeDate', 'Cheque Date')}:
+                                        </span>
+                                        <span>
+                                            {stopPaymentData.chequeDate 
+                                                ? new Date(stopPaymentData.chequeDate).toLocaleDateString()
+                                                : 'N/A'
+                                            }
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-start py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <AlertCircle className="h-3 w-3" />
+                                            {t('reason', 'Reason')}:
+                                        </span>
+                                        <span className="text-right max-w-xs">{stopPaymentData.reason || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Building className="h-3 w-3" />
+                                            {t('branch', 'Branch')}:
+                                        </span>
+                                        <span>{branchName}</span>
+                                    </div>
+                                    {stopPaymentData.frontMakerName && (
+                                        <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                            <span className="font-medium text-gray-700 flex items-center gap-1">
+                                                <User className="h-3 w-3" />
+                                                {t('processedBy', 'Processed By')}:
+                                            </span>
+                                            <span>{stopPaymentData.frontMakerName}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            {getStatusIcon(stopPaymentData.status || '')}
+                                            {t('status', 'Status')}:
+                                        </span>
+                                        <span className={`font-medium ${getStatusColor(stopPaymentData.status || '')}`}>
+                                            {stopPaymentData.status || 'N/A'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Important Notes */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                            <h4 className="text-sm font-semibold text-blue-800 mb-1 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {t('importantNotes', 'Important Notes')}
+                            </h4>
+                            <ul className="text-xs text-blue-700 space-y-1">
+                                <li>• {t('stopPaymentNote1', 'Please keep your reference number for future inquiries')}</li>
+                                <li>• {t('stopPaymentNote2', 'This stop payment will be processed within 24 hours')}</li>
+                                <li>• {t('stopPaymentNote3', 'Contact branch for any urgent matters')}</li>
+                                {isRevoke && (
+                                    <li>• {t('revokeNote', 'The cheque is now payable again after revocation')}</li>
+                                )}
+                            </ul>
+                        </div>
+
+                        {/* Thank You Message */}
+                        <div className="text-center pt-3 border-t border-gray-200">
+                            <p className="text-gray-600 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="p-4 border-t border-gray-200 no-print">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={handleNewStopPayment}
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                            >
+                                <RefreshCw className="h-3 w-3" />
+                                {t('newRequest', 'New Request')}
+                            </button>
+                            <button
+                                onClick={handlePrint}
+                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                            >
+                                <Printer className="h-3 w-3" />
+                                {t('print', 'Print')}
+                            </button>
+                        </div>
+                        <div className="mt-2">
+                            <button
+                                onClick={() => setShowCancelModal(true)}
+                                disabled={isCancelling || stopPaymentData.status !== 'Pending'}
+                                className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                                title={stopPaymentData.status !== 'Pending' ? t('onlyPendingCanCancel', 'Only pending requests can be cancelled') : ''}
+                            >
+                                <X className="h-3 w-3" />
+                                {t('cancelRequest', 'Cancel Request')}
+                            </button>
+                        </div>
+                        {/* Messages */}
+                        {error && <ErrorMessage message={error} />}
+                        {printError && <ErrorMessage message={printError} />}
+                        {successMessage && <SuccessMessage message={successMessage} />}
+                    </div>
+
+                    {/* Cancel Confirmation Modal */}
+                                        {/* Cancel Confirmation Modal */}
+                    <Transition appear show={showCancelModal} as={Fragment}>
+                        <Dialog as="div" className="relative z-10" onClose={() => !isCancelling && setShowCancelModal(false)}>
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0"
+                                enterTo="opacity-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100"
+                                leaveTo="opacity-0"
+                            >
+                                <div className="fixed inset-0 bg-black/25" />
+                            </Transition.Child>
+                            <div className="fixed inset-0 overflow-y-auto">
+                                <div className="flex min-h-full items-center justify-center p-4 text-center">
+                                    <Transition.Child
+                                        as={Fragment}
+                                        enter="ease-out duration-300"
+                                        enterFrom="opacity-0 scale-95"
+                                        enterTo="opacity-100 scale-100"
+                                        leave="ease-in duration-200"
+                                        leaveFrom="opacity-100 scale-100"
+                                        leaveTo="opacity-0 scale-95"
+                                    >
+                                        <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                                            <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
+                                                <AlertCircle className="h-5 w-5 text-red-500" />
+                                                {t('confirmCancellation', 'Confirm Cancellation')}
+                                            </Dialog.Title>
+                                            <div className="mt-4">
+                                                <p className="text-sm text-gray-500">
+                                                    {t('cancelStopPaymentPrompt', 'Are you sure you want to cancel this stop payment request? This action cannot be undone.')}
+                                                </p>
+                                            </div>
+                                            {error && <ErrorMessage message={error} />}
+                                            <div className="mt-6 flex justify-end gap-3">
+                                                <button
+                                                    type="button"
+                                                    className="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
+                                                    onClick={() => setShowCancelModal(false)}
+                                                    disabled={isCancelling}
+                                                >
+                                                    {t('goBack', 'Go Back')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                                                    onClick={handleCancel}
+                                                    disabled={isCancelling}
+                                                >
+                                                    {isCancelling ? t('cancelling', 'Cancelling...') : t('yesCancelRequest', 'Yes, Cancel Request')}
+                                                </button>
+                                            </div>
+                                        </Dialog.Panel>
+                                    </Transition.Child>
+                                </div>
+                            </div>
+                        </Dialog>
+                    </Transition>
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -26,23 +26,22 @@
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   text-align: left;
-  overflow: hidden;
 }
 
 .language-card:hover {
-  border-color: #c026d3;
+  border-color: #a21caf;
   background: #fdf4ff;
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(192, 38, 211, 0.15);
+  box-shadow: 0 8px 25px rgba(162, 28, 175, 0.15);
 }
 
 .language-card--selected {
-  border-color: #c026d3;
-  background: linear-gradient(135deg, #fdf4ff 0%, #fce7f3 100%);
+  border-color: #a21caf;
+  background: #fdf4ff;
   transform: scale(1.02);
-  box-shadow: 0 8px 25px rgba(192, 38, 211, 0.2);
+  box-shadow: 0 8px 25px rgba(162, 28, 175, 0.2);
 }
 
 .language-card__content {
@@ -82,92 +81,44 @@
   transition: all 0.3s ease;
 }
 
-.language-card:hover .language-card__indicator,
-.language-card--selected .language-card__indicator {
+.language-card:hover .language-card__indicator {
   opacity: 1;
   transform: translateX(0);
 }
 
-.language-card__shortcut {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: #f3f4f6;
-  color: #6b7280;
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 10px;
-  font-weight: 600;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
-}
-
-.language-card:hover .language-card__shortcut {
-  background: #c026d3;
-  color: white;
-  border-color: #c026d3;
-}
-
-/* Speech Controls */
-.language-selection__speech-controls {
-  padding: 8px 0;
-}
-
-.speech-button {
+.voice-button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: white;
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 500;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #a21caf;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(162, 28, 175, 0.3);
 }
 
-.speech-button:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #c026d3;
-  color: #c026d3;
+.voice-button:hover:not(:disabled) {
+  background: #86198f;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(162, 28, 175, 0.4);
 }
 
-.speech-button:disabled {
-  opacity: 0.5;
+.voice-button:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-.speech-button--welcome:hover:not(:disabled) {
-  background: #ecfdf5;
-  border-color: #10b981;
-  color: #10b981;
-}
-
-.speech-button--guide:hover:not(:disabled) {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  color: #3b82f6;
-}
-
-/* Search Bar */
 .language-selection__search input {
   transition: all 0.3s ease;
 }
 
 .language-selection__search input:focus {
-  box-shadow: 0 0 0 3px rgba(192, 38, 211, 0.1);
-}
-
-/* Speech Guide */
-.speech-guide {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  box-shadow: 0 0 0 3px rgba(162, 28, 175, 0.1);
+  border-color: #a21caf;
 }
 
 /* Responsive Design */
@@ -182,16 +133,6 @@
     max-height: 50vh;
     overflow-y: auto;
   }
-  
-  .language-card__shortcut {
-    display: none; /* Hide shortcuts on mobile */
-  }
-}
-
-/* Loading state for speech */
-.language-card--speaking {
-  background: #f0f9ff;
-  border-color: #0ea5e9;
 }
 
 /* RTL Support */
@@ -199,7 +140,6 @@
   transform: rotate(180deg);
 }
 
-[dir="rtl"] .language-card:hover .language-card__indicator,
-[dir="rtl"] .language-card--selected .language-card__indicator {
+[dir="rtl"] .language-card:hover .language-card__indicator {
   transform: rotate(180deg) translateX(0);
 }

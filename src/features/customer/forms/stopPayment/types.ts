@@ -1,4 +1,4 @@
-import type { StopPaymentOrder } from '../../../../../services/stopPaymentService';
+import type { StopPaymentOrder } from '../../../../services/stopPaymentService';
 
 export type FormMode = 'spo' | 'rspo';
 

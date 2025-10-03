@@ -20,9 +20,16 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 
-// Extend the Branch interface to include distance for branches with location data
+// Extend the Branch interface to include translations
 interface BranchWithDistance extends Branch {
   distance?: number;
+  translations?: {
+    [key: string]: {
+      name: string;
+      address?: string;
+      workingHours?: string;
+    };
+  };
 }
 
 // Utility function to calculate distance between two coordinates using Haversine formula
@@ -38,15 +45,64 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c; // Distance in km
 };
 
+// Translation mappings for common branch names
+const BRANCH_TRANSLATIONS: { [key: string]: { [key: string]: string } } = {
+  'CBE Main Branch': {
+    am: 'ሲቢኢ ዋና ቅርንጫፍ',
+    or: 'CBE Biraacha Guddaa',
+    ti: 'CBE ርእሲ ቅርንጫፍ',
+    so: 'CBE Laanta Waaweyn',
+    en: 'CBE Main Branch'
+  },
+  'CBE Airport Branch': {
+    am: 'ሲቢኢ አውሮፕላን ቀጠና ቅርንጫፍ',
+    or: 'CBE Biraacha Xiyyaaraa',
+    ti: 'CBE መዕረፊ ነፈርቲ ቅርንጫፍ',
+    so: 'CBE Laanta Dayuuradaha',
+    en: 'CBE Airport Branch'
+  },
+  'CBE City Center': {
+    am: 'ሲቢኢ ማዕከላዊ ከተማ ቅርንጫፍ',
+    or: 'CBE Biraacha Magaalaa',
+    ti: 'CBE ማእኸላይ ከተማ ቅርንጫፍ',
+    so: 'CBE Laanta Magaalada',
+    en: 'CBE City Center'
+  }
+};
+
+// Common address translations
+const ADDRESS_TRANSLATIONS: { [key: string]: { [key: string]: string } } = {
+  'Addis Ababa, Ethiopia': {
+    am: 'አዲስ አበባ, ኢትዮጵያ',
+    or: 'Finfinnee, Itoophiyaa',
+    ti: 'ኣዲስ ኣበባ, ኢትዮጵያ',
+    so: 'Addis Ababa, Itoobiya',
+    en: 'Addis Ababa, Ethiopia'
+  },
+  'Bole International Airport': {
+    am: 'ቦሌ ዓለም አቀፍ አውሮፕላን ማረፊያ',
+    or: 'Xiyyaaraa Bolee',
+    ti: 'መዕረፊ ነፈርቲ ቦሌ',
+    so: 'Garaaka Dayuuradaha Bole',
+    en: 'Bole International Airport'
+  },
+  'Mexico Square, Addis Ababa': {
+    am: 'ሜክሲኮ አደባባይ, አዲስ አበባ',
+    or: 'Mexico Square, Finfinnee',
+    ti: 'መጋርቦ ሜክሲኮ, ኣዲስ ኣበባ',
+    so: 'Mexico Square, Addis Ababa',
+    en: 'Mexico Square, Addis Ababa'
+  }
+};
+
 const BranchSelectionEnhanced: React.FC = () => {
-  // Hooks - must be called unconditionally at the top level
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const { setBranch } = useBranch();
   const { t, i18n } = useTranslation();
 
-  // State - must be called unconditionally
+  // State
   const [branches, setBranches] = useState<BranchWithDistance[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -60,29 +116,54 @@ const BranchSelectionEnhanced: React.FC = () => {
     coordinates?: { lat: number; lng: number };
   }>({ loading: false, error: null });
 
-  // Memoized values - must be called unconditionally
+  // Get translated branch name
+  const getTranslatedBranchName = useCallback((branchName: string, currentLanguage: string): string => {
+    const translation = BRANCH_TRANSLATIONS[branchName];
+    if (translation && translation[currentLanguage]) {
+      return translation[currentLanguage];
+    }
+    return branchName;
+  }, []);
+
+  // Get translated address
+  const getTranslatedAddress = useCallback((address: string, currentLanguage: string): string => {
+    const translation = ADDRESS_TRANSLATIONS[address];
+    if (translation && translation[currentLanguage]) {
+      return translation[currentLanguage];
+    }
+    return address;
+  }, []);
+
+  // Memoized values
   const canProceed = useMemo(() => !!selectedId && !isProceeding, [selectedId, isProceeding]);
   const selectedBranch = useMemo(
     () => branches.find(b => b.id === selectedId),
     [branches, selectedId]
   );
 
-  // Filter branches based on search term
+  // Filter branches based on search term (supports both original and translated names)
   const filteredBranches = useMemo(() => {
     if (!searchTerm) return branches;
-    return branches.filter(branch =>
-      branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.code?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [branches, searchTerm]);
+    
+    const searchLower = searchTerm.toLowerCase();
+    return branches.filter(branch => {
+      const originalName = branch.name.toLowerCase();
+      const translatedName = getTranslatedBranchName(branch.name, i18n.language).toLowerCase();
+      const address = branch.address ? getTranslatedAddress(branch.address, i18n.language).toLowerCase() : '';
+      
+      return originalName.includes(searchLower) || 
+             translatedName.includes(searchLower) ||
+             address.includes(searchLower) ||
+             branch.code?.toLowerCase().includes(searchLower);
+    });
+  }, [branches, searchTerm, i18n.language, getTranslatedBranchName, getTranslatedAddress]);
 
   // Memoized nearby branches (with distance data)
   const nearbyBranches = useMemo(() => {
     return branches
       .filter(branch => branch.distance !== undefined)
       .sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity))
-      .slice(0, 5); // Show top 5 nearest branches
+      .slice(0, 5);
   }, [branches]);
 
   // Memoized other branches (without distance data or farther away)
@@ -95,7 +176,6 @@ const BranchSelectionEnhanced: React.FC = () => {
 
   // Find the nearest branch to given coordinates
   const findNearestBranch = useCallback((branchesList: BranchWithDistance[], lat: number, lng: number): BranchWithDistance | null => {
-    // Filter branches with valid coordinates and add distance
     const branchesWithDistance = branchesList
       .filter((branch): branch is BranchWithDistance & { latitude: number; longitude: number } => 
         branch.latitude !== undefined && 
@@ -106,39 +186,31 @@ const BranchSelectionEnhanced: React.FC = () => {
         distance: calculateDistance(lat, lng, branch.latitude, branch.longitude)
       }));
 
-    // Check if we have any branches with distance
     if (branchesWithDistance.length === 0) {
       return null;
     }
 
-    // Sort by distance and return the nearest one within 50km
     const [nearest] = [...branchesWithDistance].sort((a, b) => a.distance - b.distance);
     return nearest.distance <= 50 ? nearest : null;
   }, []);
 
   // Select default branch (last used or first active)
   const selectDefaultBranch = useCallback((branchesList: Branch[]) => {
-    console.log('Selecting default branch from:', branchesList);
     const lastBranchId = localStorage.getItem('lastActiveBranchId');
-    console.log('Last branch ID from localStorage:', lastBranchId);
     
     const defaultBranch = lastBranchId
       ? branchesList.find(b => b.id === lastBranchId)
       : branchesList.find(b => b.isActive) || branchesList[0];
     
-    console.log('Selected default branch:', defaultBranch);
-    
     if (defaultBranch) {
       setSelectedId(defaultBranch.id);
     } else if (branchesList.length > 0) {
-      // Fallback to first branch if no default found
       setSelectedId(branchesList[0].id);
     }
   }, []);
 
   // Get user's current location
   const getUserLocation = useCallback(async (branchesList: Branch[]) => {
-    // Check if geolocation is supported
     if (!navigator.geolocation) {
       setLocationStatus({
         loading: false,
@@ -170,7 +242,6 @@ const BranchSelectionEnhanced: React.FC = () => {
         coordinates: { lat: latitude, lng: longitude }
       });
 
-      // Find nearest branch and calculate distances for all branches
       const branchesWithDistance = branchesList.map(branch => {
         if (branch.latitude && branch.longitude) {
           return {
@@ -183,7 +254,6 @@ const BranchSelectionEnhanced: React.FC = () => {
 
       setBranches(branchesWithDistance);
 
-      // Auto-select the nearest branch
       const nearestBranch = findNearestBranch(branchesWithDistance, latitude, longitude);
       if (nearestBranch) {
         setSelectedId(nearestBranch.id);
@@ -202,14 +272,11 @@ const BranchSelectionEnhanced: React.FC = () => {
 
   // Fetch branches
   const loadBranches = useCallback(async () => {
-    console.log('Starting to load branches...');
     setIsLoading(true);
     setError('');
     
     try {
-      console.log('Calling fetchBranches...');
       const list: BranchWithDistance[] = await fetchBranches();
-      console.log('Received branches:', list);
       
       if (!Array.isArray(list)) {
         throw new Error('Invalid response format: expected an array');
@@ -219,12 +286,9 @@ const BranchSelectionEnhanced: React.FC = () => {
         throw new Error('No branches available');
       }
       
-      // Sort branches by name for better UX
       const sortedBranches = [...list].sort((a, b) => a.name.localeCompare(b.name));
       
-      // Try to get user's location if branches have coordinates
       const hasBranchesWithCoords = sortedBranches.some(b => b.latitude && b.longitude);
-      console.log('Branches with coordinates:', hasBranchesWithCoords);
       
       if (hasBranchesWithCoords) {
         await getUserLocation(sortedBranches);
@@ -234,10 +298,9 @@ const BranchSelectionEnhanced: React.FC = () => {
       }
       
     } catch (e) {
-      console.error('❌ Failed to load branches from API:', e);
+      console.error('Failed to load branches from API:', e);
       
-      // Use mock data for testing
-      console.log('🔄 Using mock data for testing...');
+      // Mock data with translations
       const mockBranches: BranchWithDistance[] = [
         {
           id: 'branch-001',
@@ -282,40 +345,32 @@ const BranchSelectionEnhanced: React.FC = () => {
       
       setBranches(mockBranches);
       
-      // Set a demo branch as selected
       if (mockBranches.length > 0) {
         setSelectedId(mockBranches[0].id);
       }
       
-      // Show a warning but don't block the UI
       setError(t('branchSelection.demoMode', 'Connected to demo mode. Using sample branch data for testing.'));
       toast.info(t('branchSelection.demoNotification', 'Demo mode: Using sample branch data'));
       
     } finally {
       setIsLoading(false);
-      console.log('✅ Finished loading branches');
     }
   }, [getUserLocation, selectDefaultBranch, t]);
 
   // Handle branch selection
   const handleProceed = useCallback(async () => {
     if (!selectedId || !selectedBranch) {
-      console.log('Cannot proceed: no branch selected');
       return;
     }
     
-    console.log('Proceeding with branch:', selectedBranch);
     setIsProceeding(true);
 
     try {
-      // Save to local storage
       localStorage.setItem('selectedBranch', JSON.stringify(selectedBranch));
       localStorage.setItem('lastActiveBranchId', selectedBranch.id);
       
-      // Update branch context
       await setBranch(selectedBranch);
       
-      // Navigate to next page
       const nextState = { from: location.state?.from || { pathname: '/' } };
       navigate('/otp-login', { state: nextState, replace: true });
     } catch (error) {
@@ -343,14 +398,12 @@ const BranchSelectionEnhanced: React.FC = () => {
 
   // Initial load
   useEffect(() => {
-    console.log('Component mounted, loading branches...');
     loadBranches();
   }, [loadBranches]);
 
   // Auto-proceed if there's only one branch
   useEffect(() => {
     if (branches.length === 1 && !selectedId && branches[0]?.id) {
-      console.log('Auto-selecting single branch:', branches[0]);
       setSelectedId(branches[0].id);
     }
   }, [branches, selectedId]);
@@ -460,7 +513,7 @@ const BranchSelectionEnhanced: React.FC = () => {
                 <option value="">{t('branchSelection.selectNearby', 'Select a nearby branch')}</option>
                 {nearbyBranches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
-                    {branch.name} - {branch.distance?.toFixed(1)} km away
+                    {getTranslatedBranchName(branch.name, i18n.language)} - {branch.distance?.toFixed(1)} km away
                   </option>
                 ))}
               </select>
@@ -474,7 +527,7 @@ const BranchSelectionEnhanced: React.FC = () => {
                 <div className="flex items-center space-x-2 text-fuchsia-700">
                   <MapPinIcon className="h-4 w-4" />
                   <span className="text-sm font-medium">
-                    {selectedBranch.address}
+                    {getTranslatedAddress(selectedBranch.address || '', i18n.language)}
                   </span>
                 </div>
                 {selectedBranch.phone && (
@@ -527,7 +580,7 @@ const BranchSelectionEnhanced: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
                           <h3 className="font-semibold text-gray-900 truncate">
-                            {branch.name}
+                            {getTranslatedBranchName(branch.name, i18n.language)}
                           </h3>
                           {selectedId === branch.id && (
                             <CheckCircleIcon className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -541,7 +594,7 @@ const BranchSelectionEnhanced: React.FC = () => {
                             </p>
                           )}
                           {branch.address && (
-                            <p className="truncate">{branch.address}</p>
+                            <p className="truncate">{getTranslatedAddress(branch.address, i18n.language)}</p>
                           )}
                           {branch.workingHours && (
                             <p className="text-xs text-gray-500">{branch.workingHours}</p>
@@ -622,7 +675,7 @@ const BranchSelectionEnhanced: React.FC = () => {
             <div className="flex items-center space-x-2 text-fuchsia-700">
               <CheckCircleIcon className="h-5 w-5" />
               <span className="text-sm font-medium">
-                {t('branchSelection.selectedBranch', 'Selected:')} {selectedBranch.name}
+                {t('branchSelection.selectedBranch', 'Selected:')} {getTranslatedBranchName(selectedBranch.name, i18n.language)}
               </span>
             </div>
           </div>
