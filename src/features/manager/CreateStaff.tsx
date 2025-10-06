@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from "react";
 import managerService from "../../services/managerService";
-import toast, { Toaster } from "react-hot-toast";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+
+interface StaffForm {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  branchId: string;
+  roleName: string;
+}
 
 interface AdUser {
   id: string;
@@ -10,99 +18,83 @@ interface AdUser {
   firstName: string;
   lastName: string;
   phoneNumber?: string;
-  branchId?: string;
-}
-
-interface AppUser {
-  id: string;
-  email: string;
 }
 
 export default function CreateStaff({
   branchId,
   reload,
+  selectedUser,
 }: {
   branchId: string;
   reload: () => void;
+  selectedUser?: AdUser | null;
 }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<StaffForm>({
     email: "",
     firstName: "",
     lastName: "",
     phoneNumber: "",
-    branchId: branchId,
+    branchId,
     roleName: "Maker",
   });
 
-  const [adUsers, setAdUsers] = useState<AdUser[]>([]);
-  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string>(""); // ✅ inline success message
+  const [errorMessage, setErrorMessage] = useState<string>("");     // ✅ inline error message
 
-  // ✅ Fetch AD + system users
-  const fetchData = async () => {
-    try {
-      const adRes = await managerService.getAdUsersByBranch(branchId);
-      const sysUsers = await managerService.getUsersByBranch(branchId);
-      setAdUsers(adRes || []);
-      setAppUsers(sysUsers || []);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to fetch staff data");
-    }
-  };
-
+  // populate form when table row is clicked
   useEffect(() => {
-    fetchData();
-  }, [branchId]);
+    if (selectedUser) {
+      setForm({
+        email: selectedUser.email,
+        firstName: selectedUser.firstName,
+        lastName: selectedUser.lastName,
+        phoneNumber: selectedUser.phoneNumber || "",
+        branchId,
+        roleName: "Maker",
+      });
+      setSuccessMessage(""); // clear any previous message
+      setErrorMessage("");
+    }
+  }, [selectedUser, branchId]);
 
-  // ✅ Check if AD user is already in system
-  const isAlreadyInSystem = (email: string) =>
-    appUsers.some((u) => u.email.toLowerCase() === email.toLowerCase());
-
-  // ✅ Add AD user into form
-  const handleAddFromAd = (adUser: AdUser) => {
-    setForm({
-      email: adUser.email,
-      firstName: adUser.firstName,
-      lastName: adUser.lastName,
-      phoneNumber: adUser.phoneNumber || "",
-      branchId: branchId,
-      roleName: "Maker",
-    });
-    toast.success(`Loaded ${adUser.email} into form`);
-  };
-
-  // ✅ Submit staff creation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSuccessMessage("");
+    setErrorMessage("");
+
     try {
       await managerService.createStaff(form);
-      toast.success("Staff created successfully!");
+      setSuccessMessage("✅ Staff created successfully!");
 
-      // Reset form
       setForm({
         email: "",
         firstName: "",
         lastName: "",
         phoneNumber: "",
-        branchId: branchId,
+        branchId,
         roleName: "Maker",
       });
 
-      // Refresh AD + system users to update status immediately
-      await fetchData();
-
-      // Also trigger parent reload (if dashboard needs refresh)
       reload();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Failed to create staff");
+      setErrorMessage(err.response?.data?.message || err.message || "Failed to create staff");
     }
   };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg">
-      <Toaster position="top-right" />
+      {successMessage && (
+        <div className="mb-4 p-2 bg-green-100 text-green-800 rounded">
+          {successMessage}
+        </div>
+      )}
+      {errorMessage && (
+        <div className="mb-4 p-2 bg-red-100 text-red-800 rounded">
+          {errorMessage}
+        </div>
+      )}
 
-      {/* Staff Creation Form */}
-      <div className="bg-gray-50 p-4 rounded-md mb-6">
+      <div className="bg-gray-50 p-4 rounded-md">
         <h2 className="text-xl font-bold mb-4 text-purple-800">Create Staff</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <Input
@@ -131,53 +123,10 @@ export default function CreateStaff({
             type="submit"
             className="w-full bg-purple-900 text-white hover:bg-purple-800"
           >
-            Add Staff
+            Submit
           </Button>
         </form>
       </div>
-
-      {/* AD Users Table */}
-      <h3 className="text-lg font-bold mb-2 text-purple-700">Available AD Users</h3>
-      <table className="min-w-full border border-gray-200">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="px-4 py-2 border">Email</th>
-            <th className="px-4 py-2 border">Name</th>
-            <th className="px-4 py-2 border">Status</th>
-            <th className="px-4 py-2 border">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {adUsers.map((ad) => {
-            const exists = isAlreadyInSystem(ad.email);
-            return (
-              <tr key={ad.id}>
-                <td className="px-4 py-2 border">{ad.email}</td>
-                <td className="px-4 py-2 border">
-                  {ad.firstName} {ad.lastName}
-                </td>
-                <td className="px-4 py-2 border">
-                  {exists ? (
-                    <span className="text-green-600 font-semibold">Added to System</span>
-                  ) : (
-                    <span className="text-red-600 font-semibold">Not Added</span>
-                  )}
-                </td>
-                <td className="px-4 py-2 border">
-                  {!exists && (
-                    <Button
-                      onClick={() => handleAddFromAd(ad)}
-                      className="bg-blue-500 text-white hover:bg-blue-600"
-                    >
-                      Add
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </div>
   );
 }

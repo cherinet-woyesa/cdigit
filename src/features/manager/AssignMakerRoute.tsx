@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import AssignMaker from "./AssignMaker";
+import WindowsWithMaker from "./WindowsWithMaker";
 
 export default function AssignMakerRoute() {
   const [branchId, setBranchId] = useState<string>("");
@@ -14,5 +14,5 @@ export default function AssignMakerRoute() {
 
   if (!branchId) return <div>Loading...</div>;
 
-  return <AssignMaker branchId={branchId} />;
+  return <WindowsWithMaker branchId={branchId} />;
 }
