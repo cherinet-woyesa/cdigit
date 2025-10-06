@@ -19,6 +19,8 @@ import {
   SignalIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
+import logo from '../../assets/logo.jpg';
+import cbeImage from '../../assets/cbe1.jpg';
 
 // Extend the Branch interface to include translations
 interface BranchWithDistance extends Branch {
@@ -263,10 +265,13 @@ const BranchSelectionEnhanced: React.FC = () => {
             distance: calculateDistance(latitude, longitude, branch.latitude, branch.longitude)
           };
         }
-        return branch;
+        return { ...branch, distance: Infinity }; // Assign a large distance if no coords
       });
 
-      setBranches(branchesWithDistance);
+      // Sort all branches by distance
+      const sortedByDistance = branchesWithDistance.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+
+      setBranches(sortedByDistance);
 
       const nearestBranch = findNearestBranch(branchesWithDistance);
       if (nearestBranch) {
@@ -357,15 +362,19 @@ const BranchSelectionEnhanced: React.FC = () => {
         }
       ];
       
+      // Set mock branches for immediate render
       setBranches(mockBranches);
-      
-      if (mockBranches.length > 0) {
-        setSelectedId(mockBranches[0].id);
+      selectDefaultBranch(mockBranches);
+      setIsLoading(false);
+
+      // Then, get location and distances in the background for the mock data
+      const hasBranchesWithCoords = mockBranches.some(b => b.latitude && b.longitude);
+      if (hasBranchesWithCoords) {
+        getUserLocation(mockBranches); // No 'await'
       }
       
       setError(t('branchSelection.demoMode', 'Connected to demo mode. Using sample branch data for testing.'));
       toast.info(t('branchSelection.demoNotification', 'Demo mode: Using sample branch data'));
-      setIsLoading(false); // Set loading false in catch block
     }
   }, [getUserLocation, selectDefaultBranch, t]);
 
@@ -424,40 +433,55 @@ const BranchSelectionEnhanced: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-fuchsia-50 via-white to-pink-50 px-4 py-8">
-        <div className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-fuchsia-600 to-pink-600 p-8 text-center text-white">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BuildingStorefrontIcon className="h-8 w-8 text-white" />
+        <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl overflow-hidden flex flex-col md:flex-row md:h-auto max-h-[95vh]">
+          {/* Left Branding Column */}
+          <div className="cbe-image-section md:w-2/5 bg-gradient-to-br from-fuchsia-700 to-pink-600 p-6 md:p-8 flex flex-col justify-center text-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-black/10"></div>
+            <div className="cbe-image-container w-24 h-24 md:w-40 md:h-40 mx-auto mb-4 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl relative z-10">
+              <img 
+                src={cbeImage} 
+                alt="Commercial Bank of Ethiopia" 
+                className="w-full h-full object-cover"
+              />
             </div>
-            <h1 className="text-3xl font-bold mb-2">
-              {t('branchSelection.title', 'Select Your Branch')}
-            </h1>
-            <p className="text-fuchsia-100 opacity-90">
-              {t('branchSelection.subtitle', 'Choose the branch you want to visit')}
-            </p>
+            <div className="relative z-10 text-center space-y-2">
+              <div className="flex items-center justify-center space-x-3">
+                <div className="logo-container w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
+                  <img 
+                    src={logo} 
+                    alt={t('logoAlt', 'CBE Logo')} 
+                    className="h-6 w-6 object-contain rounded-full"
+                  />
+                </div>
+                <h1 className="text-xl md:text-2xl font-bold text-white uppercase tracking-wide">
+                  {t('bankName', 'Commercial Bank of Ethiopia')}
+                </h1>
+              </div>
+            </div>
           </div>
+          {/* Right Form Column */}
+          <div className="md:w-3/5 p-4 sm:p-6 md:p-8 flex flex-col space-y-4 flex-1 min-h-0">
+            {/* Skeleton Search */}
+            <div className="p-6 border-b border-gray-100">
+              <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
+            </div>
 
-          {/* Skeleton Search */}
-          <div className="p-6 border-b border-gray-100">
-            <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
-          </div>
-
-          {/* Skeleton List */}
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-5 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-              <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+            {/* Skeleton List */}
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-5 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+              </div>
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => <BranchCardSkeleton key={i} />)}
+              </div>
             </div>
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => <BranchCardSkeleton key={i} />)}
+            
+            {/* Skeleton Footer */}
+            <div className="bg-gray-50 px-6 py-6 border-t border-gray-100 space-y-4">
+              <div className="h-14 bg-gray-300 rounded-xl animate-pulse"></div>
+              <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
             </div>
-          </div>
-          
-          {/* Skeleton Footer */}
-          <div className="bg-gray-50 px-6 py-6 border-t border-gray-100 space-y-4">
-            <div className="h-14 bg-gray-300 rounded-xl animate-pulse"></div>
-            <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
           </div>
         </div>
       </div>
@@ -490,235 +514,259 @@ const BranchSelectionEnhanced: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-fuchsia-50 via-white to-pink-50 px-4 py-8">
-      <div className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
-        
-        {/* Header */}
-        <div className="bg-gradient-to-r from-fuchsia-600 to-pink-600 p-8 text-center text-white">
-          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BuildingStorefrontIcon className="h-8 w-8 text-white" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-fuchsia-50 via-white to-pink-50 p-2 sm:p-4">
+      <div className="w-full max-w-4xl bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl overflow-hidden flex flex-col md:flex-row md:h-auto max-h-[95vh]">
+        {/* Left Branding Column */}
+        <div className="cbe-image-section md:w-2/5 bg-gradient-to-br from-fuchsia-700 to-pink-600 p-6 md:p-8 flex flex-col justify-center text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="cbe-image-container w-24 h-24 md:w-40 md:h-40 mx-auto mb-4 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl relative z-10">
+            <img 
+              src={cbeImage} 
+              alt="Commercial Bank of Ethiopia" 
+              className="w-full h-full object-cover"
+            />
           </div>
-          <h1 className="text-3xl font-bold mb-2">
-            {t('branchSelection.title', 'Select Your Branch')}
-          </h1>
-          <p className="text-fuchsia-100 opacity-90">
-            {t('branchSelection.subtitle', 'Choose the branch you want to visit')}
-          </p>
+          <div className="relative z-10 text-center space-y-2">
+            <div className="flex items-center justify-center space-x-3">
+              <div className="logo-container w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
+                <img 
+                  src={logo} 
+                  alt={t('logoAlt', 'CBE Logo')} 
+                  className="h-6 w-6 object-contain rounded-full"
+                />
+              </div>
+              <h1 className="text-xl md:text-2xl font-bold text-white uppercase tracking-wide">
+                {t('bankName', 'Commercial Bank of Ethiopia')}
+              </h1>
+            </div>
+          </div>
         </div>
 
-        {/* Search Bar */}
-        {branches.length > 3 && (
-          <div className="p-6 border-b border-gray-100">
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder={t('branchSelection.searchPlaceholder', 'Search branches...')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all duration-200"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
-              )}
-            </div>
+        {/* Right Form Column */}
+        <div className="md:w-3/5 p-4 sm:p-6 md:p-8 flex flex-col space-y-4 flex-1 min-h-0">
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold mb-2">
+              {t('branchSelection.title', 'Select Your Branch')}
+            </h1>
+            <p className="text-gray-500">
+              {t('branchSelection.subtitle', 'Choose the branch you want to visit')}
+            </p>
           </div>
-        )}
 
-        {/* Nearby Branches Dropdown */}
-        {nearbyBranches.length > 0 && !searchTerm && (
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                {t('branchSelection.nearbyBranches', 'NEARBY BRANCHES')}
-              </h2>
-              <div className="flex items-center text-fuchsia-600 text-sm">
-                <SignalIcon className="h-4 w-4 mr-1" />
-                {t('branchSelection.nearYou', 'Near you')}
-              </div>
-            </div>
-            
-            <div className="relative">
-              <select
-                value={selectedId}
-                onChange={(e) => setSelectedId(e.target.value)}
-                className="appearance-none w-full px-4 py-3 pr-10 border-2 border-fuchsia-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 bg-white text-gray-900 font-medium"
-              >
-                <option value="">{t('branchSelection.selectNearby', 'Select a nearby branch')}</option>
-                {nearbyBranches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {getTranslatedBranchName(branch.name, i18n.language)} - {branch.distance?.toFixed(1)} km away
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-fuchsia-600">
-                <ChevronDownIcon className="h-5 w-5" />
-              </div>
-            </div>
-
-            {selectedBranch && nearbyBranches.some(b => b.id === selectedId) && (
-              <div className="mt-3 p-3 bg-fuchsia-50 rounded-lg border border-fuchsia-200">
-                <div className="flex items-center space-x-2 text-fuchsia-700">
-                  <MapPinIcon className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    {getTranslatedAddress(selectedBranch.address || '', i18n.language)}
-                  </span>
-                </div>
-                {selectedBranch.phone && (
-                  <div className="flex items-center space-x-2 text-fuchsia-600 mt-1">
-                    <PhoneIcon className="h-4 w-4" />
-                    <span className="text-sm">{selectedBranch.phone}</span>
-                  </div>
+          {/* Search Bar */}
+          {branches.length > 3 && (
+            <div className="p-6 border-b border-gray-100">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder={t('branchSelection.searchPlaceholder', 'Search branches...')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent transition-all duration-200"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
                 )}
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* All Branches List */}
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              {searchTerm 
-                ? t('branchSelection.searchResults', 'SEARCH RESULTS')
-                : t('branchSelection.allBranches', 'ALL BRANCHES')
-              }
-            </h2>
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-              {filteredBranches.length} {t('branchSelection.branches', 'branches')}
-            </span>
-          </div>
-
-          <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-            {filteredBranches
-              .filter(branch => !searchTerm || !nearbyBranches.some(nb => nb.id === branch.id))
-              .map((branch) => (
-                <div
-                  key={branch.id}
-                  className={`p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
-                    selectedId === branch.id
-                      ? 'border-fuchsia-500 bg-fuchsia-50 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-fuchsia-300 hover:shadow-sm'
-                  }`}
-                  onClick={() => setSelectedId(branch.id)}
+          {/* Nearby Branches Dropdown */}
+          {nearbyBranches.length > 0 && !searchTerm && (
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                  {t('branchSelection.nearbyBranches', 'NEARBY BRANCHES')}
+                </h2>
+                <div className="flex items-center text-fuchsia-600 text-sm">
+                  <SignalIcon className="h-4 w-4 mr-1" />
+                  {t('branchSelection.nearYou', 'Near you')}
+                </div>
+              </div>
+              
+              <div className="relative">
+                <select
+                  value={selectedId}
+                  onChange={(e) => setSelectedId(e.target.value)}
+                  className="appearance-none w-full px-4 py-3 pr-10 border-2 border-fuchsia-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 bg-white text-gray-900 font-medium"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3 flex-1">
-                      <div className={`p-2 rounded-lg ${
-                        selectedId === branch.id ? 'bg-fuchsia-100' : 'bg-gray-100'
-                      }`}>
-                        <BuildingStorefrontIcon className={`h-5 w-5 ${
-                          selectedId === branch.id ? 'text-fuchsia-600' : 'text-gray-600'
-                        }`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-semibold text-gray-900 truncate">
-                            {getTranslatedBranchName(branch.name, i18n.language)}
-                          </h3>
-                          {selectedId === branch.id && (
-                            <CheckCircleIcon className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          )}
+                  <option value="">{t('branchSelection.selectNearby', 'Select a nearby branch')}</option>
+                  {nearbyBranches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {getTranslatedBranchName(branch.name, i18n.language)} - {branch.distance?.toFixed(1)} km away
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-fuchsia-600">
+                  <ChevronDownIcon className="h-5 w-5" />
+                </div>
+              </div>
+
+              {selectedBranch && nearbyBranches.some(b => b.id === selectedId) && (
+                <div className="mt-3 p-3 bg-fuchsia-50 rounded-lg border border-fuchsia-200">
+                  <div className="flex items-center space-x-2 text-fuchsia-700">
+                    <MapPinIcon className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {getTranslatedAddress(selectedBranch.address || '', i18n.language)}
+                    </span>
+                  </div>
+                  {selectedBranch.phone && (
+                    <div className="flex items-center space-x-2 text-fuchsia-600 mt-1">
+                      <PhoneIcon className="h-4 w-4" />
+                      <span className="text-sm">{selectedBranch.phone}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* All Branches List */}
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                {searchTerm 
+                  ? t('branchSelection.searchResults', 'SEARCH RESULTS')
+                  : t('branchSelection.allBranches', 'ALL BRANCHES')
+                }
+              </h2>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                {filteredBranches.length} {t('branchSelection.branches', 'branches')}
+              </span>
+            </div>
+
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+              {filteredBranches
+                .filter(branch => !searchTerm || !nearbyBranches.some(nb => nb.id === branch.id))
+                .map((branch) => (
+                  <div
+                    key={branch.id}
+                    className={`p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
+                      selectedId === branch.id
+                        ? 'border-fuchsia-500 bg-fuchsia-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-fuchsia-300 hover:shadow-sm'
+                    }`}
+                    onClick={() => setSelectedId(branch.id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3 flex-1">
+                        <div className={`p-2 rounded-lg ${
+                          selectedId === branch.id ? 'bg-fuchsia-100' : 'bg-gray-100'
+                        }`}>
+                          <BuildingStorefrontIcon className={`h-5 w-5 ${
+                            selectedId === branch.id ? 'text-fuchsia-600' : 'text-gray-600'
+                          }`} />
                         </div>
-                        
-                        <div className="space-y-1 text-sm text-gray-600">
-                          {branch.distance !== undefined && (
-                            <p className="text-fuchsia-600 font-medium">
-                              {t('branchSelection.distanceAway', '{{distance}} km away', { distance: branch.distance.toFixed(1) })}
-                            </p>
-                          )}
-                          {branch.address && (
-                            <p className="truncate">{getTranslatedAddress(branch.address, i18n.language)}</p>
-                          )}
-                          {branch.workingHours && (
-                            <p className="text-xs text-gray-500">{branch.workingHours}</p>
-                          )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="font-semibold text-gray-900 truncate">
+                              {getTranslatedBranchName(branch.name, i18n.language)}
+                            </h3>
+                            {selectedId === branch.id && (
+                              <CheckCircleIcon className="h-4 w-4 text-green-500 flex-shrink-0" />
+                            )}
+                          </div>
+                          
+                          <div className="space-y-1 text-sm text-gray-600">
+                            {branch.distance !== undefined && (
+                              <p className="text-fuchsia-600 font-medium">
+                                {t('branchSelection.distanceAway', '{{distance}} km away', { distance: branch.distance.toFixed(1) })}
+                              </p>
+                            )}
+                            {branch.address && (
+                              <p className="truncate">{getTranslatedAddress(branch.address, i18n.language)}</p>
+                            )}
+                            {branch.workingHours && (
+                              <p className="text-xs text-gray-500">{branch.workingHours}</p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                ))}
+              
+              {filteredBranches.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <MagnifyingGlassIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                  <p>{t('branchSelection.noBranchesFound', 'No branches found matching your search')}</p>
                 </div>
-              ))}
+              )}
+            </div>
+
+            {/* Location Status */}
+            {locationStatus.loading && (
+              <div className="mt-4 p-3 bg-fuchsia-50 rounded-lg border border-fuchsia-200">
+                <div className="flex items-center space-x-2 text-fuchsia-700">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-fuchsia-600"></div>
+                  <span className="text-sm">{t('branchSelection.findingBranches', 'Finding branches near you...')}</span>
+                </div>
+              </div>
+            )}
             
-            {filteredBranches.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <MagnifyingGlassIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                <p>{t('branchSelection.noBranchesFound', 'No branches found matching your search')}</p>
+            {locationStatus.error && (
+              <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="flex items-center space-x-2 text-yellow-700">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span className="text-sm">{locationStatus.error}</span>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Location Status */}
-          {locationStatus.loading && (
-            <div className="mt-4 p-3 bg-fuchsia-50 rounded-lg border border-fuchsia-200">
+          {/* Action Buttons */}
+          <div className="bg-gray-50 px-6 py-6 border-t border-gray-100 space-y-4">
+            <button
+              onClick={handleProceed}
+              disabled={!canProceed}
+              className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform ${
+                canProceed
+                  ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {isProceeding ? (
+                <span className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                  {t('branchSelection.processing', 'Processing...')}
+                </span>
+              ) : (
+                t('branchSelection.proceedToLogin', 'Proceed to Login')
+              )}
+            </button>
+            
+            {/* QR Scanner button */}
+            <button
+              onClick={() => setShowQRScanner(true)}
+              className="w-full py-3 px-6 border-2 border-fuchsia-600 text-fuchsia-600 rounded-xl hover:bg-fuchsia-50 transition-all duration-300 flex items-center justify-center font-medium"
+            >
+              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h1m-6 0h1m-6 0h1M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {t('branchSelection.scanQR', 'Scan Branch QR Code')}
+            </button>
+          </div>
+
+          {/* Selected Branch Info */}
+          {selectedBranch && (
+            <div className="bg-fuchsia-50 px-6 py-4 border-t border-fuchsia-200">
               <div className="flex items-center space-x-2 text-fuchsia-700">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-fuchsia-600"></div>
-                <span className="text-sm">{t('branchSelection.findingBranches', 'Finding branches near you...')}</span>
-              </div>
-            </div>
-          )}
-          
-          {locationStatus.error && (
-            <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-              <div className="flex items-center space-x-2 text-yellow-700">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span className="text-sm">{locationStatus.error}</span>
+                <CheckCircleIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">
+                  {t('branchSelection.selectedBranch', 'Selected:')} {getTranslatedBranchName(selectedBranch.name, i18n.language)}
+                </span>
               </div>
             </div>
           )}
         </div>
-
-        {/* Action Buttons */}
-        <div className="bg-gray-50 px-6 py-6 border-t border-gray-100 space-y-4">
-          <button
-            onClick={handleProceed}
-            disabled={!canProceed}
-            className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform ${
-              canProceed
-                ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isProceeding ? (
-              <span className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
-                {t('branchSelection.processing', 'Processing...')}
-              </span>
-            ) : (
-              t('branchSelection.proceedToLogin', 'Proceed to Login')
-            )}
-          </button>
-          
-          {/* QR Scanner button */}
-          <button
-            onClick={() => setShowQRScanner(true)}
-            className="w-full py-3 px-6 border-2 border-fuchsia-600 text-fuchsia-600 rounded-xl hover:bg-fuchsia-50 transition-all duration-300 flex items-center justify-center font-medium"
-          >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h1m-6 0h1m-6 0h1M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            {t('branchSelection.scanQR', 'Scan Branch QR Code')}
-          </button>
-        </div>
-
-        {/* Selected Branch Info */}
-        {selectedBranch && (
-          <div className="bg-fuchsia-50 px-6 py-4 border-t border-fuchsia-200">
-            <div className="flex items-center space-x-2 text-fuchsia-700">
-              <CheckCircleIcon className="h-5 w-5" />
-              <span className="text-sm font-medium">
-                {t('branchSelection.selectedBranch', 'Selected:')} {getTranslatedBranchName(selectedBranch.name, i18n.language)}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* QR Scanner Modal */}
