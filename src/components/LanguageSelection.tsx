@@ -48,10 +48,11 @@ const LanguageSelection: React.FC = () => {
     navigate('/select-branch');
   };
 
-  const speakWelcomeMessage = async () => {
+  const speakWelcomeMessage = async (lang?: LanguageCode) => {
     setIsSpeaking(true);
     const welcomeMessage = t('welcome_message', 'Welcome to Commercial Bank of Ethiopia. Choose language to proceed.');
-    await speechService.speak(welcomeMessage, i18n.language as LanguageCode);
+    const langCode = lang || i18n.language as LanguageCode;
+    await speechService.speak(welcomeMessage, langCode, 'welcome_message');
     setIsSpeaking(false);
   };
 
@@ -61,8 +62,7 @@ const LanguageSelection: React.FC = () => {
     if (lastUsedLanguage) {
       setSelectedLanguage(lastUsedLanguage);
       const timer = setTimeout(() => {
-        const welcomeMessage = t('welcome_message', 'Welcome to Commercial Bank of Ethiopia. Choose language to proceed.');
-        speechService.speak(welcomeMessage, lastUsedLanguage);
+        speakWelcomeMessage(lastUsedLanguage);
       }, 1000);
       
       return () => clearTimeout(timer);
@@ -138,7 +138,7 @@ const LanguageSelection: React.FC = () => {
             {speechService.isSupported && (
               <div className="flex items-center justify-center">
                 <button
-                  onClick={speakWelcomeMessage}
+                  onClick={() => speakWelcomeMessage()}
                   className="voice-button flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-fuchsia-700 text-white rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
                   disabled={isSpeaking}
                 >
