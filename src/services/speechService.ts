@@ -48,7 +48,7 @@ class SpeechService {
 
   getAudioUrl(langCode: string, textKey: string) {
     const audioMap: { [key: string]: string } = {
-      'welcome': 'welcome.mp3',
+      'welcome_message': 'welcome.mp3',
       'select_language': 'select_language.mp3',
       'bankName': 'bank_name.mp3',
       'choose_preferred_language': 'choose_language.mp3',
