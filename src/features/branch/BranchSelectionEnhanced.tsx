@@ -96,6 +96,25 @@ const ADDRESS_TRANSLATIONS: { [key: string]: { [key: string]: string } } = {
   }
 };
 
+const BranchCardSkeleton: React.FC = () => (
+  <div className="p-4 rounded-xl border-2 border-gray-200 bg-white animate-pulse">
+    <div className="flex items-start justify-between">
+      <div className="flex items-start space-x-3 flex-1">
+        <div className="p-2 rounded-lg bg-gray-200">
+          <div className="h-5 w-5 bg-gray-300 rounded-md"></div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="h-5 bg-gray-300 rounded w-3/4 mb-2"></div>
+          <div className="space-y-2 text-sm">
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-3 bg-gray-200 rounded w-full"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const BranchSelectionEnhanced: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -405,14 +424,41 @@ const BranchSelectionEnhanced: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-fuchsia-50 via-white to-pink-50 px-4 py-8">
-        <div className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl p-8 text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-fuchsia-700 mx-auto mb-6"></div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">
-            {t('branchSelection.loading', 'Loading Branches')}
-          </h3>
-          <p className="text-gray-600">
-            {t('branchSelection.loadingDescription', 'Please wait while we fetch branch information')}
-          </p>
+        <div className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-fuchsia-600 to-pink-600 p-8 text-center text-white">
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <BuildingStorefrontIcon className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold mb-2">
+              {t('branchSelection.title', 'Select Your Branch')}
+            </h1>
+            <p className="text-fuchsia-100 opacity-90">
+              {t('branchSelection.subtitle', 'Choose the branch you want to visit')}
+            </p>
+          </div>
+
+          {/* Skeleton Search */}
+          <div className="p-6 border-b border-gray-100">
+            <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
+          </div>
+
+          {/* Skeleton List */}
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-5 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+              <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+            </div>
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => <BranchCardSkeleton key={i} />)}
+            </div>
+          </div>
+          
+          {/* Skeleton Footer */}
+          <div className="bg-gray-50 px-6 py-6 border-t border-gray-100 space-y-4">
+            <div className="h-14 bg-gray-300 rounded-xl animate-pulse"></div>
+            <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
+          </div>
         </div>
       </div>
     );
