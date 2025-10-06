@@ -30,14 +30,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
   return (
     <aside className="w-64 bg-purple-900 text-white min-h-screen flex flex-col justify-between shadow-lg">
       <div>
-        <div className="px-6 py-6 text-center border-b border-purple-700">
+        <div className="px-6 text-center border-b border-purple-700">
           {/* <img src="assets/logo.jpg" alt="CBE Logo" className="h-12 mx-auto mb-2" /> */}
           <img
             src={cbelogo}
             alt="CBE Logo"
-            className="h-13 w-13 object-contain rounded-full border-2 border-fuchsia-200"
+            className="h-13 w-13 object-contain rounded-full border-1 border-fuchsia-200"
           />
-          {/* <h2 className="text-lg font-bold">Maker Dashboard</h2> */}
+          <h2 className="">Commeriacl Bank Of Ethiopia</h2>
         </div>
         <nav className="mt-6">
           <ul>

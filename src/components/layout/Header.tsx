@@ -3,14 +3,13 @@ import type { DecodedToken } from "types/DecodedToken";
 import type { WindowDto } from "types/WindowDto";
 
 interface HeaderProps {
-  decoded?: DecodedToken
+  decoded: DecodedToken | null
   branchName?: string;
   assignedWindow?: WindowDto | null
-  windowNumber?: number;
   handleOpenChangeWindow: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ branchName, windowNumber, assignedWindow, handleOpenChangeWindow, decoded }) => {
+const Header: React.FC<HeaderProps> = ({ branchName, assignedWindow, handleOpenChangeWindow, decoded }) => {
   return (
     <header className="bg-purple-800 text-white py-12 px-6 flex justify-between items-center shadow-md">
       <div>

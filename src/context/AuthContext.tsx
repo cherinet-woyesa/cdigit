@@ -47,8 +47,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Load user from local storage on initial mount
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+        const storedToken = localStorage.getItem('token'); // for staff users
+        const storedUser = localStorage.getItem('user'); // for customers
         const storedPhone = localStorage.getItem('phone');
 
         if (storedToken && storedUser) {

@@ -1,4 +1,5 @@
 import React from "react";
+import type { WindowDto } from "types/WindowDto";
 
 interface Props {
   isOpen: boolean;
@@ -10,12 +11,6 @@ interface Props {
   onClose: () => void;
 }
 
-type WindowDto = {
-  id: string;
-  branchId: string;
-  windowNumber: number;
-  description?: string | null;
-};
 
 type ActionMessage = {
     type: 'success' | 'error';

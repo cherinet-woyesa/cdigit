@@ -9,9 +9,8 @@ interface DenominationModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: () => void;
-    form: { formReferenceId: string; amount: number; } | null;
+    form: {makerId : string; formId: string; } | null;
 }
-
 const denominationsList = [200, 100, 50, 10, 1];
 
 const PettyDenominationModal: React.FC<DenominationModalProps> = ({ isOpen, onClose, onSave, form }) => {
@@ -50,11 +49,11 @@ const handleSave = async () => {
     setLoading(true);
     setError('');
 
-    if (Math.abs(totalAmount - form.amount) > 0.01) {
-        setError(`Denominations total (${totalAmount.toFixed(2)}) must match deposit amount (${form.amount.toFixed(2)}).`);
-        setLoading(false);
-        return;
-    }
+    // if (Math.abs(totalAmount - form.amount) > 0.01) {
+    //     setError(`Denominations total (${totalAmount.toFixed(2)}) must match deposit amount (${form.amount.toFixed(2)}).`);
+    //     setLoading(false);
+    //     return;
+    // }
 
     try {
         const filteredDenominations = Object.fromEntries(
@@ -63,12 +62,12 @@ const handleSave = async () => {
 
         // CORRECTED: Convert user.id from string to number
         const updateDto = {
-            formReferenceId: form.formReferenceId,
+            formReferenceId: form.formId,
             frontMakerId: user.id, // This is the change
             denominations: filteredDenominations,
         };
 
-        await makerService.updateDepositDenominations(form.formReferenceId, updateDto, token);
+        await makerService.updateDepositDenominations(form.formId, updateDto, token);
         
         onSave();
         onClose();
@@ -86,7 +85,7 @@ const handleSave = async () => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Enter Denominations for Deposit</h2>
-                {form && <p className="mb-4 text-lg">Amount: <span className="font-bold text-green-700">ETB {form.amount.toFixed(2)}</span></p>}
+                {/* {form && <p className="mb-4 text-lg">Amount: <span className="font-bold text-green-700">ETB {form.amount.toFixed(2)}</span></p>} */}
                 
                 {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">{error}</div>}
                 
@@ -110,16 +109,16 @@ const handleSave = async () => {
                 </div>
                 
                 <div className="flex justify-between items-center border-t pt-4">
-                    <span className={`text-xl font-bold ${Math.abs(totalAmount - (form?.amount || 0)) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
+                    {/* <span className={`text-xl font-bold ${Math.abs(totalAmount - (form?.amount || 0)) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
                         Total: ETB {totalAmount.toFixed(2)}
-                    </span>
+                    </span> */}
                     <div className="flex space-x-2">
                         <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300" disabled={loading}>
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            disabled={loading || Math.abs(totalAmount - (form?.amount || 0)) > 0.01}
+                            // disabled={loading || Math.abs(totalAmount - (form?.amount || 0)) > 0.01}
                             className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
                         >
                             {loading ? (

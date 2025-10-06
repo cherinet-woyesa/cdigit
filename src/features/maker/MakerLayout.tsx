@@ -5,12 +5,13 @@ import Header from "../../components/layout/Header";
 import Footer from "../../components/layout/Footer";
 import MakerDashboard from "./MakerDashboard";
 import type { WindowDto } from "types/WindowDto";
-// import makerService from "services/makerService";
+import { HubConnectionBuilder } from '@microsoft/signalr';
 import type { DecodedToken } from "types/DecodedToken";
 import type { ActionMessage } from "types/ActionMessage";
 import WindowSelectionModal from "./WindowSelectionModal";
-import makerService, { type CustomerQueueItem, type NextCustomerResponse, type TransactionType, } from "../../services/makerService";
-
+import makerService from "../../services/makerService";
+import { jwtDecode } from "jwt-decode";
+import QueueNotifyModal from "../../modals/QueueNotifyModal";
 
 const MakerLayout: React.FC = () => {
 
@@ -20,6 +21,8 @@ const MakerLayout: React.FC = () => {
     const [activeSection, setActiveSection] = useState("transactions");
     const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
 
+    // branch related
+    const [branchName, setBranchName] = useState<string>("");
 
     // window related
     const [assignedWindow, setAssignedWindow] = useState<WindowDto | null>(null);
@@ -28,14 +31,78 @@ const MakerLayout: React.FC = () => {
     const [showWindowChangeModal, setShowWindowChangeSelectionModal] = useState(false);
     const [selectedWindowId, setSelectedWindowId] = useState("");
 
+    // New customer comming notify Modal state
+    const [isQueueNotifyModalOpen, setIsQueueNotifyModalOpen] = useState(false);
+    const [QueueNotifyModalMessage, setQueueNotifyModalMessage] = useState('');
+    const [QueueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
+    const [amount, setAmount] = useState('');
 
-    // logout clears token & redirects
-    const handleLogout = () => {
-        localStorage.clear();
-        window.location.href = "/login";
-    };
+    /** Decode token */
+    useEffect(() => {
+        if (!token) return;
+        try {
+            const d = jwtDecode<DecodedToken>(token);
+            setDecoded(d);
+        } catch {
+            logout();
+        }
+    }, [token, logout]);
 
+    //fetch branch info
+    useEffect(() => {
+        const fetchBranch = async () => {
+            if (!token || !decoded?.BranchId) return;
+            try {
+                const res = await makerService.getBranchById(decoded.BranchId, token);
+                if (res.success && res.data?.name) {
+                    setBranchName(res.data.name);
+                } else {
+                    setBranchName("Unknown Branch");
+                }
+            } catch (err) {
+                console.error("Failed to fetch branch:", err);
+                setBranchName("Error loading branch");
+            }
+        };
 
+        fetchBranch();
+    }, [decoded?.BranchId, token]);
+
+    // notify the comming of New customer 
+    useEffect(() => {
+        if (!decoded?.BranchId) return;
+
+        // Setup SignalR connection
+        const connection = new HubConnectionBuilder()
+            .withUrl('http://localhost:5268/hub/queueHub')
+            .withAutomaticReconnect()
+            .build();
+
+        connection.start().then(() => {
+            console.log('Connected to SignalR hub');
+
+            // Join group with Branch id
+            connection.invoke('JoinBranchCustomersQueueGroup', decoded?.BranchId);
+
+            // Listen for messages
+            connection.on('NewCustomer', (data) => {
+                console.log('New customer notification received:', data);
+                setQueueNotifyModalTitle(data.transactionType + " Request");
+                setQueueNotifyModalMessage(`${data.message} is comming, please ready to serve. `);
+
+                console.log("data.amount at dashboard", data.amount);
+                setAmount(`Amount: ETB ${Number(data.amount).toLocaleString()}`);
+                setIsQueueNotifyModalOpen(true);
+                // void refreshQueue();
+            });
+        });
+
+        return () => {
+            connection.stop();
+        };
+    }, [decoded?.BranchId]);
+
+        // window related
     /** Load windows */
     useEffect(() => {
         const initWindows = async () => {
@@ -70,9 +137,6 @@ const MakerLayout: React.FC = () => {
         if (decoded?.nameid) void initWindows();
     }, [decoded, token]);
 
-
-    // window related
-
     /** Assign window submit */
     const handleAssignWindow = async () => {
         console.log("calling handleAssignWindow:", selectedWindowId);
@@ -94,6 +158,7 @@ const MakerLayout: React.FC = () => {
 
                 const found = windows.find((w) => w.id === selectedWindowId) || null;
                 setAssignedWindow(found);
+                // localStorage.setItem("assignedWindowId", assignedWindow.id);
                 setShowWindowSelectionModal(false);
             }
         } catch {
@@ -150,6 +215,11 @@ const MakerLayout: React.FC = () => {
         }
     };
 
+    // logout clears token & redirects
+    const handleLogout = () => {
+        localStorage.clear();
+        window.location.href = "/staff-login";
+    };
 
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-100">
@@ -160,52 +230,53 @@ const MakerLayout: React.FC = () => {
                 onLogout={handleLogout}
             />
 
-            {/* Main Content */}
+            {/* Main Content = header, body and footer */}
             <div className="flex flex-col flex-1">
                 <Header
-                decoded={decoded ?? undefined}
-                    branchName= {decoded?.BranchId}
-                    windowNumber={undefined}
-                    assignedWindow = {assignedWindow}
+                    decoded={decoded}
+                    branchName={branchName}
+                    assignedWindow={assignedWindow}
                     handleOpenChangeWindow={handleOpenChangeWindow}
                 />
 
                 <main className="flex-1 p-6 overflow-y-auto">
-                    <MakerDashboard activeSection={activeSection} />
+                    <MakerDashboard activeSection={activeSection} assignedWindow={assignedWindow} />
                 </main>
-
                 <Footer />
             </div>
 
+            {/* modals */}
 
-                        {/* initial Window selection modal */}
-            {showWindowSelectionModal && (
-                <WindowSelectionModal
-                    isOpen={showWindowSelectionModal}
-                    windows={windows}
-                    message={actionMessage}
-                    selectedWindowId={selectedWindowId}
-                    onSelect={setSelectedWindowId}
-                    onAssign={handleAssignWindow}
-                    onClose={() => setShowWindowSelectionModal(false)}
-                />
-
-            )}
+            {/* initial Window selection modal */}
+            <WindowSelectionModal
+                isOpen={showWindowSelectionModal}
+                windows={windows}
+                message={actionMessage}
+                selectedWindowId={selectedWindowId}
+                onSelect={setSelectedWindowId}
+                onAssign={handleAssignWindow}
+                onClose={() => setShowWindowSelectionModal(false)}
+            />
 
             {/* later Window change modal */}
-            {showWindowChangeModal && (
-                <WindowSelectionModal
-                    isOpen={showWindowChangeModal}
-                    windows={windows}
-                    message={actionMessage}
-                    selectedWindowId={selectedWindowId}
-                    onSelect={setSelectedWindowId}
-                    onAssign={handleChangeWindow}
-                    onClose={() => setShowWindowChangeSelectionModal(false)}
-                />
+            <WindowSelectionModal
+                isOpen={showWindowChangeModal}
+                windows={windows}
+                message={actionMessage}
+                selectedWindowId={selectedWindowId}
+                onSelect={setSelectedWindowId}
+                onAssign={handleChangeWindow}
+                onClose={() => setShowWindowChangeSelectionModal(false)}
+            />
 
-            )}
-            
+            <QueueNotifyModal
+                isOpen={isQueueNotifyModalOpen}
+                onClose={() => setIsQueueNotifyModalOpen(false)}
+                title={QueueNotifyModalTitle}
+                message={QueueNotifyModalMessage}
+                amount={amount}
+            />
+
         </div>
     );
 };
