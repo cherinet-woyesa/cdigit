@@ -295,7 +295,7 @@ const BranchSelectionEnhanced: React.FC = () => {
       // Mock data fallback
       const mockBranches: BranchWithDistance[] = [
         {
-          id: 'branch-001',
+          id: 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6',
           name: 'CBE Main Branch',
           code: 'MAIN',
           status: 'active',
@@ -308,8 +308,8 @@ const BranchSelectionEnhanced: React.FC = () => {
           longitude: 38.7636
         },
         {
-          id: 'branch-002',
-          name: 'CBE Airport Branch', 
+          id: 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c',
+          name: 'CBE Ayer tena Branch', 
           code: 'AIRPORT',
           status: 'active',
           qrCode: 'qr-airport-002',
@@ -321,8 +321,8 @@ const BranchSelectionEnhanced: React.FC = () => {
           longitude: 38.7993
         },
         {
-          id: 'branch-003',
-          name: 'CBE City Center',
+          id: 'b1d5f3a2-3c3a-4f5f-ae7b-2a1f2d3c4b5e',
+          name: 'Shola branch',
           code: 'CITYCENT',
           status: 'active',
           qrCode: 'qr-city-003',

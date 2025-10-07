@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.0.10:5268/api';
+const API_BASE_URL = 'http://localhost:5268/api';
 
 // Generic backend API response shape
 interface ApiResponse<T> {
