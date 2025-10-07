@@ -46,6 +46,7 @@ interface FormData {
     city: string;
     subCity: string;
     woreda: string;
+    kebele: string;
     houseNumber: string;
     landmark: string;
     numberOfPOS: number;
@@ -81,6 +82,7 @@ export default function POSRequestForm() {
         city: '',
         subCity: '',
         woreda: '',
+        kebele: '',
         houseNumber: '',
         landmark: '',
         numberOfPOS: 1,
@@ -158,6 +160,7 @@ export default function POSRequestForm() {
                 if (!formData.city.trim()) errs.city = t('cityRequired', 'City is required');
                 if (!formData.subCity.trim()) errs.subCity = t('subCityRequired', 'Sub-city is required');
                 if (!formData.woreda.trim()) errs.woreda = t('woredaRequired', 'Woreda is required');
+                if (!formData.kebele.trim()) errs.kebele = t('kebeleRequired', 'Kebele is required');
                 if (!formData.houseNumber.trim()) errs.houseNumber = t('houseNumberRequired', 'House number is required');
                 break;
             case 3:
@@ -230,7 +233,38 @@ export default function POSRequestForm() {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!validateStep()) return;
+        
+        const errs: Errors = {};
+        if (!formData.accountNumber.trim()) errs.accountNumber = t('accountNumberRequired', 'Please select an account');
+        if (!formData.businessName.trim()) errs.businessName = t('businessNameRequired', 'Business name is required');
+        if (!formData.businessType.trim()) errs.businessType = t('businessTypeRequired', 'Business type is required');
+        if (!formData.contactPerson.trim()) errs.contactPerson = t('contactPersonRequired', 'Contact person is required');
+        if (!formData.phoneNumber.trim()) errs.phoneNumber = t('phoneNumberRequired', 'Phone number is required');
+        if (!formData.email.trim()) errs.email = t('emailRequired', 'Email is required');
+        else if (!/\S+@\S+\.\S+/.test(formData.email)) errs.email = t('invalidEmail', 'Please enter a valid email address');
+        
+        if (!formData.region.trim()) errs.region = t('regionRequired', 'Region is required');
+        if (!formData.city.trim()) errs.city = t('cityRequired', 'City is required');
+        if (!formData.subCity.trim()) errs.subCity = t('subCityRequired', 'Sub-city is required');
+        if (!formData.woreda.trim()) errs.woreda = t('woredaRequired', 'Woreda is required');
+        if (!formData.kebele.trim()) errs.kebele = t('kebeleRequired', 'Kebele is required');
+        if (!formData.houseNumber.trim()) errs.houseNumber = t('houseNumberRequired', 'House number is required');
+
+        if (!formData.termsAccepted) errs.termsAccepted = t('termsAcceptanceRequired', 'You must accept the terms and conditions');
+        
+        if (!formData.otpCode || formData.otpCode.length !== 6) errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+
+        if (Object.keys(errs).length > 0) {
+            setErrors(errs);
+            if (errs.accountNumber || errs.businessName || errs.businessType || errs.contactPerson || errs.phoneNumber || errs.email) {
+                setStep(1);
+            } else if (errs.region || errs.city || errs.subCity || errs.woreda || errs.houseNumber || errs.kebele) {
+                setStep(2);
+            } else if (errs.termsAccepted) {
+                setStep(3);
+            }
+            return;
+        }
 
         if (!branch?.id) {
             setErrors({ submit: t('missingBranch', 'Please select a branch.') });
@@ -239,9 +273,12 @@ export default function POSRequestForm() {
 
         setIsSubmitting(true);
         try {
-            const addressParts = [formData.region, formData.city, formData.subCity, formData.woreda, formData.houseNumber].filter(Boolean);
-            if (formData.landmark) addressParts.push(formData.landmark);
-            const fullAddress = addressParts.join(', ');
+            const addressObject = {
+                City: formData.city,
+                Subcity: formData.subCity,
+                Wereda: formData.woreda,
+                Kebele: formData.kebele,
+            };
 
             const rawPhone = (formData.phoneNumber || phone || '').toString();
             const posRequestData = {
@@ -252,7 +289,8 @@ export default function POSRequestForm() {
                 PhoneNumber: rawPhone,
                 ContactNumber: formData.phoneNumber,
                 SecondaryContactNumber: null,
-                Address: fullAddress,
+                Address: addressObject,
+                BusinessName: formData.businessName,
                 NatureOfBusiness: formData.businessName,
                 TypeOfBusiness: formData.businessType,
                 NumberOfPOSRequired: formData.numberOfPOS,
@@ -264,7 +302,7 @@ export default function POSRequestForm() {
 
             if (response && response.success) {
                 navigate('/form/pos-request/confirmation', { 
-                    state: { serverData: response, branchName: branch?.name, formData: formData, address: fullAddress } 
+                    state: { serverData: response, branchName: branch?.name, formData: formData, address: addressObject } 
                 });
             } else {
                 const errorMessage = response?.message || t('submissionFailed', 'Submission failed');
@@ -338,6 +376,7 @@ export default function POSRequestForm() {
                     <Field label={t('city', 'City')} required error={errors.city}><input type="text" name="city" value={formData.city} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent" id="city" /></Field>
                     <Field label={t('subCity', 'Sub-city')} required error={errors.subCity}><input type="text" name="subCity" value={formData.subCity} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent" id="subCity" /></Field>
                     <Field label={t('woreda', 'Woreda')} required error={errors.woreda}><input type="text" name="woreda" value={formData.woreda} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent" id="woreda" /></Field>
+                    <Field label={t('kebele', 'Kebele')} required error={errors.kebele}><input type="text" name="kebele" value={formData.kebele} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent" id="kebele" /></Field>
                     <Field label={t('houseNumber', 'House Number')} required error={errors.houseNumber}><input type="text" name="houseNumber" value={formData.houseNumber} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent" id="houseNumber" /></Field>
                     <Field label={t('landmark', 'Landmark (Optional)')}><input type="text" name="landmark" value={formData.landmark} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent" /></Field>
                 </div>
