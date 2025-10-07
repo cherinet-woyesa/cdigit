@@ -1,103 +1,355 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircleIcon, PrinterIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { useEffect, useState, useMemo, useRef, Fragment } from 'react';
+import { cancelFundTransferByCustomer, getFundTransferById } from '../../../../services/fundTransferService';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../../../../components/LanguageSwitcher';
+import { useAuth } from '../../../../context/AuthContext';
+import { 
+    CheckCircle2, 
+    Printer, 
+    RefreshCw, 
+    X, 
+    AlertTriangle,
+    ArrowRightLeft,
+    MapPin,
+    Calendar,
+    CreditCard,
+    DollarSign,
+    Building
+} from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
-import { useMemo, useRef } from 'react';
-import { cancelFundTransferByCustomer } from '../../../../services/fundTransferService';
+import { Dialog, Transition } from '@headlessui/react';
+
+// Enhanced message components
+function ErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg mb-3">
+            <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-red-700 text-sm">{message}</span>
+        </div>
+    );
+}
+
+function SuccessMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg mb-3">
+            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span className="text-green-700 text-sm">{message}</span>
+        </div>
+    );
+}
 
 export default function FundTransferConfirmation() {
+    const { t } = useTranslation();
+    const { phone } = useAuth();
     const { state } = useLocation() as { state?: any };
     const navigate = useNavigate();
-    const componentToPrintRef = useRef(null);
+    const [serverData, setServerData] = useState<any>(state?.serverData || null);
+    const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
 
-    // Prefer nested api response: { success, message, data }
-    const apiWrapper = state?.api ?? state?.serverData ?? state;
-    const apiData = useMemo(() => (apiWrapper?.data ?? apiWrapper ?? {}) as any, [apiWrapper]);
+    const data = useMemo(() => {
+        if (serverData?.data) return serverData.data;
+        if (state?.serverData?.data) return state.serverData.data;
+        return {};
+    }, [serverData, state]);
 
-    const debitAccount = apiData.DebitAccountNumber || apiData.debitAccountNumber || apiData.debitAccount || state?.debitAccountNumber || 'N/A';
-    const creditAccount = apiData.CreditAccountNumber || apiData.creditAccountNumber || apiData.creditAccount || state?.creditAccountNumber || 'N/A';
-    const amountValue = apiData.Amount ?? apiData.amount ?? state?.amount;
-    const amount = amountValue != null ? `${Number(amountValue).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB` : 'N/A';
-    const branch = apiData.BranchName || apiData.branchName || state?.branch || 'Ayer Tena Branch';
-    const token = (apiData.TokenNumber || apiData.tokenNumber || state?.token)?.toString() || 'N/A';
-    const queueNumber = (apiData.QueueNumber ?? apiData.queueNumber ?? apiData.Window ?? apiData.window ?? state?.window)?.toString() || 'N/A';
-    const entityId = apiData.Id || apiData.id || null;
+    useEffect(() => {
+        const fetchFundTransfer = async () => {
+            if (data.id || error) return;
+            const refId = data.formReferenceId || data.referenceId || data.ReferenceId || state?.serverData?.data?.id;
+            if (!refId) return;
+            
+            setSubmitting(true);
+            setError('');
+            try {
+                const res = await getFundTransferById(refId);
+                setServerData(res);
+            } catch (e: any) {
+                setError(e?.message || t('fetchTransferError', 'Failed to fetch fund transfer confirmation.'));
+            } finally {
+                setSubmitting(false);
+            }
+        };
 
+        if (state?.serverData?.data) {
+            setServerData(state.serverData);
+        } else if (state?.pending || !serverData) {
+            fetchFundTransfer();
+        }
+    }, [state, serverData, error, data.id, t]);
+
+    const debitAccount = data.DebitAccountNumber || data.debitAccountNumber || state?.ui?.debitAccount || 'N/A';
+    const creditAccount = data.CreditAccountNumber || data.creditAccountNumber || state?.ui?.creditAccount || 'N/A';
+    const amountValue = data.Amount ?? data.amount ?? state?.ui?.amount;
+    const amount = amountValue != null ? `${Number(amountValue).toLocaleString('en-US', { minimumFractionDigits: 2 })} ETB` : '0.00 ETB';
+    const branchName = state?.branchName || t('selectedBranch', 'Selected Branch');
+    const token = (data.TokenNumber || data.tokenNumber || state?.tokenNumber)?.toString() || 'N/A';
+    const queueNumber = (data.QueueNumber ?? data.queueNumber ?? state?.queueNumber)?.toString() || 'N/A';
+    const entityId = data.Id || data.id || null;
+
+    const componentToPrintRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
-        // @ts-ignore
         content: () => componentToPrintRef.current,
-    });
+        documentTitle: t('fundTransferConfirmation', 'Fund Transfer Confirmation'),
+        pageStyle: `
+            @page { size: auto; margin: 10mm; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+                .no-print { display: none !important; }
+            }
+        `,
+    } as any);
+
+    const handleNewTransfer = () => {
+        navigate('/form/fund-transfer', { state: { showSuccess: false } });
+    };
+
+    const handleUpdateTransfer = () => {
+        if (!entityId) return;
+        navigate('/form/fund-transfer', { state: { updateId: entityId } });
+    };
+
+    const handleCancelTransfer = async () => {
+        if (!entityId) return;
+        
+        try {
+            setSubmitting(true);
+            setError('');
+            const response = await cancelFundTransferByCustomer(entityId);
+            if (response.success) {
+                setSuccessMessage(response.message || t('transferCancelled', 'Fund transfer cancelled successfully'));
+                setShowCancelModal(false);
+                setTimeout(() => {
+                    navigate('/form/fund-transfer', {
+                        state: {
+                            showSuccess: true,
+                            successMessage: response.message || t('transferCancelled', 'Fund transfer cancelled successfully')
+                        }
+                    });
+                }, 1500);
+            } else {
+                throw new Error(response.message || t('cancelTransferFailed', 'Failed to cancel fund transfer'));
+            }
+        } catch (e: any) {
+            setError(e?.message || t('cancelTransferFailed', 'Failed to cancel fund transfer. Please try again.'));
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
-        <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4 sm:p-6">
-            <div ref={componentToPrintRef} className="max-w-2xl w-full bg-white p-4 sm:p-6 rounded-lg shadow-lg text-center">
-                <div className="mb-6 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg">
-                    <h1 className="text-xl sm:text-2xl font-extrabold text-white">Fund Transfer Confirmation</h1>
-                </div>
-
-                <div className="text-center mb-4">
-                    <CheckCircleIcon className="h-14 w-14 mx-auto text-green-500" />
-                    <h1 className="text-xl font-extrabold text-fuchsia-800 mt-2">Success!</h1>
-                    <p className="text-gray-600 text-sm">Your fund transfer has been submitted.</p>
-                </div>
-
-                <div className="my-4 grid grid-cols-2 gap-3">
-                    <div className="bg-fuchsia-700 p-3 rounded-lg shadow text-center">
-                        <p className="text-xs font-medium text-fuchsia-100">Queue #</p>
-                        <p className="text-3xl font-bold">{queueNumber}</p>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full">
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    {/* Header */}
+                    <div className="bg-fuchsia-700 text-white p-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 p-2 rounded-lg">
+                                    <ArrowRightLeft className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-bold">{t('fundTransferConfirmation', 'Fund Transfer Confirmation')}</h1>
+                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{branchName}</span>
+                                        <span>•</span>
+                                        <Calendar className="h-3 w-3" />
+                                        <span>{new Date().toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                    📱 {phone}
+                                </div>
+                                <div className="bg-white/20 rounded p-1">
+                                    <LanguageSwitcher />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div className="bg-fuchsia-600 p-3 rounded-lg shadow text-center">
-                        <p className="text-xs font-medium text-fuchsia-100">Token</p>
-                        <p className="text-3xl font-bold">{token}</p>
+
+                    {/* Main Content */}
+                    <div ref={componentToPrintRef} className="p-4">
+                        {/* Success Icon */}
+                        <div className="text-center py-4">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                            </div>
+                            <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
+                            <p className="text-gray-600 text-sm">{t('transferSubmitted', 'Your fund transfer has been submitted.')}</p>
+                        </div>
+
+                        {/* Queue and Token Cards */}
+                        <div className="mb-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-3 rounded-lg text-center text-white">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
+                                    </div>
+                                    <p className="text-2xl font-bold">{queueNumber}</p>
+                                </div>
+                                <div className="bg-gradient-to-r from-fuchsia-700 to-pink-700 p-3 rounded-lg text-center text-white">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                        <CreditCard className="h-3 w-3" />
+                                        <span className="text-xs font-medium">{t('token', 'Token')}</span>
+                                    </div>
+                                    <p className="text-2xl font-bold">{token}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Transaction Summary */}
+                        <div className="mb-4">
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                                    <DollarSign className="h-4 w-4" />
+                                    {t('transactionSummary', 'Transaction Summary')}
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700">{t('fromAccount', 'From Account')}:</span>
+                                        <span className="font-mono font-semibold">{debitAccount}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700">{t('toAccount', 'To Account')}:</span>
+                                        <span className="font-mono font-semibold">{creditAccount}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700">{t('branch', 'Branch')}:</span>
+                                        <span>{branchName}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="font-medium text-gray-700">{t('amount', 'Amount')}:</span>
+                                        <span className="text-lg font-bold text-fuchsia-700">{amount}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Thank You Message */}
+                        <div className="text-center pt-3 border-t border-gray-200">
+                            <p className="text-gray-600 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="p-4 border-t border-gray-200 no-print">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={handleNewTransfer}
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                            >
+                                <RefreshCw className="h-3 w-3" />
+                                {t('newTransfer', 'New')}
+                            </button>
+                            
+                            <button
+                                onClick={handlePrint}
+                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                            >
+                                <Printer className="h-3 w-3" />
+                                {t('print', 'Print')}
+                            </button>
+                        </div>
+
+                        {entityId && (
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                <button
+                                    onClick={handleUpdateTransfer}
+                                    disabled={submitting}
+                                    className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors text-xs font-medium"
+                                >
+                                    <RefreshCw className="h-3 w-3" />
+                                    {submitting ? t('processing', 'Processing...') : t('update', 'Update')}
+                                </button>
+                                
+                                <button
+                                    onClick={() => setShowCancelModal(true)}
+                                    disabled={submitting}
+                                    className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                                >
+                                    <X className="h-3 w-3" />
+                                    {t('cancel', 'Cancel')}
+                                </button>
+                            </div>
+                        )}
+
+                        {error && <ErrorMessage message={error} />}
+                        {successMessage && <SuccessMessage message={successMessage} />}
                     </div>
                 </div>
 
-                <div className="text-left bg-gray-50 p-3 rounded-lg shadow-inner">
-                    <h3 className="text-base font-bold text-fuchsia-700 mb-2">Transaction Summary</h3>
-                    <div className="space-y-2 text-sm text-gray-700">
-                        <div className="flex justify-between"><strong className="font-medium">From:</strong> <span>{debitAccount}</span></div>
-                        <div className="flex justify-between"><strong className="font-medium">To:</strong> <span>{creditAccount}</span></div>
-                        <div className="flex justify-between"><strong className="font-medium">Amount:</strong> <span className="font-bold text-fuchsia-800">{amount}</span></div>
-                        <div className="flex justify-between"><strong className="font-medium">Branch:</strong> <span>{branch}</span></div>
-                    </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button onClick={() => navigate('/fund-transfer')} className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-fuchsia-800 transition">
-                        <ArrowPathIcon className="h-3.5 w-3.5" />
-                        New
-                    </button>
-                    <button onClick={handlePrint} className="flex items-center justify-center gap-1 w-full bg-gray-200 text-fuchsia-800 text-sm px-2 py-1.5 rounded-md shadow hover:bg-gray-300 transition">
-                        <PrinterIcon className="h-3.5 w-3.5" />
-                        Print
-                    </button>
-                    {entityId && (
-                        <button
-                            onClick={async () => {
-                                navigate('/fund-transfer', { state: { updateId: entityId } });
-                            }}
-                            className="flex items-center justify-center gap-1 w-full bg-yellow-500 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-yellow-600 transition"
+                {/* Cancel Confirmation Modal */}
+                <Transition appear show={showCancelModal} as={Fragment}>
+                    <Dialog as="div" className="relative z-10" onClose={() => !submitting && setShowCancelModal(false)}>
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0"
+                            enterTo="opacity-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
                         >
-                            Update
-                        </button>
-                    )}
-                    {entityId && (
-                        <button
-                            onClick={async () => {
-                                try {
-                                    await cancelFundTransferByCustomer(entityId);
-                                    navigate('/fund-transfer', { state: { cancelled: true } });
-                                } catch (e: any) {
-                                    alert(e?.message || 'Failed to cancel fund transfer.');
-                                }
-                            }}
-                            className="flex items-center justify-center gap-1 w-full bg-red-600 text-white text-sm px-2 py-1.5 rounded-md shadow hover:bg-red-700 transition"
-                        >
-                            Cancel
-                        </button>
-                    )}
-                </div>
+                            <div className="fixed inset-0 bg-black/25" />
+                        </Transition.Child>
 
-                <p className="text-xs sm:text-sm text-gray-500 mt-4">Thank you for banking with us!</p>
+                        <div className="fixed inset-0 overflow-y-auto">
+                            <div className="flex min-h-full items-center justify-center p-4 text-center">
+                                <Transition.Child
+                                    as={Fragment}
+                                    enter="ease-out duration-300"
+                                    enterFrom="opacity-0 scale-95"
+                                    enterTo="opacity-100 scale-100"
+                                    leave="ease-in duration-200"
+                                    leaveFrom="opacity-100 scale-100"
+                                    leaveTo="opacity-0 scale-95"
+                                >
+                                    <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                                        <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
+                                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                            {t('confirmCancellation', 'Confirm Cancellation')}
+                                        </Dialog.Title>
+                                        
+                                        <div className="mt-4">
+                                            <p className="text-sm text-gray-500">
+                                                {t('cancelTransferPrompt', 'Are you sure you want to cancel this fund transfer? This action cannot be undone.')}
+                                            </p>
+                                        </div>
+
+                                        {error && <ErrorMessage message={error} />}
+
+                                        <div className="mt-6 flex justify-end gap-3">
+                                            <button
+                                                type="button"
+                                                className="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
+                                                onClick={() => setShowCancelModal(false)}
+                                                disabled={submitting}
+                                            >
+                                                {t('goBack', 'Go Back')}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                                                onClick={handleCancelTransfer}
+                                                disabled={submitting}
+                                            >
+                                                {submitting ? t('cancelling', 'Cancelling...') : t('yesCancelTransfer', 'Yes, Cancel Transfer')}
+                                            </button>
+                                        </div>
+                                    </Dialog.Panel>
+                                </Transition.Child>
+                            </div>
+                        </div>
+                    </Dialog>
+                </Transition>
             </div>
         </div>
     );
