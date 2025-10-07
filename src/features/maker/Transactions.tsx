@@ -54,7 +54,6 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
     const [busyAction, setBusyAction] = useState<"calling" | "completing" | "canceling" | null>(null);
 
     const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
-    const [showServices, setShowServices] = useState(false);
 
 
     // Served count
@@ -358,7 +357,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             />
 
             {/* Actions */}
-            <section className="flex gap-3">
+            <section className="flex gap-3 py-10">
                 <button
                     onClick={handleCallNext}
                     disabled={!assignedWindow || busyAction === "calling"}
@@ -375,12 +374,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                     Search by Form Ref ID
                 </button>
                 {/* New Other Services Button */}
-                <button
-                    onClick={() => setShowServices((prev) => !prev)}
-                    className="px-4 py-2 rounded-xl bg-fuchsia-600 text-white shadow hover:bg-fuchsia-700 transition"
-                >
-                    {showServices ? "Hide Services" : "Other Services"}
-                </button>
+
             </section>
 
             {/* Queue */}
@@ -432,7 +426,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             </section>
 
             {/* Served */}
-            <section className="w-fit mx-auto">
+            <section className="w-fit mx-auto py-10">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">
                     Total served by you (Today)
                 </h3>
