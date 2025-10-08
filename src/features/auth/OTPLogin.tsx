@@ -421,11 +421,35 @@ const OTPLogin: React.FC = () => {
       const otpValue = otpInput.otpDigits.join('');
       const response = await authService.loginWithOtp(effectivePhone, otpValue);
       
-      const token = response.data?.token;
+      const token = response.token;
       if (!token) throw new Error('No token received');
       
       login(token);
-      navigate('/dashboard', { replace: true });
+      
+      // Decode token to get role for redirection
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const decodedPayload = JSON.parse(window.atob(base64));
+      
+      const roles = decodedPayload.role || decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+      const userRole = Array.isArray(roles) ? roles[0] : roles || 'Customer';
+      
+      console.log('User role detected:', userRole);
+      
+      // Role-based redirection
+      switch (userRole.toLowerCase()) {
+        case 'maker':
+          navigate('/maker-dashboard');
+          break;
+        case 'admin':
+          navigate('/admin-dashboard');
+          break;
+        case 'manager':
+          navigate('/manager-dashboard');
+          break;
+        default:
+          navigate('/dashboard'); // fallback for customers or other roles
+      }
 
     } catch (err: any) {
       setError(handleAuthError(err));

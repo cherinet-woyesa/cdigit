@@ -30,21 +30,21 @@ const StaffLogin: React.FC = () => {
         const roles = decodedPayload.role || decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
         const userRole = Array.isArray(roles) ? roles[0] : roles || 'Customer';
         
-        console.log('User role detected:', userRole);
+        console.log('User role detected for redirection:', userRole);
         
         // Role-based redirection - FIXED
         switch (userRole.toLowerCase()) {
           case 'maker':
-            navigate('/maker-dashboard');
+            navigate('/maker-dashboard', { replace: true });
             break;
           case 'admin':
-            navigate('/admin-dashboard');
+            navigate('/admin-dashboard', { replace: true });
             break;
           case 'manager':
-            navigate('/manager-dashboard');
+            navigate('/manager-dashboard', { replace: true });
             break;
           default:
-            navigate('/dashboard'); // fallback
+            navigate('/dashboard', { replace: true }); // fallback
         }
       } else {
         throw new Error('Token is missing in the response');

@@ -52,70 +52,97 @@ export const BranchProvider: React.FC<BranchProviderProps> = ({ children }) => {
     setError(null);
     
     if (newBranch) {
-      // Save the branch selection to the backend if user is authenticated
-      try {
-        // This would be an API call to save the user's branch preference
-        // await apiService.setUserBranch(newBranch.id);
-      } catch (err) {
-        console.error('Failed to update user branch:', err);
-        toast.error('Failed to save branch selection');
-        throw err;
+      localStorage.setItem('selectedBranch', JSON.stringify(newBranch));
+      // Update user's branch in auth context only if changed to avoid loops
+      if (user?.branchId !== newBranch.id) {
+        updateUserBranch?.(newBranch.id);
       }
+    } else {
+      localStorage.removeItem('selectedBranch');
     }
     
     return Promise.resolve();
-  }, []);
+  }, [user?.branchId, updateUserBranch]);
 
   const loadBranches = useCallback(async () => {
+    // FIXED: Prevent multiple simultaneous calls
+    if (isLoading) {
+      console.log('BranchContext: loadBranches already in progress, skipping');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     
     try {
       const fetchedBranches = await fetchBranches();
+      
+      console.log('BranchContext: Fetched branches:', fetchedBranches);
+      
       setBranches(fetchedBranches);
       
-      // If there's only one branch, auto-select it
-      if (fetchedBranches.length === 1) {
+      // For staff users, get branch from JWT token and auto-select it
+      const isStaffRole = user?.role && ['Maker', 'Admin', 'Manager'].includes(user.role);
+      console.log('BranchContext: User role:', user?.role, 'Is staff:', isStaffRole);
+      
+      if (isStaffRole && user?.branchId) {
+        console.log('BranchContext: Staff user with branch ID:', user.branchId);
+        const staffBranch = fetchedBranches.find(b => b.id === user.branchId);
+        if (staffBranch) {
+          console.log('BranchContext: Auto-selecting staff branch:', staffBranch);
+          await setBranch(staffBranch);
+          
+          // FIXED: Return early to prevent further processing for staff users
+          console.log('BranchContext: Staff branch selection complete, returning early');
+          return;
+        } else {
+          console.warn('BranchContext: Staff branch not found in branches list:', user.branchId);
+          // FIXED: Even if branch not found, don't redirect staff to branch selection
+          // Staff should continue without a branch selection
+          return;
+        }
+      } 
+      // For customers, if there's only one branch, auto-select it
+      else if (fetchedBranches.length === 1 && !isStaffRole) {
+        console.log('BranchContext: Auto-selecting single branch for customer');
         await setBranch(fetchedBranches[0]);
-      } else if (branch) {
-        // If we already have a selected branch, make sure it's still valid
+      } 
+      // If we already have a selected branch, make sure it's still valid
+      else if (branch) {
         const currentBranch = fetchedBranches.find(b => b.id === branch.id);
         if (!currentBranch) {
           // Current branch no longer exists, clear selection
+          console.log('BranchContext: Current branch no longer exists, clearing');
           clearBranch();
-          if (location.pathname !== '/select-branch') {
+          // FIXED: Only redirect customers to branch selection, not staff
+          if (location.pathname !== '/select-branch' && !isStaffRole) {
             navigate('/select-branch', { state: { from: location } });
           }
         }
       }
+      
+      // FIXED: Additional check for staff users who might have ended up on branch selection
+      if (isStaffRole && location.pathname === '/select-branch') {
+        console.log('BranchContext: Staff user detected on branch selection page - should be redirected by StaffRouteGuard');
+        // The StaffRouteGuard will handle the actual redirection
+      }
     } catch (err) {
-      console.error('Failed to load branches:', err);
+      console.error('BranchContext: Failed to load branches:', err);
       setError('Failed to load branches. Please try again later.');
       toast.error('Failed to load branches');
     } finally {
       setIsLoading(false);
     }
-  }, [clearBranch, setBranch]);
+  }, [branch, clearBranch, setBranch, navigate, location, user?.role, user?.branchId, isLoading]); // FIXED: Added isLoading to dependencies
 
   // Load branches on mount and when user changes
   useEffect(() => {
-    if (user?.id) {
+    // FIXED: Only load branches if we have a user and branches aren't already loaded
+    if (user?.id && branches.length === 0 && !isLoading) {
+      console.log('BranchContext: Initializing branches for user:', user.id);
       loadBranches().catch(console.error);
     }
-  }, [user?.id]);
-
-  // Update localStorage when branch changes
-  useEffect(() => {
-    if (branch) {
-      localStorage.setItem('selectedBranch', JSON.stringify(branch));
-      // Update user's branch in auth context only if changed to avoid loops
-      if (user?.branchId !== branch.id) {
-        updateUserBranch?.(branch.id);
-      }
-    } else {
-      localStorage.removeItem('selectedBranch');
-    }
-  }, [branch, updateUserBranch, user?.branchId]);
+  }, [user?.id, loadBranches, branches.length, isLoading]); // FIXED: Added branches.length and isLoading to dependencies
 
   const refreshBranch = useCallback(async () => {
     if (!branch?.id) return;
@@ -132,12 +159,16 @@ export const BranchProvider: React.FC<BranchProviderProps> = ({ children }) => {
       // If branch no longer exists, clear the selection
       if (err instanceof Error && err.message.includes('404')) {
         clearBranch();
-        navigate('/select-branch');
+        const isStaffRole = user?.role && ['Maker', 'Admin', 'Manager'].includes(user.role);
+        // FIXED: Only redirect customers to branch selection, not staff
+        if (!isStaffRole) {
+          navigate('/select-branch');
+        }
       }
     } finally {
       setIsLoading(false);
     }
-  }, [branch?.id, clearBranch, navigate]);
+  }, [branch?.id, clearBranch, navigate, user?.role]);
 
   const value = { 
     branch,
