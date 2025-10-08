@@ -52,38 +52,39 @@ const ForeignCurrencyModal: React.FC<DenominationModalProps> = ({ isOpen, onClos
 
   // Inside DenominationModal.tsx, in the handleSave function
   const handleSave = async () => {
-    if (!form || !user || !token) {
-      setError('User or form data is missing.');
-      return;
-    }
+  if (!form || !user || !token) {
+    setError('User or form data is missing.');
+    return;
+  }
 
-    setLoading(true);
-    setError('');
+  setLoading(true);
+  setError('');
+
+  try {
+    const filtered = Object.fromEntries(
+      Object.entries(denominations).filter(([_, value]) => value > 0)
+    );
+
+    const res = await pettyCashMakerService.submitForeignCurrency(
+      form.formId,
+      user.id,
+      filtered,
+      token
+    );
+
+    if (!res.success) throw new Error(res.message || "Submission failed");
+    onSave();
+    onClose();
+  } catch (err: any) {
+    setError(err.response?.data?.message || err.message);
+    console.error('Foreign currency submission error:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
 
-    try {
-      const filteredDenominations = Object.fromEntries(
-        Object.entries(denominations).filter(([_, value]) => value > 0)
-      );
 
-      // CORRECTED: Convert user.id from string to number
-      const updateDto = {
-        formId: form.formId,
-        frontMakerId: user.id, // This is the change
-        denominations: filteredDenominations,
-      };
-
-      await pettyCashMakerService.submitForeignCurrency(form.makerId, updateDto, token);
-
-      onSave();
-      onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update denominations.');
-      console.error('Update denominations error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!isOpen) return null;
 

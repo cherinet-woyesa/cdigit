@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { jwtDecode } from "jwt-decode";
+import { useAuth } from "../../context/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import BranchAdUsers from "./BranchAdUsers";
 import Windows from "./Windows";
@@ -10,6 +12,7 @@ import toast from "react-hot-toast";
 import MyBranchModal from "./MyBranchModal.tsx";
 import CorporateCustomers from "./CorporateCustomers.tsx";
 import ScreenDisplay from "../screen/ScreenDisplay";
+import PettyCash from "./PettyCash.tsx";
 
 interface Branch {
   id: string;
@@ -25,6 +28,7 @@ interface Branch {
 
 
 export default function ManagerDashboard() {
+
   const [branch, setBranch] = useState<Branch | null>(null);
   const [branchId, setBranchId] = useState<string>("");
   const [managerId, setManagerId] = useState<string>("");
@@ -82,6 +86,9 @@ export default function ManagerDashboard() {
           <TabsTrigger value="transactions" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
             📊 Transactions
           </TabsTrigger>
+          <TabsTrigger value="PettyCash" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
+            📊 PettyCash
+          </TabsTrigger>
           <TabsTrigger value="my-branch" className="flex-1 text-purple-900 font-semibold rounded-lg hover:bg-purple-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-400 data-[state=active]:text-white transition-all duration-300 shadow-sm">
             🏦 My Branch
           </TabsTrigger>
@@ -97,6 +104,7 @@ export default function ManagerDashboard() {
         <TabsContent value="corporate-customers"> <CorporateCustomers managerId={managerId} /> </TabsContent>
         <TabsContent value="assign"><AssignMaker branchId={branchId} /></TabsContent>
         <TabsContent value="transactions"><Transactions branchId={branchId} /></TabsContent>
+        <TabsContent value="PettyCash"><PettyCash branchId={branchId} voultManagerId={managerId} /></TabsContent>
         <TabsContent value="Screen-Display"> <ScreenDisplay /> </TabsContent>
 
         {/* My Branch Tab */}
