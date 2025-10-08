@@ -5,6 +5,7 @@ const API_BASE_URL = 'http://localhost:5268/api';
 export type RtgsTransferRequestDto = {
   BranchId: string; // Guid string
   OrderingAccountNumber: string;
+  OrderingCustomerName: string;
   BeneficiaryBank: string;
   BeneficiaryBranch: string;
   BeneficiaryAccountNumber: string;
@@ -12,10 +13,9 @@ export type RtgsTransferRequestDto = {
   TransferAmount: number;
   PaymentNarrative: string;
   CustomerTelephone?: string | null;
-  PhoneNumber?: string | null; // Some endpoints expect PhoneNumber with OtpCode
+  PhoneNumber?: string | null;
   DigitalSignature: string;
   OtpCode: string;
-  // REMOVED: Success: boolean; // This should only be in response
 };
 
 export type RtgsTransferResponseDto = {
@@ -33,133 +33,160 @@ export type RtgsTransferResponseDto = {
   PaymentNarrative: string;
   CustomerTelephone?: string | null;
   Status: string;
-  Success: boolean; // This stays here - it's a response property
+  Success: boolean;
 };
 
-export type ApiResponse<T> = { success: boolean; message?: string; data?: T };
-
-type RtgsOtpAttempt =
-  | { method: 'POST'; url: string; body: { phoneNumber: string } }
-  | { method: 'GET'; url: string; params: { phoneNumber: string } };
+export type ApiResponse<T> = { 
+  success: boolean; 
+  message?: string; 
+  data?: T;
+};
 
 export async function requestRtgsTransferOtp(phoneNumber: string): Promise<ApiResponse<null>> {
-  const endpoints: RtgsOtpAttempt[] = [
-    { method: 'POST', url: `${API_BASE_URL}/RtgsTransfer/request-otp`, body: { phoneNumber } },
-    { method: 'POST', url: `${API_BASE_URL}/RtgsTransfer/RequestOtp`, body: { phoneNumber } },
-    { method: 'GET', url: `${API_BASE_URL}/RtgsTransfer/request-otp`, params: { phoneNumber } },
-  ];
+  try {
+    console.log(`Requesting RTGS OTP via: http://localhost:5268/api/Auth/request-otp`);
+    
+    const response = await fetch('http://localhost:5268/api/Auth/request-otp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phoneNumber }),
+    });
 
-  let lastError: any = null;
+    const responseData = await response.json().catch(() => ({
+      success: false,
+      message: 'Invalid response from server',
+    }));
 
-  for (const attempt of endpoints) {
-    try {
-      console.log(`Requesting RTGS OTP via ${attempt.method} ${attempt.url}`);
-      const config: any = {
-        method: attempt.method,
-        url: attempt.url,
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000,
-        validateStatus: (status: number) => status < 500,
-      };
-      if (attempt.method === 'POST') {
-        config.data = (attempt as Extract<RtgsOtpAttempt, { method: 'POST' }>).body;
-      } else {
-        config.params = (attempt as Extract<RtgsOtpAttempt, { method: 'GET' }>).params;
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('No account found with this phone number');
       }
-      const res = await axios.request(config);
-
-      if (!res.data) {
-        throw new Error('Empty OTP response from server');
-      }
-      return res.data;
-    } catch (error: any) {
-      lastError = error;
-      console.warn('RTGS OTP attempt failed:', {
-        methodTried: attempt.method,
-        urlTried: attempt.url,
-        status: error?.response?.status,
-        data: error?.response?.data,
-      });
-      // Try next pattern
+      throw new Error(responseData?.message || 'Failed to request OTP');
     }
-  }
 
-  console.error('All RTGS OTP request attempts failed');
-  if (lastError?.response) {
-    throw {
-      ...lastError,
-      message: lastError.response.data?.message || 'RTGS OTP request failed',
-      status: lastError.response.status,
+    return {
+      success: true,
+      message: responseData.message || 'OTP sent successfully',
+      data: responseData.data,
     };
+  } catch (error: any) {
+    console.error('Error requesting RTGS OTP:', error);
+    throw new Error(error.message || 'Failed to request OTP');
   }
-  if (lastError?.request) {
-    throw new Error('No response received from RTGS OTP server. Please check your connection.');
-  }
-  throw new Error(`RTGS OTP request failed: ${lastError?.message || 'Unknown error'}`);
 }
 
 export async function submitRtgsTransfer(payload: RtgsTransferRequestDto): Promise<ApiResponse<RtgsTransferResponseDto>> {
   try {
     console.log(`Sending RTGS transfer request to: ${API_BASE_URL}/RtgsTransfer/submit`);
-    const res = await axios.post(`${API_BASE_URL}/RtgsTransfer/submit`, payload, {
+    
+    const response = await fetch(`${API_BASE_URL}/RtgsTransfer/submit`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 30000, // 30 seconds timeout
-      validateStatus: (status) => status < 500, // Don't throw for 4xx errors
+      body: JSON.stringify(payload),
     });
-    
-    console.log('RTGS transfer response status:', res.status);
-    
-    if (!res.data) {
-      console.error('Empty response from server');
-      throw new Error('Empty response from server');
+
+    const responseData = await response.json().catch(async () => {
+      const text = await response.text();
+      return { success: false, message: text } as any;
+    });
+
+    if (!response.ok) {
+      const message = responseData?.message || responseData || 'Failed to submit RTGS transfer';
+      throw new Error(message);
     }
-    
-    return res.data;
+
+    // Return the full backend response
+    return responseData;
   } catch (error: any) {
     console.error('Error in submitRtgsTransfer:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
-      code: error.code,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        data: error.config?.data,
-      },
     });
     
-    // Handle different types of errors
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       throw {
         ...error,
         message: error.response.data?.message || 'Server responded with an error',
         status: error.response.status,
       };
     } else if (error.request) {
-      // The request was made but no response was received
       throw new Error('No response received from server. Please check your connection.');
     } else {
-      // Something happened in setting up the request that triggered an Error
       throw new Error(`Request failed: ${error.message}`);
     }
   }
 }
 
 export async function getRtgsTransferById(id: string): Promise<ApiResponse<RtgsTransferResponseDto>> {
-  const res = await axios.get(`${API_BASE_URL}/RtgsTransfer/${id}`);
-  return res.data;
+  try {
+    const response = await fetch(`${API_BASE_URL}/RtgsTransfer/${id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.message || 'Failed to fetch RTGS transfer details');
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error('Error fetching RTGS transfer:', error);
+    throw new Error(error.message || 'Failed to fetch RTGS transfer details');
+  }
 }
 
 export async function listRtgsTransfers(): Promise<ApiResponse<RtgsTransferResponseDto[]>> {
-  const res = await axios.get(`${API_BASE_URL}/RtgsTransfer`);
-  return res.data;
+  try {
+    const response = await fetch(`${API_BASE_URL}/RtgsTransfer`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.message || 'Failed to fetch RTGS transfers');
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error('Error listing RTGS transfers:', error);
+    throw new Error(error.message || 'Failed to fetch RTGS transfers');
+  }
 }
 
 export async function updateRtgsStatus(id: string, status: string): Promise<ApiResponse<RtgsTransferResponseDto>> {
-  const res = await axios.put(`${API_BASE_URL}/RtgsTransfer/${id}/status`, null, { params: { status } });
-  return res.data;
+  try {
+    const response = await fetch(`${API_BASE_URL}/RtgsTransfer/${id}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    const responseData = await response.json().catch(async () => {
+      const text = await response.text();
+      return { success: false, message: text } as any;
+    });
+
+    if (!response.ok) {
+      const message = responseData?.message || responseData || 'Failed to update RTGS status';
+      throw new Error(message);
+    }
+
+    return responseData;
+  } catch (error: any) {
+    console.error('Error updating RTGS status:', error);
+    throw new Error(error.message || 'Failed to update RTGS status');
+  }
 }

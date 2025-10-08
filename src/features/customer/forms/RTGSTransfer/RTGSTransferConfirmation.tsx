@@ -90,52 +90,75 @@ export default function RTGSTransferConfirmation() {
     } as any);
 
     useEffect(() => {
-        if (state?.api) {
-            const api = state.api;
-            setData({
-                id: api.Id || api.id,
-                formReferenceId: api.FormReferenceId || api.formReferenceId,
-                branchName: api.BranchName || api.branchName || state?.branchName,
-                orderingAccountNumber: api.OrderingAccountNumber || api.orderingAccountNumber,
-                orderingCustomerName: api.OrderingCustomerName || api.orderingCustomerName,
-                beneficiaryBank: api.BeneficiaryBank || api.beneficiaryBank,
-                beneficiaryBranch: api.BeneficiaryBranch || api.beneficiaryBranch,
-                beneficiaryAccountNumber: api.BeneficiaryAccountNumber || api.beneficiaryAccountNumber,
-                beneficiaryName: api.BeneficiaryName || api.beneficiaryName,
-                transferAmount: api.TransferAmount ?? api.transferAmount,
-                paymentNarrative: api.PaymentNarrative || api.paymentNarrative,
-                customerTelephone: api.CustomerTelephone || api.customerTelephone,
-                tokenNumber: api.TokenNumber || api.tokenNumber,
-                queueNumber: api.QueueNumber ?? api.queueNumber,
-                submittedAt: api.SubmittedAt || api.submittedAt,
-                status: api.Status || api.status,
-            });
-            setIsLoading(false);
-            return;
-        }
+        const initializeData = async () => {
+            try {
+                setIsLoading(true);
+                setError('');
 
-        if (state?.formData) {
-            setData({
-                formReferenceId: state.formData.formReferenceId,
-                branchName: state.formData.branchName,
-                orderingAccountNumber: state.formData.orderingAccountNumber,
-                orderingCustomerName: state.formData.orderingCustomerName,
-                beneficiaryBank: state.formData.beneficiaryBank,
-                beneficiaryBranch: state.formData.beneficiaryBranch,
-                beneficiaryAccountNumber: state.formData.beneficiaryAccountNumber,
-                beneficiaryName: state.formData.beneficiaryName,
-                transferAmount: state.formData.transferAmount,
-                paymentNarrative: state.formData.paymentNarrative,
-                customerTelephone: state.formData.customerTelephone,
-                submittedAt: new Date().toISOString()
-            });
-            setIsLoading(false);
-            return;
-        }
+                // Check if we have API response data
+                if (state?.api) {
+                    const api = state.api;
+                    
+                    // Handle both direct API response and nested data structure
+                    const apiData = api.data || api;
+                    
+                    console.log('RTGS API Response:', api);
+                    console.log('Processed RTGS Data:', apiData);
 
-        setError(t('noTransferData', 'No transfer data found. Please complete the RTGS transfer form first.'));
-        setIsLoading(false);
-    }, [state, t]);
+                    setData({
+                        id: apiData.Id || apiData.id,
+                        formReferenceId: apiData.FormReferenceId || apiData.formReferenceId || apiData.ReferenceNumber,
+                        branchName: apiData.BranchName || apiData.branchName || state?.branchName || branch?.name,
+                        orderingAccountNumber: apiData.OrderingAccountNumber || apiData.orderingAccountNumber,
+                        orderingCustomerName: apiData.OrderingCustomerName || apiData.orderingCustomerName,
+                        beneficiaryBank: apiData.BeneficiaryBank || apiData.beneficiaryBank,
+                        beneficiaryBranch: apiData.BeneficiaryBranch || apiData.beneficiaryBranch,
+                        beneficiaryAccountNumber: apiData.BeneficiaryAccountNumber || apiData.beneficiaryAccountNumber,
+                        beneficiaryName: apiData.BeneficiaryName || apiData.beneficiaryName,
+                        transferAmount: apiData.TransferAmount ?? apiData.transferAmount,
+                        paymentNarrative: apiData.PaymentNarrative || apiData.paymentNarrative,
+                        customerTelephone: apiData.CustomerTelephone || apiData.customerTelephone || phone,
+                        tokenNumber: apiData.TokenNumber || apiData.tokenNumber,
+                        queueNumber: apiData.QueueNumber ?? apiData.queueNumber,
+                        submittedAt: apiData.SubmittedAt || apiData.submittedAt || new Date().toISOString(),
+                        status: apiData.Status || apiData.status || 'Submitted',
+                    });
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Fallback to form data if no API response
+                if (state?.formData) {
+                    setData({
+                        formReferenceId: state.formData.formReferenceId,
+                        branchName: state.formData.branchName,
+                        orderingAccountNumber: state.formData.orderingAccountNumber,
+                        orderingCustomerName: state.formData.orderingCustomerName,
+                        beneficiaryBank: state.formData.beneficiaryBank,
+                        beneficiaryBranch: state.formData.beneficiaryBranch,
+                        beneficiaryAccountNumber: state.formData.beneficiaryAccountNumber,
+                        beneficiaryName: state.formData.beneficiaryName,
+                        transferAmount: state.formData.transferAmount,
+                        paymentNarrative: state.formData.paymentNarrative,
+                        customerTelephone: state.formData.customerTelephone,
+                        submittedAt: new Date().toISOString(),
+                        status: 'Submitted'
+                    });
+                    setIsLoading(false);
+                    return;
+                }
+
+                setError(t('noTransferData', 'No transfer data found. Please complete the RTGS transfer form first.'));
+                setIsLoading(false);
+            } catch (err: any) {
+                console.error('Error initializing RTGS data:', err);
+                setError(err?.message || t('loadFailed', 'Failed to load transfer details'));
+                setIsLoading(false);
+            }
+        };
+
+        initializeData();
+    }, [state, t, branch, phone]);
 
     const handleNewTransfer = () => {
         navigate('/form/rtgs-transfer', { 
@@ -143,6 +166,10 @@ export default function RTGSTransferConfirmation() {
                 showSuccess: false 
             } 
         });
+    };
+
+    const handleBackToDashboard = () => {
+        navigate('/dashboard');
     };
 
     const handleCancelTransfer = async () => {
@@ -175,6 +202,16 @@ export default function RTGSTransferConfirmation() {
         }
     };
 
+    // Format date for display
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'N/A';
+        try {
+            return new Date(dateString).toLocaleString();
+        } catch {
+            return 'N/A';
+        }
+    };
+
     // Loading state
     if (isLoading) {
         return (
@@ -200,12 +237,20 @@ export default function RTGSTransferConfirmation() {
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
                         <p className="text-gray-600 mb-6">{error}</p>
-                        <button
-                            onClick={() => navigate('/form/rtgs-transfer')}
-                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
-                        >
-                            {t('returnToForm', 'Return to Form')}
-                        </button>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button
+                                onClick={() => navigate('/form/rtgs-transfer')}
+                                className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                            >
+                                {t('returnToForm', 'Return to Form')}
+                            </button>
+                            <button
+                                onClick={handleBackToDashboard}
+                                className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50"
+                            >
+                                {t('backToDashboard', 'Back to Dashboard')}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -296,7 +341,7 @@ export default function RTGSTransferConfirmation() {
                                             <CreditCard className="h-3 w-3" />
                                             {t('referenceNumber', 'Reference')}:
                                         </span>
-                                        <span className="font-mono font-semibold">{data.formReferenceId || 'N/A'}</span>
+                                        <span className="font-mono font-semibold">{data.formReferenceId || 'Pending'}</span>
                                     </div>
                                     <div className="flex justify-between items-center py-1 border-b border-gray-200">
                                         <span className="font-medium text-gray-700 flex items-center gap-1">
@@ -333,13 +378,27 @@ export default function RTGSTransferConfirmation() {
                                         </span>
                                         <span className="text-right">{data.beneficiaryBank || 'N/A'}{data.beneficiaryBranch ? ` / ${data.beneficiaryBranch}` : ''}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
                                         <span className="font-medium text-gray-700 flex items-center gap-1">
                                             <DollarSign className="h-3 w-3" />
                                             {t('amount', 'Amount')}:
                                         </span>
                                         <span className="text-lg font-bold text-fuchsia-700">
                                             {data.transferAmount ? `${data.transferAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            {t('status', 'Status')}:
+                                        </span>
+                                        <span className={`font-medium ${
+                                            data.status === 'Completed' || data.status === 'COMPLETED' ? 'text-green-600' :
+                                            data.status === 'Pending' || data.status === 'PENDING' ? 'text-yellow-600' :
+                                            data.status === 'Failed' || data.status === 'FAILED' ? 'text-red-600' :
+                                            'text-blue-600'
+                                        }`}>
+                                            {data.status || 'Submitted'}
                                         </span>
                                     </div>
                                     {data.paymentNarrative && (
@@ -351,6 +410,13 @@ export default function RTGSTransferConfirmation() {
                                             <span className="text-right text-sm max-w-xs">{data.paymentNarrative}</span>
                                         </div>
                                     )}
+                                    <div className="flex justify-between items-center py-1 border-t border-gray-200 mt-2 pt-2">
+                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            {t('submittedAt', 'Submitted')}:
+                                        </span>
+                                        <span className="text-sm text-gray-500">{formatDate(data.submittedAt)}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -382,7 +448,7 @@ export default function RTGSTransferConfirmation() {
                         </div>
 
                         {/* Cancel Button - Only show if transfer can be cancelled */}
-                        {data.id && data.status === 'Pending' && (
+                        {data.id && (data.status === 'Pending' || data.status === 'PENDING') && (
                             <div className="mt-2">
                                 <button
                                     onClick={() => setShowCancelModal(true)}
@@ -394,6 +460,16 @@ export default function RTGSTransferConfirmation() {
                                 </button>
                             </div>
                         )}
+
+                        {/* Back to Dashboard Button */}
+                        <div className="mt-2">
+                            <button
+                                onClick={handleBackToDashboard}
+                                className="flex items-center justify-center gap-1 w-full border border-gray-300 text-gray-700 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium"
+                            >
+                                {t('backToDashboard', 'Back to Dashboard')}
+                            </button>
+                        </div>
 
                         {/* Messages */}
                         {error && <ErrorMessage message={error} />}
