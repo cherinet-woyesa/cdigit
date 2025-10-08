@@ -160,6 +160,7 @@ const authService: AuthService = {
                 return {
                     message: apiResponse.message,
                     token: apiResponse.data.token,
+                    role: apiResponse.data.role, // Make sure to return the role
                 } as LoginResponse;
             }
             

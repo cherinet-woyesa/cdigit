@@ -78,28 +78,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         console.log('Decoded JWT Payload:', decodedPayload);
 
-        // FIX: Use the exact field names from your JWT payload
-        const accountHolderName = decodedPayload.unique_name || 'Customer';
+        // Extract role from JWT claims - FIXED: Get role from token
+        const roles = decodedPayload.role || decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+        const userRole = Array.isArray(roles) ? roles[0] : roles || 'Customer';
+        
+        const accountHolderName = decodedPayload.unique_name || decodedPayload.name || 'User';
         const [firstName, ...lastNameParts] = accountHolderName.split(' ');
         const lastName = lastNameParts.join(' ') || 'User';
         
-        // FIX: For OTP login, role is always 'Customer'
-        const userRole = 'Customer';
+        // FIXED: Use proper user ID from token
+        const userId = decodedPayload.nameid || decodedPayload.sub || userData?.id || `user_${Date.now()}`;
         
-        // FIX: Use AccountId instead of nameid (nameid doesn't exist in your JWT)
-        const userId = decodedPayload.AccountId || userData?.id || `cust_${Date.now()}`;
-        
-        // FIX: Email fallback
-        const userEmail = decodedPayload.email || userData?.email || `${userId}@cbe.et`;
+        // FIXED: Email from token
+        const userEmail = decodedPayload.email || decodedPayload.unique_name || userData?.email || `${userId}@cbe.et`;
 
         const userPayload: User = {
             id: userId,
             email: userEmail,
-            role: userRole,
+            role: userRole, // FIXED: Use actual role from token
             token: jwtToken,
-            firstName: firstName || 'Customer',
+            firstName: firstName || 'User',
             lastName: lastName || 'User',
-            branchId: decodedPayload.BranchId || userData?.branchId,
+            branchId: decodedPayload.BranchId || decodedPayload.branchId || userData?.branchId,
             assignedWindow: userData?.assignedWindow || null
         };
 

@@ -136,7 +136,7 @@ export default function CbeBirrRegistrationForm() {
             if (!formData.city.trim()) errs.city = t('cityRequired', 'City is required');
             if (!formData.wereda.trim()) errs.wereda = t('weredaRequired', 'Wereda is required');
             if (!formData.kebele.trim()) errs.kebele = t('kebeleRequired', 'Kebele is required');
-            if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            if (formData.email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formData.email)) {
                 errs.email = t('invalidEmail', 'Please enter a valid email address');
             }
         }
@@ -319,6 +319,7 @@ export default function CbeBirrRegistrationForm() {
             const mothersFullName = `${formData.motherName} ${formData.motherFatherName} ${formData.motherGrandfatherName}`.trim();
 
             const payload = {
+                FormReferenceId: `cbe-birr-${Date.now()}`,
                 CustomerPhoneNumber: formData.phoneNumber,
                 FullName: fullNameCombined,
                 BranchId: ABIY_BRANCH_ID,
@@ -475,7 +476,7 @@ export default function CbeBirrRegistrationForm() {
                     <p><span className="font-medium">Education:</span> {formData.educationLevel}</p>
                 </div>
 
-                <h3 className="font-semibold text-gray-900 border-b pb-2 mt-4">{t('mothersInformation', 'Mother\'s Information')}</h3>
+                <h3 className="font-semibold text-gray-900 border-b pb-2 mt-4">{t('mothersInformation', "Mother's Information")}</h3>
                 <p><span className="font-medium">Full Name:</span> {`${formData.motherName} ${formData.motherFatherName} ${formData.motherGrandfatherName}`}</p>
                 
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mt-4">

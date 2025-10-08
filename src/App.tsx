@@ -41,7 +41,7 @@ import PettyCashForm from './features/internal/forms/pettyCash/PettyCashForm';
 import PettyCashConfirmation from './features/internal/forms/pettyCash/PettyCashConfirmation';
 import LanguageSelection from './components/LanguageSelection';
 
-// A simple protected route component
+// Updated ProtectedRoute component - Skip branch selection for staff roles
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
   const { isAuthenticated, user, loading } = useAuth();
   const { branch, isLoading: isBranchLoading } = useBranch();
@@ -49,8 +49,14 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If user is authenticated but doesn't have a branch selected
-    if (isAuthenticated && user && !branch && !isBranchLoading && !location.pathname.startsWith('/select-branch')) {
+    // Staff roles (Maker, Admin, Manager) get branch from JWT, so skip branch selection
+    const isStaffRole = user?.role && ['Maker', 'Admin', 'Manager'].includes(user.role);
+    
+    // Only redirect customers to branch selection if they don't have a branch
+    // Staff users should never be redirected to branch selection
+    if (isAuthenticated && user && !branch && !isBranchLoading && 
+        !location.pathname.startsWith('/select-branch') &&
+        !isStaffRole) { // ← Added this condition
       navigate('/select-branch', { state: { from: location }, replace: true });
     }
   }, [isAuthenticated, user, branch, isBranchLoading, location, navigate]);
@@ -65,7 +71,7 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
 
   if (!isAuthenticated) {
     // Store the attempted URL for redirecting after login
-    return <Navigate to="/otp-login" state={{ from: location }} replace />;
+    return <Navigate to="/staff-login" state={{ from: location }} replace />;
   }
 
   if (role && user?.role !== role) {
@@ -125,6 +131,23 @@ function App() {
         <Route path="/otp-login" element={<OTPLogin />} />
         <Route path="/staff-login" element={<StaffLogin />} />
         
+        {/* Direct dashboard routes for staff roles - bypass branch selection */}
+        <Route path="/maker-dashboard" element={
+          <ProtectedRoute role="Maker">
+            <MakerDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin-dashboard" element={
+          <ProtectedRoute role="Admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager-dashboard" element={
+          <ProtectedRoute role="Manager">
+            <ManagerDashboard />
+          </ProtectedRoute>
+        } />
+
         {/* Public forms */}
         <Route path="/form/account-opening" element={<AccountOpeningForm />} />
         <Route path="/form/rtgs-transfer" element={<RTGSTransfer />} />
@@ -211,7 +234,7 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Role-specific dashboard routes */}
+        {/* Role-specific dashboard routes (alternative paths) */}
         <Route path="/dashboard/admin" element={
           <ProtectedRoute role="Admin">
             <AdminDashboard />

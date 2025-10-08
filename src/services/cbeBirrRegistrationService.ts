@@ -3,6 +3,7 @@ import axios from 'axios';
 const API_BASE_URL = 'http://localhost:5268/api';
 
 export type CbeBirrRegistrationCreateDto = {
+  FormReferenceId: string;
   CustomerPhoneNumber: string;
   FullName: string;
   BranchId: string;
