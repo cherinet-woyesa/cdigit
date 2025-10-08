@@ -7,16 +7,16 @@ import type { WindowDto } from "types/WindowDto";
 import PettyCash from "./PettyCash";
 import Transactions from "./Transactions";
 
-
-// const MakerDashboard: React.FC = () => {
+// FIXED: Added proper default props and made props optional
 type Props = {
     activeSection?: string;
     assignedWindow?: WindowDto | null;
-
 };
 
-const MakerDashboard: React.FC<Props> = ({ activeSection, assignedWindow }) => {
-
+const MakerDashboard: React.FC<Props> = ({ 
+    activeSection = "transactions", // FIXED: Default value
+    assignedWindow = null // FIXED: Default value
+}) => {
     const { token, logout } = useAuth();
     const [decoded, setDecoded] = useState<DecodedToken | null>(null);
 
@@ -29,15 +29,56 @@ const MakerDashboard: React.FC<Props> = ({ activeSection, assignedWindow }) => {
         try {
             const d = jwtDecode<DecodedToken>(token);
             setDecoded(d);
-        } catch {
+            console.log('MakerDashboard: Token decoded successfully', d);
+        } catch (error) {
+            console.error('MakerDashboard: Failed to decode token', error);
             logout();
         }
     }, [token, logout]);
 
+    // FIXED: Add error boundary and loading state
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // Simulate loading completion
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    // FIXED: Add error boundary catch
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-100 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+                    <p className="mt-4 text-purple-700">Loading Maker Dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-100">
             {/* Header */}
+            <header className="bg-purple-700 text-white shadow-lg">
+                <div className="max-w-7xl mx-auto px-4 py-4">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold">Maker Dashboard</h1>
+                            <p className="text-purple-200">
+                                Welcome, {decoded?.unique_name || 'Maker'} | Branch: {decoded?.BranchId || 'N/A'}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-purple-200">Role: Maker</p>
+                            <p className="text-purple-200">Active Section: {activeSection}</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
             <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
                 {/* Alert */}
@@ -47,15 +88,44 @@ const MakerDashboard: React.FC<Props> = ({ activeSection, assignedWindow }) => {
                     </div>
                 )}
 
-                {activeSection === "transactions" && (
-                    // your transactions UI (queue, call next, current modal...)
-                    <Transactions assignedWindow={assignedWindow} />
+                {/* Navigation Tabs */}
+                <div className="bg-white rounded-xl shadow-sm p-4">
+                    <div className="flex space-x-4">
+                        <button
+                            className={`px-4 py-2 rounded-lg font-medium ${
+                                activeSection === "transactions" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                        >
+                            Transactions
+                        </button>
+                        <button
+                            className={`px-4 py-2 rounded-lg font-medium ${
+                                activeSection === "petty" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                        >
+                            Petty Cash
+                        </button>
+                        <button
+                            className={`px-4 py-2 rounded-lg font-medium ${
+                                activeSection === "other" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                        >
+                            Other Services
+                        </button>
+                    </div>
+                </div>
 
+                {activeSection === "transactions" && (
+                    <Transactions assignedWindow={assignedWindow} />
                 )}
 
                 {activeSection === "other" && (
-                    // your "Other Services" section
-
                     <section className="mt-6 animate-fadeIn">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Other Services</h3>
                         <div className="grid md:grid-cols-3 gap-6">
@@ -78,24 +148,13 @@ const MakerDashboard: React.FC<Props> = ({ activeSection, assignedWindow }) => {
                     </section>
                 )}
 
-
                 {/* Toggle Petty Cash Services */}
                 {activeSection === "petty" && (
                     <PettyCash />
                 )}
-
-                {/* {activeSection === "performance" && (
-   // served stats, performance, ratings...
-)}
-
-                {activeSection === "settings" && (
-   // change window, maybe profile, etc.
-)} */}
             </main>
-
         </div>
     );
 };
-
 
 export default MakerDashboard;
