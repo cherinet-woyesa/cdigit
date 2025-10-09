@@ -11,10 +11,10 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ branchName, assignedWindow, handleOpenChangeWindow, decoded }) => {
   return (
-    <header className="bg-purple-800 text-white py-12 px-6 flex justify-between items-center shadow-md">
+    <header className="bg-fuchsia-700 text-white py-4 px-6 flex justify-between items-center shadow-md">
       <div>
-        <h1 className="text-2xl font-extrabold">Maker Dashboard</h1>
-        <p className="text-purple-100 text-sm">
+        <h1 className="text-xl font-bold">Maker Dashboard</h1>
+        <p className="text-fuchsia-100 text-sm mt-1">
           Branch:{" "}
           <span className="font-semibold">
             {branchName || decoded?.BranchId}
@@ -30,7 +30,7 @@ const Header: React.FC<HeaderProps> = ({ branchName, assignedWindow, handleOpenC
 
           <button
             onClick={handleOpenChangeWindow}
-            className="ml-4 bg-purple-700 text-white font-semibold px-4 py-2 rounded-xl shadow hover:bg-purple-800 transition disabled:opacity-60"
+            className="ml-4 bg-fuchsia-600 text-white font-semibold px-3 py-1 rounded-md shadow hover:bg-fuchsia-800 transition disabled:opacity-60 text-xs"
           >
             {assignedWindow ? "Change Window" : "Select Window"}
           </button>

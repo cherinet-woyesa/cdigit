@@ -28,16 +28,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
   ];
 
   return (
-    <aside className="w-64 bg-purple-900 text-white min-h-screen flex flex-col justify-between shadow-lg">
+    <aside className="w-64 bg-fuchsia-700 text-white min-h-screen flex flex-col justify-between shadow-lg">
       <div>
-        <div className="px-6 text-center border-b border-purple-700">
-          {/* <img src="assets/logo.jpg" alt="CBE Logo" className="h-12 mx-auto mb-2" /> */}
+        <div className="px-6 py-4 text-center border-b border-fuchsia-600">
           <img
             src={cbelogo}
             alt="CBE Logo"
-            className="h-13 w-13 object-contain rounded-full border-1 border-fuchsia-200"
+            className="h-16 w-16 object-contain rounded-full mx-auto border-2 border-fuchsia-200/50 mb-2"
           />
-          <h2 className="">Commeriacl Bank Of Ethiopia</h2>
+          <h2 className="font-semibold text-lg">CBE Digital</h2>
         </div>
         <nav className="mt-6">
           <ul>
@@ -45,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
               <li key={item.id}>
                 <button
                   onClick={() => onNavigate(item.id)}
-                  className={`w-full flex items-center px-6 py-3 text-left hover:bg-purple-800 transition ${activeSection === item.id ? "bg-purple-700" : ""
+                  className={`w-full flex items-center px-6 py-3 text-left hover:bg-fuchsia-600 transition rounded-md ${activeSection === item.id ? "bg-fuchsia-800" : ""
                     }`}
                 >
                   <FontAwesomeIcon icon={item.icon} className="mr-3" />
@@ -56,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
           </ul>
         </nav>
       </div>
-      <div className="px-6 py-4 border-t border-purple-700">
+      <div className="px-6 py-4 border-t border-fuchsia-600">
         <button
           onClick={onLogout}
           className="w-full flex items-center justify-center px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700"
