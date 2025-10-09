@@ -27,6 +27,8 @@ import QueueNotifyModal from '../../modals/QueueNotifyModal';
 import TransactionFeedbackModal from '../../modals/TransactionFeedbackModal';
 import clsx from 'clsx';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { DashboardErrorBoundary } from '../../components/dashboard/ErrorBoundary';
+import { config, BRAND_COLORS } from '../../config/env';
 
 type FormName =
   | 'accountOpening'
@@ -157,7 +159,7 @@ const FormCardSkeleton: React.FC = () => (
   </div>
 );
 
-export default function Dashboard() {
+const CustomerDashboardContent: React.FC = () => {
   const { phone, user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -173,7 +175,7 @@ export default function Dashboard() {
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  // Transaction Feedback Modal state - ADDED FROM OLDER CODE
+  // Transaction Feedback Modal state
   const [isTransactionFeedbackModalOpen, setTransactionFeedbackModalOpen] = useState(false);
   const [TransactionCompletdModalTransactionId, setTransactionCompletdModalTransactionId] = useState('');
   const [transactionCompletdModalFrontMakerId, setTransactionCompletdModalFrontMakerId] = useState('');
@@ -218,7 +220,7 @@ export default function Dashboard() {
     return filtered;
   }, [debouncedQuery, selectedCategory, t]);
 
-  // SignalR connection with better error handling - UPDATED WITH TRANSACTION COMPLETED HANDLER
+  // SignalR connection with better error handling
   useEffect(() => {
     if (!phone) {
       navigate('/otp-login');
@@ -229,7 +231,7 @@ export default function Dashboard() {
     const connectSignalR = async () => {
       try {
         connection = new HubConnectionBuilder()
-          .withUrl('http://localhost:5268/hub/queueHub')
+          .withUrl(`${config.SIGNALR_URL}/hub/queueHub`)
           .withAutomaticReconnect([0, 1000, 5000, 10000])
           .build();
 
@@ -243,11 +245,9 @@ export default function Dashboard() {
           setIsQueueNotifyModalOpen(true);
         });
 
-        // ADDED FROM OLDER CODE: Transaction Completed handler
+        // Transaction Completed handler
         connection.on("TransactionCompleted", (data: any) => {
-          // Close the queue notify modal automatically
           setIsQueueNotifyModalOpen(false);
-
           setTransactionFeedbackModalOpen(true);
           setTransactionCompletdModalTransactionId(data.transactionId);
           setTransactionCompletdModalFrontMakerId(data.frontMakerId);
@@ -256,8 +256,6 @@ export default function Dashboard() {
           setTransactionCompletdModalTransactionType(data.transactionType);
           setTransactionCompletdModalTransactionAmount(data.amount);
           setTransactionCompletdModalMessage(data.message);
-
-          console.log("Signal R data for completed transaction:", data);
         });
 
         setSignalRError(null);
@@ -272,7 +270,7 @@ export default function Dashboard() {
     return () => {
       if (connection) {
         connection.off('CustomerCalled');
-        connection.off('TransactionCompleted'); // ADDED: Clean up transaction completed listener
+        connection.off('TransactionCompleted');
         connection.stop().catch(console.warn);
       }
     };
@@ -364,7 +362,6 @@ export default function Dashboard() {
         message={queueNotifyModalMessage}
       />
 
-      {/* ADDED FROM OLDER CODE: Transaction Feedback Modal */}
       <TransactionFeedbackModal
         isOpen={isTransactionFeedbackModalOpen}
         onClose={() => setTransactionFeedbackModalOpen(false)}
@@ -488,8 +485,6 @@ export default function Dashboard() {
           </div>
         )}
 
-
-
         {/* Services Grid */}
         {!loading && (
           <>
@@ -545,5 +540,13 @@ export default function Dashboard() {
         </div>
       </main>
     </div>
+  );
+};
+
+export default function Dashboard() {
+  return (
+    <DashboardErrorBoundary>
+      <CustomerDashboardContent />
+    </DashboardErrorBoundary>
   );
 }

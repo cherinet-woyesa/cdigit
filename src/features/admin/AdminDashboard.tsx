@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import CreateBranchModal from "./CreateBranchModal";
 import EditBranchModal from "./EditBranchModal";
@@ -8,6 +8,9 @@ import adminService from "../../services/adminService";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
 import { Button } from "../../components/ui/button";
+import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
+import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
+import { BRAND_COLORS } from "../../config/env";
 
 interface Branch {
   id: string;
@@ -28,360 +31,765 @@ interface AppUser {
   phoneNumber?: string;
   branchName?: string;
   roleName?: string;
+  isActive?: boolean;
+  createdAt?: string;
 }
 
 interface AccountType {
   id: number;
   name: string;
-}
-
-interface BranchTransaction {
-  id: string;
-  formReferenceId: string;
-  queueNumber: number;
-  accountHolderName: string;
-  amount: number;
-  transactionType: string;
-  frontMakerId: string;
-  branchId: string;
-  status: number; // 0: Canceled, 1: On Queue, 2: On Progress, 3: Completed
-  submittedAt: string;
-  calledAt: string;
-  depositedToCBSAt: string;
-}
-
-interface BranchFeedback {
-  id: string;
-  rating: number;
-  comments: string;
-  branchId: string;
-  frontMakerId: string;
+  isActive: boolean;
   createdAt: string;
 }
 
+interface SystemStats {
+  totalBranches: number;
+  activeBranches: number;
+  totalUsers: number;
+  pendingApprovals: number;
+  systemHealth: 'excellent' | 'good' | 'warning' | 'critical';
+}
 
 type BranchStatus = "Active" | "Closed";
 
-
-export default function AdminDashboard() {
+const AdminDashboardContent: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [appUsers, setAppUsers] = useState<AppUser[]>([]);
   const [accountTypes, setAccountTypes] = useState<AccountType[]>([]);
+  const [systemStats, setSystemStats] = useState<SystemStats>({
+    totalBranches: 0,
+    activeBranches: 0,
+    totalUsers: 0,
+    pendingApprovals: 0,
+    systemHealth: 'good'
+  });
 
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAccountTypeModal, setShowAccountTypeModal] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-
   const [statusFilter, setStatusFilter] = useState<string>("All");
-  // const [summary, setSummary] = useState({ Active: 0, Closed: 0 });
-  const [summary, setSummary] = useState<Record<BranchStatus, number>>({
-    Active: 0,
-    Closed: 0,
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("branches");
 
-  // Fetch admin data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [branchRes, appRes, typeRes] = await Promise.all([
-          adminService.getBranches(),
-          adminService.getSystemUsers(),
-          adminService.getAccountTypes(),
-        ]);
-        const branchData = branchRes.data || [];
-        setBranches(branchData);
-        setAppUsers(appRes.data || []);
-        setAccountTypes(typeRes.data || []);
-        calculateBranchSummary(branchData);
-      } catch (err: any) {
-        toast.error(err.message || "Failed to fetch admin data.");
-      }
-    };
-    fetchData();
-  }, []);
-
-  const calculateBranchSummary = (branches: Branch[]) => {
-    const newSummary = { Active: 0, Closed: 0 };
+  // Calculate branch summary
+  const summary = useMemo(() => {
+    const newSummary: Record<BranchStatus, number> = { Active: 0, Closed: 0 };
     branches.forEach((b) => {
       if (b.status === "Active") newSummary.Active++;
       else if (b.status === "Closed") newSummary.Closed++;
     });
-    setSummary(newSummary);
-  };
+    return newSummary;
+  }, [branches]);
 
-  const filteredBranches = branches.filter((b) => statusFilter === "All" || b.status === statusFilter);
+  // Calculate system stats
+  useEffect(() => {
+    const stats: SystemStats = {
+      totalBranches: branches.length,
+      activeBranches: branches.filter(b => b.status === "Active" && b.isApproved).length,
+      totalUsers: appUsers.length,
+      pendingApprovals: branches.filter(b => !b.isApproved).length,
+      systemHealth: branches.length > 0 ? 'good' : 'warning'
+    };
+    setSystemStats(stats);
+  }, [branches, appUsers]);
 
-  const branchStatusBadge = (status: string) => (
-    <span
-      className={`px-2 py-1 rounded text-white text-sm font-semibold ${status === "Active" ? "bg-green-500" : "bg-red-500"
+  // Dashboard metrics
+  const metrics: Metric[] = [
+    {
+      label: "Total Branches",
+      value: systemStats.totalBranches,
+      color: "fuchsia" as const,
+      trend: "up" as const
+    },
+    {
+      label: "Active Branches",
+      value: systemStats.activeBranches,
+      color: "green" as const,
+      trend: "neutral" as const
+    },
+    {
+      label: "System Users",
+      value: systemStats.totalUsers,
+      color: "blue" as const,
+      trend: "up" as const
+    },
+    {
+      label: "Pending Approvals",
+      value: systemStats.pendingApprovals,
+      color: "orange" as const,
+      trend: systemStats.pendingApprovals > 0 ? "up" : "neutral" as const
+    }
+  ];
+
+  // Fetch admin data with error handling
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [branchRes, appRes, typeRes] = await Promise.all([
+        adminService.getBranches(),
+        adminService.getSystemUsers(),
+        adminService.getAccountTypes(),
+      ]);
+      
+      const branchData = branchRes.data || [];
+      const userData = appRes.data || [];
+      const typeData = typeRes.data || [];
+      
+      setBranches(branchData);
+      setAppUsers(userData);
+      setAccountTypes(typeData);
+      
+      toast.success("System data loaded successfully");
+    } catch (err: any) {
+      console.error("Failed to fetch admin data:", err);
+      toast.error(err.message || "Failed to fetch system data.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Filter branches based on status
+  const filteredBranches = useMemo(() => {
+    return branches.filter((b) => statusFilter === "All" || b.status === statusFilter);
+  }, [branches, statusFilter]);
+
+  // Enhanced branch status badge
+  const branchStatusBadge = useCallback((branch: Branch) => (
+    <div className="flex flex-col gap-1">
+      <span
+        className={`px-2 py-1 rounded text-white text-xs font-semibold text-center ${
+          branch.status === "Active" ? "bg-green-500" : "bg-red-500"
         }`}
+      >
+        {branch.status}
+      </span>
+      {!branch.isApproved && (
+        <span className="px-2 py-1 rounded bg-yellow-500 text-white text-xs font-semibold text-center">
+          Pending
+        </span>
+      )}
+    </div>
+  ), []);
+
+  // User role badge
+  const userRoleBadge = useCallback((roleName?: string) => (
+    <span 
+      className={`px-2 py-1 rounded text-white text-xs font-semibold ${
+        roleName === "Manager" ? "bg-blue-500" : 
+        roleName === "Admin" ? "bg-purple-500" : 
+        roleName === "Maker" ? "bg-green-500" : 
+        "bg-gray-500"
+      }`}
     >
-      {status}
+      {roleName || "-"}
     </span>
-  );
+  ), []);
+
+  // Handle branch approval
+  const handleApproveBranch = useCallback(async (branchId: string) => {
+    try {
+      const res = await adminService.approveBranch(branchId);
+      if (res.success) {
+        toast.success(res.message || "Branch approved successfully!");
+        setBranches(prev =>
+          prev.map(b =>
+            b.id === branchId ? { ...b, isApproved: true } : b
+          )
+        );
+      } else {
+        toast.error(res.message || "Failed to approve branch.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error approving branch.");
+    }
+  }, []);
+
+  // Handle tab change
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    console.log(`Admin switched to tab: ${value}`);
+  }, []);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-fuchsia-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-600 mx-auto"></div>
+          <p className="mt-4 text-fuchsia-700 font-medium">Loading Admin Dashboard...</p>
+          <p className="text-sm text-gray-500 mt-2">Initializing system data</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-fuchsia-700">⚙️ Admin Dashboard</h1>
-
-      <Tabs defaultValue="branches" className="w-full">
-        <TabsList className="bg-fuchsia-100 p-1 rounded-xl shadow-inner mb-4 flex space-x-2">
-          <TabsTrigger
-            value="branches"
-            className="flex-1 rounded-lg font-semibold text-fuchsia-700 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fuchsia-700 data-[state=active]:to-fuchsia-500 data-[state=active]:text-white transition-all"
-          >
-            🏦 Branches
-          </TabsTrigger>
-          <TabsTrigger
-            value="users"
-            className="flex-1 rounded-lg font-semibold text-fuchsia-700 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fuchsia-700 data-[state=active]:to-fuchsia-500 data-[state=active]:text-white transition-all"
-          >
-            👤 Users
-          </TabsTrigger>
-          <TabsTrigger
-            value="account-types"
-            className="flex-1 rounded-lg font-semibold text-fuchsia-700 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fuchsia-700 data-[state=active]:to-fuchsia-500 data-[state=active]:text-white transition-all"
-          >
-            💳 Account Types
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Branches Tab */}
-        <TabsContent value="branches">
-          <div className="flex justify-between mb-4">
-            <button
-              onClick={() => setShowBranchModal(true)}
-              className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white py-2 px-4 rounded-md hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all"
-            >
-              ➕ Add Branch
-            </button>
-
-            {/* Status Filter */}
-            <div className="w-48">
-              <label className="block text-sm font-medium text-gray-700">Filter by Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
-              >
-                <option value="All">All</option>
-                <option value="Active">Active</option>
-                <option value="Closed">Closed</option>
-              </select>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-fuchsia-50">
+      {/* Enhanced Header */}
+      <header className="bg-gradient-to-r from-fuchsia-700 to-purple-700 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold mb-2">⚙️ System Admin Dashboard</h1>
+              <p className="text-fuchsia-100">
+                Manage branches, users, and system configuration
+                {systemStats.systemHealth === 'good' && ' • 🟢 System Healthy'}
+                {systemStats.systemHealth === 'warning' && ' • 🟡 System Attention Needed'}
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap gap-3">
+              <div className="bg-white/10 px-4 py-2 rounded-lg">
+                <div className="text-xs text-fuchsia-200">System Status</div>
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    systemStats.systemHealth === 'good' ? 'bg-green-400' : 'bg-yellow-400'
+                  }`}></div>
+                  {systemStats.systemHealth === 'good' ? 'Operational' : 'Needs Attention'}
+                </div>
+              </div>
+              <div className="bg-white/10 px-4 py-2 rounded-lg">
+                <div className="text-xs text-fuchsia-200">Last Updated</div>
+                <div className="text-sm font-semibold">{new Date().toLocaleTimeString()}</div>
+              </div>
             </div>
           </div>
+        </div>
+      </header>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            {(["Active", "Closed"] as BranchStatus[]).map((status) => (
-              <div key={status} className="bg-purple-900 text-white p-4 rounded text-center">
-                <div className="text-lg font-semibold">{summary[status]}</div>
-                <div className="text-sm">{status}</div>
-              </div>
-            ))}
+      {/* System Metrics */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <DashboardMetrics metrics={metrics} />
+      </div>
 
-
-          </div>
-
-          {/* Branches DataTable */}
-          <DataTable
-            columns={[
-              { name: "Name", selector: (row: Branch) => row.name, sortable: true },
-              { name: "Code", selector: (row: Branch) => row.code, sortable: true },
-              { name: "Location", selector: (row: Branch) => row.location || "-", sortable: true },
-              { name: "Latitude", selector: (row: Branch) => row.latitude ?? "-", sortable: true },
-              { name: "Longitude", selector: (row: Branch) => row.longitude ?? "-", sortable: true },
-              {
-                name: "Status",
-                cell: (row: Branch) =>
-                  branchStatusBadge(row.status + (row.isApproved ? "" : " (Pending)")),
-                sortable: true,
-              },
-              {
-                name: "Action",
-                cell: (row: Branch) => (
-                  <div className="flex space-x-2">
-                    <Button
-                      className="bg-gradient-to-r from-purple-600 to-purple-400 text-white px-3 py-1 rounded hover:from-purple-700 hover:to-purple-500 transition-all"
-                      onClick={() => setSelectedBranch(row)}
-                    >
-                      Edit
-                    </Button>
-
-                    {!row.isApproved && (
-                      <Button
-                        className="bg-gradient-to-r from-green-600 to-green-400 text-white px-3 py-1 rounded hover:from-green-700 hover:to-green-500 transition-all"
-                        onClick={async () => {
-                          try {
-                            const res = await adminService.approveBranch(row.id);
-                            if (res.success) {
-                              toast.success(res.message || "Branch approved!");
-                              // Update branch in state
-                              setBranches((prev) =>
-                                prev.map((b) =>
-                                  b.id === row.id ? { ...b, isApproved: true } : b
-                                )
-                              );
-                            } else {
-                              toast.error(res.message || "Failed to approve branch.");
-                            }
-                          } catch (err: any) {
-                            toast.error(err.message || "Error approving branch.");
-                          }
-                        }}
-                      >
-                        Approve
-                      </Button>
-                    )}
-                  </div>
-                ),
-              },
-            ]}
-            data={filteredBranches}
-            pagination
-            highlightOnHover
-            striped
-            responsive
-            persistTableHead
-            customStyles={{
-              table: { style: { borderRadius: "12px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" } },
-              headCells: { style: { fontWeight: "bold", fontSize: "14px", background: "linear-gradient(90deg, #6B21A8, #9333EA)", color: "white" } },
-              rows: { style: { minHeight: "55px", borderRadius: "8px", transition: "all 0.3s" } },
-              cells: { style: { paddingLeft: "16px", paddingRight: "16px" } },
-            }}
-          />
-
-
-          {selectedBranch && (
-            <EditBranchModal
-              open={!!selectedBranch}
-              onClose={() => setSelectedBranch(null)}
-              branch={selectedBranch}
-              branches={branches}
-              setBranches={setBranches}
-            />
-          )}
-
-          <CreateBranchModal
-            open={showBranchModal}
-            onClose={() => setShowBranchModal(false)}
-            branches={branches}
-            setBranches={setBranches}
-          />
-        </TabsContent>
-
-        {/* Users Tab */}
-        <TabsContent value="users">
-          <div className="flex justify-between mb-4">
-            <h3 className="text-xl font-semibold text-fuchsia-700">👤 Users</h3>
-            <button
+      {/* Quick Actions */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
+          <h3 className="text-lg font-semibold text-fuchsia-700 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button 
+              onClick={() => setShowBranchModal(true)}
+              className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group"
+            >
+              <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">🏦 Add Branch</div>
+              <div className="text-sm text-gray-600">Create new branch</div>
+            </button>
+            <button 
               onClick={() => setShowUserModal(true)}
-              className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white py-2 px-4 rounded-md hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all"
+              className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group"
             >
-              ➕ Add User
+              <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">👤 Add User</div>
+              <div className="text-sm text-gray-600">Create system user</div>
             </button>
-          </div>
-
-          <DataTable
-            columns={[
-              { name: "Email", selector: (row: AppUser) => row.email, sortable: true },
-              { name: "First Name", selector: (row: AppUser) => row.firstName || "-", sortable: true },
-              { name: "Last Name", selector: (row: AppUser) => row.lastName || "-", sortable: true },
-              { name: "Phone", selector: (row: AppUser) => row.phoneNumber || "-", sortable: true },
-              { name: "Branch", selector: (row: AppUser) => row.branchName || "-", sortable: true },
-              {
-                name: "Role",
-                cell: (row: AppUser) => (
-                  <span className={`px-2 py-1 rounded text-white text-sm font-semibold ${row.roleName === "Manager" ? "bg-blue-500" : "bg-purple-500"}`}>
-                    {row.roleName || "-"}
-                  </span>
-                ),
-                sortable: true,
-              },
-              {
-                name: "Action",
-                cell: (row: AppUser) => (
-                  <Button
-                    className="bg-gradient-to-r from-purple-600 to-purple-400 text-white px-3 py-1 rounded hover:from-purple-700 hover:to-purple-500 transition-all"
-                    onClick={() => alert(`Edit User: ${row.email}`)}
-                  >
-                    Edit
-                  </Button>
-                ),
-              },
-            ]}
-            data={appUsers}
-            pagination
-            highlightOnHover
-            striped
-            responsive
-            persistTableHead
-            customStyles={{
-              table: { style: { borderRadius: "12px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" } },
-              headCells: { style: { fontWeight: "bold", fontSize: "14px", background: "linear-gradient(90deg, #6B21A8, #9333EA)", color: "white" } },
-              rows: { style: { minHeight: "55px", borderRadius: "8px", transition: "all 0.3s" } },
-              cells: { style: { paddingLeft: "16px", paddingRight: "16px" } },
-            }}
-          />
-
-          <CreateUserModal
-            open={showUserModal}
-            onClose={() => setShowUserModal(false)}
-            branches={branches}
-            appUsers={appUsers}
-            setAppUsers={setAppUsers}
-          />
-        </TabsContent>
-
-        {/* Account Types Tab */}
-        <TabsContent value="account-types">
-          <div className="flex justify-between mb-4">
-            <h3 className="text-xl font-semibold text-fuchsia-700">💳 Account Types</h3>
-            <button
+            <button 
               onClick={() => setShowAccountTypeModal(true)}
-              className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white py-2 px-4 rounded-md hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all"
+              className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group"
             >
-              ➕ Add Account Type
+              <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">💳 Account Types</div>
+              <div className="text-sm text-gray-600">Manage account types</div>
+            </button>
+            <button 
+              onClick={() => fetchData()}
+              className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group"
+            >
+              <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">🔄 Refresh Data</div>
+              <div className="text-sm text-gray-600">Sync latest information</div>
             </button>
           </div>
+        </div>
+      </div>
 
-          <DataTable
-            columns={[
-              { name: "Name", selector: (row: AccountType) => row.name, sortable: true },
-              {
-                name: "Action",
-                cell: (row: AccountType) => (
-                  <Button
-                    className="bg-gradient-to-r from-red-600 to-red-400 text-white px-3 py-1 rounded hover:from-red-700 hover:to-red-500 transition-all"
-                    onClick={() => alert(`Delete Account Type: ${row.name}`)}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList variant="brand" className="p-1 rounded-xl mb-6 flex flex-wrap gap-2">
+            <TabsTrigger value="branches" variant="brand" className="flex-1 min-w-[140px]">
+              🏦 Branches
+            </TabsTrigger>
+            <TabsTrigger value="users" variant="brand" className="flex-1 min-w-[140px]">
+              👤 Users
+            </TabsTrigger>
+            <TabsTrigger value="account-types" variant="brand" className="flex-1 min-w-[140px]">
+              💳 Account Types
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Branches Tab */}
+          <TabsContent value="branches" className="animate-fadeIn space-y-6">
+            {/* Filters and Actions */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
+              <div>
+                <h3 className="text-xl font-semibold text-fuchsia-700 mb-2">Branch Management</h3>
+                <p className="text-gray-600">
+                  Manage {branches.length} branches across the system
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <button
+                  onClick={() => setShowBranchModal(true)}
+                  className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white py-2 px-4 rounded-lg hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all font-semibold flex items-center gap-2 justify-center"
+                >
+                  ➕ Add Branch
+                </button>
+
+                {/* Status Filter */}
+                <div className="w-full sm:w-48">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-2 border focus:border-fuchsia-500 focus:ring-1 focus:ring-fuchsia-500"
                   >
-                    Delete
-                  </Button>
-                ),
-              },
-            ]}
-            data={accountTypes}
-            pagination
-            highlightOnHover
-            striped
-            responsive
-            persistTableHead
-            customStyles={{
-              table: { style: { borderRadius: "12px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" } },
-              headCells: { style: { fontWeight: "bold", fontSize: "14px", background: "linear-gradient(90deg, #6B21A8, #9333EA)", color: "white" } },
-              rows: { style: { minHeight: "55px", borderRadius: "8px", transition: "all 0.3s" } },
-              cells: { style: { paddingLeft: "16px", paddingRight: "16px" } },
-            }}
-          />
+                    <option value="All">All Branches</option>
+                    <option value="Active">Active</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
-          <ManageAccountTypesModal
-            open={showAccountTypeModal}
-            onClose={() => setShowAccountTypeModal(false)}
-            setAccountTypes={setAccountTypes}
-          />
-        </TabsContent>
-      </Tabs>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {(["Active", "Closed"] as BranchStatus[]).map((status) => (
+                <div key={status} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 text-center hover:shadow-md transition-shadow">
+                  <div className={`text-2xl font-bold ${
+                    status === "Active" ? "text-green-600" : "text-red-600"
+                  }`}>
+                    {summary[status]}
+                  </div>
+                  <div className="text-sm text-gray-600 font-medium">{status} Branches</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {Math.round((summary[status] / branches.length) * 100)}% of total
+                  </div>
+                </div>
+              ))}
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 text-center hover:shadow-md transition-shadow">
+                <div className="text-2xl font-bold text-orange-600">
+                  {systemStats.pendingApprovals}
+                </div>
+                <div className="text-sm text-gray-600 font-medium">Pending Approval</div>
+                <div className="text-xs text-gray-500 mt-1">Requires attention</div>
+              </div>
+            </div>
+
+            {/* Branches DataTable */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <DataTable
+                columns={[
+                  { 
+                    name: "Branch Name", 
+                    selector: (row: Branch) => row.name, 
+                    sortable: true,
+                    minWidth: "200px"
+                  },
+                  { 
+                    name: "Code", 
+                    selector: (row: Branch) => row.code, 
+                    sortable: true,
+                    width: "120px"
+                  },
+                  { 
+                    name: "Location", 
+                    selector: (row: Branch) => row.location || "-", 
+                    sortable: true,
+                    minWidth: "150px"
+                  },
+                  { 
+                    name: "Coordinates", 
+                    cell: (row: Branch) => (
+                      <div className="text-xs font-mono">
+                        {row.latitude ? `${row.latitude.toFixed(4)}` : "-"} / {row.longitude ? `${row.longitude.toFixed(4)}` : "-"}
+                      </div>
+                    ),
+                    sortable: false,
+                    width: "140px"
+                  },
+                  {
+                    name: "Status",
+                    cell: (row: Branch) => branchStatusBadge(row),
+                    sortable: true,
+                    width: "120px"
+                  },
+                  {
+                    name: "Actions",
+                    cell: (row: Branch) => (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                          className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white px-3 py-1 rounded hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all text-xs"
+                          onClick={() => setSelectedBranch(row)}
+                        >
+                          Edit
+                        </Button>
+
+                        {!row.isApproved && (
+                          <Button
+                            className="bg-gradient-to-r from-green-600 to-green-400 text-white px-3 py-1 rounded hover:from-green-700 hover:to-green-500 transition-all text-xs"
+                            onClick={() => handleApproveBranch(row.id)}
+                          >
+                            Approve
+                          </Button>
+                        )}
+                      </div>
+                    ),
+                    width: "140px"
+                  },
+                ]}
+                data={filteredBranches}
+                pagination
+                paginationPerPage={10}
+                paginationRowsPerPageOptions={[10, 25, 50]}
+                highlightOnHover
+                striped
+                responsive
+                persistTableHead
+                noDataComponent={
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 text-lg mb-2">No branches found</div>
+                    <div className="text-gray-500">Create your first branch to get started</div>
+                  </div>
+                }
+                customStyles={{
+                  table: { 
+                    style: { 
+                      borderRadius: "12px", 
+                      overflow: "hidden",
+                    } 
+                  },
+                  headCells: { 
+                    style: { 
+                      fontWeight: "bold", 
+                      fontSize: "14px", 
+                      background: "linear-gradient(90deg, #A21CAF, #C026D3)",
+                      color: "white",
+                      paddingLeft: "16px",
+                      paddingRight: "16px",
+                    } 
+                  },
+                  cells: { 
+                    style: { 
+                      paddingLeft: "16px", 
+                      paddingRight: "16px",
+                    } 
+                  },
+                  rows: {
+                    style: {
+                      minHeight: "60px",
+                      '&:hover': {
+                        backgroundColor: '#FDF4FF',
+                      },
+                    },
+                  },
+                }}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Users Tab */}
+          <TabsContent value="users" className="animate-fadeIn">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white rounded-2xl shadow-sm p-6 border border-gray-200 mb-6">
+              <div>
+                <h3 className="text-xl font-semibold text-fuchsia-700 mb-2">User Management</h3>
+                <p className="text-gray-600">
+                  Manage {appUsers.length} system users across all branches
+                </p>
+              </div>
+              
+              <button
+                onClick={() => setShowUserModal(true)}
+                className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white py-2 px-4 rounded-lg hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all font-semibold flex items-center gap-2"
+              >
+                ➕ Add User
+              </button>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <DataTable
+                columns={[
+                  { 
+                    name: "Email", 
+                    selector: (row: AppUser) => row.email, 
+                    sortable: true,
+                    minWidth: "200px"
+                  },
+                  { 
+                    name: "Full Name", 
+                    cell: (row: AppUser) => (
+                      <div>
+                        {row.firstName || row.lastName ? `${row.firstName || ''} ${row.lastName || ''}`.trim() : '-'}
+                      </div>
+                    ),
+                    sortable: true,
+                    minWidth: "150px"
+                  },
+                  { 
+                    name: "Phone", 
+                    selector: (row: AppUser) => row.phoneNumber || "-", 
+                    sortable: true,
+                    width: "140px"
+                  },
+                  { 
+                    name: "Branch", 
+                    selector: (row: AppUser) => row.branchName || "-", 
+                    sortable: true,
+                    minWidth: "150px"
+                  },
+                  {
+                    name: "Role",
+                    cell: (row: AppUser) => userRoleBadge(row.roleName),
+                    sortable: true,
+                    width: "120px"
+                  },
+                  {
+                    name: "Status",
+                    cell: (row: AppUser) => (
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {row.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    ),
+                    sortable: true,
+                    width: "100px"
+                  },
+                  {
+                    name: "Actions",
+                    cell: (row: AppUser) => (
+                      <div className="flex gap-2">
+                        <Button
+                          className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white px-3 py-1 rounded hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all text-xs"
+                          onClick={() => alert(`Edit User: ${row.email}`)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          className="bg-gradient-to-r from-gray-600 to-gray-400 text-white px-3 py-1 rounded hover:from-gray-700 hover:to-gray-500 transition-all text-xs"
+                          onClick={() => alert(`View Details: ${row.email}`)}
+                        >
+                          View
+                        </Button>
+                      </div>
+                    ),
+                    width: "140px"
+                  },
+                ]}
+                data={appUsers}
+                pagination
+                paginationPerPage={10}
+                highlightOnHover
+                striped
+                responsive
+                persistTableHead
+                customStyles={{
+                  table: { 
+                    style: { 
+                      borderRadius: "12px", 
+                      overflow: "hidden",
+                    } 
+                  },
+                  headCells: { 
+                    style: { 
+                      fontWeight: "bold", 
+                      fontSize: "14px", 
+                      background: "linear-gradient(90deg, #A21CAF, #C026D3)",
+                      color: "white",
+                      paddingLeft: "16px",
+                      paddingRight: "16px",
+                    } 
+                  },
+                  cells: { 
+                    style: { 
+                      paddingLeft: "16px", 
+                      paddingRight: "16px",
+                    } 
+                  },
+                }}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Account Types Tab */}
+          <TabsContent value="account-types" className="animate-fadeIn">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white rounded-2xl shadow-sm p-6 border border-gray-200 mb-6">
+              <div>
+                <h3 className="text-xl font-semibold text-fuchsia-700 mb-2">Account Types</h3>
+                <p className="text-gray-600">
+                  Manage {accountTypes.length} account types in the system
+                </p>
+              </div>
+              
+              <button
+                onClick={() => setShowAccountTypeModal(true)}
+                className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white py-2 px-4 rounded-lg hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all font-semibold flex items-center gap-2"
+              >
+                ➕ Add Account Type
+              </button>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <DataTable
+                columns={[
+                  { 
+                    name: "Account Type Name", 
+                    selector: (row: AccountType) => row.name, 
+                    sortable: true,
+                    minWidth: "200px"
+                  },
+                  {
+                    name: "Status",
+                    cell: (row: AccountType) => (
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {row.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    ),
+                    sortable: true,
+                    width: "100px"
+                  },
+                  {
+                    name: "Created",
+                    cell: (row: AccountType) => (
+                      <span className="text-xs text-gray-600">
+                        {new Date(row.createdAt).toLocaleDateString()}
+                      </span>
+                    ),
+                    sortable: true,
+                    width: "120px"
+                  },
+                  {
+                    name: "Actions",
+                    cell: (row: AccountType) => (
+                      <div className="flex gap-2">
+                        <Button
+                          className="bg-gradient-to-r from-red-600 to-red-400 text-white px-3 py-1 rounded hover:from-red-700 hover:to-red-500 transition-all text-xs"
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete "${row.name}"?`)) {
+                              alert(`Delete Account Type: ${row.name}`);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          className="bg-gradient-to-r from-gray-600 to-gray-400 text-white px-3 py-1 rounded hover:from-gray-700 hover:to-gray-500 transition-all text-xs"
+                          onClick={() => alert(`Edit: ${row.name}`)}
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    ),
+                    width: "140px"
+                  },
+                ]}
+                data={accountTypes}
+                pagination
+                paginationPerPage={10}
+                highlightOnHover
+                striped
+                responsive
+                persistTableHead
+                customStyles={{
+                  table: { 
+                    style: { 
+                      borderRadius: "12px", 
+                      overflow: "hidden",
+                    } 
+                  },
+                  headCells: { 
+                    style: { 
+                      fontWeight: "bold", 
+                      fontSize: "14px", 
+                      background: "linear-gradient(90deg, #A21CAF, #C026D3)",
+                      color: "white",
+                      paddingLeft: "16px",
+                      paddingRight: "16px",
+                    } 
+                  },
+                  cells: { 
+                    style: { 
+                      paddingLeft: "16px", 
+                      paddingRight: "16px",
+                    } 
+                  },
+                }}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Modals */}
+      {selectedBranch && (
+        <EditBranchModal
+          open={!!selectedBranch}
+          onClose={() => setSelectedBranch(null)}
+          branch={selectedBranch}
+          branches={branches}
+          setBranches={setBranches}
+        />
+      )}
+
+      <CreateBranchModal
+        open={showBranchModal}
+        onClose={() => setShowBranchModal(false)}
+        branches={branches}
+        setBranches={setBranches}
+      />
+
+      <CreateUserModal
+        open={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        branches={branches}
+        appUsers={appUsers}
+        setAppUsers={setAppUsers}
+      />
+
+      <ManageAccountTypesModal
+        open={showAccountTypeModal}
+        onClose={() => setShowAccountTypeModal(false)}
+        setAccountTypes={setAccountTypes}
+      />
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="text-center md:text-left">
+              <p className="text-gray-700 font-medium">System Admin Dashboard</p>
+              <p className="text-gray-500 text-sm">CBE Digital Services • {new Date().getFullYear()}</p>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <span>Data loaded: {new Date().toLocaleTimeString()}</span>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span>All Systems Operational</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
-}
+};
+
+// Export with error boundary
+const AdminDashboard: React.FC = () => {
+  return (
+    <DashboardErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('Admin Dashboard Error:', error, errorInfo);
+        // TODO: Send to error reporting service
+      }}
+    >
+      <AdminDashboardContent />
+    </DashboardErrorBoundary>
+  );
+};
+
+export default AdminDashboard;
