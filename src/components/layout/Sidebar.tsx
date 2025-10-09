@@ -1,6 +1,6 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import cbelogo from '../../assets/cbelogo.jpg';
+import cbelogo from '../../assets/logo.jpg';
 import {
   faMoneyBillWave,
   faSackDollar,

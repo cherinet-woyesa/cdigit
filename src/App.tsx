@@ -23,7 +23,7 @@ import AssignMakerRoute from './features/manager/AssignMakerRoute';
 import CreateUserManagerRoute from './features/manager/CreateStaffRoute';
 import AdminDashboard from './features/admin/AdminDashboard';
 import ManagerDashboard from './features/manager/ManagerDashboard';
-import MakerDashboard from './features/maker/MakerDashboard';
+import MakerLayout from './features/maker/MakerLayout';
 import Dashboard from './features/customer/Dashboard';
 import TransactionHistory from './features/customer/TransactionHistory';
 import CbeBirrRegistrationConfirmation from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistrationConfirmation';
@@ -102,7 +102,7 @@ const DashboardRouter: React.FC = () => {
     return <ManagerDashboard />;
   }
   if (user?.role === 'Maker') {
-    return <MakerDashboard />;
+    return <MakerLayout />;
   }
   if (user?.role === 'Customer' || !user?.role) {
     return <Dashboard />;
@@ -133,7 +133,7 @@ function App() {
           {/* Direct dashboard routes for staff roles - bypass branch selection */}
           <Route path="/maker-dashboard" element={
             <ProtectedRoute role="Maker">
-              <MakerDashboard />
+              <MakerLayout />
             </ProtectedRoute>
           } />
           <Route path="/admin-dashboard" element={
@@ -246,7 +246,7 @@ function App() {
           } />
           <Route path="/dashboard/maker" element={
             <ProtectedRoute role="Maker">
-              <MakerDashboard />
+              <MakerLayout />
             </ProtectedRoute>
           } />
           

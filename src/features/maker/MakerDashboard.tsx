@@ -148,7 +148,7 @@ const MakerDashboardContent: React.FC<Props> = ({
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-fuchsia-50 via-white to-purple-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-600 mx-auto"></div>
                     <p className="mt-4 text-fuchsia-700 font-medium">Loading Maker Dashboard...</p>
@@ -159,19 +159,19 @@ const MakerDashboardContent: React.FC<Props> = ({
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-fuchsia-50 via-white to-purple-50">
+        <div className="min-h-screen bg-gray-50">
             {/* Enhanced Header */}
-            <header className="bg-gradient-to-r from-fuchsia-700 to-purple-700 text-white shadow-lg sticky top-0 z-40">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <header className="bg-gradient-to-r from-fuchsia-700 to-purple-700 text-white shadow-md sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         {/* Left Side - Brand & Welcome */}
-                        <div className="flex items-center space-x-4">
-                            <div className="bg-white/20 p-2 rounded-xl">
-                                <CurrencyDollarIcon className="h-8 w-8 text-white" />
+                        <div className="flex items-center space-x-3">
+                            <div className="bg-white/20 p-2 rounded-lg">
+                                <CurrencyDollarIcon className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold">Maker Dashboard</h1>
-                                <p className="text-fuchsia-100 text-sm">
+                                <h1 className="text-xl font-bold">Maker Dashboard</h1>
+                                <p className="text-fuchsia-100 text-xs">
                                     Welcome, {user?.firstName || decoded?.unique_name || 'Maker'}
                                     {assignedWindow && ` • Window #${assignedWindow.windowNumber}`}
                                 </p>
@@ -179,10 +179,10 @@ const MakerDashboardContent: React.FC<Props> = ({
                         </div>
                         
                         {/* Right Side - User Info & Status */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                             <div className="text-right">
-                                <div className="flex items-center gap-2 text-fuchsia-100">
-                                    <UserCircleIcon className="h-5 w-5" />
+                                <div className="flex items-center gap-2 text-fuchsia-100 text-sm">
+                                    <UserCircleIcon className="h-4 w-4" />
                                     <span className="font-semibold">Role: Maker</span>
                                 </div>
                                 <div className="text-xs text-fuchsia-200 mt-1">
@@ -191,16 +191,16 @@ const MakerDashboardContent: React.FC<Props> = ({
                             </div>
                             
                             {assignedWindow && (
-                                <div className="bg-white/20 px-3 py-2 rounded-lg">
+                                <div className="bg-white/20 px-3 py-1.5 rounded-md">
                                     <div className="text-xs text-fuchsia-200">Active Window</div>
-                                    <div className="font-bold text-white">#{assignedWindow.windowNumber}</div>
+                                    <div className="font-bold text-white text-sm">#{assignedWindow.windowNumber}</div>
                                 </div>
                             )}
 
                             {/* Connection Status */}
-                            <div className="flex items-center gap-2 bg-green-500/20 px-3 py-2 rounded-lg">
+                            <div className="flex items-center gap-2 bg-green-500/20 px-3 py-1.5 rounded-md">
                                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                <span className="text-green-100 text-sm">Online</span>
+                                <span className="text-green-100 text-xs font-medium">Online</span>
                             </div>
                         </div>
                     </div>
@@ -209,30 +209,32 @@ const MakerDashboardContent: React.FC<Props> = ({
 
             {/* Dashboard Metrics */}
             {currentSection === "transactions" && dashboardMetrics.length > 0 && (
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
                     <DashboardMetrics metrics={dashboardMetrics} />
                 </div>
             )}
 
             {/* Navigation Tabs */}
-            <div className="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6">
-                    <div className="flex space-x-1">
+            <div className="bg-gray-100 border-b border-gray-200 sticky top-16 z-30">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2">
+                    <div className="flex space-x-2 p-1 bg-gray-200/50 rounded-lg">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => handleSectionChange(tab.id)}
                                 disabled={sectionLoading}
-                                className={`relative flex items-center px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 transition-all duration-200 disabled:opacity-50 ${
+                                className={`w-full flex justify-center items-center px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 disabled:opacity-50 ${
                                     currentSection === tab.id
-                                        ? 'border-fuchsia-600 text-fuchsia-700 bg-white'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        ? 'bg-white text-fuchsia-700 shadow-sm'
+                                        : 'text-gray-600 hover:bg-white/60 hover:text-gray-800'
                                 }`}
                             >
                                 <tab.icon className="h-4 w-4 mr-2" />
                                 {tab.name}
                                 {tab.badgeCount && tab.badgeCount > 0 && (
-                                    <span className="ml-2 bg-fuchsia-100 text-fuchsia-700 text-xs px-2 py-1 rounded-full font-semibold">
+                                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                                        currentSection === tab.id ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-gray-300 text-gray-700'
+                                    }`}>
                                         {tab.badgeCount}
                                     </span>
                                 )}
@@ -243,10 +245,10 @@ const MakerDashboardContent: React.FC<Props> = ({
             </div>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
                 {/* Global Action Message */}
                 {actionMessage && (
-                    <div className={`rounded-xl p-4 border-l-4 ${
+                    <div className={`rounded-lg p-3 border-l-4 ${
                         actionMessage.type === 'success' 
                             ? 'bg-green-50 border-green-400 text-green-700'
                             : actionMessage.type === 'error'
@@ -272,7 +274,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                             </div>
                             <button
                                 onClick={() => setActionMessage(null)}
-                                className="ml-auto p-1 hover:bg-black/10 rounded transition-colors"
+                                className="ml-auto p-1 hover:bg-black/10 rounded-full transition-colors"
                             >
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -284,7 +286,7 @@ const MakerDashboardContent: React.FC<Props> = ({
 
                 {/* Section Loading State */}
                 {sectionLoading && (
-                    <div className="flex justify-center items-center py-12">
+                    <div className="flex justify-center items-center py-10">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-600"></div>
                         <span className="ml-3 text-gray-600">Loading {tabs.find(t => t.id === currentSection)?.name}...</span>
                     </div>
@@ -302,59 +304,40 @@ const MakerDashboardContent: React.FC<Props> = ({
 
                         {currentSection === "other" && (
                             <section className="animate-fadeIn">
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-semibold text-gray-900">Other Services</h3>
-                                        <div className="text-sm text-gray-500">
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-semibold text-gray-800">Other Services</h3>
+                                        <div className="text-xs text-gray-500">
                                             {dashboardMetrics.find(m => m.label === "Queue Waiting")?.value} requests waiting
                                         </div>
                                     </div>
-                                    <div className="grid md:grid-cols-3 gap-6">
+                                    <div className="grid md:grid-cols-3 gap-4">
                                         {[
-                                            { 
-                                                title: "Account Opening Request", 
-                                                description: "Process new account opening applications",
-                                                color: "from-fuchsia-500 to-purple-600",
-                                                icon: "📋",
-                                                count: 3
-                                            },
-                                            { 
-                                                title: "CBE Birr Requests", 
-                                                description: "Handle CBE Birr registration and services",
-                                                color: "from-purple-500 to-indigo-600",
-                                                icon: "📱",
-                                                count: 5
-                                            },
-                                            { 
-                                                title: "E-Banking Request", 
-                                                description: "Manage electronic banking service requests",
-                                                color: "from-indigo-500 to-blue-600",
-                                                icon: "💻",
-                                                count: 2
-                                            },
+                                            { title: "Account Opening", description: "Process new account applications", color: "fuchsia", icon: "📋", count: 3 },
+                                            { title: "CBE Birr Requests", description: "Handle CBE Birr registration", color: "purple", icon: "📱", count: 5 },
+                                            { title: "E-Banking Request", description: "Manage e-banking service requests", color: "indigo", icon: "💻", count: 2 },
                                         ].map((service, idx) => (
                                             <div
                                                 key={idx}
                                                 onClick={() => handleServiceClick(service.title)}
-                                                className={`relative rounded-2xl shadow-lg p-6 text-white cursor-pointer bg-gradient-to-br ${service.color} transform transition-all duration-300 hover:scale-105 hover:shadow-2xl group`}
+                                                className={`relative rounded-lg shadow-sm p-4 bg-white cursor-pointer border-t-4 border-${service.color}-500 transform transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group`}
                                             >
                                                 {service.count > 0 && (
-                                                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                                    <div className={`absolute -top-2 -right-2 bg-${service.color}-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full`}>
                                                         {service.count}
                                                     </div>
                                                 )}
-                                                <div className="text-2xl mb-3 group-hover:scale-110 transition-transform">
-                                                    {service.icon}
-                                                </div>
-                                                <h4 className="text-lg font-bold mb-2">{service.title}</h4>
-                                                <p className="text-sm text-white/80 leading-relaxed">
-                                                    {service.description}
-                                                </p>
-                                                <div className="mt-4 flex items-center justify-between">
-                                                    <span className="text-xs text-white/60">
-                                                        Click to manage
-                                                    </span>
-                                                    <ArrowPathIcon className="h-4 w-4 text-white/60 group-hover:rotate-180 transition-transform" />
+                                                <div className="flex items-start gap-3">
+                                                    <div className={`text-xl text-${service.color}-600 mt-1`}>
+                                                        {service.icon}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <h4 className="text-md font-bold text-gray-800">{service.title}</h4>
+                                                        <p className="text-xs text-gray-500 leading-snug mt-1">
+                                                            {service.description}
+                                                        </p>
+                                                    </div>
+                                                    <ArrowPathIcon className={`h-4 w-4 text-gray-300 group-hover:text-${service.color}-600 group-hover:rotate-180 transition-transform`} />
                                                 </div>
                                             </div>
                                         ))}
@@ -371,46 +354,46 @@ const MakerDashboardContent: React.FC<Props> = ({
             </main>
 
             {/* Quick Actions Footer */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-                <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
-                    <h3 className="font-semibold text-fuchsia-700 mb-4">Quick Actions</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-6">
+                <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                    <h3 className="font-semibold text-fuchsia-700 mb-3 text-md">Quick Actions</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <button 
                             onClick={() => handleServiceClick("Print Today's Report")}
-                            className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all group"
+                            className="text-left p-3 rounded-lg border border-gray-200 hover:border-fuchsia-400 hover:bg-fuchsia-50 transition-all group"
                         >
-                            <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">Print Report</div>
-                            <div className="text-sm text-gray-600">Today's transaction summary</div>
+                            <div className="font-semibold text-fuchsia-700 group-hover:text-fuchsia-800 text-sm">Print Report</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Today's transaction summary</div>
                         </button>
                         <button 
                             onClick={() => handleServiceClick("View Performance")}
-                            className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all group"
+                            className="text-left p-3 rounded-lg border border-gray-200 hover:border-fuchsia-400 hover:bg-fuchsia-50 transition-all group"
                         >
-                            <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">Performance</div>
-                            <div className="text-sm text-gray-600">Your efficiency metrics</div>
+                            <div className="font-semibold text-fuchsia-700 group-hover:text-fuchsia-800 text-sm">Performance</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Your efficiency metrics</div>
                         </button>
                         <button 
                             onClick={() => handleServiceClick("Need Assistance")}
-                            className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all group"
+                            className="text-left p-3 rounded-lg border border-gray-200 hover:border-fuchsia-400 hover:bg-fuchsia-50 transition-all group"
                         >
-                            <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">Get Help</div>
-                            <div className="text-sm text-gray-600">Contact supervisor</div>
+                            <div className="font-semibold text-fuchsia-700 group-hover:text-fuchsia-800 text-sm">Get Help</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Contact supervisor</div>
                         </button>
                         <button 
                             onClick={() => handleServiceClick("System Settings")}
-                            className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all group"
+                            className="text-left p-3 rounded-lg border border-gray-200 hover:border-fuchsia-400 hover:bg-fuchsia-50 transition-all group"
                         >
-                            <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">Settings</div>
-                            <div className="text-sm text-gray-600">Preferences & configuration</div>
+                            <div className="font-semibold text-fuchsia-700 group-hover:text-fuchsia-800 text-sm">Settings</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Preferences & configuration</div>
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* Footer */}
-            <footer className="bg-white border-t border-gray-200 mt-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-                    <div className="text-center text-gray-500 text-sm">
+            <footer className="bg-white border-t border-gray-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+                    <div className="text-center text-gray-500 text-xs">
                         <p>Maker Dashboard • CBE Digital Services • {new Date().getFullYear()}</p>
                         <p className="text-xs mt-1">Last sync: {new Date().toLocaleTimeString()}</p>
                     </div>

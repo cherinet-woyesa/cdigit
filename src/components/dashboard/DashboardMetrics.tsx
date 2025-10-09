@@ -29,22 +29,22 @@ const trendIcons = {
 
 export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({ metrics, className = '' }) => {
   return (
-    <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 ${className}`}>
+    <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 ${className}`}>
       {metrics.map((metric, index) => (
         <div
           key={index}
-          className={`${colorClasses[metric.color]} text-white p-4 rounded-xl shadow-lg transition-transform hover:scale-105`}
+          className={`${colorClasses[metric.color]} text-white p-3 rounded-lg shadow-lg transition-transform hover:scale-105`}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             {metric.icon && <div className="text-white/80">{metric.icon}</div>}
             {metric.trend && (
-              <span className="text-sm font-medium bg-white/20 px-2 py-1 rounded-full">
+              <span className="text-xs font-medium bg-white/20 px-1.5 py-0.5 rounded-full">
                 {trendIcons[metric.trend]}
               </span>
             )}
           </div>
-          <div className="text-2xl font-bold mb-1">{metric.value}</div>
-          <div className="text-sm text-white/90 font-medium">{metric.label}</div>
+          <div className="text-xl font-bold">{metric.value}</div>
+          <div className="text-xs text-white/90 font-medium">{metric.label}</div>
         </div>
       ))}
     </div>

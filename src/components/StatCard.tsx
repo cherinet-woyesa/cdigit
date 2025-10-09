@@ -42,30 +42,30 @@ const StatCard: React.FC<StatCardProps> = ({
 
     return (
         <div
-            className={`${bgColor} rounded-2xl shadow-lg p-6 border border-white/20 hover:shadow-xl transition-all duration-300 hover:scale-105 group`}
+            className={`${bgColor} rounded-xl shadow-lg p-4 border border-white/20 hover:shadow-xl transition-all duration-300 hover:scale-105 group`}
         >
             <div className="flex items-center justify-between">
                 <div className="flex-1">
-                    <p className="text-sm text-white/80 font-medium mb-1">{title}</p>
+                    <p className="text-xs text-white/80 font-medium">{title}</p>
                     <div className="flex items-baseline space-x-2">
-                        <p className="text-3xl font-bold text-white">{value}</p>
+                        <p className="text-2xl font-bold text-white">{value}</p>
                         {trend !== 'neutral' && (
-                            <span className={`text-sm font-semibold ${getTrendColor()} flex items-center`}>
+                            <span className={`text-xs font-semibold ${getTrendColor()} flex items-center`}>
                                 {getTrendIcon()} {trendValue}%
                             </span>
                         )}
                     </div>
                 </div>
-                <div className="p-3 rounded-xl bg-white/20 group-hover:bg-white/30 transition-colors">
+                <div className="p-2 rounded-lg bg-white/20 group-hover:bg-white/30 transition-colors">
                     <FontAwesomeIcon 
                         icon={icon} 
-                        className="text-white text-xl" 
+                        className="text-white text-lg" 
                     />
                 </div>
             </div>
             
             {/* Progress bar for visual indication */}
-            <div className="mt-3 w-full bg-white/20 rounded-full h-1">
+            <div className="mt-2 w-full bg-white/20 rounded-full h-1">
                 <div 
                     className="bg-white h-1 rounded-full transition-all duration-500"
                     style={{ width: `${Math.min((value / 50) * 100, 100)}%` }}

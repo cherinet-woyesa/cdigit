@@ -318,31 +318,24 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
         <div>
             {/* Stats */}
-            <section>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatCard
-                        title="Deposits"
-                        value={stats.Deposit}
-                        icon={statIconMap.Deposit}
-                        bgColor="bg-fuchsia-600"
-                        textColor="bg-fuchsia-100"
-                    />
-                    <StatCard
-                        title="Withdrawals"
-                        value={stats.Withdrawal}
-                        icon={statIconMap.Withdrawal}
-                        bgColor="bg-fuchsia-600"
-                        textColor="bg-fuchsia-100"
-                    />
-                    <StatCard
-                        title="Transfers"
-                        value={stats.FundTransfer}
-                        icon={statIconMap.FundTransfer}
-                        bgColor="bg-fuchsia-600"
-                        textColor="bg-fuchsia-100"
-                    />
-                    <StatCard title="Total Requests" value={stats.total} icon={faUserClock} bgColor="bg-fuchsia-700"
-                        textColor="bg-fuchsia-100" />
+            <section className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                        <p className="text-xs text-gray-500">Deposits</p>
+                        <p className="text-lg font-bold text-fuchsia-700">{stats.Deposit}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-500">Withdrawals</p>
+                        <p className="text-lg font-bold text-fuchsia-700">{stats.Withdrawal}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-500">Transfers</p>
+                        <p className="text-lg font-bold text-fuchsia-700">{stats.FundTransfer}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-500">Total in Queue</p>
+                        <p className="text-lg font-bold text-gray-800">{stats.total}</p>
+                    </div>
                 </div>
             </section>
 
@@ -358,7 +351,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             />
 
             {/* Actions */}
-            <section className="flex gap-3">
+            <section className="flex gap-3 mt-6">
                 <button
                     onClick={handleCallNext}
                     disabled={!assignedWindow || busyAction === "calling"}
