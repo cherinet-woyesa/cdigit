@@ -4,12 +4,14 @@ import { useAuth } from "../../context/AuthContext";
 import type { DecodedToken } from "types/DecodedToken";
 import type { ActionMessage } from "types/ActionMessage";
 import type { WindowDto } from "types/WindowDto";
+import makerService from "../../services/makerService";
 import PettyCash from "./PettyCash";
 import Transactions from "./Transactions";
 import OtherServices from "./OtherServices";
 import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
 import MainLayout from "../../components/layout/MainLayout";
 import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
+import WindowChangeModal from "../../components/modals/WindowChangeModal";
 import { 
   CurrencyDollarIcon, 
   ClockIcon,
@@ -31,6 +33,9 @@ const MakerDashboardContent: React.FC<Props> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [currentSection, setCurrentSection] = useState(activeSection);
     const [dashboardMetrics, setDashboardMetrics] = useState<Metric[]>([]);
+    const [decodedToken, setDecodedToken] = useState<DecodedToken | null>(null);
+    const [isWindowModalOpen, setWindowModalOpen] = useState(false);
+    const [currentAssignedWindow, setAssignedWindow] = useState<WindowDto | null>(assignedWindow);
 
     useEffect(() => {
         if (!token) {
@@ -39,7 +44,8 @@ const MakerDashboardContent: React.FC<Props> = ({
         }
         
         try {
-            jwtDecode<DecodedToken>(token);
+            const decoded = jwtDecode<DecodedToken>(token);
+            setDecodedToken(decoded);
         } catch (error) {
             setActionMessage({
                 type: 'error',
@@ -49,43 +55,85 @@ const MakerDashboardContent: React.FC<Props> = ({
         }
     }, [token, logout]);
 
+    // Fetch assigned window on component mount
+    useEffect(() => {
+        const fetchAssignedWindow = async () => {
+            if (!decodedToken?.nameid || !token) return;
+
+            try {
+                const window = await makerService.getAssignedWindowForMaker(decodedToken.nameid, token);
+                if (window) {
+                    setAssignedWindow(window);
+                    console.log('Assigned window loaded:', window);
+                } else {
+                    console.log('No window assigned to this maker');
+                    setActionMessage({
+                        type: 'warning',
+                        content: 'No window assigned. Please select a window to start serving customers.'
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to fetch assigned window:', error);
+                setActionMessage({
+                    type: 'error',
+                    content: 'Failed to load assigned window.'
+                });
+            }
+        };
+
+        fetchAssignedWindow();
+    }, [decodedToken?.nameid, token]);
+
     useEffect(() => {
         const loadMetrics = async () => {
-            const metrics: Metric[] = [
-                {
-                    label: "Pending Transactions",
-                    value: 12,
-                    color: "fuchsia",
-                    icon: <CurrencyDollarIcon className="h-4 w-4" />,
-                    trend: "up"
-                },
-                {
-                    label: "Completed Today",
-                    value: 8,
-                    color: "green",
-                    icon: <ClockIcon className="h-4 w-4" />,
-                    trend: "up"
-                },
-                {
-                    label: "Avg. Process Time",
-                    value: "4.2m",
-                    color: "blue",
-                    icon: <ArrowPathIcon className="h-4 w-4" />,
-                    trend: "down"
-                },
-                {
-                    label: "Queue Waiting",
-                    value: 5,
-                    color: "orange",
-                    icon: <UserCircleIcon className="h-4 w-4" />,
-                    trend: "neutral"
-                }
-            ];
-            setDashboardMetrics(metrics);
+            if (!decodedToken || !token) return;
+
+            try {
+                const queueResponse = await makerService.getAllCustomersOnQueueByBranch(decodedToken.BranchId, token);
+                const servedResponse = await makerService.getTotalServed(decodedToken.nameid, token);
+
+                const pendingTransactions = queueResponse.data?.length || 0;
+                const completedToday = servedResponse.data || 0;
+
+                const metrics: Metric[] = [
+                    {
+                        label: "Pending Transactions",
+                        value: pendingTransactions,
+                        color: "fuchsia",
+                        icon: <CurrencyDollarIcon className="h-4 w-4" />,
+                        trend: "up"
+                    },
+                    {
+                        label: "Completed Today",
+                        value: completedToday,
+                        color: "green",
+                        icon: <ClockIcon className="h-4 w-4" />,
+                        trend: "up"
+                    },
+                    {
+                        label: "Avg. Process Time",
+                        value: "4.2m", // Still mock data
+                        color: "blue",
+                        icon: <ArrowPathIcon className="h-4 w-4" />,
+                        trend: "down"
+                    },
+                    {
+                        label: "Queue Waiting",
+                        value: pendingTransactions, // Same as pending for now
+                        color: "orange",
+                        icon: <UserCircleIcon className="h-4 w-4" />,
+                        trend: "neutral"
+                    }
+                ];
+                setDashboardMetrics(metrics);
+            } catch (error) {
+                console.error("Failed to load dashboard metrics:", error);
+                // Optionally set an error message
+            }
         };
 
         loadMetrics();
-    }, []);
+    }, [decodedToken, token]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -99,11 +147,37 @@ const MakerDashboardContent: React.FC<Props> = ({
     }, []);
 
     const handleWindowChange = useCallback(() => {
-        setActionMessage({
-            type: 'info',
-            content: 'Window change feature coming soon...'
-        });
+        setWindowModalOpen(true);
     }, []);
+
+    const handleSelectWindow = async (selectedWindow: WindowDto) => {
+        if (!decodedToken?.nameid || !token) return;
+
+        try {
+            // Update window assignment on backend
+            const response = await makerService.changeMakerToWindow(selectedWindow.id, decodedToken.nameid, token);
+            
+            if (response.success) {
+                setAssignedWindow(selectedWindow);
+                setWindowModalOpen(false);
+                setActionMessage({
+                    type: 'success',
+                    content: response.message || `Successfully changed to Window #${selectedWindow.windowNumber}.`
+                });
+            } else {
+                setActionMessage({
+                    type: 'error',
+                    content: response.message || 'Failed to change window.'
+                });
+            }
+        } catch (error) {
+            console.error('Error changing window:', error);
+            setActionMessage({
+                type: 'error',
+                content: 'Failed to change window. Please try again.'
+            });
+        }
+    };
 
     const handleServiceClick = useCallback((serviceType: string) => {
         setActionMessage({
@@ -134,6 +208,8 @@ const MakerDashboardContent: React.FC<Props> = ({
                             ? 'bg-green-50 border-green-400 text-green-700'
                             : actionMessage.type === 'error'
                             ? 'bg-red-50 border-red-400 text-red-700'
+                            : actionMessage.type === 'warning'
+                            ? 'bg-yellow-50 border-yellow-400 text-yellow-700'
                             : 'bg-blue-50 border-blue-400 text-blue-700'
                     }`}>
                         <div className="flex items-center">
@@ -152,12 +228,35 @@ const MakerDashboardContent: React.FC<Props> = ({
                     </div>
                 )}
 
+                {/* Window Assignment Alert */}
+                {!currentAssignedWindow && (
+                    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-l-4 border-orange-400 rounded-lg p-4 mb-6 shadow-sm">
+                        <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                                <svg className="h-6 w-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="ml-3 flex-1">
+                                <h3 className="text-sm font-bold text-orange-800">No Window Assigned</h3>
+                                <p className="text-sm text-orange-700 mt-1">You need to select a window before you can serve customers.</p>
+                                <button
+                                    onClick={handleWindowChange}
+                                    className="mt-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-sm"
+                                >
+                                    Select Window Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Section Content */}
                 {currentSection === "transactions" && dashboardMetrics.length > 0 && (
                     <div className="space-y-6">
                         <DashboardMetrics metrics={dashboardMetrics} />
                         <Transactions 
-                            assignedWindow={assignedWindow} 
+                            assignedWindow={currentAssignedWindow} 
                             activeSection={currentSection}
                         />
                     </div>
@@ -165,7 +264,7 @@ const MakerDashboardContent: React.FC<Props> = ({
 
                 {currentSection === "transactions" && dashboardMetrics.length === 0 && (
                     <Transactions 
-                        assignedWindow={assignedWindow} 
+                        assignedWindow={currentAssignedWindow} 
                         activeSection={currentSection}
                     />
                 )}
@@ -192,10 +291,16 @@ const MakerDashboardContent: React.FC<Props> = ({
         <MainLayout
             activeSection={currentSection}
             onSectionChange={handleSectionChange}
-            assignedWindow={assignedWindow}
+            assignedWindow={currentAssignedWindow}
             onWindowChange={handleWindowChange}
         >
             {renderContent()}
+            <WindowChangeModal
+                isOpen={isWindowModalOpen}
+                onClose={() => setWindowModalOpen(false)}
+                onSelectWindow={handleSelectWindow}
+                branchId={decodedToken?.BranchId || null}
+            />
         </MainLayout>
     );
 };
