@@ -12,6 +12,8 @@ import CurrentCustomerModal from "./CurrentCustomerModal";
 import FormReferenceSearchModal from "./FormReferenceSearchModal";
 import StatCard from "../../components/StatCard";
 import CancelConfirmationModal from "../../modals/CancelConfirmationModal";
+import QueueNotificationModal from "../../modals/QueueNotificationModal";
+import FeedbackModal from "../../modals/FeedbackModal";
 import type { ActionMessage } from "types/ActionMessage";
 import type { WindowDto } from "../../types/WindowDto";
 
@@ -64,6 +66,8 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showFormRefModal, setShowFormRefModal] = useState(false);
     const [showDenomModal, setShowDenomModal] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [completedTransaction, setCompletedTransaction] = useState<NextCustomerResponse | null>(null);
 
     const [denomForm, setDenomForm] = useState<{
         formReferenceId: string;
@@ -248,12 +252,21 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 return;
             }
             setActionMessage({ type: 'success', content: res.message || "Completed." });
-            // Wait for 1.5 seconds to allow flash/animation to be visible
-            // await new Promise((resolve) => setTimeout(resolve, 1500));
+            
+            // Store completed transaction for feedback
+            setCompletedTransaction(current);
+            
+            // Clear current customer
             setCurrent(null);
             localStorage.removeItem("currentCustomer"); // clear
+            
             await refreshQueue();
             await refreshTotalServed();
+            
+            // Show feedback modal after a short delay
+            setTimeout(() => {
+                setShowFeedbackModal(true);
+            }, 500);
         } catch {
             setActionMessage({ type: 'error', content: "Failed to complete." });
 
@@ -429,8 +442,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">
                     Total served by you (Today)
                 </h3>
-                <StatCard title="Total Served" value={totalServed} icon={faCheckCircle} bgColor="bg-fuchsia-600"
-                    textColor="bg-fuchsia-100" />
+                <StatCard title="Total Served" value={totalServed} icon={faCheckCircle} bgColor="bg-fuchsia-600" />
             </section>
 
 
@@ -447,6 +459,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             {/* )} */}
 
             {/* Denominations */}
+            {/* Denominations */}
             <DenominationModal
                 isOpen={showDenomModal}
                 onClose={() => setShowDenomModal(false)}
@@ -461,6 +474,31 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 token={token}
                 onRefreshServed={refreshTotalServed}
             />
+
+            {/* Queue Notification Modal */}
+            <QueueNotificationModal
+                isOpen={isQueueNotifyModalOpen}
+                onClose={() => setIsQueueNotifyModalOpen(false)}
+                title={QueueNotifyModalTitle}
+                message={QueueNotifyModalMessage}
+                amount={amount}
+            />
+
+            {/* Feedback Modal */}
+            {completedTransaction && (
+                <FeedbackModal
+                    isOpen={showFeedbackModal}
+                    onClose={() => {
+                        setShowFeedbackModal(false);
+                        setCompletedTransaction(null);
+                    }}
+                    customerId={completedTransaction.accountHolderName}
+                    makerId={decoded?.nameid || ''}
+                    branchId={decoded?.BranchId || ''}
+                    transactionId={completedTransaction.id}
+                    token={token}
+                />
+            )}
         </div>
 
     );
