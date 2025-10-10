@@ -9,6 +9,8 @@ import { requestWithdrawalOtp, submitWithdrawal } from '../../../../services/wit
 import authService from '../../../../services/authService';
 import Field from '../../../../components/Field';
 import SignatureCanvas from 'react-signature-canvas';
+import { useToast } from '../../../../context/ToastContext';
+import { validateAmount, validateRequired, validateOTP } from '../../../../utils/validation';
 import { 
     Loader2, 
     AlertCircle, 
@@ -49,6 +51,7 @@ export default function CashWithdrawalForm() {
     const { t } = useTranslation();
     const { phone, token, user } = useAuth();
     const { branch } = useBranch();
+    const { success: showSuccess, error: showError, info } = useToast();
     const navigate = useNavigate();
     const location = useLocation();
     const { 
@@ -113,8 +116,23 @@ export default function CashWithdrawalForm() {
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         
-        if (errors[name as keyof Errors]) {
-            setErrors(prev => ({ ...prev, [name]: undefined }));
+        // Real-time validation
+        if (name === 'amount' && value) {
+            const validation = validateAmount(value, { min: 0.01, max: 1000000 });
+            if (!validation.isValid) {
+                setErrors(prev => ({ ...prev, amount: validation.error }));
+            } else {
+                setErrors(prev => ({ ...prev, amount: undefined }));
+            }
+        }
+        
+        if (name === 'otp' && value) {
+            const validation = validateOTP(value);
+            if (!validation.isValid && value.length === 6) {
+                setErrors(prev => ({ ...prev, otp: validation.error }));
+            } else {
+                setErrors(prev => ({ ...prev, otp: undefined }));
+            }
         }
 
         if (name === 'accountNumber') {
@@ -150,19 +168,27 @@ export default function CashWithdrawalForm() {
     const validateStep1 = (): boolean => {
         const errs: Errors = {};
         
-        if (!formData.accountNumber.trim()) {
-            errs.accountNumber = t('accountNumberRequired', 'Please select an account');
+        const accountValidation = validateRequired(formData.accountNumber);
+        if (!accountValidation.isValid) {
+            errs.accountNumber = accountValidation.error || t('accountNumberRequired', 'Please select an account');
         }
         
-        if (!formData.accountHolderName.trim()) {
-            errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required');
+        const holderValidation = validateRequired(formData.accountHolderName);
+        if (!holderValidation.isValid) {
+            errs.accountHolderName = holderValidation.error || t('accountHolderNameRequired', 'Account holder name is required');
         }
         
-        if (!formData.amount || Number(formData.amount) <= 0) {
-            errs.amount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
+        const amountValidation = validateAmount(formData.amount, { min: 0.01, max: 1000000 });
+        if (!amountValidation.isValid) {
+            errs.amount = amountValidation.error || t('validAmountRequired', 'Please enter a valid amount greater than 0');
         }
         
         setErrors(errs);
+        
+        if (Object.keys(errs).length > 0) {
+            showError(t('validationErrors', 'Please fix the errors in the form'));
+        }
+        
         return Object.keys(errs).length === 0;
     };
 
@@ -174,11 +200,17 @@ export default function CashWithdrawalForm() {
     const validateStep4 = (): boolean => {
         const errs: Errors = {};
         
-        if (!formData.otp || formData.otp.length !== 6) {
-            errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+        const otpValidation = validateOTP(formData.otp);
+        if (!otpValidation.isValid) {
+            errs.otp = otpValidation.error || t('validOtpRequired', 'Please enter the 6-digit OTP');
         }
         
         setErrors(errs);
+        
+        if (Object.keys(errs).length > 0) {
+            showError(t('validationErrors', 'Please enter a valid OTP'));
+        }
+        
         return Object.keys(errs).length === 0;
     };
 
@@ -221,7 +253,9 @@ export default function CashWithdrawalForm() {
         try {
             const response = await requestWithdrawalOtp(phone);
             if (response.success) {
-                setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
+                const msg = response.message || t('otpSent', 'OTP sent to your phone.');
+                setOtpMessage(msg);
+                info(msg);
                 setStep(4);
                 setResendCooldown(30);
                 
@@ -322,8 +356,9 @@ export default function CashWithdrawalForm() {
 
             const response = await submitWithdrawal(withdrawalData, token || undefined);
 
-            // Always expect the full backend response (with success/message/data)
             if (response && response.success) {
+                showSuccess(t('withdrawalSubmitted', 'Withdrawal submitted successfully!'));
+                
                 navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', { 
                     state: { 
                         serverData: response,
@@ -342,7 +377,9 @@ export default function CashWithdrawalForm() {
                 setErrors({ submit: response?.message || t('invalidOtp', 'Invalid or already used OTP. Please try again.') });
             }
         } catch (error: any) {
-            setErrors({ submit: error?.message || t('submissionFailed', 'Submission failed. Please try again.') });
+            const errorMsg = error?.message || t('submissionFailed', 'Submission failed. Please try again.');
+            setErrors({ submit: errorMsg });
+            showError(errorMsg);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setIsSubmitting(false);

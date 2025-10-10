@@ -220,22 +220,53 @@ const CustomerDashboardContent: React.FC = () => {
     return filtered;
   }, [debouncedQuery, selectedCategory, t]);
 
-  // SignalR connection with better error handling
+  // SignalR connection with better error handling and cleanup
   useEffect(() => {
     if (!phone) {
       navigate('/otp-login');
       return;
     }
 
-    let connection: any;
+    let connection: any = null;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    
     const connectSignalR = async () => {
       try {
         connection = new HubConnectionBuilder()
           .withUrl(`${config.SIGNALR_URL}/hub/queueHub`)
-          .withAutomaticReconnect([0, 1000, 5000, 10000])
+          .withAutomaticReconnect({
+            nextRetryDelayInMilliseconds: (retryContext) => {
+              if (retryContext.previousRetryCount >= MAX_RECONNECT_ATTEMPTS) {
+                console.warn('Max SignalR reconnection attempts reached');
+                setSignalRError(t('signalRError', 'Notifications temporarily unavailable'));
+                return null; // Stop reconnecting
+              }
+              return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
+            }
+          })
           .build();
 
+        // Connection state handlers
+        connection.onreconnecting(() => {
+          console.log('SignalR reconnecting...');
+          reconnectAttempts++;
+        });
+
+        connection.onreconnected(() => {
+          console.log('SignalR reconnected successfully');
+          reconnectAttempts = 0;
+          setSignalRError(null);
+          // Rejoin group after reconnection
+          connection.invoke('JoinQueueGroup', phone).catch(console.error);
+        });
+
+        connection.onclose(() => {
+          console.log('SignalR connection closed');
+        });
+
         await connection.start();
+        console.log('SignalR connected successfully');
         
         await connection.invoke('JoinQueueGroup', phone);
         
@@ -260,18 +291,20 @@ const CustomerDashboardContent: React.FC = () => {
 
         setSignalRError(null);
       } catch (error) {
-        console.warn('SignalR connection failed:', error);
+        console.error('SignalR connection failed:', error);
         setSignalRError(t('signalRError', 'Notifications temporarily unavailable'));
       }
     };
 
     connectSignalR();
 
+    // Cleanup function
     return () => {
       if (connection) {
+        console.log('Cleaning up SignalR connection');
         connection.off('CustomerCalled');
         connection.off('TransactionCompleted');
-        connection.stop().catch(console.warn);
+        connection.stop().catch((err: any) => console.warn('Error stopping SignalR:', err));
       }
     };
   }, [phone, navigate, t]);

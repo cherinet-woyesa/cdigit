@@ -20,6 +20,7 @@ const StaffLogin: React.FC = () => {
     try {
       const response = await authService.staffLogin(email, password);
       if (response.token) {
+        // Use the AuthContext login method which properly decodes and handles the token
         login(response.token);
         
         // Decode token to get role for redirection
@@ -27,36 +28,53 @@ const StaffLogin: React.FC = () => {
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const decodedPayload = JSON.parse(window.atob(base64));
         
-        const roles = decodedPayload.role || decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+        // Enhanced role extraction
+        const roles = decodedPayload.role || 
+                     decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+                     decodedPayload.roles ||
+                     decodedPayload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role'];
+        
         const userRole = Array.isArray(roles) ? roles[0] : roles;
 
         if (!userRole) {
           setError('Login successful, but your user role could not be determined. Please contact an administrator.');
+          console.error('No role found in token payload:', decodedPayload);
           return;
         }
         
         console.log('User role detected for redirection:', userRole);
+        console.log('Full token payload:', decodedPayload);
         
-        // Role-based redirection - FIXED
-        switch (userRole.toLowerCase()) {
+        // Role-based redirection - FIXED with proper case handling
+        const normalizedRole = userRole.toLowerCase();
+        switch (normalizedRole) {
           case 'maker':
+            console.log('Redirecting to maker dashboard');
             navigate('/maker-dashboard', { replace: true });
             break;
           case 'admin':
+            console.log('Redirecting to admin dashboard');
             navigate('/admin-dashboard', { replace: true });
             break;
           case 'manager':
+            console.log('Redirecting to manager dashboard');
             navigate('/manager-dashboard', { replace: true });
             break;
           default:
-            navigate('/dashboard', { replace: true }); // fallback
+            console.warn('Unknown role, redirecting to generic dashboard:', userRole);
+            navigate('/dashboard', { replace: true });
         }
       } else {
         throw new Error('Token is missing in the response');
       }
     } catch (err: any) {
-      setError(err.response?.data?.Message || 'Login failed. Please check your credentials.');
+      const errorMessage = err.response?.data?.Message || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Login failed. Please check your credentials.';
+      setError(errorMessage);
       console.error('Staff login error:', err);
+      console.error('Error response:', err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -127,6 +145,17 @@ const StaffLogin: React.FC = () => {
             ) : 'Login'}
           </button>
         </form>
+        
+        {/* Back to Customer Flow Link */}
+        <div className="text-center mt-4 pt-4 border-t border-gray-200">
+          <p className="text-xs md:text-sm text-gray-600 mb-2">Not a staff member?</p>
+          <button
+            onClick={() => navigate('/')}
+            className="text-fuchsia-700 hover:text-fuchsia-800 font-medium text-xs md:text-sm underline transition-colors"
+          >
+            Back to Customer Services
+          </button>
+        </div>
       </div>
     </div>
   );

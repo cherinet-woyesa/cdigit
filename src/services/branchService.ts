@@ -5,7 +5,13 @@ export interface Branch {
   name: string;
   code: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  phone?: string;
+  workingHours?: string;
   status: string;
+  isActive?: boolean;
 }
 
 // Common API response structure

@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 import { sendFundTransferOTP, submitFundTransfer, updateFundTransfer } from '../../../../services/fundTransferService';
 import Field from '../../../../components/Field';
+import { useToast } from '../../../../context/ToastContext';
+import { validateAmount, validateRequired, validateOTP, validateAccountNumber } from '../../../../utils/validation';
 import { 
     Loader2, 
     AlertCircle, 
@@ -46,6 +48,7 @@ export default function FundTransfer() {
     const { t } = useTranslation();
     const { phone, token, user } = useAuth();
     const { branch } = useBranch();
+    const { success: showSuccess, error: showError, info } = useToast();
     const navigate = useNavigate();
     const location = useLocation();
     const { 
@@ -125,8 +128,34 @@ export default function FundTransfer() {
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         
-        if (errors[name as keyof Errors]) {
-            setErrors(prev => ({ ...prev, [name]: undefined }));
+        // Real-time validation
+        if (name === 'creditAccountNumber' && value) {
+            const validation = validateAccountNumber(value);
+            if (!validation.isValid) {
+                setErrors(prev => ({ ...prev, creditAccountNumber: validation.error }));
+            } else if (value === formData.debitAccountNumber) {
+                setErrors(prev => ({ ...prev, creditAccountNumber: t('differentAccountRequired', 'Beneficiary account must be different') }));
+            } else {
+                setErrors(prev => ({ ...prev, creditAccountNumber: undefined }));
+            }
+        }
+        
+        if (name === 'amount' && value) {
+            const validation = validateAmount(value, { min: 0.01, max: 10000000 });
+            if (!validation.isValid) {
+                setErrors(prev => ({ ...prev, amount: validation.error }));
+            } else {
+                setErrors(prev => ({ ...prev, amount: undefined }));
+            }
+        }
+        
+        if (name === 'otp' && value) {
+            const validation = validateOTP(value);
+            if (!validation.isValid && value.length === 6) {
+                setErrors(prev => ({ ...prev, otp: validation.error }));
+            } else {
+                setErrors(prev => ({ ...prev, otp: undefined }));
+            }
         }
 
         if (name === 'debitAccountNumber') {
@@ -146,7 +175,7 @@ export default function FundTransfer() {
             const sanitizedValue = value.replace(/[^\d.]/g, '');
             const parts = sanitizedValue.split('.');
             if (parts.length > 2) return;
-            if (parts[1] && parts[1].length > 2) return; // Limit to 2 decimal places
+            if (parts[1] && parts[1].length > 2) return;
             setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
             return;
         }
@@ -197,32 +226,46 @@ export default function FundTransfer() {
     const validateStep1 = (): boolean => {
         const errs: Errors = {};
         
-        if (!formData.debitAccountNumber.trim()) {
-            errs.debitAccountNumber = t('accountNumberRequired', 'Please select an account');
+        const debitValidation = validateRequired(formData.debitAccountNumber);
+        if (!debitValidation.isValid) {
+            errs.debitAccountNumber = debitValidation.error || t('accountNumberRequired', 'Please select an account');
         }
         
-        if (!formData.creditAccountNumber.trim()) {
-            errs.creditAccountNumber = t('beneficiaryAccountRequired', 'Beneficiary account is required');
+        const creditValidation = validateAccountNumber(formData.creditAccountNumber);
+        if (!creditValidation.isValid) {
+            errs.creditAccountNumber = creditValidation.error || t('beneficiaryAccountRequired', 'Beneficiary account is required');
         } else if (formData.debitAccountNumber === formData.creditAccountNumber) {
             errs.creditAccountNumber = t('differentAccountRequired', 'Beneficiary account must be different from debit account.');
         }
         
-        if (!formData.amount || Number(formData.amount) <= 0) {
-            errs.amount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
+        const amountValidation = validateAmount(formData.amount, { min: 0.01, max: 10000000 });
+        if (!amountValidation.isValid) {
+            errs.amount = amountValidation.error || t('validAmountRequired', 'Please enter a valid amount greater than 0');
         }
         
         setErrors(errs);
+        
+        if (Object.keys(errs).length > 0) {
+            showError(t('validationErrors', 'Please fix the errors in the form'));
+        }
+        
         return Object.keys(errs).length === 0;
     };
 
     const validateStep3 = (): boolean => {
         const errs: Errors = {};
         
-        if (!formData.otp || formData.otp.length !== 6 || !/^\d+$/.test(formData.otp)) {
-            errs.otp = t('validOtpRequired', 'Please enter a valid 6-digit OTP');
+        const otpValidation = validateOTP(formData.otp);
+        if (!otpValidation.isValid) {
+            errs.otp = otpValidation.error || t('validOtpRequired', 'Please enter a valid 6-digit OTP');
         }
         
         setErrors(errs);
+        
+        if (Object.keys(errs).length > 0) {
+            showError(t('validationErrors', 'Please enter a valid OTP'));
+        }
+        
         return Object.keys(errs).length === 0;
     };
 
@@ -250,7 +293,9 @@ export default function FundTransfer() {
         try {
             const response = await sendFundTransferOTP(phone.trim());
             if (response.success || response.message) {
-                setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
+                const msg = response.message || t('otpSent', 'OTP sent to your phone.');
+                setOtpMessage(msg);
+                info(msg);
                 setStep(3);
                 setResendCooldown(30);
                 
@@ -346,6 +391,11 @@ export default function FundTransfer() {
             }
 
             if (response && (response.success || response.data)) {
+                showSuccess(updateId 
+                    ? t('transferUpdated', 'Transfer updated successfully!') 
+                    : t('transferSubmitted', 'Transfer submitted successfully!')
+                );
+                
                 navigate('/fund-transfer-confirmation', { 
                     state: { 
                         serverData: response,
@@ -364,14 +414,19 @@ export default function FundTransfer() {
             }
         } catch (error: any) {
             console.error('Submission error:', error);
-            // Handle validation errors from backend
+            let errorMsg = t('submissionFailed', 'Submission failed. Please try again.');
+            
             if (error?.response?.data?.errors) {
                 const backendErrors = error.response.data.errors;
-                const errorMessages = Object.values(backendErrors).flat().join(', ');
-                setErrors({ submit: errorMessages });
-            } else {
-                setErrors({ submit: error?.response?.data?.message || t('submissionFailed', 'Submission failed. Please try again.') });
+                errorMsg = Object.values(backendErrors).flat().join(', ');
+            } else if (error?.response?.data?.message) {
+                errorMsg = error.response.data.message;
+            } else if (error?.message) {
+                errorMsg = error.message;
             }
+            
+            setErrors({ submit: errorMsg });
+            showError(errorMsg);
         } finally {
             setIsSubmitting(false);
         }

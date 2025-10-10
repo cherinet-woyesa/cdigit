@@ -16,6 +16,7 @@ import CancelConfirmationModal from "../../modals/CancelConfirmationModal";
 import QueueNotificationModal from "../../modals/QueueNotificationModal";
 import type { ActionMessage } from "types/ActionMessage";
 import type { WindowDto } from "../../types/WindowDto";
+import { SkeletonCard } from "../../components/Skeleton";
 
 
 
@@ -162,37 +163,71 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
 
 
-    // notify the comming of New customer 
+    // notify the comming of New customer with improved connection handling
     useEffect(() => {
         if (!decoded?.BranchId) return;
 
-        // Setup SignalR connection
-        const connection = new HubConnectionBuilder()
-            .withUrl('http://localhost:5268/hub/queueHub')
-            .withAutomaticReconnect()
-            .build();
+        let connection: any = null;
+        
+        const setupSignalR = async () => {
+            try {
+                // Setup SignalR connection
+                connection = new HubConnectionBuilder()
+                    .withUrl('http://localhost:5268/hub/queueHub')
+                    .withAutomaticReconnect({
+                        nextRetryDelayInMilliseconds: (retryContext) => {
+                            if (retryContext.previousRetryCount >= 5) {
+                                console.warn('Max SignalR reconnection attempts reached');
+                                return null;
+                            }
+                            return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
+                        }
+                    })
+                    .build();
 
-        connection.start().then(() => {
-            console.log('Connected to SignalR hub');
+                // Connection state handlers
+                connection.onreconnecting(() => {
+                    console.log('SignalR reconnecting...');
+                });
 
-            // Join group with Branch id
-            connection.invoke('JoinBranchCustomersQueueGroup', decoded?.BranchId);
+                connection.onreconnected(() => {
+                    console.log('SignalR reconnected successfully');
+                    // Rejoin group after reconnection
+                    connection.invoke('JoinBranchCustomersQueueGroup', decoded.BranchId).catch(console.error);
+                });
 
-            // Listen for messages
-            connection.on('NewCustomer', (data) => {
-                console.log('New customer notification received:', data);
-                setQueueNotifyModalTitle(data.transactionType + " Request");
-                setQueueNotifyModalMessage(`${data.message} is comming, please ready to serve. `);
+                connection.onclose(() => {
+                    console.log('SignalR connection closed');
+                });
 
-                console.log("data.amount at dashboard", data.amount);
-                setAmount(`Amount: ETB ${Number(data.amount).toLocaleString()}`);
-                setIsQueueNotifyModalOpen(true);
-                void refreshQueue();
-            });
-        });
+                await connection.start();
+                console.log('Connected to SignalR hub');
+
+                // Join group with Branch id
+                await connection.invoke('JoinBranchCustomersQueueGroup', decoded.BranchId);
+
+                // Listen for messages
+                connection.on('NewCustomer', (data: any) => {
+                    console.log('New customer notification received:', data);
+                    setQueueNotifyModalTitle(data.transactionType + " Request");
+                    setQueueNotifyModalMessage(`${data.message} is coming, please ready to serve.`);
+                    setAmount(`Amount: ETB ${Number(data.amount).toLocaleString()}`);
+                    setIsQueueNotifyModalOpen(true);
+                    void refreshQueue();
+                });
+            } catch (error) {
+                console.error('SignalR connection failed:', error);
+            }
+        };
+
+        setupSignalR();
 
         return () => {
-            connection.stop();
+            if (connection) {
+                console.log('Cleaning up SignalR connection');
+                connection.off('NewCustomer');
+                connection.stop().catch((err: any) => console.warn('Error stopping SignalR:', err));
+            }
         };
     }, [decoded?.BranchId]);
 
@@ -389,9 +424,15 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                         Waiting Queue (Today)
                     </h3>
                 </div>
-                {queue.length === 0 ? (
+                {loadingQueue ? (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[...Array(6)].map((_, idx) => (
+                            <SkeletonCard key={idx} />
+                        ))}
+                    </div>
+                ) : queue.length === 0 ? (
                     <div className="bg-white rounded-xl p-6 text-center text-gray-500 shadow">
-                        No customers in queue.
+                        {queueError || "No customers in queue."}
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

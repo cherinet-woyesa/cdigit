@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useBranch } from './context/BranchContext';
+import { useTokenRefresh } from './hooks/useTokenRefresh';
 import OTPLogin from './features/auth/OTPLogin';
 import QRTestPage from './features/branch/QRTestPage';
 import QRCodeGenerator from './features/branch/QRCodeGenerator';
@@ -41,6 +42,7 @@ import PettyCashForm from './features/internal/forms/pettyCash/PettyCashForm';
 import PettyCashConfirmation from './features/internal/forms/pettyCash/PettyCashConfirmation';
 import LanguageSelection from './components/LanguageSelection';
 import StaffRouteGuard from './components/StaffRouteGuard';
+import OfflineBanner from './components/OfflineBanner';
 
 // Updated ProtectedRoute component
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
@@ -50,11 +52,14 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if user is staff (doesn't need branch selection)
     const isStaffRole = user?.role && ['Maker', 'Admin', 'Manager'].includes(user.role);
     
+    // Only redirect non-staff users to branch selection
     if (isAuthenticated && user && !branch && !isBranchLoading && 
         !location.pathname.startsWith('/select-branch') &&
-        !isStaffRole) {
+        !isStaffRole &&
+        user.role === 'Customer') {
       navigate('/select-branch', { state: { from: location }, replace: true });
     }
   }, [isAuthenticated, user, branch, isBranchLoading, location, navigate]);
@@ -62,13 +67,17 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
   if (loading || isBranchLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-600"></div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/staff-login" state={{ from: location }} replace />;
+    // Determine which login page to redirect to based on the current path
+    const redirectTo = location.pathname.includes('dashboard') || 
+                      ['admin', 'manager', 'maker'].some(role => location.pathname.includes(role))
+                      ? '/staff-login' : '/otp-login';
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
   if (role && user?.role !== role) {
@@ -77,6 +86,7 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
           <p className="text-gray-600">You don't have permission to access this page.</p>
+          <p className="text-sm text-gray-500 mt-2">Required role: {role}, Your role: {user?.role}</p>
         </div>
       </div>
     );
@@ -85,11 +95,35 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
   return <>{children}</>;
 };
 
-// FIXED: DashboardRouter now uses MakerDashboard instead of MakerLayout
+// FIXED: DashboardRouter with better role handling
 const DashboardRouter: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   console.log('DashboardRouter - User role:', user?.role);
+
+  // Redirect staff users to their specific dashboards
+  useEffect(() => {
+    if (user?.role) {
+      switch (user.role) {
+        case 'Admin':
+          if (window.location.pathname === '/dashboard') {
+            navigate('/admin-dashboard', { replace: true });
+          }
+          break;
+        case 'Manager':
+          if (window.location.pathname === '/dashboard') {
+            navigate('/manager-dashboard', { replace: true });
+          }
+          break;
+        case 'Maker':
+          if (window.location.pathname === '/dashboard') {
+            navigate('/maker-dashboard', { replace: true });
+          }
+          break;
+      }
+    }
+  }, [user?.role, navigate]);
 
   if (user?.role === 'Admin') {
     return <AdminDashboard />;
@@ -98,7 +132,7 @@ const DashboardRouter: React.FC = () => {
     return <ManagerDashboard />;
   }
   if (user?.role === 'Maker') {
-    return <MakerDashboard />; // CHANGED: Use MakerDashboard instead of MakerLayout
+    return <MakerDashboard />;
   }
   if (user?.role === 'Customer' || !user?.role) {
     return <Dashboard />;
@@ -116,14 +150,21 @@ const DashboardRouter: React.FC = () => {
 
 // Main App component
 function App() {
+  // Initialize token refresh monitoring
+  useTokenRefresh();
+  
   return (
     <>
+      <OfflineBanner />
       <StaffRouteGuard>
         <Routes>
+          {/* Default entry point for CUSTOMERS */}
           <Route path="/" element={<Navigate to="/language-selection" replace />} />
           <Route path="/language-selection" element={<LanguageSelection />} />
           <Route path="/select-branch" element={<BranchSelectionEnhanced />} />
           <Route path="/otp-login" element={<OTPLogin />} />
+          
+          {/* Staff login route (accessed via link on language selection) */}
           <Route path="/staff-login" element={<StaffLogin />} />
           
           {/* Direct dashboard routes for staff roles - UPDATED to use MakerDashboard */}
@@ -304,8 +345,8 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Fallback route */}
-          <Route path="*" element={<Navigate to="/select-branch" replace />} />
+          {/* Fallback route - default to customer flow (language selection) */}
+          <Route path="*" element={<Navigate to="/language-selection" replace />} />
         </Routes>
       </StaffRouteGuard>
     </>

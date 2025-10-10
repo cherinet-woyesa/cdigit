@@ -1,13 +1,12 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useBranch } from '../../context/BranchContext';
 import { fetchBranches } from '../../services/branchService';
 import type { Branch } from '../../services/branchService';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import QRCodeScanner from './QRCodeScanner';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { 
   ChevronDownIcon, 
   MapPinIcon, 
@@ -17,7 +16,8 @@ import {
   CheckCircleIcon,
   MagnifyingGlassIcon,
   SignalIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import logo from '../../assets/logo.jpg';
 import cbeImage from '../../assets/cbe1.jpg';
@@ -47,57 +47,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c; // Distance in km
 };
 
-// Translation mappings for common branch names
-const BRANCH_TRANSLATIONS: { [key: string]: { [key: string]: string } } = {
-  'CBE Main Branch': {
-    am: 'ሲቢኢ ዋና ቅርንጫፍ',
-    or: 'CBE Biraacha Guddaa',
-    ti: 'CBE ርእሲ ቅርንጫፍ',
-    so: 'CBE Laanta Waaweyn',
-    en: 'CBE Main Branch'
-  },
-  'CBE Airport Branch': {
-    am: 'ሲቢኢ አውሮፕላን ቀጠና ቅርንጫፍ',
-    or: 'CBE Biraacha Xiyyaaraa',
-    ti: 'CBE መዕረፊ ነፈርቲ ቅርንጫፍ',
-    so: 'CBE Laanta Dayuuradaha',
-    en: 'CBE Airport Branch'
-  },
-  'CBE City Center': {
-    am: 'ሲቢኢ ማዕከላዊ ከተማ ቅርንጫፍ',
-    or: 'CBE Biraacha Magaalaa',
-    ti: 'CBE ማእኸላይ ከተማ ቅርንጫፍ',
-    so: 'CBE Laanta Magaalada',
-    en: 'CBE City Center'
-  }
-  
-};
-
-// Common address translations
-const ADDRESS_TRANSLATIONS: { [key: string]: { [key: string]: string } } = {
-  'Addis Ababa, Ethiopia': {
-    am: 'አዲስ አበባ, ኢትዮጵያ',
-    or: 'Finfinnee, Itoophiyaa',
-    ti: 'ኣዲስ ኣበባ, ኢትዮጵያ',
-    so: 'Addis Ababa, Itoobiya',
-    en: 'Addis Ababa, Ethiopia'
-  },
-  'Bole International Airport': {
-    am: 'ቦሌ ዓለም አቀፍ አውሮፕላን ማረፊያ',
-    or: 'Xiyyaaraa Bolee',
-    ti: 'መዕረፊ ነፈርτι ቦሌ',
-    so: 'Garaaka Dayuuradaha Bole',
-    en: 'Bole International Airport'
-  },
-  'Mexico Square, Addis Ababa': {
-    am: 'ሜክሲኮ አደባባይ, አዲስ አበባ',
-    or: 'Mexico Square, Finfinnee',
-    ti: 'መጋርቦ ሜክሲኮ, ኣዲስ ኣበባ',
-    so: 'Mexico Square, Addis Ababa',
-    en: 'Mexico Square, Addis Ababa'
-  }
-};
-
+// Skeleton loader for branch cards
 const BranchCardSkeleton: React.FC = () => (
   <div className="p-4 rounded-xl border-2 border-gray-200 bg-white animate-pulse">
     <div className="flex items-start justify-between">
@@ -123,6 +73,8 @@ const BranchSelectionEnhanced: React.FC = () => {
   const { user } = useAuth();
   const { setBranch } = useBranch();
   const { t, i18n } = useTranslation();
+  const { success, error: showError, info } = useToast();
+  const locationFetchedRef = useRef(false); // Prevent duplicate location fetches
 
   // State
   const [branches, setBranches] = useState<BranchWithDistance[]>([]);
@@ -131,29 +83,26 @@ const BranchSelectionEnhanced: React.FC = () => {
   const [isProceeding, setIsProceeding] = useState<boolean>(false);
   const [showQRScanner, setShowQRScanner] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'list' | 'dropdown'>('list'); // New: view toggle
   const [locationStatus, setLocationStatus] = useState<{
     loading: boolean;
     error: string | null;
     coordinates?: { lat: number; lng: number };
   }>({ loading: false, error: null });
 
-  // Get translated branch name
-  const getTranslatedBranchName = useCallback((branchName: string, currentLanguage: string): string => {
-    const translation = BRANCH_TRANSLATIONS[branchName];
-    if (translation && translation[currentLanguage]) {
-      return translation[currentLanguage];
-    }
-    return branchName;
-  }, []);
 
-  // Get translated address
-  const getTranslatedAddress = useCallback((address: string, currentLanguage: string): string => {
-    const translation = ADDRESS_TRANSLATIONS[address];
-    if (translation && translation[currentLanguage]) {
-      return translation[currentLanguage];
-    }
-    return address;
-  }, []);
+
+  // Memoized filtered branches based on search
+  const filteredBranches = useMemo(() => {
+    if (!searchQuery.trim()) return branches;
+    const query = searchQuery.toLowerCase();
+    return branches.filter(branch =>
+      branch.name.toLowerCase().includes(query) ||
+      branch.address?.toLowerCase().includes(query) ||
+      branch.code?.toLowerCase().includes(query)
+    );
+  }, [branches, searchQuery]);
 
   // Memoized values
   const canProceed = useMemo(() => !!selectedId && !isProceeding, [selectedId, isProceeding]);
@@ -162,10 +111,12 @@ const BranchSelectionEnhanced: React.FC = () => {
     [branches, selectedId]
   );
 
-  // Memoized nearby branches (with distance data)
+  // Memoized nearby branches (with distance <= 50km)
   const nearbyBranches = useMemo(() => {
-    return branches
-      .filter(branch => branch.distance !== undefined)
+    const withDistance = branches.filter(branch => 
+      branch.distance !== undefined && branch.distance <= 50
+    );
+    return withDistance
       .sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity))
       .slice(0, 5);
   }, [branches]);
@@ -200,14 +151,18 @@ const BranchSelectionEnhanced: React.FC = () => {
     }
   }, []);
 
-  // Get user's current location and return a distance-sorted branch list
-  const getUserLocation = useCallback(async (branchesList: Branch[]): Promise<BranchWithDistance[] | null> => {
+  // Get user's current location - only runs once
+  const getUserLocation = useCallback(async (branchesList: BranchWithDistance[]): Promise<BranchWithDistance[]> => {
+    if (locationFetchedRef.current) {
+      return branchesList; // Already fetched, return as-is
+    }
+
     if (!navigator.geolocation) {
       setLocationStatus({
         loading: false,
         error: t('branchSelection.geolocationNotSupported', 'Geolocation is not supported by your browser.')
       });
-      return null;
+      return branchesList;
     }
 
     setLocationStatus(prev => ({ ...prev, loading: true }));
@@ -218,14 +173,16 @@ const BranchSelectionEnhanced: React.FC = () => {
           resolve,
           reject,
           {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
+            enableHighAccuracy: false, // Changed to false for better performance
+            timeout: 5000, // Reduced timeout
+            maximumAge: 300000 // Cache for 5 minutes
           }
         );
       });
 
       const { latitude, longitude } = position.coords;
+      locationFetchedRef.current = true; // Mark as fetched
+      
       setLocationStatus({
         loading: false,
         error: null,
@@ -239,21 +196,24 @@ const BranchSelectionEnhanced: React.FC = () => {
             distance: calculateDistance(latitude, longitude, branch.latitude, branch.longitude)
           };
         }
-        return { ...branch, distance: Infinity }; // Assign a large distance if no coords
+        return { ...branch, distance: undefined };
       });
 
-      // Sort all branches by distance, creating a new array
-      const sortedByDistance = [...branchesWithDistance].sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-      
-      return sortedByDistance;
+      // Sort by distance
+      return [...branchesWithDistance].sort((a, b) => 
+        (a.distance || Infinity) - (b.distance || Infinity)
+      );
 
     } catch (error) {
       console.warn('Geolocation error:', error);
+      locationFetchedRef.current = true; // Mark as attempted
+      
       setLocationStatus({
         loading: false,
-        error: t('branchSelection.locationError', 'Could not determine your location. Using default branch selection.')
+        error: t('branchSelection.locationError', 'Could not determine your location.')
       });
-      return null;
+      
+      return branchesList; // Return unchanged
     }
   }, [t]);
 
@@ -261,33 +221,38 @@ const BranchSelectionEnhanced: React.FC = () => {
   const loadBranches = useCallback(async () => {
     setIsLoading(true);
     setError('');
-
-    const handleLocationAndUpdate = (branches: BranchWithDistance[]) => {
-      const hasCoords = branches.some(b => b.latitude && b.longitude);
-      if (hasCoords) {
-        getUserLocation(branches).then(distanceSorted => {
-          if (distanceSorted) {
-            setBranches(distanceSorted);
-
-            const lastBranchId = localStorage.getItem('lastActiveBranchId');
-            const lastBranchIsNearby = lastBranchId ? distanceSorted.find(b => b.id === lastBranchId) : null;
-
-            if (lastBranchIsNearby) {
-              setSelectedId(lastBranchIsNearby.id);
-            } else {
-              const nearest = findNearestBranch(distanceSorted);
-              if (nearest) {
-                setSelectedId(nearest.id);
-              }
-            }
-          }
-        });
-      }
-    };
     
     try {
-      // const list: BranchWithDistance[] = await fetchBranches();
-      throw new Error("Forcing mock data for development");
+      const list: Branch[] = await fetchBranches();
+      
+      if (!list || list.length === 0) {
+        throw new Error('No branches available');
+      }
+
+      // Get location and calculate distances
+      const branchesWithDist = await getUserLocation(list);
+      setBranches(branchesWithDist);
+      
+      // Select default: last used or nearest
+      const lastBranchId = localStorage.getItem('lastActiveBranchId');
+      const lastBranch = lastBranchId ? branchesWithDist.find(b => b.id === lastBranchId) : null;
+      
+      if (lastBranch) {
+        setSelectedId(lastBranch.id);
+      } else {
+        // Find nearest within 50km
+        const nearest = branchesWithDist.find(b => 
+          b.distance !== undefined && b.distance <= 50
+        );
+        if (nearest) {
+          setSelectedId(nearest.id);
+          info(t('branchSelection.nearestSelected', `Nearest branch selected: ${nearest.name}`) + ` (${nearest.distance?.toFixed(1)} km)`);
+        } else if (branchesWithDist.length > 0) {
+          setSelectedId(branchesWithDist[0].id);
+        }
+      }
+      
+      setIsLoading(false);
       
     } catch (e) {
       console.error('Failed to load branches from API:', e);
@@ -299,7 +264,6 @@ const BranchSelectionEnhanced: React.FC = () => {
           name: 'CBE Main Branch',
           code: 'MAIN',
           status: 'active',
-          qrCode: 'qr-main-001',
           address: 'Addis Ababa, Ethiopia',
           phone: '+251 11 123 4567',
           workingHours: 'Mon-Fri: 8:30 AM - 4:30 PM',
@@ -309,10 +273,9 @@ const BranchSelectionEnhanced: React.FC = () => {
         },
         {
           id: 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c',
-          name: 'CBE Ayer tena Branch', 
+          name: 'CBE Ayer Tena Branch', 
           code: 'AIRPORT',
           status: 'active',
-          qrCode: 'qr-airport-002',
           address: 'Bole International Airport',
           phone: '+251 11 987 6543',
           workingHours: 'Mon-Sun: 6:00 AM - 10:00 PM',
@@ -322,10 +285,9 @@ const BranchSelectionEnhanced: React.FC = () => {
         },
         {
           id: 'b1d5f3a2-3c3a-4f5f-ae7b-2a1f2d3c4b5e',
-          name: 'Shola branch',
-          code: 'CITYCENT',
+          name: 'CBE Shola Branch',
+          code: 'SHOLA',
           status: 'active',
-          qrCode: 'qr-city-003',
           address: 'Mexico Square, Addis Ababa',
           phone: '+251 11 555 1234',
           workingHours: 'Mon-Fri: 8:00 AM - 5:00 PM',
@@ -335,24 +297,25 @@ const BranchSelectionEnhanced: React.FC = () => {
         }
       ];
       
-      // Set mock branches for immediate render
-      setBranches(mockBranches);
-      selectDefaultBranch(mockBranches);
-      setIsLoading(false);
-
-      // Then, get location and distances in the background for the mock data
-      handleLocationAndUpdate(mockBranches);
+      const branchesWithDist = await getUserLocation(mockBranches);
+      setBranches(branchesWithDist);
       
-      setError(t('branchSelection.demoMode', 'Connected to demo mode. Using sample branch data for testing.'));
-      toast.info(t('branchSelection.demoNotification', 'Demo mode: Using sample branch data'));
+      const nearest = branchesWithDist.find(b => b.distance !== undefined && b.distance <= 50);
+      if (nearest) {
+        setSelectedId(nearest.id);
+      } else if (branchesWithDist.length > 0) {
+        setSelectedId(branchesWithDist[0].id);
+      }
+      
+      setIsLoading(false);
+      setError(t('branchSelection.demoMode', 'Demo mode: Using sample branch data'));
+      info(t('branchSelection.demoNotification', 'Demo mode: Using sample branch data'));
     }
-  }, [getUserLocation, selectDefaultBranch, findNearestBranch, t]);
+  }, [getUserLocation, t, info]);
 
   // Handle branch selection
   const handleProceed = useCallback(async () => {
-    if (!selectedId || !selectedBranch) {
-      return;
-    }
+    if (!selectedId || !selectedBranch) return;
     
     setIsProceeding(true);
 
@@ -362,17 +325,19 @@ const BranchSelectionEnhanced: React.FC = () => {
       
       await setBranch(selectedBranch);
       
+      success(t('branchSelection.branchSelected', `Branch selected: ${selectedBranch.name}`));
+      
       const nextState = { from: location.state?.from || { pathname: '/' } };
       navigate('/otp-login', { state: nextState, replace: true });
     } catch (error) {
       console.error('Branch selection failed:', error);
       const errorMessage = t('branchSelection.selectionError', 'Failed to select branch. Please try again.');
       setError(errorMessage);
-      toast.error(t('branchSelection.selectionError', 'Failed to select branch'));
+      showError(errorMessage);
     } finally {
       setIsProceeding(false);
     }
-  }, [selectedId, selectedBranch, setBranch, navigate, location.state, t]);
+  }, [selectedId, selectedBranch, setBranch, navigate, location.state, t, success, showError]);
 
   // Handle branch selection from URL
   useEffect(() => {
@@ -513,101 +478,173 @@ const BranchSelectionEnhanced: React.FC = () => {
         </div>
 
         {/* Right Form Column */}
-        <div className="md:w-3/5 p-4 sm:p-6 md:p-8 flex flex-col space-y-4 flex-1 min-h-0">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold mb-2">
+        <div className="md:w-3/5 p-3 sm:p-4 md:p-6 flex flex-col space-y-3 flex-1 min-h-0">
+          <div className="text-center space-y-2 flex-shrink-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">
               {t('branchSelection.title', 'Select Your Branch')}
             </h1>
-            <p className="text-gray-500">
+            <p className="text-gray-500 text-sm">
               {t('branchSelection.subtitle', 'Choose the branch you want to visit')}
             </p>
           </div>
 
-          {/* Nearby Branches Dropdown */}
-          {nearbyBranches.length > 0 && (
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                  {t('branchSelection.nearbyBranches', 'NEARBY BRANCHES')}
-                </h2>
-                <div className="flex items-center text-fuchsia-600 text-sm">
-                  <SignalIcon className="h-4 w-4 mr-1" />
-                  {t('branchSelection.nearYou', 'Near you')}
-                </div>
-              </div>
-              
-              <div className="relative">
-                <select
-                  value={selectedId}
-                  onChange={(e) => setSelectedId(e.target.value)}
-                  className="appearance-none w-full px-4 py-3 pr-10 border-2 border-fuchsia-200 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 bg-white text-gray-900 font-medium"
-                >
-                  <option value="">{t('branchSelection.selectNearby', 'Select a nearby branch')}</option>
-                  {nearbyBranches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {getTranslatedBranchName(branch.name, i18n.language)} - {branch.distance?.toFixed(1)} km away
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-fuchsia-600">
-                  <ChevronDownIcon className="h-5 w-5" />
-                </div>
-              </div>
+          {/* Search Bar */}
+          <div className="relative flex-shrink-0">
+            <input
+              type="text"
+              placeholder={t('branchSelection.searchPlaceholder', 'Search branches...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2.5 pl-10 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 transition-colors text-sm"
+            />
+            <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            )}
+          </div>
 
-              {selectedBranch && nearbyBranches.some(b => b.id === selectedId) && (
-                <div className="mt-3 p-3 bg-fuchsia-50 rounded-lg border border-fuchsia-200">
-                  <div className="flex items-center space-x-2 text-fuchsia-700">
-                    <MapPinIcon className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      {getTranslatedAddress(selectedBranch.address || '', i18n.language)}
-                    </span>
-                  </div>
-                  {selectedBranch.phone && (
-                    <div className="flex items-center space-x-2 text-fuchsia-600 mt-1">
-                      <PhoneIcon className="h-4 w-4" />
-                      <span className="text-sm">{selectedBranch.phone}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+          {/* Nearby Branches Section */}
+          {nearbyBranches.length > 0 && !searchQuery && (
+            <div className="border-b border-gray-100 pb-2 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  <SignalIcon className="h-3.5 w-3.5 text-fuchsia-600" />
+                  {t('branchSelection.nearbyBranches', 'Nearby Branches')}
+                </h2>
+                <span className="text-xs text-fuchsia-600 bg-fuchsia-50 px-2 py-0.5 rounded-full">
+                  {nearbyBranches.length} {t('branchSelection.found', 'found')}
+                </span>
+              </div>
             </div>
           )}
 
+          {/* Branch List - More compact to show 2+ branches */}
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-2">
+            {filteredBranches.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <BuildingStorefrontIcon className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+                <p className="text-base font-medium">{t('branchSelection.noBranchesFound', 'No branches found')}</p>
+                <p className="text-xs mt-1">{t('branchSelection.tryDifferentSearch', 'Try a different search term')}</p>
+              </div>
+            ) : (
+              filteredBranches.map((branch) => {
+                const isNearby = nearbyBranches.some(nb => nb.id === branch.id);
+                const isSelected = selectedId === branch.id;
+                
+                return (
+                  <button
+                    key={branch.id}
+                    onClick={() => setSelectedId(branch.id)}
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all duration-200 ${
+                      isSelected
+                        ? 'border-fuchsia-600 bg-fuchsia-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-fuchsia-300 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-2 flex-1">
+                        <div className={`p-1.5 rounded-lg ${
+                          isSelected ? 'bg-fuchsia-600' : 'bg-gray-100'
+                        }`}>
+                          <BuildingStorefrontIcon className={`h-4 w-4 ${
+                            isSelected ? 'text-white' : 'text-gray-600'
+                          }`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h3 className="font-semibold text-sm text-gray-900 truncate">
+                              {branch.name}
+                            </h3>
+                            {isNearby && (
+                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                {branch.distance?.toFixed(1)} km
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-0.5 text-xs">
+                            {branch.address && (
+                              <div className="flex items-center gap-1 text-gray-600">
+                                <MapPinIcon className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{branch.address}</span>
+                              </div>
+                            )}
+                            {branch.phone && (
+                              <div className="flex items-center gap-1 text-gray-600">
+                                <PhoneIcon className="h-3 w-3 flex-shrink-0" />
+                                <span>{branch.phone}</span>
+                              </div>
+                            )}
+                            {branch.workingHours && (
+                              <div className="flex items-center gap-1 text-gray-500">
+                                <ClockIcon className="h-3 w-3 flex-shrink-0" />
+                                <span>{branch.workingHours}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <CheckCircleIcon className="h-5 w-5 text-fuchsia-600 flex-shrink-0" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
           {/* Location Status */}
           {locationStatus.loading && (
-            <div className="mt-4 p-3 bg-fuchsia-50 rounded-lg border border-fuchsia-200">
+            <div className="p-2 bg-fuchsia-50 rounded-lg border border-fuchsia-200 flex-shrink-0">
               <div className="flex items-center space-x-2 text-fuchsia-700">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-fuchsia-600"></div>
-                <span className="text-sm">{t('branchSelection.findingBranches', 'Finding branches near you...')}</span>
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-fuchsia-600"></div>
+                <span className="text-xs">{t('branchSelection.findingBranches', 'Finding branches near you...')}</span>
               </div>
             </div>
           )}
           
           {locationStatus.error && (
-            <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div className="p-2 bg-yellow-50 rounded-lg border border-yellow-200 flex-shrink-0">
               <div className="flex items-center space-x-2 text-yellow-700">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <span className="text-sm">{locationStatus.error}</span>
+                <span className="text-xs">{locationStatus.error}</span>
               </div>
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="bg-gray-50 px-6 py-6 border-t border-gray-100 space-y-4">
+          {/* Selected Branch Info - Compact */}
+          {selectedBranch && (
+            <div className="bg-fuchsia-50 px-3 py-2 border border-fuchsia-200 rounded-lg flex-shrink-0">
+              <div className="flex items-center space-x-2 text-fuchsia-700">
+                <CheckCircleIcon className="h-4 w-4" />
+                <span className="text-xs font-medium">
+                  {t('branchSelection.selectedBranch', 'Selected:')} {selectedBranch.name}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons - Moved to bottom with smaller size */}
+          <div className="border-t border-gray-100 pt-3 space-y-2 flex-shrink-0">
             <button
               onClick={handleProceed}
               disabled={!canProceed}
-              className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform ${
+              className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-300 ${
                 canProceed
-                  ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
+                  ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-700 hover:to-pink-700 text-white shadow-md hover:shadow-lg'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
               {isProceeding ? (
                 <span className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   {t('branchSelection.processing', 'Processing...')}
                 </span>
               ) : (
@@ -615,29 +652,17 @@ const BranchSelectionEnhanced: React.FC = () => {
               )}
             </button>
             
-            {/* QR Scanner button */}
+            {/* QR Scanner button - Smaller */}
             <button
               onClick={() => setShowQRScanner(true)}
-              className="w-full py-3 px-6 border-2 border-fuchsia-600 text-fuchsia-600 rounded-xl hover:bg-fuchsia-50 transition-all duration-300 flex items-center justify-center font-medium"
+              className="w-full py-2 px-4 border border-fuchsia-600 text-fuchsia-600 rounded-lg hover:bg-fuchsia-50 transition-all duration-300 flex items-center justify-center font-medium text-sm"
             >
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h1m-6 0h1m-6 0h1M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {t('branchSelection.scanQR', 'Scan Branch QR Code')}
+              {t('branchSelection.scanQR', 'Scan QR Code')}
             </button>
           </div>
-
-          {/* Selected Branch Info */}
-          {selectedBranch && (
-            <div className="bg-fuchsia-50 px-6 py-4 border-t border-fuchsia-200">
-              <div className="flex items-center space-x-2 text-fuchsia-700">
-                <CheckCircleIcon className="h-5 w-5" />
-                <span className="text-sm font-medium">
-                  {t('branchSelection.selectedBranch', 'Selected:')} {getTranslatedBranchName(selectedBranch.name, i18n.language)}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

@@ -14,7 +14,6 @@ import translationSGW from './locales/sgw/translation.json';
 import translationHDY from './locales/hdy/translation.json';
 import translationSO from './locales/so/translation.json';
 
-
 const resources = {
   en: {
     translation: translationEN

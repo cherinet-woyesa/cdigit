@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { speechService } from '../services/speechService';
@@ -16,21 +16,26 @@ const LanguageSelection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const getLastUsedLanguage = (): LanguageCode | null => {
+  const getLastUsedLanguage = useCallback((): LanguageCode | null => {
     const lang = localStorage.getItem('lastUsedLanguage');
     return lang && LANGUAGES.some(l => l.code === lang) ? lang as LanguageCode : null;
-  };
+  }, []);
 
-  const saveLastUsedLanguage = (langCode: LanguageCode) => {
+  const saveLastUsedLanguage = useCallback((langCode: LanguageCode) => {
     localStorage.setItem('lastUsedLanguage', langCode);
-  };
+  }, []);
 
-  const filteredLanguages = LANGUAGES.filter(lang =>
-    lang.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lang.nativeName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Memoized filtered languages for performance
+  const filteredLanguages = useMemo(() => {
+    if (!searchTerm.trim()) return LANGUAGES;
+    const query = searchTerm.toLowerCase();
+    return LANGUAGES.filter(lang =>
+      lang.name.toLowerCase().includes(query) ||
+      lang.nativeName.toLowerCase().includes(query)
+    );
+  }, [searchTerm]);
 
-  const handleLanguageSelect = async (langCode: LanguageCode) => {
+  const handleLanguageSelect = useCallback(async (langCode: LanguageCode) => {
     setSelectedLanguage(langCode);
     saveLastUsedLanguage(langCode);
     speechService.stop();
@@ -46,34 +51,39 @@ const LanguageSelection: React.FC = () => {
     document.documentElement.lang = langCode;
     
     navigate('/select-branch');
-  };
+  }, [i18n, navigate, saveLastUsedLanguage]);
 
-  const speakWelcomeMessage = async (lang?: LanguageCode) => {
+  const speakWelcomeMessage = useCallback(async (lang?: LanguageCode) => {
+    if (isSpeaking) return; // Prevent multiple simultaneous speeches
     setIsSpeaking(true);
     const welcomeMessage = t('welcome_message', 'Welcome to Commercial Bank of Ethiopia. Choose language to proceed.');
     const langCode = lang || i18n.language as LanguageCode;
     await speechService.speak(welcomeMessage, langCode, 'welcome_message');
     setIsSpeaking(false);
-  };
+  }, [t, i18n.language, isSpeaking]);
 
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, langCode: LanguageCode) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleLanguageSelect(langCode);
+    }
+  }, [handleLanguageSelect]);
+
+  // Play welcome message only once on initial mount
   useEffect(() => {
-    const lastUsedLanguage = getLastUsedLanguage();
+    const hasPlayedWelcome = sessionStorage.getItem('welcomePlayed');
     
-    if (lastUsedLanguage) {
-      setSelectedLanguage(lastUsedLanguage);
+    if (!hasPlayedWelcome) {
+      const lastUsedLanguage = getLastUsedLanguage();
       const timer = setTimeout(() => {
-        speakWelcomeMessage(lastUsedLanguage);
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    } else {
-      const timer = setTimeout(() => {
-        speakWelcomeMessage();
+        speakWelcomeMessage(lastUsedLanguage || 'en');
+        sessionStorage.setItem('welcomePlayed', 'true');
       }, 1000);
       
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [getLastUsedLanguage, speakWelcomeMessage]);
 
   useEffect(() => {
     return () => {
@@ -123,7 +133,7 @@ const LanguageSelection: React.FC = () => {
         </div>
 
         <div className="language-form-section md:w-3/5 p-4 sm:p-6 md:p-8 flex flex-col space-y-4 flex-1 min-h-0">
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-2">            
             <div className="space-y-1">
               <h2 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-fuchsia-700 to-pink-600 bg-clip-text text-transparent">
                 {t('selectLanguage', 'Select Language')}
@@ -189,6 +199,7 @@ const LanguageSelection: React.FC = () => {
                   <button
                     key={lang.code}
                     onClick={() => handleLanguageSelect(lang.code)}
+                    onKeyDown={(e) => handleKeyDown(e, lang.code)}
                     className={`language-card w-full text-left p-3 rounded-lg border-2 transition-all duration-200 hover:border-fuchsia-700 hover:shadow-md group ${
                       selectedLanguage === lang.code 
                         ? 'border-fuchsia-700 bg-fuchsia-50 shadow-md' 

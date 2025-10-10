@@ -1,15 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getWithdrawalHistoryByPhone, getDepositHistoryByPhone, getFundTransferHistoryByPhone, type Transaction } from '../../services/historyService';
 import { ArrowDownCircleIcon, ArrowUpCircleIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/solid';
+import { SkeletonTable } from '../../components/Skeleton';
+import { useToast } from '../../context/ToastContext';
 
-const TransactionIcon = ({ type }: { type: Transaction['type'] }) => {
+const TransactionIcon = memo(({ type }: { type: Transaction['type'] }) => {
     const baseClass = "h-8 w-8 text-white";
     if (type === 'Deposit') return <ArrowDownCircleIcon className={baseClass} />;
     if (type === 'Withdrawal') return <ArrowUpCircleIcon className={baseClass} />;
     if (type === 'Transfer') return <ArrowsRightLeftIcon className={baseClass} />;
     return null;
-};
+});
+
+TransactionIcon.displayName = 'TransactionIcon';
 
 const getStatusColor = (status: Transaction['status']) => {
     switch (status) {
@@ -20,7 +24,7 @@ const getStatusColor = (status: Transaction['status']) => {
     }
 };
 
-const TransactionList = ({ transactions, type }: { transactions: Transaction[], type: Transaction['type'] | 'All' }) => {
+const TransactionList = memo(({ transactions, type }: { transactions: Transaction[], type: Transaction['type'] | 'All' }) => {
     const filtered = type === 'All' ? transactions : transactions.filter(tx => tx.type === type);
 
     if (filtered.length === 0) {
@@ -50,10 +54,13 @@ const TransactionList = ({ transactions, type }: { transactions: Transaction[], 
             ))}
         </ul>
     );
-};
+});
+
+TransactionList.displayName = 'TransactionList';
 
 export default function TransactionHistory() {
     const { phone } = useAuth();
+    const { error: showError, info } = useToast();
     const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -62,7 +69,9 @@ export default function TransactionHistory() {
     useEffect(() => {
         const fetchAllHistory = async () => {
             if (!phone) {
-                setError("Authentication error. Please log in again.");
+                const errorMsg = "Authentication error. Please log in again.";
+                setError(errorMsg);
+                showError(errorMsg);
                 setIsLoading(false);
                 return;
             }
@@ -77,19 +86,24 @@ export default function TransactionHistory() {
                     ...deposits,
                     ...withdrawals,
                     ...transfers,
-                ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date descending
+                ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
                 setAllTransactions(combinedTransactions);
+                if (combinedTransactions.length === 0) {
+                    info('No transactions found in your history.');
+                }
             } catch (err) {
                 console.error("Failed to fetch transaction history:", err);
-                setError("Failed to fetch transaction history. Please try again later.");
+                const errorMsg = "Failed to fetch transaction history. Please try again later.";
+                setError(errorMsg);
+                showError(errorMsg);
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchAllHistory();
-    }, [phone]);
+    }, [phone, showError, info]);
 
     // Filter transactions based on the active tab
     const filteredTransactions = activeTab === 'All' ? allTransactions : allTransactions.filter(tx => tx.type === activeTab);
@@ -120,7 +134,7 @@ export default function TransactionHistory() {
 
                     <div className="mt-6">
                         {isLoading ? (
-                            <div className="text-center py-10 text-gray-500">Loading history...</div>
+                            <SkeletonTable rows={5} columns={4} />
                         ) : error ? (
                             <div className="text-center py-10 text-red-600">{error}</div>
                         ) : (

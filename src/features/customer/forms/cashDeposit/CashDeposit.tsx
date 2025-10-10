@@ -7,6 +7,8 @@ import Field from '../../../../components/Field';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher';
+import { useToast } from '../../../../context/ToastContext';
+import { validateAmount, validateRequired } from '../../../../utils/validation';
 import { 
     Loader2, 
     AlertCircle, 
@@ -53,6 +55,7 @@ export default function CashDepositForm() {
     const { t } = useTranslation();
     const { phone, user } = useAuth();
     const { branch } = useBranch();
+    const { success: showSuccess, error: showError } = useToast();
     const navigate = useNavigate();
     const location = useLocation();
     const { 
@@ -159,8 +162,23 @@ export default function CashDepositForm() {
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         
-        if (errors[name as keyof Errors]) {
-            setErrors(prev => ({ ...prev, [name]: undefined }));
+        // Real-time validation feedback
+        if (name === 'accountNumber' && value) {
+            const validation = validateRequired(value);
+            if (!validation.isValid) {
+                setErrors(prev => ({ ...prev, accountNumber: validation.error }));
+            } else {
+                setErrors(prev => ({ ...prev, accountNumber: undefined }));
+            }
+        }
+        
+        if (name === 'amount' && value) {
+            const validation = validateAmount(value, { min: 0.01, max: 1000000 });
+            if (!validation.isValid) {
+                setErrors(prev => ({ ...prev, amount: validation.error }));
+            } else {
+                setErrors(prev => ({ ...prev, amount: undefined }));
+            }
         }
 
         if (name === 'accountNumber') {
@@ -190,19 +208,27 @@ export default function CashDepositForm() {
     const validateAll = (): boolean => {
         const errs: Errors = {};
         
-        if (!formData.accountNumber.trim()) {
-            errs.accountNumber = t('accountNumberRequired', 'Please select an account');
+        const accountValidation = validateRequired(formData.accountNumber);
+        if (!accountValidation.isValid) {
+            errs.accountNumber = accountValidation.error || t('accountNumberRequired', 'Please select an account');
         }
         
-        if (!formData.accountHolderName.trim()) {
-            errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required');
+        const holderValidation = validateRequired(formData.accountHolderName);
+        if (!holderValidation.isValid) {
+            errs.accountHolderName = holderValidation.error || t('accountHolderNameRequired', 'Account holder name is required');
         }
         
-        if (!formData.amount || Number(formData.amount) <= 0) {
-            errs.amount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
+        const amountValidation = validateAmount(formData.amount, { min: 0.01, max: 1000000 });
+        if (!amountValidation.isValid) {
+            errs.amount = amountValidation.error || t('validAmountRequired', 'Please enter a valid amount greater than 0');
         }
         
         setErrors(errs);
+        
+        if (Object.keys(errs).length > 0) {
+            showError(t('validationErrors', 'Please fix the errors in the form'));
+        }
+        
         return Object.keys(errs).length === 0;
     };
 
@@ -251,6 +277,11 @@ export default function CashDepositForm() {
             const response = updateId
                 ? await depositService.updateDeposit(updateId, depositData)
                 : await depositService.submitDeposit(depositData);
+            
+            showSuccess(updateId 
+                ? t('depositUpdated', 'Deposit updated successfully!')
+                : t('depositSubmitted', 'Deposit submitted successfully!')
+            );
                 
             navigate('/form/cash-deposit/cashdepositconfirmation', { 
                 state: { 
@@ -267,7 +298,9 @@ export default function CashDepositForm() {
                 } 
             });
         } catch (error: any) {
-            setErrors({ submit: error?.message || t('submissionFailed', 'Submission failed. Please try again.') });
+            const errorMsg = error?.message || t('submissionFailed', 'Submission failed. Please try again.');
+            setErrors({ submit: errorMsg });
+            showError(errorMsg);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setIsSubmitting(false);
