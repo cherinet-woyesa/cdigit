@@ -26,26 +26,26 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
   ];
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-fuchsia-700 to-purple-800 text-white min-h-screen flex flex-col justify-between shadow-xl">
-      <div>
+    <aside className="w-64 bg-gradient-to-b from-fuchsia-700 via-fuchsia-600 to-fuchsia-700 min-h-screen flex flex-col shadow-xl">
+      <div className="flex-1">
         {/* Logo & Brand */}
-        <div className="px-6 py-6 text-center border-b border-fuchsia-600/50">
-          <div className="flex items-center justify-center space-x-3">
+        <div className="px-6 py-6 border-b border-fuchsia-500/30">
+          <div className="flex items-center space-x-3">
             <img
               src={cbelogo}
               alt="CBE Logo"
-              className="h-12 w-12 object-contain rounded-full border-2 border-fuchsia-200/50"
+              className="h-12 w-12 object-contain rounded-lg bg-white/10 p-1"
             />
-            <div className="text-left">
-              <h2 className="font-bold text-lg leading-tight">CBE Digital</h2>
-              <p className="text-fuchsia-100 text-xs mt-1">Maker Portal</p>
+            <div>
+              <h2 className="font-bold text-lg text-white">CBE Digital</h2>
+              <p className="text-fuchsia-100 text-xs font-medium mt-0.5">Maker Portal</p>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="mt-6 px-3">
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {navItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = activeSection === item.id;
@@ -54,25 +54,25 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
                 <li key={item.id}>
                   <button
                     onClick={() => onNavigate(item.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 text-left rounded-xl transition-all duration-200 group ${
+                    className={`w-full flex items-center justify-between px-4 py-3 text-left rounded-lg transition-all duration-200 group ${
                       isActive
-                        ? "bg-white text-fuchsia-700 shadow-lg transform scale-105"
-                        : "text-fuchsia-100 hover:bg-fuchsia-600/50 hover:text-white hover:shadow-md"
+                        ? "bg-white text-fuchsia-700 shadow-lg"
+                        : "text-fuchsia-50 hover:bg-fuchsia-600/50 hover:text-white"
                     }`}
                   >
                     <div className="flex items-center">
                       <IconComponent className={`h-5 w-5 mr-3 ${
-                        isActive ? "text-fuchsia-600" : "text-fuchsia-200"
+                        isActive ? "text-fuchsia-700" : "text-fuchsia-100"
                       }`} />
-                      <span className="font-medium">{item.label}</span>
+                      <span className="font-medium text-sm">{item.label}</span>
                     </div>
                     
                     {/* Badge Count */}
                     {item.badgeCount && item.badgeCount > 0 && (
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full min-w-6 text-center ${
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full min-w-6 text-center ${
                         isActive 
-                          ? "bg-fuchsia-100 text-fuchsia-700" 
-                          : "bg-fuchsia-500/30 text-fuchsia-100"
+                          ? "bg-fuchsia-700 text-white" 
+                          : "bg-white/20 text-white"
                       }`}>
                         {item.badgeCount}
                       </span>
@@ -86,24 +86,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
       </div>
 
       {/* Logout Section */}
-      <div className="p-4 border-t border-fuchsia-600/50">
+      <div className="p-4 border-t border-fuchsia-500/30">
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-center px-4 py-3 bg-red-600/20 hover:bg-red-600/30 text-red-100 hover:text-white rounded-xl transition-all duration-200 group border border-red-500/30"
+          className="w-full flex items-center justify-center px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all duration-200 group border border-white/20"
         >
           <ArrowRightOnRectangleIcon className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
-          <span className="font-semibold">Logout</span>
+          <span className="font-semibold text-sm">Logout</span>
         </button>
         
-        {/* Quick Status */}
-        <div className="mt-3 px-2">
-          <div className="flex items-center justify-between text-xs text-fuchsia-200/70">
-            <span>Status</span>
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span>Online</span>
-            </div>
-          </div>
+        {/* Footer Info */}
+        <div className="mt-3 px-2 text-center">
+          <p className="text-xs text-fuchsia-200">
+            &copy; {new Date().getFullYear()} CBE
+          </p>
         </div>
       </div>
     </aside>

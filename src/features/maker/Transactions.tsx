@@ -5,6 +5,7 @@ import type { DecodedToken } from "types/DecodedToken";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import { faDoorOpen, faSpinner, faCheckCircle, faUserClock, faMoneyBillWave, faShuffle, faSackDollar, } from "@fortawesome/free-solid-svg-icons";
+import { ClockIcon } from "@heroicons/react/24/outline";
 import makerService, { type CustomerQueueItem, type NextCustomerResponse, type TransactionType, } from "../../services/makerService";
 import { useAuth } from "../../context/AuthContext";
 import DenominationModal from "../../modals/DenominationModal";
@@ -329,25 +330,29 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
     return (
 
-        <div>
+        <div className="space-y-6">
             {/* Stats */}
-            <section className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div>
-                        <p className="text-xs text-gray-500">Deposits</p>
-                        <p className="text-lg font-bold text-fuchsia-700">{stats.Deposit}</p>
+            <section className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-fuchsia-700 rounded-full"></div>
+                    <h3 className="text-sm font-semibold text-gray-900">Queue Statistics</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <p className="text-xs text-blue-600 font-medium mb-1">Deposits</p>
+                        <p className="text-2xl font-bold text-blue-700">{stats.Deposit}</p>
                     </div>
-                    <div>
-                        <p className="text-xs text-gray-500">Withdrawals</p>
-                        <p className="text-lg font-bold text-fuchsia-700">{stats.Withdrawal}</p>
+                    <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-100">
+                        <p className="text-xs text-amber-600 font-medium mb-1">Withdrawals</p>
+                        <p className="text-2xl font-bold text-amber-700">{stats.Withdrawal}</p>
                     </div>
-                    <div>
-                        <p className="text-xs text-gray-500">Transfers</p>
-                        <p className="text-lg font-bold text-fuchsia-700">{stats.FundTransfer}</p>
+                    <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-100">
+                        <p className="text-xs text-purple-600 font-medium mb-1">Transfers</p>
+                        <p className="text-2xl font-bold text-purple-700">{stats.FundTransfer}</p>
                     </div>
-                    <div>
-                        <p className="text-xs text-gray-500">Total in Queue</p>
-                        <p className="text-lg font-bold text-gray-800">{stats.total}</p>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-600 font-medium mb-1">Total in Queue</p>
+                        <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                     </div>
                 </div>
             </section>
@@ -364,26 +369,26 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             />
 
             {/* Actions */}
-            <section className="flex gap-3 mt-6">
+            <section className="flex flex-wrap gap-3">
                 <button
                     onClick={handleCallNext}
                     disabled={!assignedWindow || busyAction === "calling"}
-                    className="bg-purple-700 text-white font-semibold px-4 py-2 rounded-xl shadow hover:bg-purple-800 transition disabled:opacity-60"
+                    className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold px-6 py-3 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                    <FontAwesomeIcon icon={faDoorOpen} className="mr-2" />
-                    {busyAction === "calling" ? "Calling…" : "Call Next"}
+                    <FontAwesomeIcon icon={faDoorOpen} />
+                    {busyAction === "calling" ? "Calling…" : "Call Next Customer"}
                 </button>
 
                 <button
                     onClick={() => setShowFormRefModal(true)}
-                    className="px-4 py-2 rounded-xl bg-blue-600 text-white shadow hover:bg-blue-700 transition"
+                    className="px-6 py-3 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm transition-all font-medium"
                 >
                     Search by Form Ref ID
                 </button>
-                {/* New Other Services Button */}
+                
                 <button
                     onClick={() => setShowServices((prev) => !prev)}
-                    className="px-4 py-2 rounded-xl bg-fuchsia-600 text-white shadow hover:bg-fuchsia-700 transition"
+                    className="px-6 py-3 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm transition-all font-medium"
                 >
                     {showServices ? "Hide Services" : "Other Services"}
                 </button>
@@ -391,44 +396,47 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
             {/* Queue */}
             <section>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                    Waiting Queue (Today)
-                </h3>
+                <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-6 bg-fuchsia-700 rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                        Waiting Queue (Today)
+                    </h3>
+                </div>
                 {queue.length === 0 ? (
                     <div className="bg-white rounded-xl p-6 text-center text-gray-500 shadow">
                         No customers in queue.
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-
                         {queue.map((q) => (
                             <div
                                 key={q.id}
-                                // className="bg-fuchsia-300 rounded-xl shadow p-4 border border-gray-100 hover:shadow-md transition"
-                                className="rounded-xl shadow p-4 border border-gray-100 hover:shadow-md transition"
+                                className="bg-white rounded-xl shadow-sm p-5 border border-gray-200 hover:shadow-md transition-shadow"
                             >
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center justify-between mb-3">
                                     <span
-                                        className={`text-xs px-2 py-1 rounded-full ${q.transactionType === "Deposit"
-                                            ? "bg-blue-50 text-blue-700"
-                                            : q.transactionType === "Withdrawal"
-                                                ? "bg-amber-50 text-amber-700"
-                                                : "bg-purple-50 text-purple-700"
-                                            }`}
+                                        className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                                            q.transactionType === "Deposit"
+                                                ? "bg-blue-100 text-blue-700"
+                                                : q.transactionType === "Withdrawal"
+                                                ? "bg-amber-100 text-amber-700"
+                                                : "bg-purple-100 text-purple-700"
+                                        }`}
                                     >
                                         {q.transactionType}
                                     </span>
-                                    <span className="text-sm text-gray-500">
+                                    <span className="text-sm font-semibold text-gray-900">
                                         Q#{q.queueNumber}
                                     </span>
                                 </div>
-                                <div className="font-semibold text-gray-800">
+                                <div className="font-semibold text-gray-900 mb-2">
                                     {q.accountHolderName}
                                 </div>
-                                <div className="text-sm text-gray-500 mt-1">
+                                <div className="text-sm text-gray-600 mb-3">
                                     ETB {Number(q.amount).toLocaleString()}
                                 </div>
-                                <div className="text-xs text-gray-400 mt-2">
+                                <div className="text-xs text-gray-500 flex items-center gap-1">
+                                    <ClockIcon className="h-3 w-3" />
                                     {new Date(q.submittedAt).toLocaleTimeString()}
                                 </div>
                             </div>
@@ -438,11 +446,20 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             </section>
 
             {/* Served */}
-            <section className="w-fit mx-auto">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                    Total served by you (Today)
-                </h3>
-                <StatCard title="Total Served" value={totalServed} icon={faCheckCircle} bgColor="bg-fuchsia-600" />
+            <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-fuchsia-700 rounded-full"></div>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                        Your Performance Today
+                    </h3>
+                </div>
+                <div className="flex items-center justify-center">
+                    <div className="text-center p-6 bg-green-50 rounded-xl border border-green-200">
+                        <FontAwesomeIcon icon={faCheckCircle} className="text-green-600 text-3xl mb-3" />
+                        <p className="text-sm text-green-600 font-medium mb-1">Total Served</p>
+                        <p className="text-4xl font-bold text-green-700">{totalServed}</p>
+                    </div>
+                </div>
             </section>
 
 

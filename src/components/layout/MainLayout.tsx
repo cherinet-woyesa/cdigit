@@ -27,7 +27,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-100">
       {/* Sidebar - Only navigation */}
       <Sidebar 
         activeSection={activeSection}
@@ -44,7 +44,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         />
         
         {/* Main Content - This is where MakerDashboard content goes */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-gray-50">
           {children}
         </main>
         

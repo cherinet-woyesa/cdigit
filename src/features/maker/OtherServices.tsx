@@ -1,215 +1,259 @@
-import React from "react";
+import React, { useState, useEffect } from 'react';
 import { 
-  DocumentTextIcon,
-  DevicePhoneMobileIcon,
-  ComputerDesktopIcon,
-  ArrowPathIcon,
-  ClockIcon
-} from "@heroicons/react/24/outline";
+  DocumentTextIcon, 
+  CurrencyDollarIcon, 
+  DevicePhoneMobileIcon, 
+  ReceiptPercentIcon, 
+  DocumentDuplicateIcon, 
+  HandRaisedIcon, 
+  LinkIcon, 
+  ArrowsRightLeftIcon 
+} from '@heroicons/react/24/outline';
+import otherServicesService from '../../services/otherServicesService';
+import type { OtherServicesData } from '../../services/otherServicesService';
+import { jwtDecode } from 'jwt-decode';
+
+interface JWTPayload {
+  nameid: string;
+  unique_name: string;
+  BranchId: string;
+}
+
+interface Service {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  count: number;
+  color: string;
+}
 
 interface OtherServicesProps {
-  onServiceClick: (serviceType: string) => void;
+  onServiceClick?: (serviceType: string) => void;
 }
 
 const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
-  const services = [
-    { 
-      title: "Account Opening", 
-      description: "Process new account applications", 
-      color: "fuchsia", 
-      icon: DocumentTextIcon, 
-      count: 3,
-      type: "account-opening"
-    },
-    { 
-      title: "CBE Birr Requests", 
-      description: "Handle CBE Birr registration and support", 
-      color: "purple", 
-      icon: DevicePhoneMobileIcon, 
-      count: 5,
-      type: "cbe-birr"
-    },
-    { 
-      title: "E-Banking Request", 
-      description: "Manage e-banking service requests", 
-      color: "indigo", 
-      icon: ComputerDesktopIcon, 
-      count: 2,
-      type: "e-banking"
-    },
-  ];
+  const [servicesData, setServicesData] = useState<OtherServicesData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const quickActions = [
-    {
-      title: "Print Today's Report",
-      description: "Generate and print transaction summary",
-      icon: DocumentTextIcon,
-      type: "print-report"
-    },
-    {
-      title: "View Performance",
-      description: "Check your efficiency metrics and stats",
-      icon: ChartBarIcon,
-      type: "performance"
-    },
-    {
-      title: "Need Assistance",
-      description: "Contact supervisor for support",
-      icon: HandRaisedIcon,
-      type: "assistance"
-    },
-    {
-      title: "System Settings",
-      description: "Preferences and configuration",
-      icon: CogIcon,
-      type: "settings"
+  const token = localStorage.getItem('token') || '';
+  const decodedToken: JWTPayload | null = token ? jwtDecode<JWTPayload>(token) : null;
+  const branchId = decodedToken?.BranchId || '';
+
+  // Fetch services data
+  const fetchServicesData = async () => {
+    if (!branchId || !token) {
+      setError('Missing branch ID or authentication token');
+      setLoading(false);
+      return;
     }
-  ];
+
+    try {
+      setLoading(true);
+      const data = await otherServicesService.getAllServicesCounts(branchId, token);
+      setServicesData(data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch services data:', err);
+      setError('Failed to load services data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchServicesData();
+  }, [branchId, token]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchServicesData();
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [branchId, token]);
+
+  // Map services data to display format
+  const services: Service[] = servicesData
+    ? [
+        {
+          id: 'accountOpening',
+          name: 'Account Opening',
+          icon: DocumentTextIcon,
+          count: servicesData.accountOpening,
+          color: 'text-blue-600',
+        },
+        {
+          id: 'cbeBirrRegistration',
+          name: 'CBE Birr Registration',
+          icon: CurrencyDollarIcon,
+          count: servicesData.cbeBirrRegistration,
+          color: 'text-green-600',
+        },
+        {
+          id: 'eBankingApplication',
+          name: 'E-Banking Application',
+          icon: DevicePhoneMobileIcon,
+          count: servicesData.eBankingApplication,
+          color: 'text-purple-600',
+        },
+        {
+          id: 'posRequest',
+          name: 'POS Request',
+          icon: ReceiptPercentIcon,
+          count: servicesData.posRequest,
+          color: 'text-indigo-600',
+        },
+        {
+          id: 'statementRequest',
+          name: 'Statement Request',
+          icon: DocumentDuplicateIcon,
+          count: servicesData.statementRequest,
+          color: 'text-orange-600',
+        },
+        {
+          id: 'stopPayment',
+          name: 'Stop Payment',
+          icon: HandRaisedIcon,
+          count: servicesData.stopPayment,
+          color: 'text-red-600',
+        },
+        {
+          id: 'cbeBirrLink',
+          name: 'CBE Birr Link',
+          icon: LinkIcon,
+          count: servicesData.cbeBirrLink,
+          color: 'text-teal-600',
+        },
+        {
+          id: 'rtgsTransfer',
+          name: 'RTGS Transfer',
+          icon: ArrowsRightLeftIcon,
+          count: servicesData.rtgsTransfer,
+          color: 'text-pink-600',
+        },
+      ]
+    : [];
+
+  // Loading skeleton
+  if (loading && !servicesData) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+        <div className="flex justify-between items-center mb-6">
+          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-8 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+        </div>
+        <div className="space-y-3">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="flex items-center justify-between p-4 rounded-lg bg-gray-50 animate-pulse">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                <div className="h-4 w-32 bg-gray-200 rounded"></div>
+              </div>
+              <div className="h-6 w-8 bg-gray-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !servicesData) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-bold text-gray-900">Other Services</h3>
+          <span className="px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+            Error
+          </span>
+        </div>
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <p className="text-red-600 font-medium mb-4">{error}</p>
+          <button
+            onClick={fetchServicesData}
+            className="px-6 py-2.5 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 transition-colors shadow-sm font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const totalCount = servicesData?.total || 0;
 
   return (
-    <div className="space-y-6">
-      {/* Main Services Section */}
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">Other Services</h2>
-            <p className="text-gray-600 text-sm mt-1">Manage additional customer service requests</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-gray-500">Total Requests Waiting</div>
-            <div className="text-lg font-bold text-fuchsia-700">10</div>
-          </div>
+    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-6 bg-fuchsia-700 rounded-full"></div>
+          <h3 className="text-lg font-bold text-gray-900">Other Services</h3>
         </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {services.map((service, index) => {
-            const IconComponent = service.icon;
-            
-            return (
-              <div
-                key={index}
-                onClick={() => onServiceClick(service.type)}
-                className={`relative rounded-lg shadow-sm p-4 bg-white cursor-pointer border-t-4 border-${service.color}-500 transform transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group`}
-              >
-                {/* Badge Count */}
-                {service.count > 0 && (
-                  <div className={`absolute -top-2 -right-2 bg-${service.color}-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-6 text-center`}>
-                    {service.count}
-                  </div>
-                )}
-                
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg bg-${service.color}-50 group-hover:bg-${service.color}-100 transition-colors`}>
-                    <IconComponent className={`h-5 w-5 text-${service.color}-600`} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-md font-bold text-gray-800 group-hover:text-gray-900">
-                      {service.title}
-                    </h4>
-                    <p className="text-xs text-gray-500 leading-snug mt-1">
-                      {service.description}
-                    </p>
-                  </div>
-                  <ArrowPathIcon className={`h-4 w-4 text-gray-300 group-hover:text-${service.color}-600 group-hover:rotate-180 transition-all`} />
+        <span className={`px-3 py-1.5 rounded-full text-sm font-bold ${
+          totalCount > 0 
+            ? 'bg-fuchsia-700 text-white' 
+            : 'bg-gray-100 text-gray-600'
+        }`}>
+          {totalCount}
+        </span>
+      </div>
+
+      {/* Services List */}
+      <div className="space-y-2">
+        {services.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 font-medium">No service data available</p>
+          </div>
+        ) : (
+          services.map((service) => (
+            <div
+              key={service.id}
+              onClick={() => onServiceClick?.(service.name)}
+              className="flex items-center justify-between p-4 rounded-lg hover:bg-gray-50 border border-gray-100 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <div className={`w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center group-hover:bg-fuchsia-50 transition-colors border border-gray-200`}>
+                  <service.icon className={`w-5 h-5 ${service.color}`} />
                 </div>
+                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                  {service.name}
+                </span>
               </div>
-            );
-          })}
-        </div>
-      </section>
+              <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+                service.count > 0 ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-gray-100 text-gray-400'
+              }`}>
+                {service.count}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
 
-      {/* Quick Actions Section */}
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 className="font-semibold text-fuchsia-700 mb-4 text-lg">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActions.map((action, index) => {
-            const IconComponent = action.icon;
-            
-            return (
-              <button 
-                key={index}
-                onClick={() => onServiceClick(action.type)}
-                className="text-left p-4 rounded-lg border border-gray-200 hover:border-fuchsia-400 hover:bg-fuchsia-50 transition-all duration-200 group"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-fuchsia-100 group-hover:bg-fuchsia-200 transition-colors">
-                    <IconComponent className="h-4 w-4 text-fuchsia-600" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-fuchsia-700 group-hover:text-fuchsia-800 text-sm">
-                      {action.title}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1 leading-relaxed">
-                      {action.description}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Statistics Section */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-fuchsia-100 text-sm">Completed Today</p>
-              <p className="text-2xl font-bold mt-1">24</p>
-            </div>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <DocumentTextIcon className="h-6 w-6" />
-            </div>
+      {/* Refresh indicator */}
+      {loading && servicesData && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+            <div className="w-4 h-4 border-2 border-fuchsia-600 border-t-transparent rounded-full animate-spin"></div>
+            <span>Updating...</span>
           </div>
         </div>
-        
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">Pending Review</p>
-              <p className="text-2xl font-bold mt-1">8</p>
-            </div>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <ClockIcon className="h-6 w-6" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Success Rate</p>
-              <p className="text-2xl font-bold mt-1">94%</p>
-            </div>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <ChartBarIcon className="h-6 w-6" />
-            </div>
-          </div>
-        </div>
-      </section>
+      )}
     </div>
   );
 };
-
-// Import the missing icons
-const ChartBarIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-  </svg>
-);
-
-const HandRaisedIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const CogIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
 
 export default OtherServices;

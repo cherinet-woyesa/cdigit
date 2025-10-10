@@ -200,25 +200,47 @@ const MakerDashboardContent: React.FC<Props> = ({
     // Render ONLY the content - no layout elements
     const renderContent = () => {
         return (
-            <div className="p-6">
+            <div className="p-6 bg-gray-50">
                 {/* Action Message */}
                 {actionMessage && (
-                    <div className={`rounded-lg p-3 border-l-4 mb-6 ${
+                    <div className={`rounded-lg p-4 mb-6 border-l-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 ${
                         actionMessage.type === 'success' 
-                            ? 'bg-green-50 border-green-400 text-green-700'
+                            ? 'bg-green-50 border-green-500 text-green-800'
                             : actionMessage.type === 'error'
-                            ? 'bg-red-50 border-red-400 text-red-700'
+                            ? 'bg-red-50 border-red-500 text-red-800'
                             : actionMessage.type === 'warning'
-                            ? 'bg-yellow-50 border-yellow-400 text-yellow-700'
-                            : 'bg-blue-50 border-blue-400 text-blue-700'
+                            ? 'bg-amber-50 border-amber-500 text-amber-800'
+                            : 'bg-blue-50 border-blue-500 text-blue-800'
                     }`}>
-                        <div className="flex items-center">
-                            <div className="ml-3">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 mt-0.5">
+                                    {actionMessage.type === 'success' && (
+                                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        </svg>
+                                    )}
+                                    {actionMessage.type === 'error' && (
+                                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                        </svg>
+                                    )}
+                                    {actionMessage.type === 'warning' && (
+                                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                    )}
+                                    {actionMessage.type === 'info' && (
+                                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                    )}
+                                </div>
                                 <p className="text-sm font-medium">{actionMessage.content}</p>
                             </div>
                             <button
                                 onClick={() => setActionMessage(null)}
-                                className="ml-auto p-1 hover:bg-black/10 rounded-full"
+                                className="flex-shrink-0 ml-4 p-1 hover:bg-black/5 rounded-lg transition-colors"
                             >
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -230,19 +252,21 @@ const MakerDashboardContent: React.FC<Props> = ({
 
                 {/* Window Assignment Alert */}
                 {!currentAssignedWindow && (
-                    <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-l-4 border-orange-400 rounded-lg p-4 mb-6 shadow-sm">
-                        <div className="flex items-start">
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 mb-6 shadow-sm">
+                        <div className="flex items-start gap-4">
                             <div className="flex-shrink-0">
-                                <svg className="h-6 w-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
+                                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                                    <svg className="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
                             </div>
-                            <div className="ml-3 flex-1">
-                                <h3 className="text-sm font-bold text-orange-800">No Window Assigned</h3>
-                                <p className="text-sm text-orange-700 mt-1">You need to select a window before you can serve customers.</p>
+                            <div className="flex-1">
+                                <h3 className="text-base font-bold text-amber-900 mb-1">No Window Assigned</h3>
+                                <p className="text-sm text-amber-800 mb-4">You need to select a window before you can serve customers.</p>
                                 <button
                                     onClick={handleWindowChange}
-                                    className="mt-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-sm"
+                                    className="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors shadow-sm"
                                 >
                                     Select Window Now
                                 </button>
@@ -272,15 +296,30 @@ const MakerDashboardContent: React.FC<Props> = ({
                 {currentSection === "petty" && <PettyCash />}
                 {currentSection === "other" && <OtherServices onServiceClick={handleServiceClick} />}
                 {currentSection === "performance" && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">My Performance</h2>
-                        <p className="text-gray-600">Performance metrics and analytics coming soon...</p>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+                        <div className="max-w-md mx-auto">
+                            <div className="w-16 h-16 bg-fuchsia-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="h-8 w-8 text-fuchsia-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">My Performance</h2>
+                            <p className="text-gray-600">Performance metrics and analytics coming soon...</p>
+                        </div>
                     </div>
                 )}
                 {currentSection === "settings" && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Settings</h2>
-                        <p className="text-gray-600">Configuration and preferences coming soon...</p>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+                        <div className="max-w-md mx-auto">
+                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="h-8 w-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Settings</h2>
+                            <p className="text-gray-600">Configuration and preferences coming soon...</p>
+                        </div>
                     </div>
                 )}
             </div>
