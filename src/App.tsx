@@ -23,7 +23,7 @@ import AssignMakerRoute from './features/manager/AssignMakerRoute';
 import CreateUserManagerRoute from './features/manager/CreateStaffRoute';
 import AdminDashboard from './features/admin/AdminDashboard';
 import ManagerDashboard from './features/manager/ManagerDashboard';
-import MakerLayout from './features/maker/MakerLayout';
+import MakerDashboard from './features/maker/MakerDashboard'; // CHANGED: Import MakerDashboard instead of MakerLayout
 import Dashboard from './features/customer/Dashboard';
 import TransactionHistory from './features/customer/TransactionHistory';
 import CbeBirrRegistrationConfirmation from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistrationConfirmation';
@@ -40,9 +40,9 @@ import StopPaymentConfirmation from './features/customer/forms/stopPayment/StopP
 import PettyCashForm from './features/internal/forms/pettyCash/PettyCashForm';
 import PettyCashConfirmation from './features/internal/forms/pettyCash/PettyCashConfirmation';
 import LanguageSelection from './components/LanguageSelection';
-import StaffRouteGuard from './components/StaffRouteGuard'; // Add this import
+import StaffRouteGuard from './components/StaffRouteGuard';
 
-// Updated ProtectedRoute component - Skip branch selection for staff roles
+// Updated ProtectedRoute component
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
   const { isAuthenticated, user, loading } = useAuth();
   const { branch, isLoading: isBranchLoading } = useBranch();
@@ -50,14 +50,11 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Staff roles (Maker, Admin, Manager) get branch from JWT, so skip branch selection
     const isStaffRole = user?.role && ['Maker', 'Admin', 'Manager'].includes(user.role);
     
-    // Only redirect customers to branch selection if they don't have a branch
-    // Staff users should never be redirected to branch selection
     if (isAuthenticated && user && !branch && !isBranchLoading && 
         !location.pathname.startsWith('/select-branch') &&
-        !isStaffRole) { // FIXED: Added !isStaffRole to prevent redirect for staff
+        !isStaffRole) {
       navigate('/select-branch', { state: { from: location }, replace: true });
     }
   }, [isAuthenticated, user, branch, isBranchLoading, location, navigate]);
@@ -71,7 +68,6 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
   }
 
   if (!isAuthenticated) {
-    // Store the attempted URL for redirecting after login
     return <Navigate to="/staff-login" state={{ from: location }} replace />;
   }
 
@@ -89,11 +85,11 @@ const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = (
   return <>{children}</>;
 };
 
-// FIXED: DashboardRouter now handles Customer role properly
+// FIXED: DashboardRouter now uses MakerDashboard instead of MakerLayout
 const DashboardRouter: React.FC = () => {
   const { user } = useAuth();
 
-  console.log('DashboardRouter - User role:', user?.role); // Debug log
+  console.log('DashboardRouter - User role:', user?.role);
 
   if (user?.role === 'Admin') {
     return <AdminDashboard />;
@@ -102,7 +98,7 @@ const DashboardRouter: React.FC = () => {
     return <ManagerDashboard />;
   }
   if (user?.role === 'Maker') {
-    return <MakerLayout />;
+    return <MakerDashboard />; // CHANGED: Use MakerDashboard instead of MakerLayout
   }
   if (user?.role === 'Customer' || !user?.role) {
     return <Dashboard />;
@@ -130,10 +126,10 @@ function App() {
           <Route path="/otp-login" element={<OTPLogin />} />
           <Route path="/staff-login" element={<StaffLogin />} />
           
-          {/* Direct dashboard routes for staff roles - bypass branch selection */}
+          {/* Direct dashboard routes for staff roles - UPDATED to use MakerDashboard */}
           <Route path="/maker-dashboard" element={
             <ProtectedRoute role="Maker">
-              <MakerLayout />
+              <MakerDashboard /> {/* CHANGED: Use MakerDashboard instead of MakerLayout */}
             </ProtectedRoute>
           } />
           <Route path="/admin-dashboard" element={
@@ -170,7 +166,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Main dashboard route - FIXED: Now handles Customer role */}
+          {/* Main dashboard route */}
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardRouter />
@@ -246,7 +242,7 @@ function App() {
           } />
           <Route path="/dashboard/maker" element={
             <ProtectedRoute role="Maker">
-              <MakerLayout />
+              <MakerDashboard /> {/* CHANGED: Use MakerDashboard instead of MakerLayout */}
             </ProtectedRoute>
           } />
           

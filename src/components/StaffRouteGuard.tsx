@@ -17,7 +17,7 @@ const StaffRouteGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
       console.log('StaffRouteGuard: Staff user detected, checking redirects');
       
       // If staff user is on branch selection page, redirect to their dashboard
-      if (location.pathname === '/select-branch') {
+      /* if (location.pathname === '/select-branch') {
         console.log('StaffRouteGuard: Redirecting staff user from branch selection');
         switch (user.role) {
           case 'Maker':
@@ -33,7 +33,7 @@ const StaffRouteGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
             navigate('/dashboard', { replace: true });
         }
         return;
-      }
+      } */
       
       // Also redirect if staff user ends up on customer dashboard
       if (location.pathname === '/dashboard' || location.pathname === '/customer/dashboard') {
