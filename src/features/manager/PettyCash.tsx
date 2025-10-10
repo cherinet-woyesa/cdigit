@@ -6,23 +6,14 @@ import { Button } from "../../components/ui/button";
 import managerPettyCashService from "../../services/managerPettyCashService";
 import PettyCashDetailModal from "./PettyCashDetailModal";
 import { useAuth } from "../../context/AuthContext";
-
-interface PettyCashForm {
-  id: string;
-  formReferenceId: string;
-  frontMakerName: string;
-  cashReceivedFromVault: number;
-  cashSurrenderedToVault: number;
-  todayBalance: number;
-  updatedAt: string;
-}
+import type { PettyCashFormResponseDto } from "../../types/PettyCash/PettyCashFormResponseDto";
 
 export default function PettyCash({ branchId, voultManagerId }: { branchId: string; voultManagerId: string, }) {
   const { token } = useAuth();
 
-  const [data, setData] = useState<PettyCashForm[]>([]);
+  const [data, setData] = useState<PettyCashFormResponseDto[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<PettyCashForm | null>(null);
+  const [selected, setSelected] = useState<PettyCashFormResponseDto | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -41,12 +32,18 @@ export default function PettyCash({ branchId, voultManagerId }: { branchId: stri
   }, [branchId]);
 
   const columns = [
-    { name: "Form Ref", selector: (row: PettyCashForm) => row.formReferenceId, sortable: true },
-    { name: "Maker", selector: (row: PettyCashForm) => row.frontMakerName, sortable: true },
-    { name: "Received", selector: (row: PettyCashForm) => row.cashReceivedFromVault, sortable: true },
-    { name: "Surrendered", selector: (row: PettyCashForm) => row.cashSurrenderedToVault, sortable: true },
-    { name: "Today Balance", selector: (row: PettyCashForm) => row.todayBalance, sortable: true },
-    { name: "Updated", selector: (row: PettyCashForm) => new Date(row.updatedAt).toLocaleString(), sortable: true },
+    { name: "Form Ref", selector: (row: PettyCashFormResponseDto) => row.formReferenceId || '', sortable: true },
+    { name: "Maker", selector: (row: PettyCashFormResponseDto) => row.frontMakerName || '', sortable: true },
+    { name: "CashGvn", selector: (row: PettyCashFormResponseDto) => row.cashReceivedFromVault ?? 0, sortable: true },
+    { name: "Surrendered", selector: (row: PettyCashFormResponseDto) => row.cashSurrenderedToVault ?? 0, sortable: true },
+    { name: "Today Balance", selector: (row: PettyCashFormResponseDto) => row.todayBalance ? row.todayBalance : (row.cashReceivedFromVault - row.cashSurrenderedToVault), sortable: true },
+    // { name: "Updated", selector: (row: PettyCashFormResponseDto) => new Date(row.updatedAt).toLocaleString(), sortable: true },
+    { name: "RequestAddCash", selector: (row: PettyCashFormResponseDto) => row.makerRequestAdditional ? "Yes" : "No", sortable: true },
+    { name: "AddGiven", selector: (row: PettyCashFormResponseDto) => row.managerGiveAdditionalCashReq ? "Yes" : "No", sortable: true },
+    { name: "addnlApprv", selector: (row: PettyCashFormResponseDto) => row.additionalApprovalByMaker ? "Yes" : "No", sortable: true },
+    { name: "surenderAdd", selector: (row: PettyCashFormResponseDto) => row.makerRequestAdditionalSurrender ? "Yes" : "No", sortable: true },
+      // { name: "surenderAddAprv", selector: (row: PettyCashFormResponseDto) => row.additionalApprovalByVManager ? "Yes" : "No", sortable: true },
+
   ];
 
   return (

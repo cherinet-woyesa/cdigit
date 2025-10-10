@@ -27,7 +27,7 @@ export const TransactionDetailModal: FC<TransactionDetailModalProps> = ({ txn, o
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-0 overflow-hidden">
-        
+
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-700 to-purple-500 p-4 flex justify-between items-center">
           <h3 className="text-white font-bold text-lg">Transaction Details</h3>
@@ -60,11 +60,13 @@ export const TransactionDetailModal: FC<TransactionDetailModalProps> = ({ txn, o
             <span className="font-semibold">Submitted At:</span>
             <span>{new Date(txn.submittedAt).toLocaleString()}</span>
           </div>
-          
+
 
           <div className="flex justify-between">
             <span className="font-semibold">Submitted to CBS At:</span>
-            <span>{new Date(txn.depositedToCBSAt).toLocaleString()}</span>
+            {(txn.depositedToCBSAt) && (
+              <span>{new Date(txn.depositedToCBSAt).toLocaleString()}</span>
+            )}
           </div>
 
 

@@ -1,6 +1,3 @@
-
-
-
 export interface PettyCashFormResponseDto {
   id: string;
   formReferenceId: string;

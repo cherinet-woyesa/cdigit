@@ -26,6 +26,9 @@ export default function PettyCashDetailModal({
   }>({ type: null });
   const [amount, setAmount] = useState<number>(0);
 
+
+  console.log("petty for curent user:", pettyCash);
+
   if (!open || !pettyCash) return null;
 
   // 🟢 Separate Handlers
@@ -148,16 +151,28 @@ export default function PettyCashDetailModal({
               <b>Maker:</b> {pettyCash.frontMakerName}
             </div>
             <div>
-              <b>Received from Vault:</b> {pettyCash.cashReceivedFromVault}
+              <b>Given from Vault:</b> {pettyCash.cashReceivedFromVault}
             </div>
             <div>
-              <b>Surrendered:</b> {pettyCash.cashSurrenderedToVault}
+              <b>Surrendered to Vault:</b> {pettyCash.cashSurrenderedToVault}
             </div>
             <div>
-              <b>Today Balance:</b> {pettyCash.todayBalance}
+              <b>Request Add Cash:</b> {pettyCash.makerRequestAdditional ? "Yes" : "No"}
             </div>
             <div>
-              <b>Status:</b> {pettyCash.status || "Pending"}
+              <b>Add Given:</b> {pettyCash.managerGiveAdditionalCashReq ? "Yes" : "No"}
+            </div>
+            <div>
+              <b>Surrender Add:</b> {pettyCash.makerRequestAdditionalSurrender ? "Yes" : "No"}
+            </div>
+            <div>
+              <b>Initial Approval by maker:</b> {pettyCash.initialApprovalByMaker ? "Yes" : "No"}
+            </div>
+            <div>
+              <b>Additional Approval by maker:</b> {pettyCash.additionalApprovalByMaker ? "Yes" : "No"}
+            </div>
+            <div>
+              <b>Today Balance:</b> {pettyCash.todayBalance? pettyCash.todayBalance : (pettyCash.cashReceivedFromVault- pettyCash.cashSurrenderedToVault)}
             </div>
           </div>
 
@@ -167,45 +182,63 @@ export default function PettyCashDetailModal({
             </h3>
 
             <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={() => setShowAmountModal({ type: "initial" })}
-                disabled={loading}
-                className="bg-green-600 hover:bg-green-500 text-white"
-              >
-                Give Initial
-              </Button>
 
-              <Button
-                onClick={() => setShowAmountModal({ type: "additional" })}
-                disabled={loading}
-                className="bg-yellow-600 hover:bg-yellow-500 text-white"
-              >
-                Give Additional
-              </Button>
+              {(!pettyCash.cashReceivedFromVault && pettyCash.makerRequestInitial) && (
+                <Button
+                  onClick={() => setShowAmountModal({ type: "initial" })}
+                  disabled={loading}
+                  className="bg-green-600 hover:bg-green-500 text-white"
+                >
+                  Give Initial
+                </Button>
+              )}
 
-              <Button
-                onClick={handleApproveSurrender}
-                disabled={loading}
-                className="bg-red-600 hover:bg-red-500 text-white"
-              >
-                Approve Surrender
-              </Button>
+              {(pettyCash && pettyCash.makerRequestAdditional && !pettyCash.managerGiveAdditionalCashReq) && (
+                <Button
+                  onClick={() => setShowAmountModal({ type: "additional" })}
+                  disabled={loading}
+                  className="bg-yellow-600 hover:bg-yellow-500 text-white"
+                >
+                  Give Additional
+                </Button>
+              )}
 
-              <Button
-                onClick={handleApproveAdditionalSurrender}
-                disabled={loading}
-                className="bg-pink-600 hover:bg-pink-500 text-white"
-              >
-                Approve Additional Surrender
-              </Button>
+              {((pettyCash.cashSurrenderedToVault != 0) && !pettyCash.initialApprovalByVManager) && (
+                <Button
+                  onClick={handleApproveSurrender}
+                  disabled={loading}
+                  className="bg-red-600 hover:bg-red-500 text-white"
+                >
+                  Approve Surrender
+                </Button>
+              )}
 
-              <Button
-                onClick={handleApproveForeign}
-                disabled={loading}
-                className="bg-purple-700 hover:bg-purple-600 text-white"
-              >
-                Approve Foreign Currency
-              </Button>
+              {(pettyCash.makerRequestAdditionalSurrender && !pettyCash.additionalApprovalByVManager) && (
+                <Button
+                  onClick={handleApproveAdditionalSurrender}
+                  disabled={loading}
+                  className="bg-pink-600 hover:bg-pink-500 text-white"
+                >
+                  Approve Additional Surrender
+                </Button>
+              )}
+
+              {(pettyCash.foreignCurrencies && !pettyCash.foreignCurrencyApprovalByManager) && (
+                <Button
+                  onClick={handleApproveForeign}
+                  disabled={loading}
+                  className="bg-purple-700 hover:bg-purple-600 text-white"
+                >
+                  Approve Foreign Currency:
+                </Button>
+              )}
+
+              {(pettyCash.foreignCurrencies && !pettyCash.foreignCurrencyApprovalByManager) && (
+              <div>
+                foreign Currency: {pettyCash.foreignCurrencies}
+              </div>
+                 )}
+
             </div>
           </div>
 
