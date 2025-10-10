@@ -14,7 +14,6 @@ import FormReferenceSearchModal from "./FormReferenceSearchModal";
 import StatCard from "../../components/StatCard";
 import CancelConfirmationModal from "../../modals/CancelConfirmationModal";
 import QueueNotificationModal from "../../modals/QueueNotificationModal";
-import FeedbackModal from "../../modals/FeedbackModal";
 import type { ActionMessage } from "types/ActionMessage";
 import type { WindowDto } from "../../types/WindowDto";
 
@@ -67,8 +66,6 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showFormRefModal, setShowFormRefModal] = useState(false);
     const [showDenomModal, setShowDenomModal] = useState(false);
-    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-    const [completedTransaction, setCompletedTransaction] = useState<NextCustomerResponse | null>(null);
 
     const [denomForm, setDenomForm] = useState<{
         formReferenceId: string;
@@ -243,7 +240,6 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
     /** Complete */
     const handleComplete = async () => {
-
         if (!token || !current?.id) return;
         setBusyAction("completing");
         try {
@@ -252,28 +248,19 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 setActionMessage({ type: 'error', content: res.message || "Failed to complete." });
                 return;
             }
-            setActionMessage({ type: 'success', content: res.message || "Completed." });
-            
-            // Store completed transaction for feedback
-            setCompletedTransaction(current);
+            setActionMessage({ type: 'success', content: res.message || "Transaction completed successfully." });
             
             // Clear current customer
             setCurrent(null);
-            localStorage.removeItem("currentCustomer"); // clear
+            localStorage.removeItem("currentCustomer");
             
             await refreshQueue();
             await refreshTotalServed();
-            
-            // Show feedback modal after a short delay
-            setTimeout(() => {
-                setShowFeedbackModal(true);
-            }, 500);
         } catch {
             setActionMessage({ type: 'error', content: "Failed to complete." });
-
         } finally {
             setBusyAction(null);
-            setTimeout(() => setActionMessage({ type: 'error', content: "" }), 4000);
+            setTimeout(() => setActionMessage(null), 4000);
         }
     };
 
@@ -500,22 +487,6 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 message={QueueNotifyModalMessage}
                 amount={amount}
             />
-
-            {/* Feedback Modal */}
-            {completedTransaction && (
-                <FeedbackModal
-                    isOpen={showFeedbackModal}
-                    onClose={() => {
-                        setShowFeedbackModal(false);
-                        setCompletedTransaction(null);
-                    }}
-                    customerId={completedTransaction.accountHolderName}
-                    makerId={decoded?.nameid || ''}
-                    branchId={decoded?.BranchId || ''}
-                    transactionId={completedTransaction.id}
-                    token={token}
-                />
-            )}
         </div>
 
     );
