@@ -28,7 +28,12 @@ const StaffLogin: React.FC = () => {
         const decodedPayload = JSON.parse(window.atob(base64));
         
         const roles = decodedPayload.role || decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
-        const userRole = Array.isArray(roles) ? roles[0] : roles || 'Customer';
+        const userRole = Array.isArray(roles) ? roles[0] : roles;
+
+        if (!userRole) {
+          setError('Login successful, but your user role could not be determined. Please contact an administrator.');
+          return;
+        }
         
         console.log('User role detected for redirection:', userRole);
         

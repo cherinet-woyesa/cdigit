@@ -50,7 +50,10 @@ export function useUserAccounts() {
     const fetchAccounts = useCallback(async (phoneNumber: string): Promise<Account[]> => {
         try {
             console.log(`Fetching accounts for phone: ${phoneNumber}`);
-            const response = await axios.get(`${API_BASE_URL}/Accounts/by-phone`, { params: { phoneNumber } });
+            
+            // FIXED: Use route parameter instead of query parameter
+            const response = await axios.get(`${API_BASE_URL}/Accounts/by-phone/${phoneNumber}`);
+            
             console.log('API Response:', response.data);
             
             // Handle the API response format
