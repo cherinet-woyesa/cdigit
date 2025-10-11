@@ -8,6 +8,7 @@ import adminService from "../../services/adminService";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
 import { Button } from "../../components/ui/button";
+import AdminReportPanel from "./AdminReportPanel";
 
 interface Branch {
   id: string;
@@ -145,6 +146,14 @@ export default function AdminDashboard() {
           >
             💳 Account Types
           </TabsTrigger>
+
+          <TabsTrigger
+            value="reports"
+            className="flex-1 rounded-lg font-semibold text-fuchsia-700 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fuchsia-700 data-[state=active]:to-fuchsia-500 data-[state=active]:text-white transition-all"
+          >
+            💳 Reports
+          </TabsTrigger>
+
         </TabsList>
 
         {/* Branches Tab */}
@@ -381,6 +390,12 @@ export default function AdminDashboard() {
             setAccountTypes={setAccountTypes}
           />
         </TabsContent>
+
+        {/* Report data */}
+        <TabsContent value="reports"><AdminReportPanel /></TabsContent>
+        {/* <TabsContent value="reports"><AdminReportPanel branchId={branchId} /></TabsContent> */}
+
+
       </Tabs>
     </div>
   );
