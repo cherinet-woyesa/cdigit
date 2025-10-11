@@ -317,6 +317,9 @@ const AdminDashboardContent: React.FC = () => {
             <TabsTrigger value="account-types" variant="brand" className="flex-1 min-w-[140px]">
               💳 Account Types
             </TabsTrigger>
+            <TabsTrigger value="documents" variant="brand" className="flex-1 min-w-[140px]">
+              📄 Documents
+            </TabsTrigger>
           </TabsList>
 
           {/* Branches Tab */}
@@ -487,6 +490,42 @@ const AdminDashboardContent: React.FC = () => {
                   },
                 }}
               />
+            </div>
+          </TabsContent>
+
+          {/* Document Management Tab */}
+          <TabsContent value="documents" className="animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200 mb-6">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-fuchsia-700 mb-2">Document Management</h3>
+                  <p className="text-gray-600">
+                    Centralized digital storage and management of all bank documents
+                  </p>
+                </div>
+                
+                <a
+                  href="/documents"
+                  className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white py-2 px-4 rounded-lg hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all font-semibold flex items-center gap-2"
+                >
+                  📁 Manage Documents
+                </a>
+              </div>
+              
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 border border-gray-200 rounded-lg bg-gradient-to-br from-fuchsia-50 to-white">
+                  <h4 className="font-semibold text-fuchsia-700 mb-2">🔒 Secure Storage</h4>
+                  <p className="text-sm text-gray-600">AES-256 encryption for all documents at rest and in transit</p>
+                </div>
+                <div className="p-4 border border-gray-200 rounded-lg bg-gradient-to-br from-fuchsia-50 to-white">
+                  <h4 className="font-semibold text-fuchsia-700 mb-2">🔍 Advanced Search</h4>
+                  <p className="text-sm text-gray-600">Multi-criteria search with Boolean operators and range queries</p>
+                </div>
+                <div className="p-4 border border-gray-200 rounded-lg bg-gradient-to-br from-fuchsia-50 to-white">
+                  <h4 className="font-semibold text-fuchsia-700 mb-2">📋 Compliance</h4>
+                  <p className="text-sm text-gray-600">Full audit trail and compliance with banking regulations</p>
+                </div>
+              </div>
             </div>
           </TabsContent>
 

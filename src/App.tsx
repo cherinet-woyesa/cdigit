@@ -43,6 +43,7 @@ import PettyCashConfirmation from './features/internal/forms/pettyCash/PettyCash
 import LanguageSelection from './components/LanguageSelection';
 import StaffRouteGuard from './components/StaffRouteGuard';
 import OfflineBanner from './components/OfflineBanner';
+import DocumentManagement from './features/documents/DocumentManagement';
 
 // Updated ProtectedRoute component
 const ProtectedRoute: React.FC<{ role?: string; children: React.ReactNode }> = ({ role, children }) => {
@@ -342,6 +343,13 @@ function App() {
           <Route path="/internal/petty-cash/confirmation" element={
             <ProtectedRoute role="internal">
               <PettyCashConfirmation />
+            </ProtectedRoute>
+          } />
+
+          {/* Document Management route */}
+          <Route path="/documents" element={
+            <ProtectedRoute>
+              <DocumentManagement />
             </ProtectedRoute>
           } />
 
