@@ -1,0 +1,602 @@
+.voucher-dashboard {
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+.dashboard-header {
+  margin-bottom: 20px;
+}
+
+.dashboard-header h2 {
+  margin: 0 0 5px 0;
+  color: #333;
+}
+
+.dashboard-header p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Statistics Cards */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-left: 4px solid #3498db;
+}
+
+.stat-card.stat-pending {
+  border-left-color: #f39c12;
+}
+
+.stat-card.stat-approved {
+  border-left-color: #27ae60;
+}
+
+.stat-card.stat-exceptions {
+  border-left-color: #e74c3c;
+}
+
+.stat-card.stat-needs-approval {
+  border-left-color: #9b59b6;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Filters */
+.filters-container {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 250px;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+.refresh-btn {
+  padding: 8px 16px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.refresh-btn:hover {
+  background: #2980b9;
+}
+
+/* Vouchers Table */
+.vouchers-table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  overflow-x: auto;
+}
+
+.vouchers-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.vouchers-table thead {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.vouchers-table th {
+  padding: 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+}
+
+.vouchers-table td {
+  padding: 12px;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 14px;
+  color: #333;
+}
+
+.vouchers-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.vouchers-table tbody tr.row-exception {
+  background-color: #fff5f5;
+}
+
+.vouchers-table tbody tr.row-needs-approval {
+  background-color: #fef9ff;
+}
+
+.transaction-type {
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.amount {
+  font-weight: 600;
+  color: #27ae60;
+}
+
+.timestamp {
+  font-size: 12px;
+  color: #666;
+}
+
+.exception-icon {
+  margin-left: 5px;
+  color: #e74c3c;
+  cursor: help;
+}
+
+.approval-icon {
+  margin-left: 5px;
+  color: #9b59b6;
+  cursor: help;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-draft {
+  background-color: #ecf0f1;
+  color: #7f8c8d;
+}
+
+.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-verified {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-pending-approval {
+  background-color: #e7d6f5;
+  color: #6f42c1;
+}
+
+.status-approved {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-posted {
+  background-color: #d1f2eb;
+  color: #0e6655;
+}
+
+.status-rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Action Buttons */
+.actions {
+  display: flex;
+  gap: 5px;
+}
+
+.btn-action {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.btn-action:hover {
+  transform: scale(1.1);
+}
+
+.btn-view:hover {
+  background-color: #e3f2fd;
+}
+
+.btn-edit:hover {
+  background-color: #fff3e0;
+}
+
+.btn-approve:hover {
+  background-color: #e8f5e9;
+}
+
+.btn-reject:hover {
+  background-color: #ffebee;
+}
+
+.btn-forward:hover {
+  background-color: #f3e5f5;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content.signature-modal {
+  max-width: 700px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Detail Grid */
+.detail-grid {
+  display: grid;
+  gap: 15px;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #666;
+}
+
+.detail-value {
+  color: #333;
+}
+
+/* Signature */
+.signature-container {
+  margin-top: 20px;
+}
+
+.signature-container label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.signature-pad-wrapper {
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+  background: #f8f9fa;
+  margin-bottom: 10px;
+}
+
+.signature-canvas {
+  width: 100%;
+  height: 200px;
+  cursor: crosshair;
+}
+
+.btn-clear-signature {
+  padding: 8px 16px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-clear-signature:hover {
+  background: #5a6268;
+}
+
+.btn-primary {
+  padding: 10px 24px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #2980b9;
+}
+
+.btn-secondary {
+  padding: 10px 24px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .filters-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input {
+    width: 100%;
+  }
+  
+  .vouchers-table {
+    font-size: 12px;
+  }
+  
+  .vouchers-table th,
+  .vouchers-table td {
+    padding: 8px;
+  }
+  
+  .actions {
+    flex-direction: column;
+  }
+  
+  .detail-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Voucher Edit Modal Styles */
+.voucher-edit-modal {
+  max-width: 800px;
+  width: 95%;
+}
+
+.form-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.form-section {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fafafa;
+}
+
+.form-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 8px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.form-group input.error,
+.form-group select.error,
+.form-group textarea.error {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.1);
+}
+
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-group label input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+  margin-bottom: 0;
+}
+
+.error-message {
+  display: block;
+  color: #e74c3c;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.help-text {
+  display: block;
+  color: #6c757d;
+  font-size: 12px;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.btn-primary:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-primary:disabled:hover {
+  background-color: #6c757d;
+}
+
+@media (max-width: 768px) {
+  .voucher-edit-modal {
+    width: 98%;
+    max-height: 95vh;
+  }
+  
+  .form-section {
+    padding: 15px;
+  }
+  
+  .form-grid {
+    gap: 15px;
+  }
+}

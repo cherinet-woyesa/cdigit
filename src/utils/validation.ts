@@ -3,6 +3,25 @@
  * These can be used with React Hook Form or standalone
  */
 
+import {
+  TRANSACTION_LIMITS,
+  CURRENCY_LIMITS,
+  ACCOUNT_NUMBER_RULES,
+  VALIDATION_MESSAGES,
+  getTransactionLimits,
+  requiresApproval,
+} from '../config/businessRules';
+import { validationAuditService } from '../services/validationAuditService';
+import type { ValidationResult as AuditValidationResult } from '../services/validationAuditService';
+
+export interface ValidationResult {
+  isValid: boolean;
+  error?: string;
+  guidedPrompt?: string; // NEW: Guided help for users
+  requiresApproval?: boolean; // NEW: Indicates if transaction needs approval
+  context?: Record<string, any>; // NEW: Additional context
+}
+
 export const validationRules = {
   // Required field validation
   required: (fieldName: string = 'This field') => ({
@@ -96,11 +115,6 @@ export const validationRules = {
  * Custom validation functions
  */
 
-export interface ValidationResult {
-  isValid: boolean;
-  error?: string;
-}
-
 export const validateRequired = (value: string, fieldName: string = 'This field'): ValidationResult => {
   const trimmed = value?.trim() || '';
   return {
@@ -125,54 +139,211 @@ export const validateEmail = (email: string): ValidationResult => {
   };
 };
 
-export const validateAccountNumber = (accountNumber: string): ValidationResult => {
-  const isValid = /^\d{10,16}$/.test(accountNumber);
-  return {
-    isValid,
-    error: isValid ? undefined : 'Account number must be 10-16 digits',
-  };
+/**
+ * Enhanced account number validation with business rules
+ */
+export const validateAccountNumber = (
+  accountNumber: string,
+  options: { auditContext?: Partial<AuditValidationResult> } = {}
+): ValidationResult => {
+  const value = accountNumber.trim();
+  const { guidedPrompts } = VALIDATION_MESSAGES;
+  
+  let result: ValidationResult;
+  
+  // Check if empty
+  if (!value) {
+    result = {
+      isValid: false,
+      error: 'Account number is required',
+      guidedPrompt: guidedPrompts.accountNumber.hint,
+    };
+  }
+  // Check length
+  else if (value.length < ACCOUNT_NUMBER_RULES.minLength) {
+    result = {
+      isValid: false,
+      error: guidedPrompts.accountNumber.tooShort,
+      guidedPrompt: guidedPrompts.accountNumber.hint,
+    };
+  }
+  else if (value.length > ACCOUNT_NUMBER_RULES.maxLength) {
+    result = {
+      isValid: false,
+      error: guidedPrompts.accountNumber.tooLong,
+      guidedPrompt: guidedPrompts.accountNumber.hint,
+    };
+  }
+  // Check pattern
+  else if (!ACCOUNT_NUMBER_RULES.pattern.test(value)) {
+    result = {
+      isValid: false,
+      error: guidedPrompts.accountNumber.invalid,
+      guidedPrompt: guidedPrompts.accountNumber.hint,
+    };
+  }
+  // Check prefix (if configured)
+  else if (ACCOUNT_NUMBER_RULES.allowedPrefixes && ACCOUNT_NUMBER_RULES.allowedPrefixes.length > 0) {
+    const hasValidPrefix = ACCOUNT_NUMBER_RULES.allowedPrefixes.some(prefix => value.startsWith(prefix));
+    if (!hasValidPrefix) {
+      result = {
+        isValid: false,
+        error: guidedPrompts.accountNumber.invalidPrefix,
+        guidedPrompt: guidedPrompts.accountNumber.hint,
+      };
+    } else {
+      result = { isValid: true };
+    }
+  }
+  else {
+    result = { isValid: true };
+  }
+  
+  // Audit validation
+  if (options.auditContext) {
+    validationAuditService.logValidation({
+      ...options.auditContext,
+      fieldName: options.auditContext.fieldName || 'accountNumber',
+      fieldValue: value,
+      validationRule: 'accountNumberFormat',
+      isValid: result.isValid,
+      errorMessage: result.error,
+      guidedPrompt: result.guidedPrompt,
+    } as any);
+  }
+  
+  return result;
 };
 
+/**
+ * Enhanced amount validation with business rules and currency support
+ */
 export const validateAmount = (
   amount: string | number,
-  options: { min?: number; max?: number } = {}
+  options: {
+    min?: number;
+    max?: number;
+    currency?: string;
+    transactionType?: 'withdrawal' | 'deposit' | 'fundTransfer' | 'rtgs';
+    customerSegment?: 'Normal' | 'Corporate';
+    auditContext?: Partial<AuditValidationResult>;
+  } = {}
 ): ValidationResult => {
   const amountStr = typeof amount === 'number' ? amount.toString() : amount;
   const numValue = parseFloat(amountStr);
+  const { guidedPrompts } = VALIDATION_MESSAGES;
+  const currency = options.currency || 'ETB';
+  
+  let result: ValidationResult;
   
   // Check format
   if (!/^\d+(\.\d{1,2})?$/.test(amountStr)) {
-    return {
+    result = {
       isValid: false,
       error: 'Invalid amount format. Use numbers with up to 2 decimal places',
+      guidedPrompt: guidedPrompts.amount.hint,
     };
   }
-  
   // Check if positive
-  if (isNaN(numValue) || numValue <= 0) {
-    return {
+  else if (isNaN(numValue) || numValue <= 0) {
+    result = {
       isValid: false,
       error: 'Amount must be greater than 0',
+      guidedPrompt: guidedPrompts.amount.hint,
     };
   }
-  
-  // Check minimum
-  if (options.min !== undefined && numValue < options.min) {
-    return {
-      isValid: false,
-      error: `Amount must be at least ${options.min.toLocaleString()}`,
+  else {
+    // Get limits from business rules
+    let limits: { min: number; max: number; dailyLimit?: number } = {
+      min: options.min || 0,
+      max: options.max || Number.MAX_SAFE_INTEGER,
     };
+    
+    if (options.transactionType) {
+      limits = getTransactionLimits(options.transactionType, options.customerSegment);
+    }
+    
+    // Check minimum
+    if (numValue < limits.min) {
+      result = {
+        isValid: false,
+        error: `${guidedPrompts.amount.belowMin}. Minimum is ${limits.min.toLocaleString()} ${currency}`,
+        guidedPrompt: `Enter an amount of at least ${limits.min.toLocaleString()} ${currency}`,
+      };
+    }
+    // Check maximum
+    else if (numValue > limits.max) {
+      result = {
+        isValid: false,
+        error: `${guidedPrompts.amount.aboveMax}. Maximum is ${limits.max.toLocaleString()} ${currency}`,
+        guidedPrompt: `Enter an amount up to ${limits.max.toLocaleString()} ${currency}`,
+      };
+    }
+    else {
+      // Check if requires approval
+      const approvalCheck = options.transactionType
+        ? requiresApproval(numValue, currency, options.transactionType)
+        : { required: false };
+      
+      // Check currency limits for FX
+      if (currency !== 'ETB') {
+        const currencyLimit = CURRENCY_LIMITS[currency];
+        if (!currencyLimit) {
+          result = {
+            isValid: false,
+            error: `${guidedPrompts.currency.unsupported}: ${currency}`,
+            guidedPrompt: `Supported currencies: ${Object.keys(CURRENCY_LIMITS).join(', ')}`,
+          };
+        } else if (numValue > currencyLimit.transactionLimit) {
+          result = {
+            isValid: false,
+            error: `Amount exceeds ${currency} transaction limit of ${currencyLimit.transactionLimit.toLocaleString()}`,
+            guidedPrompt: guidedPrompts.currency.hint,
+            requiresApproval: true,
+          };
+        } else if (approvalCheck.required) {
+          result = {
+            isValid: true,
+            requiresApproval: true,
+            context: { approvalReason: approvalCheck.reason },
+            guidedPrompt: `⚠️ ${approvalCheck.reason}. Transaction will require manager approval.`,
+          };
+        } else {
+          result = { isValid: true };
+        }
+      } else if (approvalCheck.required) {
+        result = {
+          isValid: true,
+          requiresApproval: true,
+          context: { approvalReason: approvalCheck.reason },
+          guidedPrompt: `⚠️ ${approvalCheck.reason}. Transaction will require approval.`,
+        };
+      } else {
+        result = { isValid: true };
+      }
+    }
   }
   
-  // Check maximum
-  if (options.max !== undefined && numValue > options.max) {
-    return {
-      isValid: false,
-      error: `Amount cannot exceed ${options.max.toLocaleString()}`,
-    };
+  // Audit validation
+  if (options.auditContext) {
+    validationAuditService.logValidation({
+      ...options.auditContext,
+      fieldName: options.auditContext.fieldName || 'amount',
+      fieldValue: amountStr,
+      validationRule: `amountRange_${currency}_${options.transactionType || 'general'}`,
+      isValid: result.isValid,
+      errorMessage: result.error,
+      guidedPrompt: result.guidedPrompt,
+      context: {
+        currency,
+        transactionType: options.transactionType,
+        customerSegment: options.customerSegment,
+        requiresApproval: result.requiresApproval,
+      },
+    } as any);
   }
   
-  return { isValid: true };
+  return result;
 };
 
 export const validateOTP = (otp: string): ValidationResult => {

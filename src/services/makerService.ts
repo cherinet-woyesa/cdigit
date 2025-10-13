@@ -62,10 +62,7 @@ const makerService = {
 
   getAssignedWindowForMaker: async (makerId: string, token: string) => {
     const res = await axios.get(`${API_BASE_URL}/Window/assigned-to-maker/${makerId}`, authHeader(token));
-    // return res.data || null; // plain object or null
-    return res.data?.data || null; // <-- pick .data
-
-
+    return res.data?.data || null;
   },
 
   assignMakerToWindow: async (windowId: string, makerId: string, token: string) => {
@@ -86,11 +83,8 @@ const makerService = {
       {},
       authHeader(token)
     );
-    // return res.data as { message: string };
     return res.data;
-
   },
-
 
   /** QUEUE & TELLER */
   getAllCustomersOnQueueByBranch: async (branchId: string, token: string) => {
@@ -98,7 +92,7 @@ const makerService = {
       `${API_BASE_URL}/Teller/All_Customer_On_Queue/${branchId}`,
       authHeader(token)
     );
-    return res.data; // ApiResponse<List>
+    return res.data;
   },
 
   callNextCustomer: async (makerId: string, windowId: string, branchId: string, token: string) => {
@@ -106,7 +100,7 @@ const makerService = {
       `${API_BASE_URL}/Teller/Next/${makerId}/${windowId}/${branchId}`,
       authHeader(token)
     );
-    return res.data; // ApiResponse<object>
+    return res.data;
   },
 
   // callNextCustomer: async (

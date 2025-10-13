@@ -6,7 +6,8 @@ import {
   ChartBarIcon,
   ArrowRightOnRectangleIcon,
   DocumentTextIcon,
-  HandRaisedIcon
+  HandRaisedIcon,
+  DocumentCheckIcon
 } from "@heroicons/react/24/outline";
 import cbelogo from '../../assets/logo.jpg';
 
@@ -19,6 +20,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }) => {
   const navItems = [
     { id: "transactions", label: "Transactions", icon: CurrencyDollarIcon, badgeCount: 12 },
+    { id: "vouchers", label: "Voucher Dashboard", icon: DocumentCheckIcon },
     { id: "petty", label: "Petty Cash", icon: DocumentTextIcon, badgeCount: 3 },
     { id: "other", label: "Other Services", icon: HandRaisedIcon, badgeCount: 5 },
     { id: "performance", label: "My Performance", icon: ChartBarIcon },

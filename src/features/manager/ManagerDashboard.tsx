@@ -14,6 +14,7 @@ import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary
 import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
 import { safeJWTDecode, isTokenExpired } from "../../utils/jwt";
 import { BRAND_COLORS } from "../../config/env";
+import ApprovalDashboard from "./ApprovalDashboard";
 
 interface Branch {
   id: string;
@@ -222,6 +223,13 @@ export default function ManagerDashboard() {
                 🏦 My Branch
               </TabsTrigger>
               <TabsTrigger 
+                value="approvals" 
+                variant="brand"
+                className="flex-1 min-w-[140px]"
+              >
+                ✅ Approvals
+              </TabsTrigger>
+              <TabsTrigger 
                 value="users" 
                 variant="brand"
                 className="flex-1 min-w-[140px]"
@@ -266,6 +274,10 @@ export default function ManagerDashboard() {
             </TabsList>
 
             {/* Tab Contents */}
+            <TabsContent value="approvals" className="animate-fadeIn">
+              <ApprovalDashboard />
+            </TabsContent>
+            
             <TabsContent value="users" className="animate-fadeIn">
               <BranchAdUsers branchId={branchId} />
             </TabsContent>

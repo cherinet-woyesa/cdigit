@@ -8,6 +8,7 @@ import makerService from "../../services/makerService";
 import PettyCash from "./PettyCash";
 import Transactions from "./Transactions";
 import OtherServices from "./OtherServices";
+import VoucherDashboard from "./VoucherDashboard";
 import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
 import MainLayout from "../../components/layout/MainLayout";
 import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
@@ -112,14 +113,14 @@ const MakerDashboardContent: React.FC<Props> = ({
                     },
                     {
                         label: "Avg. Process Time",
-                        value: "4.2m", // Still mock data
+                        value: "4.2m",
                         color: "blue",
                         icon: <ArrowPathIcon className="h-4 w-4" />,
                         trend: "down"
                     },
                     {
                         label: "Queue Waiting",
-                        value: pendingTransactions, // Same as pending for now
+                        value: pendingTransactions,
                         color: "orange",
                         icon: <UserCircleIcon className="h-4 w-4" />,
                         trend: "neutral"
@@ -128,7 +129,10 @@ const MakerDashboardContent: React.FC<Props> = ({
                 setDashboardMetrics(metrics);
             } catch (error) {
                 console.error("Failed to load dashboard metrics:", error);
-                // Optionally set an error message
+                setActionMessage({
+                    type: 'error',
+                    content: 'Failed to load dashboard metrics. Please check your connection.'
+                });
             }
         };
 
@@ -295,6 +299,7 @@ const MakerDashboardContent: React.FC<Props> = ({
 
                 {currentSection === "petty" && <PettyCash />}
                 {currentSection === "other" && <OtherServices onServiceClick={handleServiceClick} />}
+                {currentSection === "vouchers" && <VoucherDashboard />}
                 {currentSection === "performance" && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
                         <div className="max-w-md mx-auto">

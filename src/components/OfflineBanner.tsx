@@ -3,67 +3,32 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WifiIcon, SignalSlashIcon } from '@heroicons/react/24/outline';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
-const OfflineBanner: React.FC = () => {
-  const isOnline = useOnlineStatus();
-  const [showReconnected, setShowReconnected] = React.useState(false);
-  const wasOfflineRef = React.useRef(false);
+interface OfflineBannerProps {
+  isOffline: boolean;
+  message?: string;
+}
 
-  React.useEffect(() => {
-    if (!isOnline) {
-      wasOfflineRef.current = true;
-    } else if (wasOfflineRef.current) {
-      // Just came back online
-      setShowReconnected(true);
-      const timer = setTimeout(() => {
-        setShowReconnected(false);
-        wasOfflineRef.current = false;
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isOnline]);
+const OfflineBanner: React.FC<OfflineBannerProps> = ({ 
+  isOffline, 
+  message = "Running in offline mode - some features may use sample data" 
+}) => {
+  if (!isOffline) return null;
 
   return (
-    <>
-      {/* Offline Banner */}
-      <AnimatePresence>
-        {!isOnline && (
-          <motion.div
-            initial={{ y: -100 }}
-            animate={{ y: 0 }}
-            exit={{ y: -100 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white py-3 px-4 shadow-lg"
-          >
-            <div className="max-w-7xl mx-auto flex items-center justify-center gap-3">
-              <SignalSlashIcon className="h-5 w-5 animate-pulse" />
-              <p className="text-sm font-medium">
-                You are currently offline. Some features may not be available.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Reconnected Banner */}
-      <AnimatePresence>
-        {showReconnected && (
-          <motion.div
-            initial={{ y: -100 }}
-            animate={{ y: 0 }}
-            exit={{ y: -100 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed top-0 left-0 right-0 z-50 bg-green-600 text-white py-3 px-4 shadow-lg"
-          >
-            <div className="max-w-7xl mx-auto flex items-center justify-center gap-3">
-              <WifiIcon className="h-5 w-5" />
-              <p className="text-sm font-medium">
-                You're back online!
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+    <div className="bg-amber-100 border-l-4 border-amber-500 p-4 mb-4">
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <div className="ml-3">
+          <p className="text-sm text-amber-700 font-medium">
+            {message}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 };
 
