@@ -88,11 +88,60 @@ const makerService = {
 
   /** QUEUE & TELLER */
   getAllCustomersOnQueueByBranch: async (branchId: string, token: string) => {
-    const res = await axios.get<ApiResponse<CustomerQueueItem[]>>(
-      `${API_BASE_URL}/Teller/All_Customer_On_Queue/${branchId}`,
-      authHeader(token)
-    );
-    return res.data;
+    try {
+      console.log(`Fetching customers on queue for branch: ${branchId}`);
+      
+      // Validate branchId
+      if (!branchId) {
+        throw new Error('Branch ID is required');
+      }
+      
+      // Validate that branchId is a valid GUID format
+      const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!guidRegex.test(branchId)) {
+        console.warn('BranchId is not in valid GUID format:', branchId);
+        // Try to convert to GUID format if it's missing dashes
+        if (branchId.length === 32) {
+          const formattedGuid = `${branchId.substring(0, 8)}-${branchId.substring(8, 12)}-${branchId.substring(12, 16)}-${branchId.substring(16, 20)}-${branchId.substring(20)}`;
+          console.log('Converted branchId to GUID format:', formattedGuid);
+          branchId = formattedGuid;
+        } else {
+          console.warn('BranchId cannot be converted to GUID format:', branchId);
+        }
+      }
+
+      const res = await axios.get<ApiResponse<CustomerQueueItem[]>>(
+        `${API_BASE_URL}/Teller/All_Customer_On_Queue/${branchId}`,
+        authHeader(token)
+      );
+      
+      console.log('Queue API response:', res.data);
+      return res.data;
+    } catch (error: any) {
+      console.error('Error in getAllCustomersOnQueueByBranch:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        branchId
+      });
+      
+      // Handle the case where there are no customers in queue (404 with specific message)
+      if (error.response?.status === 404) {
+        // Check if it's the "No customers in queue" message
+        const errorMessage = error.response?.data?.message || '';
+        if (errorMessage.includes('No customers in queue')) {
+          // Return a successful response with empty data
+          return {
+            success: true,
+            message: errorMessage,
+            data: []
+          } as ApiResponse<CustomerQueueItem[]>;
+        }
+      }
+      
+      // Re-throw the error so it can be handled by the caller
+      throw error;
+    }
   },
 
   callNextCustomer: async (makerId: string, windowId: string, branchId: string, token: string) => {

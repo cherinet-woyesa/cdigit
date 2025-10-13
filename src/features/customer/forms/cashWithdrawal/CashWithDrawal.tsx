@@ -11,6 +11,8 @@ import Field from '../../../../components/Field';
 import SignatureCanvas from 'react-signature-canvas';
 import { useToast } from '../../../../context/ToastContext';
 import { validateAmount, validateRequired, validateOTP } from '../../../../utils/validation';
+import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
+import { requiresTransactionApproval } from '../../../../config/rbacMatrix';
 import { 
     Loader2, 
     AlertCircle, 
@@ -52,6 +54,7 @@ export default function CashWithdrawalForm() {
     const { phone, token, user } = useAuth();
     const { branch } = useBranch();
     const { success: showSuccess, error: showError, info } = useToast();
+    const { createWorkflow } = useApprovalWorkflow();
     const navigate = useNavigate();
     const location = useLocation();
     const { 
@@ -357,6 +360,19 @@ export default function CashWithdrawalForm() {
             const response = await submitWithdrawal(withdrawalData, token || undefined);
 
             if (response && response.success) {
+                // Create approval workflow
+                const workflow = await createWorkflow({
+                    voucherId: response.data?.id || '',
+                    voucherType: 'withdrawal',
+                    transactionType: 'withdrawal',
+                    amount: Number(formData.amount),
+                    currency: 'ETB',
+                    customerSegment: 'normal',
+                    reason: 'Customer withdrawal request',
+                    voucherData: withdrawalData,
+                    customerSignature: formData.signature,
+                });
+
                 showSuccess(t('withdrawalSubmitted', 'Withdrawal submitted successfully!'));
                 
                 navigate('/form/cash-withdrawal/cashwithdrawalconfirmation', { 
@@ -384,6 +400,29 @@ export default function CashWithdrawalForm() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const checkApprovalStatus = () => {
+        const approvalCheck = requiresTransactionApproval(
+            'withdrawal',
+            Number(formData.amount),
+            'ETB',
+            'normal'
+        );
+
+        if (approvalCheck.required) {
+            return (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                    <p className="text-orange-800 font-medium">
+                        ⚠️ {t('approvalRequired', 'This transaction will require manager approval')}
+                    </p>
+                    <p className="text-sm text-orange-700 mt-1">
+                        {approvalCheck.reason}
+                    </p>
+                </div>
+            );
+        }
+        return null;
     };
 
     // Loading states (consistent with deposit form)
@@ -611,6 +650,8 @@ export default function CashWithdrawalForm() {
                                         <CheckCircle2 className="h-5 w-5 text-green-600" />
                                         {t('confirmWithdrawal', 'Confirm Withdrawal')}
                                     </h2>
+                                    
+                                    {checkApprovalStatus()}
                                     
                                     <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b border-gray-200">

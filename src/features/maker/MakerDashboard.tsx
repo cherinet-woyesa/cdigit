@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useAuth } from "../../context/AuthContext";
+import { useNotification } from "../../context/NotificationContext";
 import type { DecodedToken } from "types/DecodedToken";
 import type { ActionMessage } from "types/ActionMessage";
 import type { WindowDto } from "types/WindowDto";
@@ -30,6 +31,7 @@ const MakerDashboardContent: React.FC<Props> = ({
     assignedWindow = null
 }) => {
     const { token, logout } = useAuth();
+    const { showError, showSuccess, showWarning } = useNotification();
     const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [currentSection, setCurrentSection] = useState(activeSection);
@@ -90,10 +92,40 @@ const MakerDashboardContent: React.FC<Props> = ({
             if (!decodedToken || !token) return;
 
             try {
+                console.log('Loading metrics for branch:', decodedToken.BranchId);
+                
+                // Validate branchId before making the call
+                if (!decodedToken.BranchId) {
+                    console.error('BranchId is missing from decoded token');
+                    setActionMessage({
+                        type: 'error',
+                        content: 'Branch information missing. Please contact administrator.'
+                    });
+                    return;
+                }
+                
+                // Validate that branchId is a valid GUID format
+                const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                if (!guidRegex.test(decodedToken.BranchId)) {
+                    console.warn('BranchId is not in valid GUID format:', decodedToken.BranchId);
+                    setActionMessage({
+                        type: 'error',
+                        content: 'Invalid branch information format. Please contact administrator.'
+                    });
+                    return;
+                }
+
                 const queueResponse = await makerService.getAllCustomersOnQueueByBranch(decodedToken.BranchId, token);
                 const servedResponse = await makerService.getTotalServed(decodedToken.nameid, token);
 
-                const pendingTransactions = queueResponse.data?.length || 0;
+                console.log('Queue response:', queueResponse);
+                console.log('Served response:', servedResponse);
+
+                // Handle both success and "no customers" cases
+                const pendingTransactions = (queueResponse.success || (queueResponse.message && queueResponse.message.includes('No customers in queue'))) 
+                    ? (queueResponse.data?.length || 0) 
+                    : 0;
+                    
                 const completedToday = servedResponse.data || 0;
 
                 const metrics: Metric[] = [
@@ -127,17 +159,38 @@ const MakerDashboardContent: React.FC<Props> = ({
                     }
                 ];
                 setDashboardMetrics(metrics);
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Failed to load dashboard metrics:", error);
+                console.error("Error details:", {
+                    message: error.message,
+                    response: error.response,
+                    status: error.response?.status,
+                    branchId: decodedToken?.BranchId
+                });
+                
+                // More specific error messages based on error type
+                let errorMessage = 'Failed to load dashboard metrics. Please check your connection.';
+                
+                if (error.response?.status === 404) {
+                    errorMessage = 'Branch not found. Please check your branch assignment.';
+                } else if (error.response?.status === 401) {
+                    errorMessage = 'Authentication failed. Please login again.';
+                } else if (error.response?.status === 500) {
+                    errorMessage = 'Server error. Please try again later.';
+                }
+                
                 setActionMessage({
                     type: 'error',
-                    content: 'Failed to load dashboard metrics. Please check your connection.'
+                    content: errorMessage
                 });
+                
+                // Also show global notification
+                showError('Dashboard Error', errorMessage);
             }
         };
 
         loadMetrics();
-    }, [decodedToken, token]);
+    }, [decodedToken, token, showError]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -168,11 +221,13 @@ const MakerDashboardContent: React.FC<Props> = ({
                     type: 'success',
                     content: response.message || `Successfully changed to Window #${selectedWindow.windowNumber}.`
                 });
+                showSuccess('Window Assignment', response.message || `Successfully changed to Window #${selectedWindow.windowNumber}.`);
             } else {
                 setActionMessage({
                     type: 'error',
                     content: response.message || 'Failed to change window.'
                 });
+                showError('Window Assignment Error', response.message || 'Failed to change window.');
             }
         } catch (error) {
             console.error('Error changing window:', error);
@@ -180,6 +235,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                 type: 'error',
                 content: 'Failed to change window. Please try again.'
             });
+            showError('Window Assignment Error', 'Failed to change window. Please try again.');
         }
     };
 
@@ -318,7 +374,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                         <div className="max-w-md mx-auto">
                             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <svg className="h-8 w-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543.826 3.31 2.37 2.37.996.608 2.296.07 2.572-1.065z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                             </div>

@@ -8,6 +8,8 @@ import { submitRtgsTransfer, requestRtgsTransferOtp } from '../../../../services
 import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 import Field from '../../../../components/Field';
 import SignatureCanvas from 'react-signature-canvas';
+import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
+import { requiresTransactionApproval } from '../../../../config/rbacMatrix';
 import { 
     Loader2, 
     AlertCircle, 
@@ -81,6 +83,7 @@ export default function RTGSTransferForm() {
     const { phone } = useAuth();
     const { branch } = useBranch();
     const navigate = useNavigate();
+    const { createWorkflow } = useApprovalWorkflow();
     const { 
         accounts, 
         accountDropdown, 
@@ -386,6 +389,19 @@ export default function RTGSTransferForm() {
             const response = await submitRtgsTransfer(payload);
             
             if (response.success) {
+                // Create approval workflow
+                await createWorkflow({
+                    voucherId: response.data?.Id || '',
+                    voucherType: 'rtgs',
+                    transactionType: 'rtgs',
+                    amount: parseFloat(formData.transferAmount),
+                    currency: 'ETB',
+                    customerSegment: 'normal',
+                    reason: 'Customer RTGS transfer request',
+                    voucherData: payload,
+                    customerSignature: formData.digitalSignature,
+                });
+                
                 navigate('/form/rtgs-transfer/confirmation', { 
                     state: { 
                         api: response.data,
@@ -405,6 +421,29 @@ export default function RTGSTransferForm() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const checkApprovalStatus = () => {
+        const approvalCheck = requiresTransactionApproval(
+            'rtgs',
+            Number(formData.transferAmount),
+            'ETB',
+            'normal'
+        );
+
+        if (approvalCheck.required) {
+            return (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                    <p className="text-orange-800 font-medium">
+                        ⚠️ {t('approvalRequired', 'This transaction will require manager approval')}
+                    </p>
+                    <p className="text-sm text-orange-700 mt-1">
+                        {approvalCheck.reason}
+                    </p>
+                </div>
+            );
+        }
+        return null;
     };
 
     // Loading states (consistent with withdrawal form)
@@ -735,6 +774,8 @@ export default function RTGSTransferForm() {
                                         {t('reviewTransfer', 'Review Transfer')}
                                     </h2>
                                     
+                                    {checkApprovalStatus()}
+                                    
                                     <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b border-gray-200">
                                             <span className="font-medium text-gray-700">{t('accountNumber', 'Account Number')}:</span>
@@ -899,7 +940,7 @@ export default function RTGSTransferForm() {
                                         </p>
                                         {otpMessage && (
                                             <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-                                                <CheckCircle2 className="h-3 w-3" />
+                                                <CheckCircle2 className="h-33 w-3" />
                                                 {otpMessage}
                                             </p>
                                         )}

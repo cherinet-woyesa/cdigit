@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import type { DecodedToken } from "types/DecodedToken";
@@ -13,26 +12,15 @@ import CurrentCustomerModal from "./CurrentCustomerModal";
 import FormReferenceSearchModal from "./FormReferenceSearchModal";
 import StatCard from "../../components/StatCard";
 import CancelConfirmationModal from "../../modals/CancelConfirmationModal";
-import QueueNotificationModal from "../../modals/QueueNotificationModal";
 import type { ActionMessage } from "types/ActionMessage";
 import type { WindowDto } from "../../types/WindowDto";
 import { SkeletonCard } from "../../components/Skeleton";
+import { useNotification } from "../../context/NotificationContext";
 
-
-
-const statIconMap: Record<TransactionType, any> = {
-    Deposit: faMoneyBillWave,
-    Withdrawal: faSackDollar,
-    FundTransfer: faShuffle,
-};
-
-// const MakerDashboard: React.FC = () => {
-
-
-
+// Define the props interface
 interface TransactionsProps {
-    activeSection?: string;
-    assignedWindow?: WindowDto | null;
+  activeSection?: string;
+  assignedWindow?: WindowDto | null;
 }
 
 const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWindow }) => {
@@ -40,17 +28,12 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
     //login session states
     const { token, logout } = useAuth();
     const [decoded, setDecoded] = useState<DecodedToken | null>(null);
+    const { showSuccess, showError, showInfo } = useNotification();
 
     // Queue
     const [queue, setQueue] = useState<CustomerQueueItem[]>([]);
     const [loadingQueue, setLoadingQueue] = useState(false);
     const [queueError, setQueueError] = useState("");
-
-    // New customer comming notify Modal state
-    const [isQueueNotifyModalOpen, setIsQueueNotifyModalOpen] = useState(false);
-    const [QueueNotifyModalMessage, setQueueNotifyModalMessage] = useState('');
-    const [QueueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
-    const [amount, setAmount] = useState('');
 
     // Current
     const [current, setCurrent] = useState<NextCustomerResponse | null>(null);
@@ -109,24 +92,64 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
     /** Refresh queue */
     const refreshQueue = async () => {
-        if (!token || !decoded?.BranchId) return;
+        if (!token || !decoded?.BranchId) {
+            console.log('Missing token or branchId for queue refresh', { token: !!token, branchId: decoded?.BranchId });
+            return;
+        }
         setLoadingQueue(true);
         setQueueError("");
         try {
+            console.log('Refreshing queue for branch:', decoded.BranchId);
+            
+            // Validate that branchId is a valid GUID format
+            const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!guidRegex.test(decoded.BranchId)) {
+                console.warn('BranchId is not in valid GUID format:', decoded.BranchId);
+                throw new Error('Invalid branch information format');
+            }
+            
             const res = await makerService.getAllCustomersOnQueueByBranch(
                 decoded.BranchId,
                 token
             );
-            if (res.success) {
+            
+            console.log('Queue refresh response:', res);
+            
+            // Handle both success and "no customers" cases
+            if (res.success || (res.message && res.message.includes('No customers in queue'))) {
                 setQueue(res.data || []);
+                // Set a friendly message when there are no customers
+                if (!res.data || res.data.length === 0) {
+                    setQueueError("No customers in queue.");
+                }
             } else {
+                console.log('Queue refresh failed:', res.message);
                 setQueue([]);
                 setQueueError(res.message || "No customers in queue.");
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Queue refresh error:', error);
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response,
+                status: error.response?.status,
+                branchId: decoded?.BranchId
+            });
+            
+            // More specific error messages
+            let errorMessage = "Failed to load queue.";
+            if (error.response?.status === 404) {
+                errorMessage = "Branch not found. Please check your branch assignment.";
+            } else if (error.response?.status === 401) {
+                errorMessage = "Authentication failed. Please login again.";
+            } else if (error.response?.status === 500) {
+                errorMessage = "Server error. Please try again later.";
+            } else if (error.message === 'Invalid branch information format') {
+                errorMessage = "Invalid branch information. Please contact administrator.";
+            }
+            
             setQueue([]);
-            setQueueError("Failed to load queue.");
+            setQueueError(errorMessage);
         } finally {
             setLoadingQueue(false);
         }
@@ -211,10 +234,11 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 // Listen for messages
                 connection.on('NewCustomer', (data: any) => {
                     console.log('New customer notification received:', data);
-                    setQueueNotifyModalTitle(data.transactionType + " Request");
-                    setQueueNotifyModalMessage(`${data.message} is coming, please ready to serve.`);
-                    setAmount(`Amount: ETB ${Number(data.amount).toLocaleString()}`);
-                    setIsQueueNotifyModalOpen(true);
+                    // Use global notification instead of modal
+                    showInfo(
+                        `${data.transactionType} Request`,
+                        `${data.message} is coming, please ready to serve. Amount: ETB ${Number(data.amount).toLocaleString()}`
+                    );
                     void refreshQueue();
                 });
             } catch (error) {
@@ -231,7 +255,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 connection.stop().catch((err: any) => console.warn('Error stopping SignalR:', err));
             }
         };
-    }, [decoded?.BranchId]);
+    }, [decoded?.BranchId, showInfo]);
 
 
 
@@ -567,21 +591,10 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 onRefreshServed={refreshTotalServed}
             />
 
-            {/* Queue Notification Modal */}
-            <QueueNotificationModal
-                isOpen={isQueueNotifyModalOpen}
-                onClose={() => setIsQueueNotifyModalOpen(false)}
-                title={QueueNotifyModalTitle}
-                message={QueueNotifyModalMessage}
-                amount={amount}
-            />
+            {/* Remove the QueueNotificationModal from here since we're using global notifications */}
         </div>
 
     );
 };
 
 export default Transactions;
-
-
-
-

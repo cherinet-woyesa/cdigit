@@ -9,6 +9,8 @@ import { sendFundTransferOTP, submitFundTransfer, updateFundTransfer } from '../
 import Field from '../../../../components/Field';
 import { useToast } from '../../../../context/ToastContext';
 import { validateAmount, validateRequired, validateOTP, validateAccountNumber } from '../../../../utils/validation';
+import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
+import { requiresTransactionApproval } from '../../../../config/rbacMatrix';
 import { 
     Loader2, 
     AlertCircle, 
@@ -49,6 +51,7 @@ export default function FundTransfer() {
     const { phone, token, user } = useAuth();
     const { branch } = useBranch();
     const { success: showSuccess, error: showError, info } = useToast();
+    const { createWorkflow } = useApprovalWorkflow();
     const navigate = useNavigate();
     const location = useLocation();
     const { 
@@ -391,6 +394,20 @@ export default function FundTransfer() {
             }
 
             if (response && (response.success || response.data)) {
+                // Create approval workflow for new transfers
+                if (!updateId) {
+                    await createWorkflow({
+                        voucherId: response.data?.id || '',
+                        voucherType: 'transfer',
+                        transactionType: 'transfer',
+                        amount: parseFloat(formData.amount),
+                        currency: 'ETB',
+                        customerSegment: 'normal',
+                        reason: 'Customer fund transfer request',
+                        voucherData: payload,
+                    });
+                }
+                
                 showSuccess(updateId 
                     ? t('transferUpdated', 'Transfer updated successfully!') 
                     : t('transferSubmitted', 'Transfer submitted successfully!')
@@ -430,6 +447,29 @@ export default function FundTransfer() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const checkApprovalStatus = () => {
+        const approvalCheck = requiresTransactionApproval(
+            'transfer',
+            Number(formData.amount),
+            'ETB',
+            'normal'
+        );
+
+        if (approvalCheck.required) {
+            return (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                    <p className="text-orange-800 font-medium">
+                        ⚠️ {t('approvalRequired', 'This transaction will require manager approval')}
+                    </p>
+                    <p className="text-sm text-orange-700 mt-1">
+                        {approvalCheck.reason}
+                    </p>
+                </div>
+            );
+        }
+        return null;
     };
 
     // Loading states
@@ -697,6 +737,8 @@ export default function FundTransfer() {
                                         <CheckCircle2 className="h-5 w-5 text-green-600" />
                                         {t('confirmTransfer', 'Confirm Transfer')}
                                     </h2>
+                                    
+                                    {checkApprovalStatus()}
                                     
                                     <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b border-gray-200">

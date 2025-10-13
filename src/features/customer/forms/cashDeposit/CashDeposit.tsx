@@ -9,6 +9,8 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher';
 import { useToast } from '../../../../context/ToastContext';
 import { validateAmount, validateRequired } from '../../../../utils/validation';
+import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
+import { requiresTransactionApproval } from '../../../../config/rbacMatrix';
 import { 
     Loader2, 
     AlertCircle, 
@@ -56,6 +58,7 @@ export default function CashDepositForm() {
     const { phone, user } = useAuth();
     const { branch } = useBranch();
     const { success: showSuccess, error: showError } = useToast();
+    const { createWorkflow } = useApprovalWorkflow();
     const navigate = useNavigate();
     const location = useLocation();
     const { 
@@ -232,6 +235,29 @@ export default function CashDepositForm() {
         return Object.keys(errs).length === 0;
     };
 
+    const checkApprovalStatus = () => {
+        const approvalCheck = requiresTransactionApproval(
+            'deposit',
+            Number(formData.amount),
+            'ETB',
+            'normal'
+        );
+
+        if (approvalCheck.required) {
+            return (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                    <p className="text-orange-800 font-medium">
+                        ⚠️ {t('approvalRequired', 'This transaction will require manager approval')}
+                    </p>
+                    <p className="text-sm text-orange-700 mt-1">
+                        {approvalCheck.reason}
+                    </p>
+                </div>
+            );
+        }
+        return null;
+    };
+
     const handleNext = (e: FormEvent) => {
         e.preventDefault();
         if (!validateAll()) {
@@ -277,6 +303,20 @@ export default function CashDepositForm() {
             const response = updateId
                 ? await depositService.updateDeposit(updateId, depositData)
                 : await depositService.submitDeposit(depositData);
+            
+            // Create approval workflow for new deposits
+            if (!updateId && response.success) {
+                await createWorkflow({
+                    voucherId: response.data?.id || '',
+                    voucherType: 'deposit',
+                    transactionType: 'deposit',
+                    amount: Number(formData.amount),
+                    currency: 'ETB',
+                    customerSegment: 'normal',
+                    reason: 'Customer deposit request',
+                    voucherData: depositData,
+                });
+            }
             
             showSuccess(updateId 
                 ? t('depositUpdated', 'Deposit updated successfully!')
@@ -531,6 +571,8 @@ export default function CashDepositForm() {
                                         {t('confirmDeposit', 'Confirm Deposit')}
                                     </h2>
                                     
+                                    {checkApprovalStatus()}
+                                    
                                     <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b border-gray-200">
                                             <span className="font-medium text-gray-700">{t('accountHolder', 'Account Holder')}:</span>
@@ -568,12 +610,12 @@ export default function CashDepositForm() {
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                {t('processing', 'Processing...')}
+                                                {t('submitting', 'Submitting...')}
                                             </>
                                         ) : (
                                             <>
                                                 <CheckCircle2 className="h-4 w-4" />
-                                                {t('submit', 'Submit')}
+                                                {updateId ? t('updateDeposit', 'Update Deposit') : t('submitDeposit', 'Submit Deposit')}
                                             </>
                                         )}
                                     </button>
