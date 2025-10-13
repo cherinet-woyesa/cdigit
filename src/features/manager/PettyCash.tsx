@@ -42,8 +42,7 @@ export default function PettyCash({ branchId, voultManagerId }: { branchId: stri
     { name: "AddGiven", selector: (row: PettyCashFormResponseDto) => row.managerGiveAdditionalCashReq ? "Yes" : "No", sortable: true },
     { name: "addnlApprv", selector: (row: PettyCashFormResponseDto) => row.additionalApprovalByMaker ? "Yes" : "No", sortable: true },
     { name: "surenderAdd", selector: (row: PettyCashFormResponseDto) => row.makerRequestAdditionalSurrender ? "Yes" : "No", sortable: true },
-      // { name: "surenderAddAprv", selector: (row: PettyCashFormResponseDto) => row.additionalApprovalByVManager ? "Yes" : "No", sortable: true },
-
+    // { name: "surenderAddAprv", selector: (row: PettyCashFormResponseDto) => row.additionalApprovalByVManager ? "Yes" : "No", sortable: true },
   ];
 
   return (

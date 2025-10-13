@@ -54,9 +54,9 @@ const adminService = {
   },
 
   async approveBranch(branchId: string) {
-  const res = await axios.put(`${API_BASE_URL}/branches/${branchId}/approve`, {}, getAuthHeaders());
-  return res.data;
-},
+    const res = await axios.put(`${API_BASE_URL}/branches/${branchId}/approve`, {}, getAuthHeaders());
+    return res.data;
+  },
 
   // -------------------- User APIs --------------------
   async createUser(user: {
@@ -87,8 +87,20 @@ const adminService = {
     return res.data;
   },
 
-  async addAccountType(accountTypeName: string) {
-    const res = await axios.post(`${API_BASE_URL}/accounttypes`, { accountTypeName }, getAuthHeaders());
+  async addAccountType(name: string, description?: string) {
+    const res = await axios.post(
+      `${API_BASE_URL}/accounttypes`,
+      { name, description },
+      getAuthHeaders()
+    );
+    return res.data;
+  },
+  async updateAccountType(id: number, name: string, description?: string) {
+    const res = await axios.put(
+      `${API_BASE_URL}/accounttypes/${id}`,
+      { id, name, description },
+      getAuthHeaders()
+    );
     return res.data;
   },
 
@@ -97,7 +109,7 @@ const adminService = {
     return res.data;
   },
 
-// -------------------- Transaction APIs --------------------
+  // -------------------- Transaction APIs --------------------
   getTodaysTransactions: async (branchId: string) => {
     const res = await axios.get(`${API_BASE_URL}/Teller/TodaysTransactions`, getAuthHeaders());
     return res.data; // full ApiResponse with { Transactions, Summary }
