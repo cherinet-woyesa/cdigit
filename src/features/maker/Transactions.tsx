@@ -10,7 +10,6 @@ import { useAuth } from "../../context/AuthContext";
 import DenominationModal from "../../modals/DenominationModal";
 import CurrentCustomerModal from "./CurrentCustomerModal";
 import FormReferenceSearchModal from "./FormReferenceSearchModal";
-import StatCard from "../../components/StatCard";
 import CancelConfirmationModal from "../../modals/CancelConfirmationModal";
 import type { ActionMessage } from "types/ActionMessage";
 import type { WindowDto } from "../../types/WindowDto";
@@ -20,8 +19,8 @@ import { speechService } from "../../services/speechService";
 
 // Define the props interface
 interface TransactionsProps {
-  activeSection?: string;
-  assignedWindow?: WindowDto | null;
+    activeSection?: string;
+    assignedWindow?: WindowDto | null;
 }
 
 const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWindow }) => {
@@ -41,7 +40,13 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
     const [busyAction, setBusyAction] = useState<"calling" | "completing" | "canceling" | null>(null);
 
     // Show modal if a real customer is set (accountHolderName and accountNumber must exist)
-    const showCurrentCustomerModal = !!current && !!current.accountHolderName && !!current.accountNumber;
+    // const showCurrentCustomerModal = !!current && !!current.accountHolderName && !!current.accountNumber;
+    const showCurrentCustomerModal = !!current && !!current.accountHolderName && (
+        !!current.accountNumber ||
+        !!current.debitAccountNumber ||
+        !!current.beneficiaryAccountNumber
+    );
+
 
     const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
     const [showServices, setShowServices] = useState(false);
@@ -104,21 +109,21 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
         setQueueError("");
         try {
             console.log('Refreshing queue for branch:', decoded.BranchId);
-            
+
             // Validate that branchId is a valid GUID format
             const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             if (!guidRegex.test(decoded.BranchId)) {
                 console.warn('BranchId is not in valid GUID format:', decoded.BranchId);
                 throw new Error('Invalid branch information format');
             }
-            
+
             const res = await makerService.getAllCustomersOnQueueByBranch(
                 decoded.BranchId,
                 token
             );
-            
+
             console.log('Queue refresh response:', res);
-            
+
             // Handle both success and "no customers" cases
             if (res.success || (res.message && res.message.includes('No customers in queue'))) {
                 setQueue(res.data || []);
@@ -139,7 +144,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 status: error.response?.status,
                 branchId: decoded?.BranchId
             });
-            
+
             // More specific error messages
             let errorMessage = "Failed to load queue.";
             if (error.response?.status === 404) {
@@ -151,7 +156,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             } else if (error.message === 'Invalid branch information format') {
                 errorMessage = "Invalid branch information. Please contact administrator.";
             }
-            
+
             setQueue([]);
             setQueueError(errorMessage);
         } finally {
@@ -197,7 +202,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
         if (!decoded?.BranchId) return;
 
         let connection: any = null;
-        
+
         const setupSignalR = async () => {
             try {
                 // Setup SignalR connection
@@ -293,13 +298,13 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 amount: data.amount ?? data.depositAmount ?? data.DepositAmount ?? data.transferAmount ?? data.TransferAmount ?? data.withdrawal_Amount ?? data.withdrawa_Amount ?? 0,
             });
             setActionMessage({ type: 'success', content: res.message || "Customer called." });
-            
+
             // Automatically announce the customer regardless of UI voice settings
             if (res.data && speechService.isSupported) {
                 const textToSpeak = `Customer ${res.data.accountHolderName || res.data.customerName || 'Customer'}, please proceed to window ${assignedWindow.windowNumber}.`;
                 speechService.speak(textToSpeak, 'en');
             }
-            
+
             await refreshQueue();
             await refreshTotalServed();
         } catch (error) {
@@ -322,11 +327,11 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 return;
             }
             setActionMessage({ type: 'success', content: res.message || "Transaction completed successfully." });
-            
+
             // Clear current customer
             setCurrent(null);
             localStorage.removeItem("currentCustomer");
-            
+
             await refreshQueue();
             await refreshTotalServed();
         } catch {
@@ -391,15 +396,14 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
         <div className="space-y-6">
             {/* Action Message */}
             {actionMessage && (
-                <div className={`rounded-lg p-4 mb-6 border-l-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 ${
-                    actionMessage.type === 'success' 
+                <div className={`rounded-lg p-4 mb-6 border-l-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 ${actionMessage.type === 'success'
                         ? 'bg-green-50 border-green-500 text-green-800'
                         : actionMessage.type === 'error'
-                        ? 'bg-red-50 border-red-500 text-red-800'
-                        : actionMessage.type === 'warning'
-                        ? 'bg-amber-50 border-amber-500 text-amber-800'
-                        : 'bg-blue-50 border-blue-500 text-blue-800'
-                }`}>
+                            ? 'bg-red-50 border-red-500 text-red-800'
+                            : actionMessage.type === 'warning'
+                                ? 'bg-amber-50 border-amber-500 text-amber-800'
+                                : 'bg-blue-50 border-blue-500 text-blue-800'
+                    }`}>
                     <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
                             <div className="flex-shrink-0 mt-0.5">
@@ -491,7 +495,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 >
                     Search by Form Ref ID
                 </button>
-                
+
                 <button
                     onClick={() => setShowServices((prev) => !prev)}
                     className="px-6 py-3 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm transition-all font-medium"
@@ -527,13 +531,12 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                             >
                                 <div className="flex items-center justify-between mb-3">
                                     <span
-                                        className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                                            q.transactionType === "Deposit"
+                                        className={`text-xs font-semibold px-3 py-1 rounded-full ${q.transactionType === "Deposit"
                                                 ? "bg-blue-100 text-blue-700"
                                                 : q.transactionType === "Withdrawal"
-                                                ? "bg-amber-100 text-amber-700"
-                                                : "bg-purple-100 text-purple-700"
-                                        }`}
+                                                    ? "bg-amber-100 text-amber-700"
+                                                    : "bg-purple-100 text-purple-700"
+                                            }`}
                                     >
                                         {q.transactionType}
                                     </span>

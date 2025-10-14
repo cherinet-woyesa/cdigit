@@ -10,6 +10,7 @@ const authHeader = () => ({
 const feedbackService = {
   getByBranch: async (branchId: string) => {
     const res = await axios.get(`${API_BASE_URL}/feedback/branch/${branchId}`, authHeader());
+    console.log("Feedback by branch response:", res);
     return res.data?.data || []; // array of feedback
   },
   getByMaker: async (makerId: string) => {

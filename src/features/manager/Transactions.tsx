@@ -505,33 +505,65 @@ export default function Transactions({ branchId }: { branchId: string }) {
         </div>
       </div>
 
-      {/* Per-Maker Stats */}
-      <div className="mt-6">
-        <h3 className="text-lg font-bold text-bank mb-2">
-          👨‍💼 Maker Performance
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {Object.entries(makerStats).map(([makerId, stats]) => (
-            <div
-              key={makerId}
-              className="bg-purple-100 p-4 rounded shadow text-center"
-            >
-              <div className="text-sm font-semibold text-purple-700">
-                Maker ID: {makerId}
-              </div>
-              <div className="text-lg font-bold">
-                {stats.count} Customers Served
-              </div>
-              <div className="text-sm text-gray-700">
-                Avg Time: {formatDuration(stats.avgTime)}
-              </div>
-            </div>
-          ))}
+ 
+
+ 
+
+ {/* Per-Maker Stats */}
+<div className="mt-6">
+  <h3 className="text-lg font-bold text-bank mb-2">
+    👨‍💼 Maker Performance
+  </h3>
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+    {Object.entries(makerStats).map(([makerId, stats]) => {
+      const avgTimeStr = formatDuration(stats.avgTime);
+
+      // --- 🧮 Parse "0h 4m 43s" to minutes ---
+      const match = avgTimeStr.match(/(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?/);
+      const hours = parseInt(match?.[1] || "0", 10);
+      const minutes = parseInt(match?.[2] || "0", 10);
+      const seconds = parseInt(match?.[3] || "0", 10);
+      const totalMinutes = hours * 60 + minutes + seconds / 60;
+
+      // --- ⚡ Efficiency classification ---
+      let efficiencyLabel = "";
+      let efficiencyColor = "";
+
+      if (totalMinutes < 5) {
+        efficiencyLabel = "Best Efficient";
+        efficiencyColor = "bg-green-100 text-green-800 border-green-400";
+      } else if (totalMinutes >= 5 && totalMinutes <= 10) {
+        efficiencyLabel = "Optimal Efficiency";
+        efficiencyColor = "bg-yellow-100 text-yellow-800 border-yellow-400";
+      } else {
+        efficiencyLabel = "Low Efficiency";
+        efficiencyColor = "bg-red-100 text-red-800 border-red-400";
+      }
+
+      return (
+        <div
+          key={makerId}
+          className="bg-purple-100 p-4 rounded shadow text-center border border-purple-300"
+        >
+          <div className="text-sm font-semibold text-purple-700">
+            Maker ID: {makerId}
+          </div>
+          <div className="text-lg font-bold">
+            {stats.count} Customers Served
+          </div>
+          <div className="text-sm text-gray-700">Avg Time: {avgTimeStr}</div>
+          <div
+            className={`mt-2 text-xs font-semibold px-2 py-1 rounded-full inline-block border ${efficiencyColor}`}
+          >
+            {efficiencyLabel}
+          </div>
         </div>
-      </div>
+      );
+    })}
+  </div>
+</div>
 
-
-      {/* Feedback Performance */}
+{/* Feedback Performance */}
 <div className="mt-6">
   <h3 className="text-lg font-bold text-bank mb-2">⭐ Feedback Performance</h3>
   <div className="bg-yellow-100 p-4 rounded text-center mb-4">
@@ -541,22 +573,47 @@ export default function Transactions({ branchId }: { branchId: string }) {
   </div>
 
   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-    {Object.entries(feedbackStats).map(([makerId, stats]) => (
-      <div
-        key={makerId}
-        className="bg-yellow-50 p-4 rounded shadow text-center"
-      >
-        <div className="text-sm font-semibold text-yellow-700">
-          Maker ID: {makerId}
+    {Object.entries(feedbackStats).map(([makerId, stats]) => {
+      const rating = stats.avgRating;
+      let feedbackLabel = "";
+      let feedbackColor = "";
+
+      if (rating >= 4.5) {
+        feedbackLabel = "🌟 Best User Experience";
+        feedbackColor = "bg-green-100 text-green-800 border-green-400";
+      } else if (rating >= 3.5 && rating < 4.5) {
+        feedbackLabel = "👍 Optimal Experience";
+        feedbackColor = "bg-yellow-100 text-yellow-800 border-yellow-400";
+      } else {
+        feedbackLabel = "⚠️ Poor User Experience";
+        feedbackColor = "bg-red-100 text-red-800 border-red-400";
+      }
+
+      return (
+        <div
+          key={makerId}
+          className="bg-yellow-50 p-4 rounded shadow text-center border border-yellow-200"
+        >
+          <div className="text-sm font-semibold text-yellow-700">
+            Maker ID: {makerId}
+          </div>
+          <div className="text-lg font-bold">
+            {rating.toFixed(2)} / 5
+          </div>
+          <div className="text-sm text-gray-700">{stats.count} Feedbacks</div>
+          <div
+            className={`mt-2 text-xs font-semibold px-2 py-1 rounded-full inline-block border ${feedbackColor}`}
+          >
+            {feedbackLabel}
+          </div>
         </div>
-        <div className="text-lg font-bold">
-          {stats.avgRating.toFixed(2)} / 5
-        </div>
-        <div className="text-sm text-gray-700">{stats.count} Feedbacks</div>
-      </div>
-    ))}
+      );
+    })}
   </div>
 </div>
+
+
+
 
     </div>
   );

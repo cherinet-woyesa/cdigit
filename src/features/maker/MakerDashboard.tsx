@@ -16,19 +16,20 @@ import DashboardMetrics, { type Metric } from "../../components/dashboard/Dashbo
 import MainLayout from "./MakerLayout";
 import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
 import WindowChangeModal from "../../components/modals/WindowChangeModal";
-import { 
-  CurrencyDollarIcon, 
-  ClockIcon,
-  ArrowPathIcon,
-  UserCircleIcon
+import {
+    CurrencyDollarIcon,
+    ClockIcon,
+    ArrowPathIcon,
+    UserCircleIcon
 } from "@heroicons/react/24/outline";
+import MakerPerformance from "./MakerPerformance";
 
 type Props = {
     activeSection?: string;
     assignedWindow?: WindowDto | null;
 };
 
-const MakerDashboardContent: React.FC<Props> = ({ 
+const MakerDashboardContent: React.FC<Props> = ({
     activeSection = "transactions",
     assignedWindow = null
 }) => {
@@ -50,7 +51,7 @@ const MakerDashboardContent: React.FC<Props> = ({
             logout();
             return;
         }
-        
+
         try {
             const decoded = jwtDecode<DecodedToken>(token);
             setDecodedToken(decoded);
@@ -156,7 +157,7 @@ const MakerDashboardContent: React.FC<Props> = ({
 
             try {
                 console.log('Loading metrics for branch:', decodedToken.BranchId);
-                
+
                 // Validate branchId before making the call
                 if (!decodedToken.BranchId) {
                     console.error('BranchId is missing from decoded token');
@@ -166,7 +167,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                     });
                     return;
                 }
-                
+
                 // Validate that branchId is a valid GUID format
                 const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                 if (!guidRegex.test(decodedToken.BranchId)) {
@@ -185,10 +186,10 @@ const MakerDashboardContent: React.FC<Props> = ({
                 console.log('Served response:', servedResponse);
 
                 // Handle both success and "no customers" cases
-                const pendingTransactions = (queueResponse.success || (queueResponse.message && queueResponse.message.includes('No customers in queue'))) 
-                    ? (queueResponse.data?.length || 0) 
+                const pendingTransactions = (queueResponse.success || (queueResponse.message && queueResponse.message.includes('No customers in queue')))
+                    ? (queueResponse.data?.length || 0)
                     : 0;
-                    
+
                 const completedToday = servedResponse.data || 0;
 
                 const metrics: Metric[] = [
@@ -230,10 +231,10 @@ const MakerDashboardContent: React.FC<Props> = ({
                     status: error.response?.status,
                     branchId: decodedToken?.BranchId
                 });
-                
+
                 // More specific error messages based on error type
                 let errorMessage = 'Failed to load dashboard metrics. Please check your connection.';
-                
+
                 if (error.response?.status === 404) {
                     errorMessage = 'Branch not found. Please check your branch assignment.';
                 } else if (error.response?.status === 401) {
@@ -241,12 +242,12 @@ const MakerDashboardContent: React.FC<Props> = ({
                 } else if (error.response?.status === 500) {
                     errorMessage = 'Server error. Please try again later.';
                 }
-                
+
                 setActionMessage({
                     type: 'error',
                     content: errorMessage
                 });
-                
+
                 // Also show global notification
                 showError('Dashboard Error', errorMessage);
             }
@@ -288,7 +289,7 @@ const MakerDashboardContent: React.FC<Props> = ({
         try {
             // Update window assignment on backend
             const response = await makerService.changeMakerToWindow(selectedWindow.id, decodedToken.nameid, token);
-            
+
             if (response.success) {
                 setAssignedWindow(selectedWindow);
                 setWindowModalOpen(false);
@@ -338,15 +339,14 @@ const MakerDashboardContent: React.FC<Props> = ({
             <div className="p-6 bg-gray-50">
                 {/* Action Message */}
                 {actionMessage && (
-                    <div className={`rounded-lg p-4 mb-6 border-l-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 ${
-                        actionMessage.type === 'success' 
+                    <div className={`rounded-lg p-4 mb-6 border-l-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 ${actionMessage.type === 'success'
                             ? 'bg-green-50 border-green-500 text-green-800'
                             : actionMessage.type === 'error'
-                            ? 'bg-red-50 border-red-500 text-red-800'
-                            : actionMessage.type === 'warning'
-                            ? 'bg-amber-50 border-amber-500 text-amber-800'
-                            : 'bg-blue-50 border-blue-500 text-blue-800'
-                    }`}>
+                                ? 'bg-red-50 border-red-500 text-red-800'
+                                : actionMessage.type === 'warning'
+                                    ? 'bg-amber-50 border-amber-500 text-amber-800'
+                                    : 'bg-blue-50 border-blue-500 text-blue-800'
+                        }`}>
                         <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0 mt-0.5">
@@ -414,16 +414,16 @@ const MakerDashboardContent: React.FC<Props> = ({
                 {currentSection === "transactions" && dashboardMetrics.length > 0 && (
                     <div className="space-y-6">
                         <DashboardMetrics metrics={dashboardMetrics} />
-                        <Transactions 
-                            assignedWindow={currentAssignedWindow} 
+                        <Transactions
+                            assignedWindow={currentAssignedWindow}
                             activeSection={currentSection}
                         />
                     </div>
                 )}
 
                 {currentSection === "transactions" && dashboardMetrics.length === 0 && (
-                    <Transactions 
-                        assignedWindow={currentAssignedWindow} 
+                    <Transactions
+                        assignedWindow={currentAssignedWindow}
                         activeSection={currentSection}
                     />
                 )}
@@ -444,7 +444,12 @@ const MakerDashboardContent: React.FC<Props> = ({
                     />
                 )}
                 {currentSection === "vouchers" && <VoucherDashboard />}
+
+
                 {currentSection === "performance" && (
+                    <MakerPerformance makerId={decodedToken?.nameid!} branchId={decodedToken?.BranchId!} />
+                )}
+                {/* {currentSection === "performance" && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
                         <div className="max-w-md mx-auto">
                             <div className="w-16 h-16 bg-fuchsia-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -456,7 +461,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                             <p className="text-gray-600">Performance metrics and analytics coming soon...</p>
                         </div>
                     </div>
-                )}
+                )} */}
                 {currentSection === "settings" && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
                         <div className="max-w-md mx-auto">

@@ -245,6 +245,14 @@ const makerService = {
     return res.data;
   },
 
+  getMakerPerformance: async (makerId: string, branchId: string, token: string) => {
+  const res = await axios.get(
+    `${API_BASE_URL}/Performance/maker/${makerId}/${branchId}`,
+    authHeader(token)
+  );
+  return res.data?.data;
+},
+
 };
 
 export default makerService;

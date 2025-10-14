@@ -269,12 +269,14 @@ const CustomerDashboardContent: React.FC = () => {
         console.log('SignalR connected successfully');
         
         await connection.invoke('JoinQueueGroup', phone);
-        
-        connection.on('CustomerCalled', (data: { message: string; windowId: string }) => {
+      
+
+         connection.on('CustomerCalled', (data: { message: string; windowNumber: string }) => {
           setQueueNotifyModalTitle(t('beingCalled', 'You Are Being Called'));
-          setQueueNotifyModalMessage(`${data.message} - Window ${data.windowId}`);
+          setQueueNotifyModalMessage(`${data.message} Window ${data.windowNumber}`);
           setIsQueueNotifyModalOpen(true);
         });
+
 
         // Transaction Completed handler
         connection.on("TransactionCompleted", (data: any) => {

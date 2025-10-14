@@ -223,14 +223,14 @@ export default function CurrentCustomerModal({
                     index={1}
                   />
                 )}
-                {current.debitAccountNumber && (
+                {/* {current.debitAccountNumber && (
                   <InfoTile
                     label="Debit Account"
                     value={String(current.debitAccountNumber)}
                     highlight="account"
                     index={2}
                   />
-                )}
+                )} */}
                 {current.beneficiaryAccountNumber && (
                   <InfoTile
                     label="Beneficiary Account"
