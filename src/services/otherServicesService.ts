@@ -29,11 +29,16 @@ const otherServicesService = {
    */
   getAccountOpeningCount: async (branchId: string, token: string): Promise<number> => {
     try {
+      // No branch endpoint, fetch all and filter by branchId if possible
       const response = await axios.get(
-        `${API_BASE_URL}/AccountOpening/pending-count/${branchId}`,
+        `${API_BASE_URL}/AccountOpening`,
         authHeader(token)
       );
-      return response.data?.data || 0;
+      // If response.data?.data is an array, filter by branchId
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data.filter((item: any) => item.branchId === branchId).length;
+      }
+      return 0;
     } catch (error) {
       console.error('Failed to fetch account opening count:', error);
       return 0;
@@ -45,11 +50,15 @@ const otherServicesService = {
    */
   getCbeBirrRegistrationCount: async (branchId: string, token: string): Promise<number> => {
     try {
+      // No branch endpoint, fetch all and filter by branchId if possible
       const response = await axios.get(
-        `${API_BASE_URL}/CbeBirrRegistrations/pending-count/${branchId}`,
+        `${API_BASE_URL}/CbeBirrRegistrations`,
         authHeader(token)
       );
-      return response.data?.data || 0;
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data.filter((item: any) => item.branchId === branchId).length;
+      }
+      return 0;
     } catch (error) {
       console.error('Failed to fetch CBE Birr registration count:', error);
       return 0;
@@ -61,11 +70,15 @@ const otherServicesService = {
    */
   getEBankingApplicationCount: async (branchId: string, token: string): Promise<number> => {
     try {
+      // Use the branch endpoint
       const response = await axios.get(
-        `${API_BASE_URL}/EBankingApplication/pending-count/${branchId}`,
+        `${API_BASE_URL}/EBankingApplication/${branchId}`,
         authHeader(token)
       );
-      return response.data?.data || 0;
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data.length;
+      }
+      return 0;
     } catch (error) {
       console.error('Failed to fetch E-Banking application count:', error);
       return 0;
@@ -77,11 +90,15 @@ const otherServicesService = {
    */
   getPosRequestCount: async (branchId: string, token: string): Promise<number> => {
     try {
+      // No branch endpoint, fetch all and filter by branchId if possible
       const response = await axios.get(
-        `${API_BASE_URL}/posRequest/pending-count/${branchId}`,
+        `${API_BASE_URL}/PosRequest`,
         authHeader(token)
       );
-      return response.data?.data || 0;
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data.filter((item: any) => item.branchId === branchId).length;
+      }
+      return 0;
     } catch (error) {
       console.error('Failed to fetch POS request count:', error);
       return 0;
@@ -93,11 +110,15 @@ const otherServicesService = {
    */
   getStatementRequestCount: async (branchId: string, token: string): Promise<number> => {
     try {
+      // No branch endpoint, fetch all and filter by branchId if possible
       const response = await axios.get(
-        `${API_BASE_URL}/StatementRequest/pending-count/${branchId}`,
+        `${API_BASE_URL}/StatementRequest`,
         authHeader(token)
       );
-      return response.data?.data || 0;
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data.filter((item: any) => item.branchId === branchId).length;
+      }
+      return 0;
     } catch (error) {
       console.error('Failed to fetch statement request count:', error);
       return 0;
@@ -109,11 +130,15 @@ const otherServicesService = {
    */
   getStopPaymentCount: async (branchId: string, token: string): Promise<number> => {
     try {
+      // Use the branch endpoint
       const response = await axios.get(
-        `${API_BASE_URL}/StopPaymentOrder/pending-count/${branchId}`,
+        `${API_BASE_URL}/StopPaymentOrder/branch/${branchId}`,
         authHeader(token)
       );
-      return response.data?.data || 0;
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data.length;
+      }
+      return 0;
     } catch (error) {
       console.error('Failed to fetch stop payment count:', error);
       return 0;
@@ -125,11 +150,15 @@ const otherServicesService = {
    */
   getCbeBirrLinkCount: async (branchId: string, token: string): Promise<number> => {
     try {
+      // No branch endpoint, fetch all and filter by branchId if possible
       const response = await axios.get(
-        `${API_BASE_URL}/CbeBirrLink/pending-count/${branchId}`,
+        `${API_BASE_URL}/CbeBirrLink`,
         authHeader(token)
       );
-      return response.data?.data || 0;
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data.filter((item: any) => item.branchId === branchId).length;
+      }
+      return 0;
     } catch (error) {
       console.error('Failed to fetch CBE Birr link count:', error);
       return 0;
@@ -141,11 +170,15 @@ const otherServicesService = {
    */
   getRtgsTransferCount: async (branchId: string, token: string): Promise<number> => {
     try {
+      // No branch endpoint, fetch all and filter by branchId if possible
       const response = await axios.get(
-        `${API_BASE_URL}/RtgsTransfer/pending-count/${branchId}`,
+        `${API_BASE_URL}/RtgsTransfer`,
         authHeader(token)
       );
-      return response.data?.data || 0;
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data.filter((item: any) => item.branchId === branchId).length;
+      }
+      return 0;
     } catch (error) {
       console.error('Failed to fetch RTGS transfer count:', error);
       return 0;
