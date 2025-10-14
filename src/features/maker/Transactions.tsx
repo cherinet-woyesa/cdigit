@@ -16,6 +16,7 @@ import type { ActionMessage } from "types/ActionMessage";
 import type { WindowDto } from "../../types/WindowDto";
 import { SkeletonCard } from "../../components/Skeleton";
 import { useNotification } from "../../context/NotificationContext";
+import { speechService } from "../../services/speechService";
 
 // Define the props interface
 interface TransactionsProps {
@@ -286,6 +287,12 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             }
             setCurrent(res.data);
             setActionMessage({ type: 'success', content: res.message || "Customer called." });
+            
+            // Automatically announce the customer regardless of UI voice settings
+            if (res.data && speechService.isSupported) {
+                const textToSpeak = `Customer ${res.data.customerName}, please proceed to window ${assignedWindow.windowNumber}.`;
+                speechService.speak(textToSpeak, 'en');
+            }
             
             await refreshQueue();
             await refreshTotalServed();

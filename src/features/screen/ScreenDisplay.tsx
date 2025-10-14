@@ -1,5 +1,5 @@
 // components/ScreenDisplay.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import { motion } from "framer-motion";
 import { exchangeRateService } from "../../services/exchangeRateService";
@@ -8,28 +8,23 @@ import { useAuth } from "../../context/AuthContext";
 import { jwtDecode } from "jwt-decode";
 import type { QueueCustomer } from "../../types/QueueCustomer";
 import type { DecodedToken } from "../../types/DecodedToken";
-import makerService from "../../services/makerService"; // or wherever getWindowsByBranchId is
+import makerService from "../../services/makerService";
 import type { WindowDto } from "../../types/WindowDto";
-
-
-
-/** Token claims we need */
-
+import { speechService } from "../../services/speechService";
 
 export default function ScreenDisplay() {
   const [currentCustomer, setCurrentCustomer] = useState<QueueCustomer | null>(null);
   const [onProgressCustomers, setOnProgressCustomers] = useState<QueueCustomer[]>([]);
-
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loadingRates, setLoadingRates] = useState(true);
   const [adsIndex, setAdsIndex] = useState(0);
   const [decoded, setDecoded] = useState<DecodedToken | null>(null);
   const { token, logout } = useAuth();
-
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<ExchangeRate>>({});
   const [windows, setWindows] = useState<WindowDto[]>([]);
-
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const lastAnnouncedCustomerRef = useRef<string | null>(null);
 
   const ads = [
     "Welcome to Commercial Bank of Ethiopia!",
@@ -48,7 +43,6 @@ export default function ScreenDisplay() {
       logout();
     }
   }, [token, logout]);
-
 
   // Connect to SignalR for live queue updates
   useEffect(() => {
@@ -70,10 +64,6 @@ export default function ScreenDisplay() {
       connection.on('QueueScreen', (data) => {
         console.log('New customer notification received:', data);
         setCurrentCustomer(data);
-        // setQueueNotifyModalTitle(data.transactionType + " Request");
-        // setQueueNotifyModalMessage(`${data.message} is comming, please ready to serve. `);
-        // setIsQueueNotifyModalOpen(true);
-        // void refreshQueue();
       });
     });
 
@@ -100,55 +90,52 @@ export default function ScreenDisplay() {
     fetchWindows();
   }, [decoded?.BranchId, token]);
 
-
   // Function to fetch OnProgress customers
   const fetchOnProgressCustomers = async (branchId: string) => {
-  try {
-    const res = await fetch(
-      `http://localhost:5268/api/QueueManager/OnProgress/${branchId}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const data = await res.json();
-
-    const customers = data.map((c: any) => ({
-      customername: c.customerName ?? "N/A",
-      queueNumber: c.queueNumber,
-      windowId: c.windowId,
-      token: c.tokenNumber,
-      serviceName: c.serviceName,
-      message: "Currently Being Served",
-    }));
-
-    // 🟢 Wait for windows before mapping
-    if (windows.length === 0) {
-      console.warn("Windows not loaded yet, skipping window mapping temporarily.");
-      setOnProgressCustomers(customers);
-      return;
-    }
-
-    const mappedCustomers = customers.map((cust: any) => {
-      const win = windows.find(
-        (w) => w.id.toLowerCase() === cust.windowId.toLowerCase()
+    try {
+      const res = await fetch(
+        `http://localhost:5268/api/QueueManager/OnProgress/${branchId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      console.log("Mapping customer:", cust.windowId, "=>", win?.windowNumber);
-      return { ...cust, windowNumber: win?.windowNumber ?? "-" };
-    });
+      const data = await res.json();
 
-    setOnProgressCustomers(mappedCustomers);
-  } catch (err) {
-    console.error("Error fetching OnProgress customers:", err);
-  }
-};
+      const customers = data.map((c: any) => ({
+        customername: c.customerName ?? "N/A",
+        queueNumber: c.queueNumber,
+        windowId: c.windowId,
+        token: c.tokenNumber,
+        serviceName: c.serviceName,
+        message: "Currently Being Served",
+      }));
 
-//fetch OnProgress customers whenever windows or branchId changes
-useEffect(() => {
-  if (windows.length > 0 && decoded?.BranchId) {
-    console.log("Re-mapping customers since windows loaded...");
-    fetchOnProgressCustomers(decoded.BranchId);
-  }
-}, [windows, decoded?.BranchId]);
+      // 🟢 Wait for windows before mapping
+      if (windows.length === 0) {
+        console.warn("Windows not loaded yet, skipping window mapping temporarily.");
+        setOnProgressCustomers(customers);
+        return;
+      }
 
+      const mappedCustomers = customers.map((cust: any) => {
+        const win = windows.find(
+          (w) => w.id.toLowerCase() === cust.windowId.toLowerCase()
+        );
+        console.log("Mapping customer:", cust.windowId, "=>", win?.windowNumber);
+        return { ...cust, windowNumber: win?.windowNumber ?? "-" };
+      });
 
+      setOnProgressCustomers(mappedCustomers);
+    } catch (err) {
+      console.error("Error fetching OnProgress customers:", err);
+    }
+  };
+
+  // Fetch OnProgress customers whenever windows or branchId changes
+  useEffect(() => {
+    if (windows.length > 0 && decoded?.BranchId) {
+      console.log("Re-mapping customers since windows loaded...");
+      fetchOnProgressCustomers(decoded.BranchId);
+    }
+  }, [windows, decoded?.BranchId]);
 
   // Re-Fetch OnProgress whenever currentCustomer updates, to make it real-time
   useEffect(() => {
@@ -199,6 +186,34 @@ useEffect(() => {
     }
   };
 
+  // Announce current customer when it changes
+  useEffect(() => {
+    if (currentCustomer && voiceEnabled) {
+      // Convert queueNumber to string for comparison
+      const queueNumberStr = String(currentCustomer.queueNumber);
+      // Prevent announcing the same customer multiple times
+      if (lastAnnouncedCustomerRef.current !== queueNumberStr) {
+        lastAnnouncedCustomerRef.current = queueNumberStr;
+        const textToSpeak = `Now serving customer ${currentCustomer.customername}, at window ${currentCustomer.windowNumber}. Please proceed to window ${currentCustomer.windowNumber}.`;
+        speechService.speak(textToSpeak, 'en');
+      }
+    }
+  }, [currentCustomer, voiceEnabled]);
+
+  // Toggle voice support
+  const toggleVoiceSupport = () => {
+    const newVoiceEnabled = !voiceEnabled;
+    setVoiceEnabled(newVoiceEnabled);
+    
+    if (newVoiceEnabled && currentCustomer) {
+      // Announce current customer when voice is enabled
+      const textToSpeak = `Voice support enabled. Now serving customer ${currentCustomer.customername}, at window ${currentCustomer.windowNumber}.`;
+      speechService.speak(textToSpeak, 'en');
+    } else if (!newVoiceEnabled) {
+      // Stop any ongoing speech when voice is disabled
+      speechService.stop();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-fuchsia-900 via-purple-800 to-indigo-900 text-white flex flex-col">
@@ -208,6 +223,19 @@ useEffect(() => {
           Commercial Bank of Ethiopia
         </h1>
         <p className="opacity-80 text-lg">Queue & Exchange Rate Display</p>
+        {/* Voice Control Button */}
+        {speechService.isSupported && (
+          <button 
+            onClick={toggleVoiceSupport}
+            className={`mt-2 px-4 py-2 rounded-lg font-semibold ${
+              voiceEnabled 
+                ? 'bg-green-500 hover:bg-green-600' 
+                : 'bg-gray-500 hover:bg-gray-600'
+            } transition-colors`}
+          >
+            {voiceEnabled ? '🔊 Voice Enabled' : '🔇 Voice Disabled'}
+          </button>
+        )}
       </header>
 
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-10 gap-6 p-6">
@@ -218,7 +246,14 @@ useEffect(() => {
           transition={{ duration: 0.8 }}
           className="lg:col-span-7 bg-white/10 rounded-xl p-8 flex flex-col shadow-lg"
         >
-          <h2 className="text-3xl font-bold mb-6 text-center">Now Serving</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-3xl font-bold">Now Serving</h2>
+            {voiceEnabled && speechService.isSupported && (
+              <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                🔊 Voice Active
+              </span>
+            )}
+          </div>
 
           {currentCustomer ? (
             <div className="text-center mb-6 space-y-3">
@@ -240,7 +275,14 @@ useEffect(() => {
           )}
 
           <div className="mt-4">
-            <h2 className="text-2xl font-bold mb-3 text-center">Currently Being Served</h2>
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-2xl font-bold">Currently Being Served</h2>
+              {voiceEnabled && speechService.isSupported && (
+                <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs">
+                  🔊 Voice Active
+                </span>
+              )}
+            </div>
 
             {onProgressCustomers.length === 0 ? (
               <p className="text-center opacity-70">No customers currently being served.</p>
@@ -249,7 +291,6 @@ useEffect(() => {
                 <table className="w-full text-center text-sm">
                   <thead className="bg-fuchsia-800 text-white">
                     <tr>
-                      {/* <th className="p-2">#</th> */}
                       <th className="p-2">Token</th>
                       <th className="p-2">Customer</th>
                       <th className="p-2">Service</th>
@@ -262,12 +303,9 @@ useEffect(() => {
                         key={idx}
                         className="bg-fuchsia-800/20 hover:bg-fuchsia-700/30 border-b border-fuchsia-900/30"
                       >
-                        {/* <td className="p-2">{idx + 1}</td> */}
                         <td className="p-2">{c.token}</td>
                         <td className="p-2 font-semibold">{c.customername}</td>
                         <td className="p-2">{c.serviceName ?? "-"}</td>
-                        {/* <td className="p-2">{c.queueNumber}</td> */}
-                        {/* <td className="p-2">{c.windowNumber}</td> */}
                         <td className="p-2">
                           {c.windowNumber ? (
                             <span className="font-semibold text-green-400">{c.windowNumber}</span>
@@ -284,7 +322,6 @@ useEffect(() => {
           </div>
         </motion.section>
 
-
         {/* Exchange Rate Section (30%) */}
         <motion.section
           initial={{ opacity: 0, y: 40 }}
@@ -300,9 +337,6 @@ useEffect(() => {
           ) : (
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-center border-separate border-spacing-y-1 text-sm">
-
-
-
                 <thead>
                   <tr className="bg-fuchsia-900 text-white">
                     <th className="p-2">Currency</th>
@@ -406,8 +440,6 @@ useEffect(() => {
                     </motion.tr>
                   ))}
                 </tbody>
-
-
               </table>
             </div>
           )}

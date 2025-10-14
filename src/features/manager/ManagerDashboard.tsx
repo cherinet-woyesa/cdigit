@@ -15,6 +15,7 @@ import DashboardMetrics, { type Metric } from "../../components/dashboard/Dashbo
 import { safeJWTDecode, isTokenExpired } from "../../utils/jwt";
 import { BRAND_COLORS } from "../../config/env";
 import ApprovalDashboard from "./ApprovalDashboard";
+import PettyCash from "./PettyCash";
 
 interface Branch {
   id: string;
@@ -39,6 +40,7 @@ export default function ManagerDashboard() {
   const [branch, setBranch] = useState<Branch | null>(null);
   const [branchId, setBranchId] = useState<string>("");
   const [managerId, setManagerId] = useState<string>("");
+  const [vaultManagerId, setVaultManagerId] = useState<string>("");
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     totalTransactions: 0,
     activeWindows: 0,
@@ -69,6 +71,7 @@ export default function ManagerDashboard() {
         const payload = safeJWTDecode<{ BranchId: string; nameid: string }>(token);
         setBranchId(payload.BranchId);
         setManagerId(payload.nameid);
+        setVaultManagerId(payload.nameid); // Using managerId as vaultManagerId for now
         console.log("ManagerDashboard: Token decoded successfully", payload);
       } catch (error) {
         console.error("ManagerDashboard: Failed to decode token", error);
@@ -265,6 +268,13 @@ export default function ManagerDashboard() {
                 📊 Transactions
               </TabsTrigger>
               <TabsTrigger 
+                value="petty-cash" 
+                variant="brand"
+                className="flex-1 min-w-[140px]"
+              >
+                💰 Petty Cash
+              </TabsTrigger>
+              <TabsTrigger 
                 value="Screen-Display" 
                 variant="brand"
                 className="flex-1 min-w-[140px]"
@@ -298,6 +308,15 @@ export default function ManagerDashboard() {
               <Transactions branchId={branchId} />
             </TabsContent>
             
+            <TabsContent value="petty-cash" className="animate-fadeIn">
+              {branchId && (
+                <PettyCash 
+                  branchId={branchId} 
+                  voultManagerId={vaultManagerId} 
+                />
+              )}
+            </TabsContent>
+
             <TabsContent value="Screen-Display" className="animate-fadeIn">
               <ScreenDisplay />
             </TabsContent>
