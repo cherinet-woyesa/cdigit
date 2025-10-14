@@ -7,7 +7,8 @@ import {
   DocumentDuplicateIcon, 
   HandRaisedIcon, 
   LinkIcon, 
-  ArrowsRightLeftIcon 
+  ArrowsRightLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import otherServicesService from '../../services/otherServicesService';
 import type { OtherServicesData } from '../../services/otherServicesService';
@@ -25,10 +26,11 @@ interface Service {
   icon: React.ComponentType<{ className?: string }>;
   count: number;
   color: string;
+  endpoint: string;
 }
 
 interface OtherServicesProps {
-  onServiceClick?: (serviceType: string) => void;
+  onServiceClick?: (serviceType: string, endpoint: string) => void;
 }
 
 const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
@@ -84,6 +86,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           icon: DocumentTextIcon,
           count: servicesData.accountOpening,
           color: 'text-blue-600',
+          endpoint: 'AccountOpening'
         },
         {
           id: 'cbeBirrRegistration',
@@ -91,6 +94,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           icon: CurrencyDollarIcon,
           count: servicesData.cbeBirrRegistration,
           color: 'text-green-600',
+          endpoint: 'CbeBirrRegistrations'
         },
         {
           id: 'eBankingApplication',
@@ -98,6 +102,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           icon: DevicePhoneMobileIcon,
           count: servicesData.eBankingApplication,
           color: 'text-purple-600',
+          endpoint: 'EBankingApplication'
         },
         {
           id: 'posRequest',
@@ -105,6 +110,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           icon: ReceiptPercentIcon,
           count: servicesData.posRequest,
           color: 'text-indigo-600',
+          endpoint: 'PosRequest'
         },
         {
           id: 'statementRequest',
@@ -112,6 +118,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           icon: DocumentDuplicateIcon,
           count: servicesData.statementRequest,
           color: 'text-orange-600',
+          endpoint: 'StatementRequest'
         },
         {
           id: 'stopPayment',
@@ -119,6 +126,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           icon: HandRaisedIcon,
           count: servicesData.stopPayment,
           color: 'text-red-600',
+          endpoint: 'StopPaymentOrder'
         },
         {
           id: 'cbeBirrLink',
@@ -126,6 +134,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           icon: LinkIcon,
           count: servicesData.cbeBirrLink,
           color: 'text-teal-600',
+          endpoint: 'CbeBirrLink'
         },
         {
           id: 'rtgsTransfer',
@@ -133,6 +142,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           icon: ArrowsRightLeftIcon,
           count: servicesData.rtgsTransfer,
           color: 'text-pink-600',
+          endpoint: 'RtgsTransfer'
         },
       ]
     : [];
@@ -222,7 +232,7 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
           services.map((service) => (
             <div
               key={service.id}
-              onClick={() => onServiceClick?.(service.name)}
+              onClick={() => onServiceClick?.(service.name, service.endpoint)}
               className="flex items-center justify-between p-4 rounded-lg hover:bg-gray-50 border border-gray-100 transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3 flex-1">
@@ -233,11 +243,14 @@ const OtherServices: React.FC<OtherServicesProps> = ({ onServiceClick }) => {
                   {service.name}
                 </span>
               </div>
-              <span className={`text-sm font-bold px-3 py-1 rounded-full ${
-                service.count > 0 ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-gray-100 text-gray-400'
-              }`}>
-                {service.count}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+                  service.count > 0 ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-gray-100 text-gray-400'
+                }`}>
+                  {service.count}
+                </span>
+                <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+              </div>
             </div>
           ))
         )}

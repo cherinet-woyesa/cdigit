@@ -9,6 +9,8 @@ import makerService from "../../services/makerService";
 import PettyCash from "./PettyCash";
 import Transactions from "./Transactions";
 import OtherServices from "./OtherServices";
+import ServiceDetailPanel from "./ServiceDetailPanel";
+import ServiceRequestDetailPanel from "./ServiceRequestDetailPanel";
 import VoucherDashboard from "./VoucherDashboard";
 import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
 import MainLayout from "./MakerLayout";
@@ -41,6 +43,7 @@ const MakerDashboardContent: React.FC<Props> = ({
     const [currentAssignedWindow, setAssignedWindow] = useState<WindowDto | null>(assignedWindow);
     const [shouldShowWindowModal, setShouldShowWindowModal] = useState(false);
     const [branchName, setBranchName] = useState<string>("");
+    const [serviceRequestParams, setServiceRequestParams] = useState<{endpoint: string, requestId: string} | null>(null);
 
     useEffect(() => {
         if (!token) {
@@ -59,6 +62,33 @@ const MakerDashboardContent: React.FC<Props> = ({
             setTimeout(() => logout(), 2000);
         }
     }, [token, logout]);
+
+    // Handle hash-based routing for service requests
+    useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash;
+            if (hash.startsWith('#/maker/service-request/')) {
+                const parts = hash.substring(24).split('/');
+                if (parts.length >= 2) {
+                    setServiceRequestParams({
+                        endpoint: parts[0],
+                        requestId: parts[1]
+                    });
+                    setCurrentSection("service-request-detail");
+                }
+            }
+        };
+
+        // Check initial hash
+        handleHashChange();
+        
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHashChange);
+        
+        return () => {
+            window.removeEventListener('hashchange', handleHashChange);
+        };
+    }, []);
 
     // Fetch branch info
     useEffect(() => {
@@ -241,6 +271,10 @@ const MakerDashboardContent: React.FC<Props> = ({
     }, [shouldShowWindowModal]);
 
     const handleSectionChange = useCallback((sectionId: string) => {
+        // Reset service request params when changing sections
+        if (sectionId !== "service-request-detail") {
+            setServiceRequestParams(null);
+        }
         setCurrentSection(sectionId);
     }, []);
 
@@ -395,7 +429,20 @@ const MakerDashboardContent: React.FC<Props> = ({
                 )}
 
                 {currentSection === "petty" && <PettyCash />}
-                {currentSection === "other" && <OtherServices onServiceClick={handleServiceClick} />}
+                {currentSection === "other" && <OtherServices onServiceClick={(serviceType, endpoint) => {
+                  // Store the selected service in localStorage for the service detail component
+                  localStorage.setItem('selectedServiceType', serviceType);
+                  localStorage.setItem('selectedServiceEndpoint', endpoint);
+                  // Navigate to the service detail section
+                  setCurrentSection("service-detail");
+                }} />}
+                {currentSection === "service-detail" && <ServiceDetailPanel onBack={() => setCurrentSection("other")} />}
+                {currentSection === "service-request-detail" && serviceRequestParams && (
+                    <ServiceRequestDetailPanel 
+                        endpoint={serviceRequestParams.endpoint}
+                        requestId={serviceRequestParams.requestId}
+                    />
+                )}
                 {currentSection === "vouchers" && <VoucherDashboard />}
                 {currentSection === "performance" && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
