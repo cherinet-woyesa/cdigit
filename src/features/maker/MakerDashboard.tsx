@@ -11,7 +11,7 @@ import Transactions from "./Transactions";
 import OtherServices from "./OtherServices";
 import VoucherDashboard from "./VoucherDashboard";
 import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
-import MainLayout from "../../components/layout/MainLayout";
+import MainLayout from "./MakerLayout";
 import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
 import WindowChangeModal from "../../components/modals/WindowChangeModal";
 import { 
@@ -39,6 +39,8 @@ const MakerDashboardContent: React.FC<Props> = ({
     const [decodedToken, setDecodedToken] = useState<DecodedToken | null>(null);
     const [isWindowModalOpen, setWindowModalOpen] = useState(false);
     const [currentAssignedWindow, setAssignedWindow] = useState<WindowDto | null>(assignedWindow);
+    const [shouldShowWindowModal, setShouldShowWindowModal] = useState(false);
+    const [branchName, setBranchName] = useState<string>("");
 
     useEffect(() => {
         if (!token) {
@@ -58,18 +60,43 @@ const MakerDashboardContent: React.FC<Props> = ({
         }
     }, [token, logout]);
 
-    // Fetch assigned window on component mount
+    // Fetch branch info
+    useEffect(() => {
+        const fetchBranch = async () => {
+            if (!token || !decodedToken?.BranchId) return;
+            try {
+                const res = await makerService.getBranchById(decodedToken.BranchId, token);
+                if (res.success && res.data?.name) {
+                    setBranchName(res.data.name);
+                } else {
+                    setBranchName("Unknown Branch");
+                }
+            } catch (err) {
+                console.error("Failed to fetch branch:", err);
+                setBranchName("Error loading branch");
+            }
+        };
+
+        if (decodedToken?.BranchId) {
+            fetchBranch();
+        }
+    }, [decodedToken?.BranchId, token]);
+
+    // Fetch assigned window on component mount - BLOCKING
     useEffect(() => {
         const fetchAssignedWindow = async () => {
             if (!decodedToken?.nameid || !token) return;
 
             try {
+                setIsLoading(true);
                 const window = await makerService.getAssignedWindowForMaker(decodedToken.nameid, token);
                 if (window) {
                     setAssignedWindow(window);
                     console.log('Assigned window loaded:', window);
                 } else {
                     console.log('No window assigned to this maker');
+                    // Set flag to show window modal immediately after login
+                    setShouldShowWindowModal(true);
                     setActionMessage({
                         type: 'warning',
                         content: 'No window assigned. Please select a window to start serving customers.'
@@ -77,14 +104,20 @@ const MakerDashboardContent: React.FC<Props> = ({
                 }
             } catch (error) {
                 console.error('Failed to fetch assigned window:', error);
+                // Set flag to show window modal even if fetch fails
+                setShouldShowWindowModal(true);
                 setActionMessage({
                     type: 'error',
-                    content: 'Failed to load assigned window.'
+                    content: 'Failed to load assigned window. Please select a window manually.'
                 });
+            } finally {
+                setIsLoading(false);
             }
         };
 
-        fetchAssignedWindow();
+        if (decodedToken?.nameid) {
+            fetchAssignedWindow();
+        }
     }, [decodedToken?.nameid, token]);
 
     useEffect(() => {
@@ -199,6 +232,14 @@ const MakerDashboardContent: React.FC<Props> = ({
         return () => clearTimeout(timer);
     }, []);
 
+    // Effect to open window modal immediately after login when no window is assigned
+    useEffect(() => {
+        if (shouldShowWindowModal) {
+            setWindowModalOpen(true);
+            setShouldShowWindowModal(false); // Reset the flag
+        }
+    }, [shouldShowWindowModal]);
+
     const handleSectionChange = useCallback((sectionId: string) => {
         setCurrentSection(sectionId);
     }, []);
@@ -311,7 +352,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                 )}
 
                 {/* Window Assignment Alert */}
-                {!currentAssignedWindow && (
+                {!currentAssignedWindow && !isWindowModalOpen && (
                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 mb-6 shadow-sm">
                         <div className="flex items-start gap-4">
                             <div className="flex-shrink-0">
@@ -393,6 +434,9 @@ const MakerDashboardContent: React.FC<Props> = ({
             onSectionChange={handleSectionChange}
             assignedWindow={currentAssignedWindow}
             onWindowChange={handleWindowChange}
+            branchName={branchName}
+            decoded={decodedToken}
+            actionMessage={actionMessage}
         >
             {renderContent()}
             <WindowChangeModal

@@ -26,9 +26,9 @@ const pettyCashMakerService = {
     );
     console.log("data returned from initial request:", res.data);
     return res.data;
-},
+  },
 
- getByFrontMaker: async (frontMakerId: string, branchId: string, token: string) => {
+  getByFrontMaker: async (frontMakerId: string, branchId: string, token: string) => {
     console.log("get petty by maker called ");
     const res = await axios.get<ApiResponse<object>>(
         `${API_BASE_URL}/PettyCashForm/by-frontmaker/${frontMakerId}/branch/${branchId}`,
@@ -36,65 +36,65 @@ const pettyCashMakerService = {
     );
     console.log("petty cash data:", res.data);
     return res.data;
-},
+  },
 
-  approveReceipt: async (makerId: string, token: string) => {
-    const res = await axios.post<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/Maker/ApproveInitialReceipt/${makerId}`,
+  approveReceipt: async (formId: string, makerId: string, token: string) => {
+    const res = await axios.put<ApiResponse<object>>(
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker-approve?makerId=${makerId}`,
       {},
       authHeader(token)
     );
     return res.data;
   },
 
-  requestAdditional: async (makerId: string, token: string) => {
-    const res = await axios.post<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/Maker/RequestAdditional/${makerId}`,
+  requestAdditional: async (formId: string, token: string) => {
+    const res = await axios.put<ApiResponse<object>>(
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker-request-additional`,
       {},
       authHeader(token)
     );
     return res.data;
   },
 
-  approveAdditionalReceipt: async (makerId: string, token: string) => {
-    const res = await axios.post<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/Maker/ApproveAdditionalReceipt/${makerId}`,
+  approveAdditionalReceipt: async (formId: string, makerId: string, token: string) => {
+    const res = await axios.put<ApiResponse<object>>(
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker-approve-additional?makerId=${makerId}`,
       {},
       authHeader(token)
     );
     return res.data;
   },
 
-  surrenderInitial: async (makerId: string, token: string) => {
-    const res = await axios.post<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/Maker/SurrenderInitial/${makerId}`,
-      {},
-      authHeader(token)
-    );
-    return res.data;
-  },
-
-  surrenderAdditional: async (makerId: string, token: string) => {
-    const res = await axios.post<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/Maker/SurrenderAdditional/${makerId}`,
-      {},
-      authHeader(token)
-    );
-    return res.data;
-  },
-
-  submitForeignCurrency: async (makerId: string, dto: object, token: string) => {
-    const res = await axios.post<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/Maker/SubmitForeignCurrency/${makerId}`,
+  surrenderInitial: async (formId: string, dto: object, token: string) => {
+    const res = await axios.put<ApiResponse<object>>(
+      `${API_BASE_URL}/PettyCashForm/${formId}/surrender`,
       dto,
       authHeader(token)
     );
     return res.data;
   },
 
-  submitPettyCash: async (makerId: string, dto: object, token: string) => {
-    const res = await axios.post<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/Maker/SubmitPettyCash/${makerId}`,
+  surrenderAdditional: async (formId: string, dto: object, token: string) => {
+    const res = await axios.put<ApiResponse<object>>(
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker-additional-surrender`,
+      dto,
+      authHeader(token)
+    );
+    return res.data;
+  },
+
+  submitForeignCurrency: async (formId: string, dto: object, token: string) => {
+    const res = await axios.put<ApiResponse<object>>(
+      `${API_BASE_URL}/PettyCashForm/${formId}/submit-foreign-currency`,
+      dto,
+      authHeader(token)
+    );
+    return res.data;
+  },
+
+  submitPettyCash: async (formId: string, dto: object, token: string) => {
+    const res = await axios.put<ApiResponse<object>>(
+      `${API_BASE_URL}/PettyCashForm/${formId}/submit-petty-cash-denominations`,
       dto,
       authHeader(token)
     );

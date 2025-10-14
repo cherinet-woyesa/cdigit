@@ -4,6 +4,8 @@ import type { WindowDto } from "types/WindowDto";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import Footer from "./Footer";
+import type { DecodedToken } from "types/DecodedToken";
+import type { ActionMessage } from "types/ActionMessage";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -11,6 +13,9 @@ interface MainLayoutProps {
   onSectionChange: (section: string) => void;
   assignedWindow?: WindowDto | null;
   onWindowChange: () => void;
+  branchName?: string;
+  decoded?: DecodedToken | null;
+  actionMessage?: ActionMessage | null;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({
@@ -18,7 +23,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   activeSection,
   onSectionChange,
   assignedWindow,
-  onWindowChange
+  onWindowChange,
+  branchName,
+  decoded,
+  actionMessage
 }) => {
   const { logout } = useAuth();
 
@@ -41,6 +49,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         <Header 
           assignedWindow={assignedWindow}
           handleOpenChangeWindow={onWindowChange}
+          branchName={branchName}
+          decoded={decoded}
         />
         
         {/* Main Content - This is where MakerDashboard content goes */}
@@ -51,6 +61,31 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         {/* Footer - Only brand footer */}
         <Footer />
       </div>
+
+      {/* Global Action Message */}
+      {actionMessage?.content && (
+        <div className={`fixed top-4 right-4 z-50 rounded-lg p-4 border-l-4 shadow-lg animate-in slide-in-from-right-2 ${
+          actionMessage.type === 'success' 
+            ? 'bg-green-50 border-green-500 text-green-800'
+            : actionMessage.type === 'error'
+            ? 'bg-red-50 border-red-500 text-red-800'
+            : actionMessage.type === 'warning'
+            ? 'bg-amber-50 border-amber-500 text-amber-800'
+            : 'bg-blue-50 border-blue-500 text-blue-800'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">{actionMessage.content}</span>
+            </div>
+            <button
+              onClick={() => {}} // This will be handled by parent
+              className="ml-4 p-1 hover:bg-black/5 rounded-lg transition-colors"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

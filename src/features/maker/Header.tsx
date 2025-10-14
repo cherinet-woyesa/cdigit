@@ -13,22 +13,35 @@ import {
 interface HeaderProps {
   assignedWindow?: WindowDto | null;
   handleOpenChangeWindow: () => void;
+  branchName?: string; // Add this
+  decoded?: DecodedToken | null; // Add this
 }
 
-const Header: React.FC<HeaderProps> = ({ assignedWindow, handleOpenChangeWindow }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  assignedWindow, 
+  handleOpenChangeWindow,
+  branchName, // Add to destructuring
+  decoded // Add to destructuring
+}) => {
   const { token, user } = useAuth();
-  const [decoded, setDecoded] = React.useState<DecodedToken | null>(null);
+  const [localDecoded, setLocalDecoded] = React.useState<DecodedToken | null>(decoded || null);
 
-  /** Decode token for branch info */
+  /** Decode token for branch info - only if not passed as prop */
   React.useEffect(() => {
-    if (!token) return;
+    if (!token || decoded) return; // Skip if decoded is already provided
     try {
       const d = jwtDecode<DecodedToken>(token);
-      setDecoded(d);
+      setLocalDecoded(d);
     } catch (error) {
       console.error('Failed to decode token in Header:', error);
     }
-  }, [token]);
+  }, [token, decoded]);
+
+  // Use the prop if provided, otherwise use local state
+  const currentDecoded = decoded || localDecoded;
+  
+  // Use branchName prop if provided, otherwise fallback to decoded branch ID
+  const displayBranchName = branchName || currentDecoded?.BranchId || 'N/A';
 
   return (
     <header className="bg-gradient-to-r from-fuchsia-700 to-fuchsia-600 text-white shadow-md sticky top-0 z-40">
@@ -37,10 +50,10 @@ const Header: React.FC<HeaderProps> = ({ assignedWindow, handleOpenChangeWindow 
           {/* Left Side - Welcome */}
           <div>
             <h1 className="text-xl font-bold text-white">
-              Welcome, {user?.firstName || decoded?.unique_name || 'Maker'}
+              Welcome, {user?.firstName || currentDecoded?.unique_name || 'Maker'}
             </h1>
             <p className="text-sm text-fuchsia-50 mt-0.5">
-              Branch: <span className="font-semibold text-white">{decoded?.BranchId || 'N/A'}</span>
+              Branch: <span className="font-semibold text-white">{displayBranchName}</span>
               {assignedWindow && (
                 <>
                   <span className="mx-2 text-fuchsia-200">•</span>

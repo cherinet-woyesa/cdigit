@@ -6,30 +6,20 @@ import { exchangeRateService } from "../../services/exchangeRateService";
 import type { ExchangeRate } from "../../types/ExchangeRate";
 import { useAuth } from "../../context/AuthContext";
 import { jwtDecode } from "jwt-decode";
+import type { QueueCustomer } from "../../types/QueueCustomer";
+import type { DecodedToken } from "../../types/DecodedToken";
+import makerService from "../../services/makerService"; // or wherever getWindowsByBranchId is
+import type { WindowDto } from "../../types/WindowDto";
 
 
-interface QueueCustomer {
-  message: string;
-  customername: string;
-  queueNumber: number;
-  windowNumber: string;
-  token: string;
-}
 
 /** Token claims we need */
-type DecodedToken = {
-  BranchId: string;
-  nameid: string; // makerId
-  role?: string;
-  unique_name?: string;
-  email?: string;
-  exp?: number;
-  iss?: string;
-  aud?: string;
-};
+
 
 export default function ScreenDisplay() {
   const [currentCustomer, setCurrentCustomer] = useState<QueueCustomer | null>(null);
+  const [onProgressCustomers, setOnProgressCustomers] = useState<QueueCustomer[]>([]);
+
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loadingRates, setLoadingRates] = useState(true);
   const [adsIndex, setAdsIndex] = useState(0);
@@ -38,6 +28,7 @@ export default function ScreenDisplay() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<ExchangeRate>>({});
+  const [windows, setWindows] = useState<WindowDto[]>([]);
 
 
   const ads = [
@@ -70,11 +61,11 @@ export default function ScreenDisplay() {
       .build();
 
     connection.start().then(() => {
-      console.log('Connected to SignalR hub');
+      console.log('manager screen Connected to SignalR hub');
 
       // Join group with Branch id
       connection.invoke('JoinBranchScreenDisplayGroup', decoded?.BranchId);
-
+      console.log('Joined group:', decoded?.BranchId);
       // Listen for messages
       connection.on('QueueScreen', (data) => {
         console.log('New customer notification received:', data);
@@ -91,6 +82,78 @@ export default function ScreenDisplay() {
     };
   }, [decoded?.BranchId]);
 
+  // Fetch windows for the branch
+  useEffect(() => {
+    if (!decoded?.BranchId || !token) return;
+
+    const fetchWindows = async () => {
+      try {
+        const branchId = decoded?.BranchId;
+        const data = await makerService.getWindowsByBranchId(branchId, token);
+        setWindows(data);
+        console.log("Fetched windows:", data);
+      } catch (err) {
+        console.error("Error fetching windows:", err);
+      }
+    };
+
+    fetchWindows();
+  }, [decoded?.BranchId, token]);
+
+
+  // Function to fetch OnProgress customers
+  const fetchOnProgressCustomers = async (branchId: string) => {
+  try {
+    const res = await fetch(
+      `http://localhost:5268/api/QueueManager/OnProgress/${branchId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const data = await res.json();
+
+    const customers = data.map((c: any) => ({
+      customername: c.customerName ?? "N/A",
+      queueNumber: c.queueNumber,
+      windowId: c.windowId,
+      token: c.tokenNumber,
+      serviceName: c.serviceName,
+      message: "Currently Being Served",
+    }));
+
+    // 🟢 Wait for windows before mapping
+    if (windows.length === 0) {
+      console.warn("Windows not loaded yet, skipping window mapping temporarily.");
+      setOnProgressCustomers(customers);
+      return;
+    }
+
+    const mappedCustomers = customers.map((cust: any) => {
+      const win = windows.find(
+        (w) => w.id.toLowerCase() === cust.windowId.toLowerCase()
+      );
+      console.log("Mapping customer:", cust.windowId, "=>", win?.windowNumber);
+      return { ...cust, windowNumber: win?.windowNumber ?? "-" };
+    });
+
+    setOnProgressCustomers(mappedCustomers);
+  } catch (err) {
+    console.error("Error fetching OnProgress customers:", err);
+  }
+};
+
+//fetch OnProgress customers whenever windows or branchId changes
+useEffect(() => {
+  if (windows.length > 0 && decoded?.BranchId) {
+    console.log("Re-mapping customers since windows loaded...");
+    fetchOnProgressCustomers(decoded.BranchId);
+  }
+}, [windows, decoded?.BranchId]);
+
+
+
+  // Re-Fetch OnProgress whenever currentCustomer updates, to make it real-time
+  useEffect(() => {
+    if (decoded?.BranchId) fetchOnProgressCustomers(decoded.BranchId);
+  }, [currentCustomer, decoded?.BranchId]);
 
   // Fetch exchange rates periodically
   useEffect(() => {
@@ -153,17 +216,18 @@ export default function ScreenDisplay() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="lg:col-span-7 bg-white/10 rounded-xl p-8 flex flex-col justify-center items-center shadow-lg"
+          className="lg:col-span-7 bg-white/10 rounded-xl p-8 flex flex-col shadow-lg"
         >
-          {/* <h2 className="text-3xl font-bold mb-6">Now Serving</h2> */}
+          <h2 className="text-3xl font-bold mb-6 text-center">Now Serving</h2>
+
           {currentCustomer ? (
-            <div className="text-center space-y-4">
-              <p className="text-xl">{currentCustomer.message}</p>
+            <div className="text-center mb-6 space-y-3">
+              <p className="text-lg text-yellow-200">{currentCustomer.message}</p>
               <p className="text-6xl font-extrabold text-yellow-300 drop-shadow-lg">
                 {currentCustomer.queueNumber}
               </p>
               <p className="text-3xl font-bold">{currentCustomer.customername}</p>
-              <p className="mt-2 text-2xl">
+              <p className="mt-1 text-2xl">
                 Window No:{" "}
                 <span className="font-semibold text-green-400">
                   {currentCustomer.windowNumber}
@@ -172,9 +236,54 @@ export default function ScreenDisplay() {
               <p className="text-sm opacity-70">Token: {currentCustomer.token}</p>
             </div>
           ) : (
-            <p className="text-2xl opacity-80">Waiting for next customer...</p>
+            <p className="text-2xl opacity-80 text-center mb-6">Waiting for next customer...</p>
           )}
+
+          <div className="mt-4">
+            <h2 className="text-2xl font-bold mb-3 text-center">Currently Being Served</h2>
+
+            {onProgressCustomers.length === 0 ? (
+              <p className="text-center opacity-70">No customers currently being served.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-fuchsia-700/40 shadow-sm">
+                <table className="w-full text-center text-sm">
+                  <thead className="bg-fuchsia-800 text-white">
+                    <tr>
+                      {/* <th className="p-2">#</th> */}
+                      <th className="p-2">Token</th>
+                      <th className="p-2">Customer</th>
+                      <th className="p-2">Service</th>
+                      <th className="p-2">Window</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {onProgressCustomers.map((c, idx) => (
+                      <tr
+                        key={idx}
+                        className="bg-fuchsia-800/20 hover:bg-fuchsia-700/30 border-b border-fuchsia-900/30"
+                      >
+                        {/* <td className="p-2">{idx + 1}</td> */}
+                        <td className="p-2">{c.token}</td>
+                        <td className="p-2 font-semibold">{c.customername}</td>
+                        <td className="p-2">{c.serviceName ?? "-"}</td>
+                        {/* <td className="p-2">{c.queueNumber}</td> */}
+                        {/* <td className="p-2">{c.windowNumber}</td> */}
+                        <td className="p-2">
+                          {c.windowNumber ? (
+                            <span className="font-semibold text-green-400">{c.windowNumber}</span>
+                          ) : (
+                            <span className="opacity-50">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </motion.section>
+
 
         {/* Exchange Rate Section (30%) */}
         <motion.section
@@ -191,114 +300,114 @@ export default function ScreenDisplay() {
           ) : (
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-center border-separate border-spacing-y-1 text-sm">
-                
+
 
 
                 <thead>
-          <tr className="bg-fuchsia-900 text-white">
-            <th className="p-2">Currency</th>
-            <th className="p-2">Cash Buying</th>
-            <th className="p-2">Cash Selling</th>
-            <th className="p-2">Tx Buying</th>
-            <th className="p-2">Tx Selling</th>
-            <th className="p-2">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rates.map((rate, idx) => (
-            <motion.tr
-              key={rate.id}
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: idx * 0.05 }}
-              className="bg-fuchsia-800/30 hover:bg-fuchsia-600/40 rounded-lg"
-            >
-              {editingId === rate.id ? (
-                <>
-                  <td className="p-2 font-medium">{rate.currencyCode}</td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      value={formData.cashBuying ?? ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, cashBuying: +e.target.value })
-                      }
-                      className="w-20 p-1 rounded text-black"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      value={formData.cashSelling ?? ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, cashSelling: +e.target.value })
-                      }
-                      className="w-20 p-1 rounded text-black"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      value={formData.transactionBuying ?? ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          transactionBuying: +e.target.value,
-                        })
-                      }
-                      className="w-20 p-1 rounded text-black"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      value={formData.transactionSelling ?? ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          transactionSelling: +e.target.value,
-                        })
-                      }
-                      className="w-20 p-1 rounded text-black"
-                    />
-                  </td>
-                  <td className="p-2 space-x-2">
-                    <button
-                      onClick={handleUpdate}
-                      className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                  <tr className="bg-fuchsia-900 text-white">
+                    <th className="p-2">Currency</th>
+                    <th className="p-2">Cash Buying</th>
+                    <th className="p-2">Cash Selling</th>
+                    <th className="p-2">Tx Buying</th>
+                    <th className="p-2">Tx Selling</th>
+                    <th className="p-2">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rates.map((rate, idx) => (
+                    <motion.tr
+                      key={rate.id}
+                      initial={{ opacity: 0, x: -30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, delay: idx * 0.05 }}
+                      className="bg-fuchsia-800/30 hover:bg-fuchsia-600/40 rounded-lg"
                     >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="px-3 py-1 bg-gray-500 hover:bg-gray-600 rounded text-sm"
-                    >
-                      Cancel
-                    </button>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td className="p-2 font-medium">{rate.currencyCode}</td>
-                  <td className="p-2">{rate.cashBuying.toFixed(2)}</td>
-                  <td className="p-2">{rate.cashSelling.toFixed(2)}</td>
-                  <td className="p-2">{rate.transactionBuying.toFixed(2)}</td>
-                  <td className="p-2">{rate.transactionSelling.toFixed(2)}</td>
-                  <td className="p-2">
-                    <button
-                      onClick={() => handleEdit(rate)}
-                      className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 rounded text-sm"
-                    >
-                      Update
-                    </button>
-                  </td>
-                </>
-              )}
-            </motion.tr>
-          ))}
-        </tbody>
+                      {editingId === rate.id ? (
+                        <>
+                          <td className="p-2 font-medium">{rate.currencyCode}</td>
+                          <td className="p-2">
+                            <input
+                              type="number"
+                              value={formData.cashBuying ?? ""}
+                              onChange={(e) =>
+                                setFormData({ ...formData, cashBuying: +e.target.value })
+                              }
+                              className="w-20 p-1 rounded text-black"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="number"
+                              value={formData.cashSelling ?? ""}
+                              onChange={(e) =>
+                                setFormData({ ...formData, cashSelling: +e.target.value })
+                              }
+                              className="w-20 p-1 rounded text-black"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="number"
+                              value={formData.transactionBuying ?? ""}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  transactionBuying: +e.target.value,
+                                })
+                              }
+                              className="w-20 p-1 rounded text-black"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="number"
+                              value={formData.transactionSelling ?? ""}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  transactionSelling: +e.target.value,
+                                })
+                              }
+                              className="w-20 p-1 rounded text-black"
+                            />
+                          </td>
+                          <td className="p-2 space-x-2">
+                            <button
+                              onClick={handleUpdate}
+                              className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="px-3 py-1 bg-gray-500 hover:bg-gray-600 rounded text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-2 font-medium">{rate.currencyCode}</td>
+                          <td className="p-2">{rate.cashBuying.toFixed(2)}</td>
+                          <td className="p-2">{rate.cashSelling.toFixed(2)}</td>
+                          <td className="p-2">{rate.transactionBuying.toFixed(2)}</td>
+                          <td className="p-2">{rate.transactionSelling.toFixed(2)}</td>
+                          <td className="p-2">
+                            <button
+                              onClick={() => handleEdit(rate)}
+                              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 rounded text-sm"
+                            >
+                              Update
+                            </button>
+                          </td>
+                        </>
+                      )}
+                    </motion.tr>
+                  ))}
+                </tbody>
 
-        
+
               </table>
             </div>
           )}
