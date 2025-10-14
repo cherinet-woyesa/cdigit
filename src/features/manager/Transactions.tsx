@@ -178,7 +178,7 @@ export default function Transactions({ branchId }: { branchId: string }) {
         setFeedbackStats(grouped);
 
         // compute total average
-        const totalRatings = fbRes.reduce((sum, fb) => sum + fb.rating, 0);
+        const totalRatings = fbRes.reduce((sum: number, fb: Feedback) => sum + fb.rating, 0);
         setOverallAvgFeedback(totalRatings / fbRes.length);
       }
     } catch (err) {
