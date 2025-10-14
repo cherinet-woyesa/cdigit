@@ -4,12 +4,13 @@ import makerService from '../services/makerService';
 import { useAuth } from '../context/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSpinner } from '@fortawesome/free-solid-svg-icons';
+import pettyCashMakerService from '../services/pettyCashMakerService';
 
 interface DenominationModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: () => void;
-    form: {makerId : string; formId: string; } | null;
+    form: { makerId: string; formId: string; } | null;
 }
 const denominationsList = [200, 100, 50, 10, 1];
 
@@ -26,7 +27,7 @@ const PettyDenominationModal: React.FC<DenominationModalProps> = ({ isOpen, onCl
             setError('');
         }
     }, [isOpen]);
-    
+
     const totalAmount = Object.entries(denominations).reduce(
         (acc, [denomination, count]) => acc + (parseFloat(denomination) * count), 0
     );
@@ -38,46 +39,40 @@ const PettyDenominationModal: React.FC<DenominationModalProps> = ({ isOpen, onCl
             [denomination]: count
         }));
     };
-    
+
     // Inside DenominationModal.tsx, in the handleSave function
-const handleSave = async () => {
-    if (!form || !user || !token) {
-        setError('User or form data is missing.');
-        return;
-    }
+    const handleSave = async () => {
+        if (!form || !user || !token) {
+            setError('User or form data is missing.');
+            return;
+        }
 
-    setLoading(true);
-    setError('');
+        setLoading(true);
+        setError('');
 
-    // if (Math.abs(totalAmount - form.amount) > 0.01) {
-    //     setError(`Denominations total (${totalAmount.toFixed(2)}) must match deposit amount (${form.amount.toFixed(2)}).`);
-    //     setLoading(false);
-    //     return;
-    // }
+        try {
+            const filtered = Object.fromEntries(
+                Object.entries(denominations).filter(([_, value]) => value > 0)
+            );
 
-    try {
-        const filteredDenominations = Object.fromEntries(
-            Object.entries(denominations).filter(([_, value]) => value > 0)
-        );
+            const res = await pettyCashMakerService.submitPettyCash(
+                form.formId,
+                user.id,
+                filtered,
+                token
+            );
 
-        // CORRECTED: Convert user.id from string to number
-        const updateDto = {
-            formReferenceId: form.formId,
-            frontMakerId: user.id, // This is the change
-            denominations: filteredDenominations,
-        };
+            if (!res.success) throw new Error(res.message || "Submission failed");
+            onSave();
+            onClose();
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message);
+            console.error('Petty cash submission error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        await makerService.updateDepositDenominations(form.formId, updateDto, token);
-        
-        onSave();
-        onClose();
-    } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to update denominations.');
-        console.error('Update denominations error:', err);
-    } finally {
-        setLoading(false);
-    }
-};
 
     if (!isOpen) return null;
 
@@ -86,9 +81,9 @@ const handleSave = async () => {
             <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Enter Denominations for Deposit</h2>
                 {/* {form && <p className="mb-4 text-lg">Amount: <span className="font-bold text-green-700">ETB {form.amount.toFixed(2)}</span></p>} */}
-                
+
                 {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">{error}</div>}
-                
+
                 <div className="grid grid-cols-2 gap-4 mb-6">
                     {denominationsList.map((denom) => (
                         <div key={denom} className="flex items-center space-x-2">
@@ -107,7 +102,7 @@ const handleSave = async () => {
                         </div>
                     ))}
                 </div>
-                
+
                 <div className="flex justify-between items-center border-t pt-4">
                     {/* <span className={`text-xl font-bold ${Math.abs(totalAmount - (form?.amount || 0)) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
                         Total: ETB {totalAmount.toFixed(2)}

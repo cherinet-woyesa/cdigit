@@ -9,12 +9,13 @@ const authHeader = (token: string) => ({
 const managerPettyCashService = {
 
   async getAllByBranch(branchId: string) {
-    const res = await axios.get(`${API_URL}/by-branch/${branchId}`);
+
+    const res = await axios.get(`${API_URL}/branch/${branchId}`);
     return res.data?.data || [];
   },
 
   async giveInitialCash(formId: string, voultManagerId: string, amount: number) {
-    const res = await axios.put(`${API_URL}/manager-give-initial`, {
+    const res = await axios.put(`${API_URL}/manager/give-initial`, {
       formId,
       voultManagerId,
       cashReceivedFromVault: amount,
@@ -23,7 +24,7 @@ const managerPettyCashService = {
   },
 
   async giveAdditionalCash(formId: string, voultManagerId: string, amount: number) {
-    const res = await axios.put(`${API_URL}/manager-give-additional`, {
+    const res = await axios.put(`${API_URL}/manager/give-additional`, {
       formId,
       voultManagerId,
       additionalCashReceivedFromVault: amount,
@@ -31,9 +32,10 @@ const managerPettyCashService = {
     return res.data;
   },
 
+
   async approveSurrender(formId: string, makerId: string, token: string) {
     const res = await axios.put(
-      `${API_URL}/${formId}/manager-approve-surrender?makerId=${makerId}`, // Pass makerId as a query parameter
+      `${API_URL}/${formId}/manager/approve-surrender?makerId=${makerId}`, // Pass makerId as a query parameter
       {}, // Empty body as per the backend implementation
       authHeader(token) // Include authorization header
     );
@@ -42,15 +44,16 @@ const managerPettyCashService = {
 
   async approveAdditionalSurrender(formId: string, makerId: string, token: string) {
     const res = await axios.put(
-      `${API_URL}/${formId}/manager-approve-additional-surrender?makerId=${makerId}`, // Pass makerId as a query parameter
+      `${API_URL}/${formId}/manager/approve-additional-surrender?makerId=${makerId}`, // Pass makerId as a query parameter
       {}, // Empty body as per the backend implementation
       authHeader(token) // Include authorization header
     );
     return res.data;
   },
 
+
   async approveForeignCurrency(formId: string, makerId: string, token: string) {
-    const res = await axios.put(`${API_URL}/${formId}/manager-approve-foreignCurrency-surrender?makerId=${makerId}`,
+    const res = await axios.put(`${API_URL}/${formId}/manager/approve-foreignCurrency-surrender?makerId=${makerId}`,
       {}, // Empty body as per the backend implementation
       authHeader(token) // Include authorization header
     );

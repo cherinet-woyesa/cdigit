@@ -16,13 +16,13 @@ const authHeader = (token: string) => ({
 });
 
 const pettyCashMakerService = {
- 
+
   requestInitial: async (dto: InitialRequestDto, token: string) => {
     console.log("initial request called");
     const res = await axios.post<ApiResponse<object>>(
-        `${API_BASE_URL}/PettyCashForm/create-initial`,
-        dto, // Pass the DTO as the payload
-        authHeader(token)
+      `${API_BASE_URL}/PettyCashForm/create-initial`,
+      dto, // Pass the DTO as the payload
+      authHeader(token)
     );
     console.log("data returned from initial request:", res.data);
     return res.data;
@@ -31,75 +31,105 @@ const pettyCashMakerService = {
   getByFrontMaker: async (frontMakerId: string, branchId: string, token: string) => {
     console.log("get petty by maker called ");
     const res = await axios.get<ApiResponse<object>>(
-        `${API_BASE_URL}/PettyCashForm/by-frontmaker/${frontMakerId}/branch/${branchId}`,
-        authHeader(token)
+      `${API_BASE_URL}/PettyCashForm/by-frontmaker/${frontMakerId}/branch/${branchId}`,
+      authHeader(token)
     );
     console.log("petty cash data:", res.data);
     return res.data;
   },
 
-  approveReceipt: async (formId: string, makerId: string, token: string) => {
+
+  approveReceipt: async (makerId: string, formId: string, token: string) => {
     const res = await axios.put<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/${formId}/maker-approve?makerId=${makerId}`,
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker/approve-initial?makerId=${makerId}`, // Pass makerId as a query parameter
+
       {},
       authHeader(token)
     );
     return res.data;
   },
+
 
   requestAdditional: async (formId: string, token: string) => {
     const res = await axios.put<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/${formId}/maker-request-additional`,
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker/request-additional`,
       {},
       authHeader(token)
     );
     return res.data;
   },
 
-  approveAdditionalReceipt: async (formId: string, makerId: string, token: string) => {
+  approveAdditionalReceipt: async (makerId: string, formId: string, token: string) => {
     const res = await axios.put<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/${formId}/maker-approve-additional?makerId=${makerId}`,
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker/approve-additional?makerId=${makerId}`, // Pass makerId as a query parameter
+
       {},
       authHeader(token)
     );
     return res.data;
   },
 
-  surrenderInitial: async (formId: string, dto: object, token: string) => {
+
+
+  surrenderInitial: async (formId: string, frontMakerId: string, amount: number, token: string) => {
+    const dto = {
+      formId,
+      FrontMakerId: frontMakerId,
+      CashSurrenderedToVault: amount,
+    };
     const res = await axios.put<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/${formId}/surrender`,
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker/Initial-surrender`,
       dto,
       authHeader(token)
     );
     return res.data;
   },
 
-  surrenderAdditional: async (formId: string, dto: object, token: string) => {
+  surrenderAdditional: async (formId: string, frontMakerId: string, amount: number, token: string) => {
+    const dto = {
+      formId,
+      FrontMakerId: frontMakerId,
+      AdditionalCashSurrenderedToVault: amount,
+    };
     const res = await axios.put<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/${formId}/maker-additional-surrender`,
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker/additional-surrender`,
       dto,
       authHeader(token)
     );
     return res.data;
   },
 
-  submitForeignCurrency: async (formId: string, dto: object, token: string) => {
+  submitForeignCurrency: async (formId: string, frontMakerId: string, foreignCurrencies: Record<string, number>, token: string) => {
+    const dto = {
+      formId,
+      FrontMakerId: frontMakerId,
+      ForeignCurrencies: foreignCurrencies,
+    };
+
     const res = await axios.put<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/${formId}/submit-foreign-currency`,
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker/submit-foreign-currency`,
       dto,
       authHeader(token)
     );
     return res.data;
   },
 
-  submitPettyCash: async (formId: string, dto: object, token: string) => {
+  submitPettyCash: async (formId: string, frontMakerId: string, denominations: Record<string, number>, token: string) => {
+    const dto = {
+      formId,
+      FrontMakerId: frontMakerId,
+      Denominations: denominations,
+    };
+
     const res = await axios.put<ApiResponse<object>>(
-      `${API_BASE_URL}/PettyCashForm/${formId}/submit-petty-cash-denominations`,
+      `${API_BASE_URL}/PettyCashForm/${formId}/maker/submit-petty-cash-denominations`,
       dto,
       authHeader(token)
     );
     return res.data;
   },
+
+
 };
 
 export default pettyCashMakerService;

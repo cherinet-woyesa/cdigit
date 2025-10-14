@@ -40,6 +40,9 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
     const [current, setCurrent] = useState<NextCustomerResponse | null>(null);
     const [busyAction, setBusyAction] = useState<"calling" | "completing" | "canceling" | null>(null);
 
+    // Show modal if a real customer is set (accountHolderName and accountNumber must exist)
+    const showCurrentCustomerModal = !!current && !!current.accountHolderName && !!current.accountNumber;
+
     const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
     const [showServices, setShowServices] = useState(false);
 
@@ -265,11 +268,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
         if (!token || !decoded?.nameid || !assignedWindow?.id || !decoded?.BranchId)
             return;
 
-        const stored = localStorage.getItem("currentCustomer");
-        if (stored) {
-            setCurrent(JSON.parse(stored));
-            return; // already have On Progress current Customer
-        }
+        // Always fetch the next customer from backend, do not use localStorage
 
         setBusyAction("calling");
         try {
@@ -285,12 +284,19 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 setActionMessage({ type: 'error', content: res.message || "No customer in queue." });
                 return;
             }
-            setCurrent(res.data);
+            // Map backend fields to frontend expected fields
+            const data = res.data;
+            setCurrent({
+                ...data,
+                accountHolderName: data.accountHolderName || data.customerName || data.account_name || '',
+                accountNumber: data.accountNumber || data.accNumber || data.debitAccountNumber || '',
+                amount: data.amount ?? data.depositAmount ?? data.DepositAmount ?? data.transferAmount ?? data.TransferAmount ?? data.withdrawal_Amount ?? data.withdrawa_Amount ?? 0,
+            });
             setActionMessage({ type: 'success', content: res.message || "Customer called." });
             
             // Automatically announce the customer regardless of UI voice settings
             if (res.data && speechService.isSupported) {
-                const textToSpeak = `Customer ${res.data.customerName}, please proceed to window ${assignedWindow.windowNumber}.`;
+                const textToSpeak = `Customer ${res.data.accountHolderName || res.data.customerName || 'Customer'}, please proceed to window ${assignedWindow.windowNumber}.`;
                 speechService.speak(textToSpeak, 'en');
             }
             
@@ -459,7 +465,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
             {/* Current customer modal */}
             <CurrentCustomerModal
-                isOpen={!!current}
+                isOpen={showCurrentCustomerModal}
                 current={current}
                 busyAction={busyAction}
                 onClose={() => setCurrent(null)}

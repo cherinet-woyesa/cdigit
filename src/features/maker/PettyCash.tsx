@@ -4,11 +4,12 @@ import { useAuth } from "../../context/AuthContext";
 import pettyCashMakerService from "../../services/pettyCashMakerService";
 import ForeignCurrencyModal from "../../modals/ForeignCurrencyModal";
 import PettyDenominationModal from "../../modals/PettyDenominationModal";
-import PettySurrenderModal from "../../modals/PettySurrenderModal";
 import type { ActionMessage } from "../../types/ActionMessage";
 import type { DecodedToken } from "../../types/DecodedToken";
 import type { InitialRequestDto } from "../../types/PettyCash/InitialRequestDto";
 import type { PettyCashFormResponseDto } from "../../types/PettyCash/PettyCashFormResponseDto";
+import PettySurrenderModal from "../../modals/PettySurrenderModal";
+
 
 const PettyCash: React.FC = () => {
     const { token, logout } = useAuth();
@@ -24,6 +25,7 @@ const PettyCash: React.FC = () => {
 
     const [showInitialSurrenderModal, setShowInitialSurrenderModal] = useState(false);
     const [showAdditionalSurrenderModal, setShowAdditionalSurrenderModal] = useState(false);
+
 
     // Decode token
     useEffect(() => {
@@ -41,16 +43,8 @@ const PettyCash: React.FC = () => {
         const fetchFormData = async () => {
             if (!token || !decoded?.nameid) return;
             try {
-                console.log("Fetching petty cash data for maker:", decoded.nameid, "branch:", decoded.BranchId);
                 const response = await pettyCashMakerService.getByFrontMaker(decoded.nameid, decoded.BranchId, token);
-                console.log("Petty cash response:", response);
-                if (response.success && response.data) {
-                    console.log("Petty cash data:", response.data);
-                    setPettyCashData(response.data as PettyCashFormResponseDto);
-                } else {
-                    console.log("No petty cash data found or error:", response.message);
-                    setPettyCashData(null);
-                }
+                setPettyCashData(response.data as PettyCashFormResponseDto);
             } catch (err) {
                 console.error("Failed to fetch petty cash data", err);
             }
@@ -73,19 +67,8 @@ const PettyCash: React.FC = () => {
             BranchId: decoded.BranchId,
         };
         try {
-            console.log("Making initial request with DTO:", dto);
             const res = await pettyCashMakerService.requestInitial(dto, token);
-            console.log("Initial request response:", res);
             showMessage(res.success ? "success" : "error", res.message || "Initial request failed");
-            // Refresh data after request
-            if (res.success) {
-                console.log("Refreshing data after successful initial request");
-                const response = await pettyCashMakerService.getByFrontMaker(decoded.nameid, decoded.BranchId, token);
-                console.log("Refreshed data response:", response);
-                if (response.success && response.data) {
-                    setPettyCashData(response.data as PettyCashFormResponseDto);
-                }
-            }
         } catch (err) {
             console.error("Initial request error:", err);
             showMessage("error", "Error requesting initial petty cash.");
@@ -95,13 +78,8 @@ const PettyCash: React.FC = () => {
     const handleApproveReceipt = async () => {
         if (!token || !decoded || !pettyCashData) return;
         try {
-            const res = await pettyCashMakerService.approveReceipt(pettyCashData.id, decoded.nameid, token);
+            const res = await pettyCashMakerService.approveReceipt(decoded.nameid, pettyCashData.id, token);
             showMessage(res.success ? "success" : "error", res.message || "Failed to approve receipt");
-            // Refresh data after approval
-            if (res.success) {
-                const response = await pettyCashMakerService.getByFrontMaker(decoded.nameid, decoded.BranchId, token);
-                setPettyCashData(response.data as PettyCashFormResponseDto);
-            }
         } catch (err) {
             console.error("Approve receipt error:", err);
             showMessage("error", "Error approving receipt.");
@@ -113,11 +91,6 @@ const PettyCash: React.FC = () => {
         try {
             const res = await pettyCashMakerService.requestAdditional(pettyCashData.id, token);
             showMessage(res.success ? "success" : "error", res.message || "Failed to request additional cash");
-            // Refresh data after request
-            if (res.success) {
-                const response = await pettyCashMakerService.getByFrontMaker(decoded.nameid, decoded.BranchId, token);
-                setPettyCashData(response.data as PettyCashFormResponseDto);
-            }
         } catch (err) {
             console.error("Request additional error:", err);
             showMessage("error", "Error requesting additional petty cash.");
@@ -127,18 +100,35 @@ const PettyCash: React.FC = () => {
     const handleApproveAdditionalReceipt = async () => {
         if (!token || !decoded || !pettyCashData) return;
         try {
-            const res = await pettyCashMakerService.approveAdditionalReceipt(pettyCashData.id, decoded.nameid, token);
+            const res = await pettyCashMakerService.approveAdditionalReceipt(decoded.nameid, pettyCashData.id, token);
             showMessage(res.success ? "success" : "error", res.message || "Failed to approve additional receipt");
-            // Refresh data after approval
-            if (res.success) {
-                const response = await pettyCashMakerService.getByFrontMaker(decoded.nameid, decoded.BranchId, token);
-                setPettyCashData(response.data as PettyCashFormResponseDto);
-            }
         } catch (err) {
             console.error("Approve additional receipt error:", err);
             showMessage("error", "Error approving additional receipt.");
         }
     };
+
+    // const handleSurrenderInitial = async () => {
+    //     if (!token || !decoded || !pettyCashData) return;
+    //     try {
+    //         const res = await pettyCashMakerService.surrenderInitial(decoded.nameid, token);
+    //         showMessage(res.success ? "success" : "error", res.message || "Failed to surrender initial cash");
+    //     } catch (err) {
+    //         console.error("Surrender initial error:", err);
+    //         showMessage("error", "Error surrendering initial petty cash.");
+    //     }
+    // };
+
+    // const handleSurrenderAdditional = async () => {
+    //     if (!token || !decoded || !pettyCashData) return;
+    //     try {
+    //         const res = await pettyCashMakerService.surrenderAdditional(decoded.nameid, token);
+    //         showMessage(res.success ? "success" : "error", res.message || "Failed to surrender additional cash");
+    //     } catch (err) {
+    //         console.error("Surrender additional error:", err);
+    //         showMessage("error", "Error surrendering additional petty cash.");
+    //     }
+    // };
 
     // Open Modals
     const handleOpenForeignModal = (makerId: string, formId: string) => {
@@ -164,19 +154,23 @@ const PettyCash: React.FC = () => {
                 </div>
             )}
 
+
             {/* ✅ Petty Cash Data Summary Section */}
+
+
             {pettyCashData ? (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-6 shadow-sm">
                     <h4 className="font-semibold text-gray-700 mb-4">💰 Current Petty Cash Summary</h4>
-                    
-
 
                     <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-y-3 text-sm text-gray-800">
                         {/* Identifiers */}
                         <p><span className="font-medium text-gray-600">Form Reference:</span> {pettyCashData.formReferenceId}</p>
+                        {/* <p><span className="font-medium text-gray-600">Form ID:</span> {pettyCashData.id}</p>
+                        <p><span className="font-medium text-gray-600">Status:</span> {pettyCashData.status}</p> */}
 
                         {/* User & Branch Info */}
                         <p><span className="font-medium text-gray-600">Front Maker:</span> {pettyCashData.frontMakerName || decoded?.unique_name}</p>
+                        {/* <p><span className="font-medium text-gray-600">Vault Manager:</span> {pettyCashData.voultManagerName || "—"}</p> */}
                         <p><span className="font-medium text-gray-600">Branch:</span> {pettyCashData.branchName || decoded?.BranchId}</p>
 
                         {/* Maker Requests */}
@@ -190,8 +184,8 @@ const PettyCash: React.FC = () => {
                         <p><span className="font-medium text-gray-600">Initial Approved by Vault Mgr:</span> {pettyCashData.initialApprovalByVManager ? "✅" : "❌"}</p>
 
                         {/* Additional Cash Flow */}
-                        <p><span className="font-medium text-gray-600">Additional Received from Vault:</span> {pettyCashData.additionalCashReceivedFromVault?.toFixed(2) || "0.00"}</p>
-                        <p><span className="font-medium text-gray-600">Additional Surrendered to Vault:</span> {pettyCashData.additionalCashSurrenderedToVault?.toFixed(2) || "0.00"}</p>
+                        <p><span className="font-medium text-gray-600">Additional Received from Vault:</span> {pettyCashData.additionalCashReceivedFromVault !== undefined ? pettyCashData.additionalCashReceivedFromVault.toFixed(2) : "—"}</p>
+                        <p><span className="font-medium text-gray-600">Additional Surrendered to Vault:</span> {pettyCashData.additionalCashSurrenderedToVault !== undefined ? pettyCashData.additionalCashSurrenderedToVault.toFixed(2) : "—"}</p>
                         <p><span className="font-medium text-gray-600">Additional Approved by Maker:</span> {pettyCashData.additionalApprovalByMaker ? "✅" : "❌"}</p>
 
                         {/* Transactions */}
@@ -201,7 +195,7 @@ const PettyCash: React.FC = () => {
 
                         {/* Balances */}
                         <p><span className="font-medium text-gray-600">Previous Day Balance:</span> {pettyCashData.previousDayBalance.toFixed(2)}</p>
-                        <p><span className="font-medium text-gray-600">Today's Balance:</span> {pettyCashData.todayBalance.toFixed(2)}</p>
+                        <p><span className="font-medium text-gray-600">Today’s Balance:</span> {pettyCashData.todayBalance.toFixed(2)}</p>
 
                         {/* Calculations */}
                         <p><span className="font-medium text-gray-600">Subtotal:</span> {pettyCashData.subtotal.toFixed(2)}</p>
@@ -211,13 +205,21 @@ const PettyCash: React.FC = () => {
                         <p><span className="font-medium text-gray-600">Foreign Currency Approved:</span> {pettyCashData.foreignCurrencyApprovalByManager ? "✅" : "❌"}</p>
                         <p><span className="font-medium text-gray-600">Denominations:</span> {pettyCashData.denominations || "—"}</p>
                         <p><span className="font-medium text-gray-600">Foreign Currencies:</span> {pettyCashData.foreignCurrencies || "—"}</p>
+
+                        {/* Dates */}
+                        {/* <p><span className="font-medium text-gray-600">Submitted At:</span> {new Date(pettyCashData.submittedAt).toLocaleString()}</p>
+                        <p><span className="font-medium text-gray-600">Updated At:</span> {new Date(pettyCashData.updatedAt).toLocaleString()}</p> */}
                     </div>
                 </div>
             ) : (
                 <p className="text-sm text-gray-600 mb-4">No petty cash form found. You may request an initial petty cash.</p>
             )}
 
+
+
+
             {/* ✅ Action Buttons Section */}
+
             <div className="grid md:grid-cols-2 gap-4">
                 {pettyCashData == null && (
                     <button
@@ -228,53 +230,60 @@ const PettyCash: React.FC = () => {
                     </button>
                 )}
 
-
-
-                {pettyCashData && !pettyCashData.initialApprovalByMaker && pettyCashData.makerRequestInitial && pettyCashData.cashReceivedFromVault >= 0 && (
+                {(!pettyCashData?.initialApprovalByMaker && pettyCashData?.cashReceivedFromVault) && (
                     <button onClick={handleApproveReceipt} className="bg-green-700 text-white px-4 py-2 rounded-lg shadow hover:bg-green-800">
                         Approve Initial Receipt, {pettyCashData?.cashReceivedFromVault}
                     </button>
                 )}
 
-                {pettyCashData && pettyCashData.initialApprovalByMaker && !pettyCashData.makerRequestAdditional && !pettyCashData.denominations && (
+                {(pettyCashData?.initialApprovalByMaker && !pettyCashData.makerRequestAdditional && !pettyCashData.denominations) && (
+
                     <button
                         onClick={handleRequestAdditional}
                         className="bg-blue-700 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-800"
-                        disabled={pettyCashData?.makerRequestAdditional}
+                        disabled={pettyCashData?.makerRequestAdditional} // Disable the button if additionalApprovalByMaker is truthy
                     >
                         Request Additional
                     </button>
                 )}
 
-                {pettyCashData && !pettyCashData.additionalApprovalByMaker && pettyCashData.makerRequestAdditional && pettyCashData.managerGiveAdditionalCashReq && (
+
+                {(!pettyCashData?.additionalApprovalByMaker && pettyCashData?.makerRequestAdditional && pettyCashData.managerGiveAdditionalCashReq) && (
+
                     <button
                         onClick={handleApproveAdditionalReceipt}
                         className="bg-indigo-700 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-800"
                     >
                         Approve Additional Receipt
                     </button>
+
                 )}
 
-                {pettyCashData && pettyCashData.makerRequestInitial && pettyCashData.cashReceivedFromVault >= 0 && !pettyCashData.cashSurrenderedToVault && pettyCashData.initialApprovalByMaker && (
+                {(pettyCashData && !pettyCashData.cashSurrenderedToVault && pettyCashData?.initialApprovalByMaker) && (
+
                     <button
                         onClick={() => setShowInitialSurrenderModal(true)}
                         className="bg-yellow-600 text-white px-4 py-2 rounded-lg shadow hover:bg-yellow-700"
                     >
                         Surrender Initial
                     </button>
+
                 )}
 
-                {pettyCashData && pettyCashData.initialApprovalByVManager && !pettyCashData.makerRequestAdditionalSurrender && !pettyCashData.makerGiveAdditionalSurrender && (
+                {/* {(pettyCashData?.initialApprovalByMaker && !pettyCashData.makerRequestAdditional && pettyCashData?.additionalApprovalByMaker) && ( */}
+
+                {(pettyCashData?.initialApprovalByVManager && !pettyCashData.makerRequestAdditionalSurrender && !pettyCashData.makerGiveAdditionalSurrender) && (
                     <button
                         onClick={() => setShowAdditionalSurrenderModal(true)}
                         className="bg-orange-700 text-white px-4 py-2 rounded-lg shadow hover:bg-orange-800"
-                        disabled={pettyCashData?.makerRequestAdditionalSurrender}
+                        disabled={pettyCashData?.makerRequestAdditionalSurrender} // Disable the button if additionalApprovalByMaker is truthy
                     >
                         Surrender Additional
                     </button>
                 )}
 
-                {pettyCashData && pettyCashData.initialApprovalByMaker && !pettyCashData.foreignCurrencies && (
+                {(pettyCashData && pettyCashData?.initialApprovalByMaker && !pettyCashData.foreignCurrencies) && (
+
                     <button
                         onClick={() => handleOpenForeignModal(pettyCashData?.frontMakerId || "", pettyCashData?.id || "")}
                         className="bg-purple-700 text-white px-4 py-2 rounded-lg shadow hover:bg-purple-800"
@@ -283,7 +292,8 @@ const PettyCash: React.FC = () => {
                     </button>
                 )}
 
-                {pettyCashData && pettyCashData.initialApprovalByMaker && !pettyCashData.denominations && (
+                {(pettyCashData && pettyCashData?.initialApprovalByMaker && !pettyCashData.denominations) && (
+
                     <button
                         onClick={() => handleOpenPettyDenomModal(pettyCashData?.frontMakerId || "", pettyCashData?.id || "")}
                         className="bg-teal-700 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-800"
@@ -291,6 +301,8 @@ const PettyCash: React.FC = () => {
                         Submit Petty Cash
                     </button>
                 )}
+
+
             </div>
 
             {/* Petty Cash Modal */}
@@ -312,18 +324,8 @@ const PettyCash: React.FC = () => {
                 title="Initial Cash Surrender"
                 onSubmit={async (amount) => {
                     if (!decoded || !pettyCashData || !token) return;
-                    const dto = {
-                        formId: pettyCashData.id,
-                        frontMakerId: decoded.nameid,
-                        cashSurrenderedToVault: amount
-                    };
-                    const res = await pettyCashMakerService.surrenderInitial(pettyCashData.id, dto, token);
+                    const res = await pettyCashMakerService.surrenderInitial(pettyCashData.id, decoded.nameid, amount, token);
                     showMessage(res.success ? "success" : "error", res.message || "Failed to surrender initial cash");
-                    // Refresh data after surrender
-                    if (res.success) {
-                        const response = await pettyCashMakerService.getByFrontMaker(decoded.nameid, decoded.BranchId, token);
-                        setPettyCashData(response.data as PettyCashFormResponseDto);
-                    }
                 }}
             />
             <PettySurrenderModal
@@ -332,18 +334,8 @@ const PettyCash: React.FC = () => {
                 title="Additional Cash Surrender"
                 onSubmit={async (amount) => {
                     if (!decoded || !pettyCashData || !token) return;
-                    const dto = {
-                        formId: pettyCashData.id,
-                        frontMakerId: decoded.nameid,
-                        additionalCashSurrenderedToVault: amount
-                    };
-                    const res = await pettyCashMakerService.surrenderAdditional(pettyCashData.id, dto, token);
+                    const res = await pettyCashMakerService.surrenderAdditional(pettyCashData.id, decoded.nameid, amount, token);
                     showMessage(res.success ? "success" : "error", res.message || "Failed to surrender additional cash");
-                    // Refresh data after surrender
-                    if (res.success) {
-                        const response = await pettyCashMakerService.getByFrontMaker(decoded.nameid, decoded.BranchId, token);
-                        setPettyCashData(response.data as PettyCashFormResponseDto);
-                    }
                 }}
             />
         </section>
