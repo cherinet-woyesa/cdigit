@@ -25,15 +25,40 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
   const [updating, setUpdating] = useState<boolean>(false);
 
   useEffect(() => {
+    console.log('🔍 ServiceRequestDetail mounted:', { endpoint, requestId });
     fetchServiceRequest();
   }, [endpoint, requestId]);
 
   const fetchServiceRequest = async () => {
-    if (!token || !endpoint || !requestId) return;
+    if (!token || !endpoint) {
+      setError('Missing token or endpoint');
+      setLoading(false);
+      return;
+    }
+
+    // Check if requestId is valid
+    if (!requestId || requestId === 'undefined') {
+      console.error('❌ Invalid requestId:', requestId);
+      
+      // Try to get request data from localStorage as fallback
+      const storedRequestData = localStorage.getItem('selectedRequestData');
+      if (storedRequestData) {
+        console.log('🔄 Using fallback data from localStorage');
+        setRequest(JSON.parse(storedRequestData));
+        setLoading(false);
+        return;
+      }
+      
+      setError(`Invalid request ID: ${requestId}`);
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('📡 Fetching request details for:', { endpoint, requestId });
       
       // Map endpoint to the appropriate service method
       let response;
@@ -66,14 +91,30 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
           throw new Error(`Unsupported endpoint: ${endpoint}`);
       }
       
+      console.log('✅ API Response:', response);
+      
       if (response.success && response.data) {
         setRequest(response.data);
       } else {
         setError(response.message || 'Failed to fetch service request');
+        
+        // Fallback to localStorage data if API fails
+        const storedRequestData = localStorage.getItem('selectedRequestData');
+        if (storedRequestData) {
+          console.log('🔄 Using fallback data from localStorage after API failure');
+          setRequest(JSON.parse(storedRequestData));
+        }
       }
     } catch (error: any) {
-      console.error('Failed to fetch service request:', error);
+      console.error('❌ Failed to fetch service request:', error);
       setError(error.message || 'Failed to fetch service request');
+      
+      // Fallback to localStorage data on error
+      const storedRequestData = localStorage.getItem('selectedRequestData');
+      if (storedRequestData) {
+        console.log('🔄 Using fallback data from localStorage after error');
+        setRequest(JSON.parse(storedRequestData));
+      }
     } finally {
       setLoading(false);
     }
@@ -254,22 +295,29 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
   const renderRequestDetails = () => {
     if (!request) return null;
     
+    console.log('📋 Rendering request details:', request);
+    
     // Get all properties except functions and nested objects
     const basicProperties = Object.keys(request).filter(key => 
       typeof request[key] !== 'object' && 
       typeof request[key] !== 'function' &&
-      key !== 'id'
+      key !== 'id' &&
+      key !== '_id' &&
+      request[key] !== null &&
+      request[key] !== undefined
     );
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {basicProperties.map((key) => (
           <div key={key} className="border border-gray-200 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{key.replace(/([A-Z])/g, ' $1').trim()}</h4>
-            <p className="mt-1 text-sm text-gray-900">
+            <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}
+            </h4>
+            <p className="mt-1 text-sm text-gray-900 break-words">
               {typeof request[key] === 'boolean' 
                 ? request[key] ? 'Yes' : 'No'
-                : request[key] || 'N/A'}
+                : request[key]?.toString() || 'N/A'}
             </p>
           </div>
         ))}
@@ -282,7 +330,12 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-4">
-            <div className="animate-pulse rounded-full bg-gray-200 h-10 w-10"></div>
+            <button
+              onClick={handleBack}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
+            </button>
             <div className="flex-1 space-y-2">
               <div className="h-4 bg-gray-200 rounded w-1/4"></div>
               <div className="h-3 bg-gray-200 rounded w-1/3"></div>
@@ -300,7 +353,7 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
     );
   }
 
-  if (error) {
+  if (error && !request) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
@@ -325,12 +378,20 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
               <XCircleIcon className="h-8 w-8 text-red-600" />
             </div>
             <p className="text-red-600 font-medium mb-4">{error}</p>
-            <button
-              onClick={fetchServiceRequest}
-              className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700"
-            >
-              Retry
-            </button>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={fetchServiceRequest}
+                className="px-4 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700"
+              >
+                Retry
+              </button>
+              <button
+                onClick={handleBack}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                Go Back
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -355,6 +416,11 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
             <div>
               <h2 className="text-lg font-bold text-gray-900">{serviceType} Request</h2>
               <p className="text-sm text-gray-500">ID: {requestId}</p>
+              {error && (
+                <p className="text-sm text-yellow-600 mt-1">
+                  ⚠️ Using fallback data: {error}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -392,7 +458,7 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
                   className="flex items-center gap-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                 >
                   <CheckCircleIcon className="h-4 w-4" />
-                  <span>Approve</span>
+                  <span>{updating ? 'Approving...' : 'Approve'}</span>
                 </button>
                 <button
                   onClick={handleReject}
@@ -400,7 +466,7 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
                   className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                 >
                   <XCircleIcon className="h-4 w-4" />
-                  <span>Reject</span>
+                  <span>{updating ? 'Rejecting...' : 'Reject'}</span>
                 </button>
               </>
             )}
@@ -411,7 +477,7 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
                 className="flex items-center gap-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
               >
                 <XCircleIcon className="h-4 w-4" />
-                <span>Cancel</span>
+                <span>{updating ? 'Cancelling...' : 'Cancel'}</span>
               </button>
             )}
           </div>
@@ -420,8 +486,26 @@ const ServiceRequestDetail: React.FC<ServiceRequestDetailProps> = ({
 
       {/* Request Details */}
       <div className="p-6">
-        <h3 className="text-md font-semibold text-gray-900 mb-4">Request Details</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-md font-semibold text-gray-900">Request Details</h3>
+          <button
+            onClick={fetchServiceRequest}
+            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+          >
+            Refresh
+          </button>
+        </div>
         {renderRequestDetails()}
+        
+        {!request && (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <DocumentTextIcon className="h-8 w-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 font-medium">No request data available</p>
+            <p className="text-sm text-gray-400 mt-1">Unable to load request details</p>
+          </div>
+        )}
       </div>
     </div>
   );

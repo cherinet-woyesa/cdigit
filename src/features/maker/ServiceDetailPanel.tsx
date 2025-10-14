@@ -9,7 +9,7 @@ interface ServiceDetailPanelProps {
 }
 
 const ServiceDetailPanel: React.FC<ServiceDetailPanelProps> = ({ onBack }) => {
-  const { token, user } = useAuth(); // Added user to get branchId
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const [serviceType, setServiceType] = useState<string>('');
   const [endpoint, setEndpoint] = useState<string>('');
@@ -37,9 +37,8 @@ const ServiceDetailPanel: React.FC<ServiceDetailPanelProps> = ({ onBack }) => {
       setError(null);
       
       // Get branchId from user context or localStorage
-      const branchId = user?.branchId || localStorage.getItem('userBranchId') || 'default-branch'; // Provide a default fallback
+      const branchId = user?.branchId || localStorage.getItem('userBranchId') || 'default-branch';
       
-      // Map endpoint to the appropriate service method
       let response;
       switch (endpoint) {
         case 'AccountOpening':
@@ -70,8 +69,17 @@ const ServiceDetailPanel: React.FC<ServiceDetailPanelProps> = ({ onBack }) => {
           throw new Error(`Unsupported endpoint: ${endpoint}`);
       }
       
+      console.log('🔍 API Response for', endpoint, ':', response);
+      console.log('📊 Response data structure:', response.data);
+      
       if (response.success && response.data) {
         setServiceRequests(response.data);
+        
+        // Debug: Check the first request object
+        if (response.data.length > 0) {
+          console.log('🔬 First request object:', response.data[0]);
+          console.log('🔑 Available keys in first request:', Object.keys(response.data[0]));
+        }
       } else {
         setError(response.message || 'Failed to fetch service requests');
         setServiceRequests([]);
@@ -85,11 +93,35 @@ const ServiceDetailPanel: React.FC<ServiceDetailPanelProps> = ({ onBack }) => {
     }
   };
 
+  // Fixed helper function to get the correct ID from request
+  const getRequestId = (request: any): string => {
+    // Use formReferenceId as the primary ID field
+    if (request.formReferenceId) {
+      console.log('✅ Found ID in field "formReferenceId":', request.formReferenceId);
+      return request.formReferenceId;
+    }
+    
+    // Fallback to other possible ID fields
+    const possibleIdFields = [
+      'id', 'requestId', 'applicationId', 'eBankingApplicationId',
+      '_id', 'ID', 'RequestID', 'ApplicationID', 'eBankingId'
+    ];
+    
+    for (const field of possibleIdFields) {
+      if (request[field]) {
+        console.log(`✅ Found ID in field "${field}":`, request[field]);
+        return request[field].toString();
+      }
+    }
+    
+    console.warn('❌ No ID field found in request:', request);
+    return '';
+  };
+
   const handleBack = () => {
     if (onBack) {
       onBack();
     } else {
-      // Navigate back to the other services section
       navigate('/maker/dashboard/other');
     }
   };
@@ -98,32 +130,43 @@ const ServiceDetailPanel: React.FC<ServiceDetailPanelProps> = ({ onBack }) => {
     fetchServiceRequests(endpoint);
   };
 
-  const handleViewRequest = (requestId: string) => {
+  const handleViewRequest = (requestId: string, request: any) => {
+    console.log('👁️ Viewing request:', { requestId, request });
+    
+    if (!requestId || requestId === 'undefined' || requestId === '') {
+      console.error('❌ Invalid request ID:', requestId);
+      console.log('📋 Full request object:', request);
+      alert('Cannot view request: Invalid request ID. Check console for details.');
+      return;
+    }
+    
     // Store request details in localStorage
     localStorage.setItem('selectedRequestId', requestId);
-    // Use the onServiceClick callback to navigate to the request detail view
-    // For now, we'll use window.location to navigate to the request detail page
+    localStorage.setItem('selectedRequestData', JSON.stringify(request));
+    
+    console.log('🚀 Navigating to:', `/maker/service-request/${endpoint}/${requestId}`);
     window.location.hash = `/maker/service-request/${endpoint}/${requestId}`;
   };
 
   // Helper function to get customer name from request
   const getCustomerName = (request: any): string => {
-    return request.customerName || request.accountHolderName || request.name || 'Unknown Customer';
+    return request.accountHolderName || request.customerName || request.name || 
+           request.fullName || request.customerFullName || 'Unknown Customer';
   };
 
   // Helper function to get account number from request
   const getAccountNumber = (request: any): string => {
-    return request.accountNumber || request.accountNo || 'N/A';
+    return request.accountNumber || request.accountNo || request.account || 'N/A';
   };
 
   // Helper function to get status from request
   const getStatus = (request: any): string => {
-    return request.status || 'Pending';
+    return request.status || request.requestStatus || 'Pending';
   };
 
   // Helper function to get submitted date from request
   const getSubmittedDate = (request: any): string => {
-    return request.submittedAt || request.createdAt || new Date().toISOString();
+    return request.submittedAt || request.createdAt || request.requestDate || new Date().toISOString();
   };
 
   // Helper function to get amount from request
@@ -214,6 +257,9 @@ const ServiceDetailPanel: React.FC<ServiceDetailPanelProps> = ({ onBack }) => {
                         Account
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Reference ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -228,46 +274,53 @@ const ServiceDetailPanel: React.FC<ServiceDetailPanelProps> = ({ onBack }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {serviceRequests.map((request) => (
-                      <tr key={request.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{getCustomerName(request)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{getAccountNumber(request)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            getStatus(request) === 'Pending' || getStatus(request) === 'OnQueue' 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : getStatus(request) === 'In Progress' || getStatus(request) === 'OnProgress'
-                                ? 'bg-blue-100 text-blue-800' 
-                                : getStatus(request) === 'Completed' 
-                                  ? 'bg-green-100 text-green-800'
-                                  : getStatus(request) === 'Cancelled' 
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {getStatus(request)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(getSubmittedDate(request)).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {getAmount(request) ? `ETB ${getAmount(request)!.toLocaleString()}` : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button 
-                            onClick={() => handleViewRequest(request.id)}
-                            className="flex items-center gap-1 text-fuchsia-600 hover:text-fuchsia-900"
-                          >
-                            <EyeIcon className="h-4 w-4" />
-                            <span>View</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {serviceRequests.map((request, index) => {
+                      const requestId = getRequestId(request);
+                      return (
+                        <tr key={requestId || index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{getCustomerName(request)}</div>
+                            <div className="text-xs text-gray-400">{request.phoneNumber || 'No phone'}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500">{getAccountNumber(request)}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-mono text-gray-900">{request.formReferenceId || 'No Reference'}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              getStatus(request) === 'Pending' || getStatus(request) === 'OnQueue' 
+                                ? 'bg-yellow-100 text-yellow-800' 
+                                : getStatus(request) === 'In Progress' || getStatus(request) === 'OnProgress'
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : getStatus(request) === 'Completed' || getStatus(request) === 'Approved'
+                                    ? 'bg-green-100 text-green-800'
+                                    : getStatus(request) === 'Cancelled' || getStatus(request) === 'Rejected'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {getStatus(request)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(getSubmittedDate(request)).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {getAmount(request) ? `ETB ${getAmount(request)!.toLocaleString()}` : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button 
+                              onClick={() => handleViewRequest(requestId, request)}
+                              className="flex items-center gap-1 text-fuchsia-600 hover:text-fuchsia-900"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                              <span>View</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
