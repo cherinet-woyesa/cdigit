@@ -11,6 +11,7 @@ import { Button } from "../../components/ui/button";
 import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
 import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
 import { BRAND_COLORS } from "../../config/env";
+import AdminReportPanel from "./AdminReportPanel";
 
 interface Branch {
   id: string;
@@ -320,6 +321,12 @@ const AdminDashboardContent: React.FC = () => {
             <TabsTrigger value="documents" variant="brand" className="flex-1 min-w-[140px]">
               📄 Documents
             </TabsTrigger>
+            <TabsTrigger
+            value="reports"
+            className="flex-1 rounded-lg font-semibold text-fuchsia-700 data-[state=active]:bg-gradient-to-r data-[state=active]:from-fuchsia-700 data-[state=active]:to-fuchsia-500 data-[state=active]:text-white transition-all"
+          >
+            💳 Reports
+          </TabsTrigger>
           </TabsList>
 
           {/* Branches Tab */}
@@ -760,6 +767,8 @@ const AdminDashboardContent: React.FC = () => {
               />
             </div>
           </TabsContent>
+
+           <TabsContent value="reports"><AdminReportPanel /></TabsContent>
         </Tabs>
       </div>
 

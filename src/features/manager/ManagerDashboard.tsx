@@ -309,12 +309,12 @@ export default function ManagerDashboard() {
             </TabsContent>
             
             <TabsContent value="petty-cash" className="animate-fadeIn">
-              {/* {branchId && ( */}
+              {branchId && (
                 <PettyCash 
                   branchId={branchId} 
                   voultManagerId={vaultManagerId} 
                 />
-              {/* )} */}
+              )} 
             </TabsContent>
 
             <TabsContent value="Screen-Display" className="animate-fadeIn">

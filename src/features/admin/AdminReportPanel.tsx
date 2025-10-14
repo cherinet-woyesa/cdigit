@@ -10,7 +10,7 @@ import TrafficTabs from "./TrafficTabs.tsx";
 
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import logo from "../../assets/cbelogo.jpg"; // adjust to your logo path
+import logo from "../../assets/logo.jpg"; // adjust to your logo path
 import { Card, CardContent } from "../../components/ui/card.tsx";
 
 
