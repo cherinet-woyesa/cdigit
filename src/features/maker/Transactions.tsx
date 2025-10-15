@@ -281,7 +281,8 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 decoded.nameid,
                 assignedWindow.id,
                 decoded.BranchId,
-                token
+                token,
+                assignedWindow?.windowType
             );
             console.log("callNextCustomer response at ui:", res);
             if (!res.success || !res.data) {
