@@ -144,9 +144,10 @@ const makerService = {
     }
   },
 
-  callNextCustomer: async (makerId: string, windowId: string, branchId: string, token: string) => {
+  callNextCustomer: async (makerId: string, windowId: string, branchId: string, token: string, windowType: string) => {
+   console.log("window type:", windowType)
     const res = await axios.get<ApiResponse<NextCustomerData>>(
-      `${API_BASE_URL}/Teller/Next/${makerId}/${windowId}/${branchId}`,
+      `${API_BASE_URL}/Teller/Next/${makerId}/${windowId}/${branchId}/${windowType}`,
       authHeader(token)
     );
     return res.data;
