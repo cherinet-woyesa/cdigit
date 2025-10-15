@@ -1,18 +1,9 @@
 import React, { useState } from "react";
 import managerService from "../../services/managerService";
 import toast from "react-hot-toast";
+import type { Branch } from "types/Branch";
 
-interface Branch {
-  id: string;
-  name: string;
-  code: string;
-  location?: string;
-  latitude?: number;
-  longitude?: number;
-  status: string;
-  isApproved: boolean;
-  managerId: string;
-}
+
 
 interface Props {
   branch: Branch;
@@ -22,6 +13,9 @@ interface Props {
 }
 
 const MyBranchModal: React.FC<Props> = ({ branch, open, onClose, setBranch }) => {
+
+  console.log("Branch Data:", branch);
+
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({
     name: branch.name,
@@ -32,6 +26,7 @@ const MyBranchModal: React.FC<Props> = ({ branch, open, onClose, setBranch }) =>
     status: branch.status,
   });
 
+  console.log("Branch Data:", branch);
   if (!open) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -54,8 +49,10 @@ const MyBranchModal: React.FC<Props> = ({ branch, open, onClose, setBranch }) =>
       const res = await managerService.updateBranch(branch.id, payload);
       if (res.success) {
         toast.success(res.message || "Branch updated successfully!");
-        // Refetch updated branch from backend
-        const branchRes = await managerService.getBranchByManagerId(branch.managerId);
+        // Refetch updated branch from backend 
+        // const branchRes = await managerService.getBranchByManagerId(branch.managerId);
+        const branchRes = await managerService.getBranchById(branch.managerId);
+
         if (branchRes.success && branchRes.data) setBranch(branchRes.data);
         setIsEditing(false);
       } else {
@@ -106,9 +103,8 @@ const MyBranchModal: React.FC<Props> = ({ branch, open, onClose, setBranch }) =>
 
         {/* Status & Edit */}
         <div className="mt-6 flex items-center justify-between">
-          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-            branch.isApproved ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-          }`}>
+          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${branch.isApproved ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+            }`}>
             {branch.isApproved ? "✅ Approved" : "⏳ Pending Approval"}
           </span>
 

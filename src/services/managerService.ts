@@ -66,6 +66,12 @@ const managerService = {
     return res.data;
   },
 
+  async getBranchById(id: string) {
+    const res = await axios.get(`${API_BASE_URL}/branches/${id}`, getAuthHeaders());
+
+    return res.data;
+  },
+
   // async createBranch(branch: { name: string; code: string; latitude: number; longitude: number; location?: string }) {
   //   const res = await axios.post(`${API_BASE_URL}/branches`, branch, getAuthHeaders());
   //   return res.data;
@@ -156,7 +162,7 @@ const managerService = {
     const res = await axios.put(`${API_BASE_URL}/CorporateCustomer/${id}`, customer, authHeader());
     return res.data;
   },
- 
+
   changeCorporateCustomerStatus: async (id: string, newStatus: string) => {
     console.log("at frontend: Changing corporate customer status to:", newStatus, "manager id:", id)
     const res = await axios.put(

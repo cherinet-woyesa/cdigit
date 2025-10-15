@@ -292,9 +292,9 @@ export default function ScreenDisplay() {
                   <thead className="bg-fuchsia-800 text-white">
                     <tr>
                       <th className="p-2">Token</th>
-                      <th className="p-2">Customer</th>
-                      <th className="p-2">Service</th>
-                      <th className="p-2">Window</th>
+                      {/* <th className="p-2">Customer</th>
+                      <th className="p-2">Service</th> */}
+                      <th className="p-2">Window Number</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -304,8 +304,8 @@ export default function ScreenDisplay() {
                         className="bg-fuchsia-800/20 hover:bg-fuchsia-700/30 border-b border-fuchsia-900/30"
                       >
                         <td className="p-2">{c.token}</td>
-                        <td className="p-2 font-semibold">{c.customername}</td>
-                        <td className="p-2">{c.serviceName ?? "-"}</td>
+                        {/* <td className="p-2 font-semibold">{c.customername}</td>
+                        <td className="p-2">{c.serviceName ?? "-"}</td> */}
                         <td className="p-2">
                           {c.windowNumber ? (
                             <span className="font-semibold text-green-400">{c.windowNumber}</span>

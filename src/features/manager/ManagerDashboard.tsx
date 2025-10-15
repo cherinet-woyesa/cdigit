@@ -13,7 +13,6 @@ import ScreenDisplay from "../screen/ScreenDisplay";
 import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
 import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
 import { safeJWTDecode, isTokenExpired } from "../../utils/jwt";
-import { BRAND_COLORS } from "../../config/env";
 import ApprovalDashboard from "./ApprovalDashboard";
 import PettyCash from "./PettyCash";
 
@@ -89,7 +88,7 @@ export default function ManagerDashboard() {
       
       try {
         setIsLoading(true);
-        const res = await managerService.getBranchByManagerId(managerId);
+        const res = await managerService.getBranchById(branchId);
         if (res.success && res.data) {
           setBranch(res.data);
           // Load dashboard stats after branch is loaded
@@ -326,7 +325,7 @@ export default function ManagerDashboard() {
               {branch ? (
                 <>
                   {/* Branch Overview Card */}
-                  {!showCreateModal && (
+                  {/* {!showCreateModal && ( */}
                     <div className="space-y-6">
                       {/* Quick Actions */}
                       <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
@@ -423,17 +422,17 @@ export default function ManagerDashboard() {
                         </div>
                       </div>
                     </div>
-                  )}
+                  {/* )} */}
 
                   {/* Edit Modal */}
-                  {showCreateModal && (
+                  {/* {branchId && (
                     <MyBranchModal
                       open={true}
                       onClose={() => setShowCreateModal(false)}
                       branch={branch}
                       setBranch={setBranch}
                     />
-                  )}
+                  )} */}
                 </>
               ) : (
                 // No branch state
