@@ -6,6 +6,7 @@ interface Props {
   onClose: () => void;
   token: string;
   onRefreshServed: () => void;
+  branchId: string;
 }
 
 const FormReferenceSearchModal: React.FC<Props> = ({
@@ -13,6 +14,7 @@ const FormReferenceSearchModal: React.FC<Props> = ({
   onClose,
   token,
   onRefreshServed,
+  branchId,
 }) => {
   const [searchRefId, setSearchRefId] = useState("");
   const [searchResult, setSearchResult] = useState<any | null>(null);
@@ -28,6 +30,7 @@ const FormReferenceSearchModal: React.FC<Props> = ({
     setMessage("");
     try {
       const res = await makerService.searchCustomerByFormReferenceId(
+        branchId,
         searchRefId,
         token
       );

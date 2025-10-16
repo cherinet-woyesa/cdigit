@@ -15,6 +15,7 @@ import DashboardMetrics, { type Metric } from "../../components/dashboard/Dashbo
 import { safeJWTDecode, isTokenExpired } from "../../utils/jwt";
 import ApprovalDashboard from "./ApprovalDashboard";
 import PettyCash from "./PettyCash";
+import ManagerReportPanel from "./ManagerReportPanel.tsx";
 
 interface Branch {
   id: string;
@@ -85,7 +86,7 @@ export default function ManagerDashboard() {
   useEffect(() => {
     const fetchBranch = async () => {
       if (!managerId) return;
-      
+
       try {
         setIsLoading(true);
         const res = await managerService.getBranchById(branchId);
@@ -183,18 +184,17 @@ export default function ManagerDashboard() {
                   {branch?.code && ` • Code: ${branch.code}`}
                 </p>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="bg-white/10 px-4 py-2 rounded-lg">
                   <div className="text-xs text-fuchsia-200">Manager ID</div>
                   <div className="font-mono text-sm font-semibold">{managerId || 'N/A'}</div>
                 </div>
                 {branch && (
-                  <div className={`px-4 py-2 rounded-lg ${
-                    branch.isApproved 
-                      ? 'bg-green-500/20 text-green-100' 
-                      : 'bg-yellow-500/20 text-yellow-100'
-                  }`}>
+                  <div className={`px-4 py-2 rounded-lg ${branch.isApproved
+                    ? 'bg-green-500/20 text-green-100'
+                    : 'bg-yellow-500/20 text-yellow-100'
+                    }`}>
                     <div className="text-xs">Status</div>
                     <div className="text-sm font-semibold">
                       {branch.isApproved ? '✅ Approved' : '⏳ Pending Approval'}
@@ -217,103 +217,105 @@ export default function ManagerDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="bg-fuchsia-100 p-1 rounded-xl shadow-inner mb-6 flex flex-wrap gap-2">
-              <TabsTrigger 
-                value="my-branch" 
+              <TabsTrigger
+                value="my-branch"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 🏦 My Branch
               </TabsTrigger>
-              <TabsTrigger 
-                value="approvals" 
+              <TabsTrigger
+                value="approvals"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 ✅ Approvals
               </TabsTrigger>
-              <TabsTrigger 
-                value="users" 
+              <TabsTrigger
+                value="users"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 👥 AD Users
               </TabsTrigger>
-              <TabsTrigger 
-                value="windows" 
+              <TabsTrigger
+                value="windows"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 🪟 Windows
               </TabsTrigger>
-              <TabsTrigger 
-                value="corporate-customers" 
+              <TabsTrigger
+                value="corporate-customers"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 🏢 Corporate
               </TabsTrigger>
-              <TabsTrigger 
-                value="assign" 
+              <TabsTrigger
+                value="assign"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 🔗 Assign Maker
               </TabsTrigger>
-              <TabsTrigger 
-                value="transactions" 
+              <TabsTrigger
+                value="transactions"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 📊 Transactions
               </TabsTrigger>
-              <TabsTrigger 
-                value="petty-cash" 
+              <TabsTrigger
+                value="petty-cash"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 💰 Petty Cash
               </TabsTrigger>
-              <TabsTrigger 
-                value="Screen-Display" 
+              <TabsTrigger
+                value="Screen-Display"
                 variant="brand"
                 className="flex-1 min-w-[140px]"
               >
                 📺 Screen Display
               </TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
+
             </TabsList>
 
             {/* Tab Contents */}
             <TabsContent value="approvals" className="animate-fadeIn">
               <ApprovalDashboard />
             </TabsContent>
-            
+
             <TabsContent value="users" className="animate-fadeIn">
               <BranchAdUsers branchId={branchId} />
             </TabsContent>
-            
+
             <TabsContent value="windows" className="animate-fadeIn">
               <Windows branchId={branchId} />
             </TabsContent>
-            
+
             <TabsContent value="corporate-customers" className="animate-fadeIn">
               <CorporateCustomers managerId={managerId} />
             </TabsContent>
-            
+
             <TabsContent value="assign" className="animate-fadeIn">
               <AssignMaker branchId={branchId} />
             </TabsContent>
-            
+
             <TabsContent value="transactions" className="animate-fadeIn">
               <Transactions branchId={branchId} />
             </TabsContent>
-            
+
             <TabsContent value="petty-cash" className="animate-fadeIn">
               {branchId && (
-                <PettyCash 
-                  branchId={branchId} 
-                  voultManagerId={vaultManagerId} 
+                <PettyCash
+                  branchId={branchId}
+                  voultManagerId={vaultManagerId}
                 />
-              )} 
+              )}
             </TabsContent>
 
             <TabsContent value="Screen-Display" className="animate-fadeIn">
@@ -326,102 +328,100 @@ export default function ManagerDashboard() {
                 <>
                   {/* Branch Overview Card */}
                   {/* {!showCreateModal && ( */}
-                    <div className="space-y-6">
-                      {/* Quick Actions */}
-                      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
-                        <h3 className="text-lg font-semibold text-fuchsia-700 mb-4">Quick Actions</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <button 
+                  <div className="space-y-6">
+                    {/* Quick Actions */}
+                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
+                      <h3 className="text-lg font-semibold text-fuchsia-700 mb-4">Quick Actions</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <button
+                          onClick={() => setShowCreateModal(true)}
+                          className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group"
+                        >
+                          <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">✏️ Edit Branch</div>
+                          <div className="text-sm text-gray-600">Update branch details</div>
+                        </button>
+                        <button className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group">
+                          <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">📊 View Reports</div>
+                          <div className="text-sm text-gray-600">Performance analytics</div>
+                        </button>
+                        <button className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group">
+                          <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">👥 Staff Management</div>
+                          <div className="text-sm text-gray-600">Manage team members</div>
+                        </button>
+                        <button className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group">
+                          <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">⚙️ Settings</div>
+                          <div className="text-sm text-gray-600">Branch configuration</div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Branch Details Card */}
+                    <div className="p-6 bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300">
+                      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
+                        <div>
+                          <h2 className="text-2xl font-bold text-fuchsia-800 flex items-center gap-2 mb-2">
+                            🏦 {branch.name}
+                          </h2>
+                          <p className="text-gray-600">Branch Code: <span className="font-mono font-semibold">{branch.code}</span></p>
+                        </div>
+
+                        <div className="flex gap-3 mt-4 lg:mt-0">
+                          <button
                             onClick={() => setShowCreateModal(true)}
-                            className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group"
+                            className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white px-4 py-2 rounded-lg hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all shadow-md flex items-center gap-2"
                           >
-                            <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">✏️ Edit Branch</div>
-                            <div className="text-sm text-gray-600">Update branch details</div>
-                          </button>
-                          <button className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group">
-                            <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">📊 View Reports</div>
-                            <div className="text-sm text-gray-600">Performance analytics</div>
-                          </button>
-                          <button className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group">
-                            <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">👥 Staff Management</div>
-                            <div className="text-sm text-gray-600">Manage team members</div>
-                          </button>
-                          <button className="p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-300 hover:bg-fuchsia-50 transition-all text-left group">
-                            <div className="text-fuchsia-700 font-semibold group-hover:text-fuchsia-800">⚙️ Settings</div>
-                            <div className="text-sm text-gray-600">Branch configuration</div>
+                            <span>✏️ Edit Details</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* Branch Details Card */}
-                      <div className="p-6 bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300">
-                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
-                          <div>
-                            <h2 className="text-2xl font-bold text-fuchsia-800 flex items-center gap-2 mb-2">
-                              🏦 {branch.name}
-                            </h2>
-                            <p className="text-gray-600">Branch Code: <span className="font-mono font-semibold">{branch.code}</span></p>
-                          </div>
-                          
-                          <div className="flex gap-3 mt-4 lg:mt-0">
-                            <button
-                              onClick={() => setShowCreateModal(true)}
-                              className="bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 text-white px-4 py-2 rounded-lg hover:from-fuchsia-700 hover:to-fuchsia-500 transition-all shadow-md flex items-center gap-2"
-                            >
-                              <span>✏️ Edit Details</span>
-                            </button>
-                          </div>
+                      {/* Enhanced Details Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div className="p-4 bg-fuchsia-50 rounded-xl border border-fuchsia-100 hover:shadow-md transition-shadow">
+                          <p className="font-semibold text-fuchsia-700 text-sm mb-1">Location</p>
+                          <p className="text-gray-900 font-medium">{branch.location || "Not specified"}</p>
+                        </div>
+                        <div className="p-4 bg-fuchsia-50 rounded-xl border border-fuchsia-100 hover:shadow-md transition-shadow">
+                          <p className="font-semibold text-fuchsia-700 text-sm mb-1">Latitude</p>
+                          <p className="text-gray-900 font-mono text-sm">{branch.latitude ?? "—"}</p>
+                        </div>
+                        <div className="p-4 bg-fuchsia-50 rounded-xl border border-fuchsia-100 hover:shadow-md transition-shadow">
+                          <p className="font-semibold text-fuchsia-700 text-sm mb-1">Longitude</p>
+                          <p className="text-gray-900 font-mono text-sm">{branch.longitude ?? "—"}</p>
+                        </div>
+                        <div className="p-4 bg-fuchsia-50 rounded-xl border border-fuchsia-100 hover:shadow-md transition-shadow">
+                          <p className="font-semibold text-fuchsia-700 text-sm mb-1">Manager ID</p>
+                          <p className="text-gray-900 font-mono text-sm">{managerId || "—"}</p>
+                        </div>
+                      </div>
+
+                      {/* Status and Actions */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`px-4 py-2 rounded-full text-sm font-semibold ${branch.isApproved
+                              ? "bg-green-100 text-green-800 border border-green-200"
+                              : "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                              }`}
+                          >
+                            {branch.isApproved ? "✅ Approved" : "⏳ Pending Approval"}
+                          </span>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${branch.status === "Active"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-red-100 text-red-800"
+                              }`}
+                          >
+                            {branch.status}
+                          </span>
                         </div>
 
-                        {/* Enhanced Details Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                          <div className="p-4 bg-fuchsia-50 rounded-xl border border-fuchsia-100 hover:shadow-md transition-shadow">
-                            <p className="font-semibold text-fuchsia-700 text-sm mb-1">Location</p>
-                            <p className="text-gray-900 font-medium">{branch.location || "Not specified"}</p>
-                          </div>
-                          <div className="p-4 bg-fuchsia-50 rounded-xl border border-fuchsia-100 hover:shadow-md transition-shadow">
-                            <p className="font-semibold text-fuchsia-700 text-sm mb-1">Latitude</p>
-                            <p className="text-gray-900 font-mono text-sm">{branch.latitude ?? "—"}</p>
-                          </div>
-                          <div className="p-4 bg-fuchsia-50 rounded-xl border border-fuchsia-100 hover:shadow-md transition-shadow">
-                            <p className="font-semibold text-fuchsia-700 text-sm mb-1">Longitude</p>
-                            <p className="text-gray-900 font-mono text-sm">{branch.longitude ?? "—"}</p>
-                          </div>
-                          <div className="p-4 bg-fuchsia-50 rounded-xl border border-fuchsia-100 hover:shadow-md transition-shadow">
-                            <p className="font-semibold text-fuchsia-700 text-sm mb-1">Manager ID</p>
-                            <p className="text-gray-900 font-mono text-sm">{managerId || "—"}</p>
-                          </div>
-                        </div>
-
-                        {/* Status and Actions */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t border-gray-200">
-                          <div className="flex items-center gap-3">
-                            <span
-                              className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                                branch.isApproved
-                                  ? "bg-green-100 text-green-800 border border-green-200"
-                                  : "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                              }`}
-                            >
-                              {branch.isApproved ? "✅ Approved" : "⏳ Pending Approval"}
-                            </span>
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                branch.status === "Active"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {branch.status}
-                            </span>
-                          </div>
-                          
-                          <div className="text-sm text-gray-500">
-                            Last updated: {new Date().toLocaleDateString()}
-                          </div>
+                        <div className="text-sm text-gray-500">
+                          Last updated: {new Date().toLocaleDateString()}
                         </div>
                       </div>
                     </div>
+                  </div>
                   {/* )} */}
 
                   {/* Edit Modal */}
@@ -460,6 +460,10 @@ export default function ManagerDashboard() {
                   )}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="reports">
+              <ManagerReportPanel defaultBranchId={branchId} />
             </TabsContent>
           </Tabs>
         </div>

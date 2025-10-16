@@ -606,6 +606,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 onClose={() => setShowFormRefModal(false)}
                 token={token}
                 onRefreshServed={refreshTotalServed}
+                branchId={decoded.BranchId}
             />
 
             {/* Remove the QueueNotificationModal from here since we're using global notifications */}

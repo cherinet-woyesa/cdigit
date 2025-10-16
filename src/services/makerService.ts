@@ -229,13 +229,15 @@ const makerService = {
   },
 
   //get by form reference id
-  searchCustomerByFormReferenceId: async (formReferenceId: string, token: string) => {
+  searchCustomerByFormReferenceId: async (branchId: string, formReferenceId: string, token: string) => {
     const res = await axios.get<ApiResponse<NextCustomerData>>(
-      `${API_BASE_URL}/Teller/SearchByFormReference/${formReferenceId}`,
+      `${API_BASE_URL}/Teller/SearchByFormReference/${branchId}/${formReferenceId}`,
       authHeader(token)
     );
     return res.data;
   },
+
+
 
   //get branch info
   getBranchById: async (branchId: string, token: string) => {

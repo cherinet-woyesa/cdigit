@@ -459,6 +459,7 @@ export default function Transactions({ branchId }: { branchId: string }) {
         <TransactionDetailModal
           txn={selectedTxn}
           onClose={() => setSelectedTxn(null)}
+          branchId={branchId}
         />
       )}
 
