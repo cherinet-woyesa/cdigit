@@ -82,12 +82,7 @@ export default function CurrentCustomerModal({
   const { createWorkflow, requiresApproval: workflowRequiresApproval, currentWorkflow } = useApprovalWorkflow();
 
   const handleCompleteClick = async () => {
-    // Validate teller signature
-    if (!tellerBoundSignature) {
-      alert('Teller signature is required to complete this transaction');
-      return;
-    }
-
+    // Remove signature validation - maker signature is no longer required
     // Create approval workflow
     if (current) {
       const voucherData: VoucherData = {
@@ -108,7 +103,7 @@ export default function CurrentCustomerModal({
         customerSegment: 'normal',
         reason: 'Customer transaction processed by teller',
         voucherData: voucherData,
-        tellerSignature: tellerBoundSignature,
+        // Remove teller signature requirement - don't include the property at all
       });
 
       if (workflow?.requiresApproval) {
@@ -130,7 +125,6 @@ export default function CurrentCustomerModal({
     setShakeCancel(true);
     setTimeout(() => setShakeCancel(false), 600); // reset after animation
   };
-
 
   
   return (
@@ -303,7 +297,8 @@ export default function CurrentCustomerModal({
                   </motion.div>
                 )}
 
-                {/* Teller Signature */}
+                {/* Teller Signature - Remove this section entirely */}
+                {/* 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -330,6 +325,7 @@ export default function CurrentCustomerModal({
                     label="Teller Signature"
                   />
                 </motion.div>
+                */}
               </div>
             )
             }
@@ -354,7 +350,8 @@ export default function CurrentCustomerModal({
 
                 <motion.button
                   onClick={handleCompleteClick}
-                  disabled={busyAction === "completing" || !tellerBoundSignature}
+                  // Remove signature requirement - enable button always
+                  disabled={busyAction === "completing"}
                   className="flex-1 px-3 py-2 rounded-lg text-white flex items-center justify-center shadow transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                   animate={
                     flashComplete
@@ -369,10 +366,11 @@ export default function CurrentCustomerModal({
                       : {}
                   }
                   transition={{ duration: 1 }}
-                  style={{ backgroundColor: tellerBoundSignature ? "#059669" : "#9ca3af" }}
+                  // Remove signature requirement - always show as ready to complete
+                  style={{ backgroundColor: "#059669" }}
                 >
                   <FontAwesomeIcon icon={faCheckCircle} className="mr-2" />
-                  {busyAction === "completing" ? "Completing…" : !tellerBoundSignature ? "Sign to Complete" : "Complete"}
+                  {busyAction === "completing" ? "Completing…" : "Complete Transaction"}
                 </motion.button>
 
                 <motion.button

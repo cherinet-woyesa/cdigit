@@ -102,22 +102,63 @@ export const BranchProvider: React.FC<BranchProviderProps> = ({ children }) => {
           return;
         }
       } 
-      // For customers, if there's only one branch, auto-select it
-      else if (fetchedBranches.length === 1 && !isStaffRole) {
-        console.log('BranchContext: Auto-selecting single branch for customer');
-        await setBranch(fetchedBranches[0]);
-      } 
-      // If we already have a selected branch, make sure it's still valid
-      else if (branch) {
-        const currentBranch = fetchedBranches.find(b => b.id === branch.id);
-        if (!currentBranch) {
-          // Current branch no longer exists, clear selection
-          console.log('BranchContext: Current branch no longer exists, clearing');
-          clearBranch();
-          // FIXED: Only redirect customers to branch selection, not staff
-          if (location.pathname !== '/select-branch' && !isStaffRole) {
-            navigate('/select-branch', { state: { from: location } });
+      // For customers, check if we have a branch ID from any of the flows
+      else if (!isStaffRole) {
+        // Check for branch ID from different sources:
+        // 1. From AuthContext (if already set)
+        // 2. From localStorage (from previous steps in the flow)
+        // 3. From URL parameters (less common)
+        
+        let branchIdToUse = user?.branchId || localStorage.getItem('lastActiveBranchId');
+        
+        // If we don't have a branch ID yet, check localStorage from previous steps
+        if (!branchIdToUse) {
+          branchIdToUse = localStorage.getItem('branchIdFromWelcome') || 
+                         localStorage.getItem('branchIdFromLanguageSelection');
+        }
+        
+        // Clean up the localStorage items we've checked
+        if (localStorage.getItem('branchIdFromWelcome')) {
+          localStorage.removeItem('branchIdFromWelcome');
+        }
+        if (localStorage.getItem('branchIdFromLanguageSelection')) {
+          localStorage.removeItem('branchIdFromLanguageSelection');
+        }
+        
+        if (branchIdToUse) {
+          console.log('BranchContext: Found branch ID from flow:', branchIdToUse);
+          const flowBranch = fetchedBranches.find(b => b.id === branchIdToUse);
+          if (flowBranch) {
+            console.log('BranchContext: Auto-selecting branch from flow:', flowBranch);
+            await setBranch(flowBranch);
+            // Update lastActiveBranchId for consistency
+            localStorage.setItem('lastActiveBranchId', branchIdToUse);
+            return;
           }
+        }
+        
+        // If there's only one branch, auto-select it
+        if (fetchedBranches.length === 1) {
+          console.log('BranchContext: Auto-selecting single branch for customer');
+          await setBranch(fetchedBranches[0]);
+        } 
+        // If we already have a selected branch, make sure it's still valid
+        else if (branch) {
+          const currentBranch = fetchedBranches.find(b => b.id === branch.id);
+          if (!currentBranch) {
+            // Current branch no longer exists, clear selection
+            console.log('BranchContext: Current branch no longer exists, clearing');
+            clearBranch();
+            // FIXED: Only redirect customers to branch selection, not staff
+            if (location.pathname !== '/select-branch') {
+              navigate('/select-branch', { state: { from: location } });
+            }
+          }
+        }
+        // If no branch is selected and we have multiple branches, redirect to selection
+        else if (fetchedBranches.length > 1 && location.pathname !== '/select-branch') {
+          console.log('BranchContext: Redirecting to branch selection for customer');
+          navigate('/select-branch', { state: { from: location } });
         }
       }
       

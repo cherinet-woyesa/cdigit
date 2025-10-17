@@ -310,6 +310,7 @@ const VerifyOtpForm: React.FC<VerifyOtpFormProps> = React.memo(({ submitOtp, loa
 const OTPLogin: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, setPhone } = useAuth();
 
   const [step, setStep] = useState<'request' | 'verify'>('request');
@@ -436,6 +437,26 @@ const OTPLogin: React.FC = () => {
       
       console.log('User role detected:', userRole);
       
+      // Check if we have branch information from previous steps
+      // This handles QR code flow, in-branch tablet flow, and language selection flow
+      const branchIdFromQR = location.state?.branchId;
+      const branchIdFromWelcome = localStorage.getItem('branchIdFromWelcome');
+      const branchIdFromLanguageSelection = localStorage.getItem('branchIdFromLanguageSelection');
+      const branchId = branchIdFromQR || branchIdFromWelcome || branchIdFromLanguageSelection;
+      
+      // Clean up the localStorage items as we've used them
+      if (branchIdFromWelcome) {
+        localStorage.removeItem('branchIdFromWelcome');
+      }
+      if (branchIdFromLanguageSelection) {
+        localStorage.removeItem('branchIdFromLanguageSelection');
+      }
+      
+      // If we have a branch ID, save it to localStorage for use in the application
+      if (branchId) {
+        localStorage.setItem('lastActiveBranchId', branchId);
+      }
+      
       // Role-based redirection
       switch (userRole.toLowerCase()) {
         case 'maker':
@@ -459,7 +480,7 @@ const OTPLogin: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [effectivePhone, navigate, otpInput, login, handleAuthError, loading]);
+  }, [effectivePhone, navigate, otpInput, login, handleAuthError, loading, location.state]);
 
   useEffect(() => {
     if (otpInput.isOtpComplete) {

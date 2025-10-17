@@ -27,10 +27,11 @@ const normalizeAccount = (acc: any): Account => {
     // Map the API response fields to our normalized format
     const normalized = {
         id: acc.id,
-        accountNumber: acc.accountNumber || '',
-        accountHolderName: acc.accountHolderName || 'Unknown',
-        accountType: acc.typeOfAccount || 'normal',
-        phoneNumber: acc.phoneNumber || '',
+        accountNumber: acc.accountNumber || acc.AccountNumber || '',
+        accountHolderName: acc.accountHolderName || acc.AccountHolderName || acc.name || 'Unknown',
+        accountType: acc.typeOfAccount || acc.TypeOfAccount || acc.AccountType || acc.Type || 'normal',
+        TypeOfAccount: acc.typeOfAccount || acc.TypeOfAccount || acc.AccountType || acc.Type || 'normal',
+        phoneNumber: acc.phoneNumber || acc.PhoneNumber || '',
         // Include original data for reference
         ...acc
     };

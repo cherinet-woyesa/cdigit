@@ -10,7 +10,12 @@ export type PosRequestCreateDto = {
   PhoneNumber: string;
   ContactNumber: string;
   SecondaryContactNumber?: string | null;
-  Address: string;
+  Address: {
+    City: string;
+    Subcity: string;
+    Wereda: string;
+    Kebele: string;
+  };
   NatureOfBusiness: string;
   TypeOfBusiness: string;
   NumberOfPOSRequired: number;

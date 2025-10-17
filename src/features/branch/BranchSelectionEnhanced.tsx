@@ -6,7 +6,8 @@ import { fetchBranches } from '../../services/branchService';
 import type { Branch } from '../../services/branchService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import QRCodeScanner from './QRCodeScanner';
+// Commented out QRCodeScanner import as requested
+// import QRCodeScanner from './QRCodeScanner';
 import { 
   ChevronDownIcon, 
   MapPinIcon, 
@@ -81,7 +82,8 @@ const BranchSelectionEnhanced: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isProceeding, setIsProceeding] = useState<boolean>(false);
-  const [showQRScanner, setShowQRScanner] = useState<boolean>(false);
+  // Commented out QR scanner state as requested
+  // const [showQRScanner, setShowQRScanner] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'list' | 'dropdown'>('list'); // New: view toggle
@@ -90,6 +92,10 @@ const BranchSelectionEnhanced: React.FC = () => {
     error: string | null;
     coordinates?: { lat: number; lng: number };
   }>({ loading: false, error: null });
+  // State for showing nearby branches dropdown
+  const [showNearbyDropdown, setShowNearbyDropdown] = useState<boolean>(false);
+  // State for the nearest branch
+  const [nearestBranch, setNearestBranch] = useState<BranchWithDistance | null>(null);
 
 
 
@@ -151,12 +157,14 @@ const BranchSelectionEnhanced: React.FC = () => {
     }
   }, []);
 
-  // Get user's current location - only runs once
+  // Get user's current location - optimized to run only once with better timeout handling
   const getUserLocation = useCallback(async (branchesList: BranchWithDistance[]): Promise<BranchWithDistance[]> => {
+    // Performance improvement: Return early if location already fetched
     if (locationFetchedRef.current) {
-      return branchesList; // Already fetched, return as-is
+      return branchesList;
     }
 
+    // Performance improvement: Check if geolocation is supported
     if (!navigator.geolocation) {
       setLocationStatus({
         loading: false,
@@ -168,13 +176,24 @@ const BranchSelectionEnhanced: React.FC = () => {
     setLocationStatus(prev => ({ ...prev, loading: true }));
     
     try {
+      // Performance improvement: Using a promise with timeout to prevent hanging
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Geolocation request timed out'));
+        }, 3000); // Reduced to 3 seconds for better UX
+
         navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
+          (position) => {
+            clearTimeout(timeoutId);
+            resolve(position);
+          },
+          (error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+          },
           {
-            enableHighAccuracy: false, // Changed to false for better performance
-            timeout: 5000, // Reduced timeout
+            enableHighAccuracy: false, // Better performance with false
+            timeout: 3000, // Reduced to 3 seconds
             maximumAge: 300000 // Cache for 5 minutes
           }
         );
@@ -189,6 +208,7 @@ const BranchSelectionEnhanced: React.FC = () => {
         coordinates: { lat: latitude, lng: longitude }
       });
 
+      // Performance improvement: Only calculate distances for branches with coordinates
       const branchesWithDistance = branchesList.map(branch => {
         if (branch.latitude && branch.longitude) {
           return {
@@ -199,18 +219,28 @@ const BranchSelectionEnhanced: React.FC = () => {
         return { ...branch, distance: undefined };
       });
 
-      // Sort by distance
-      return [...branchesWithDistance].sort((a, b) => 
+      // Performance improvement: Sort only once
+      return branchesWithDistance.sort((a, b) => 
         (a.distance || Infinity) - (b.distance || Infinity)
       );
 
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Geolocation error:', error);
       locationFetchedRef.current = true; // Mark as attempted
       
+      // Provide more specific error messages
+      let errorMessage = t('branchSelection.locationError', 'Could not determine your location.');
+      if (error.code === error.TIMEOUT) {
+        errorMessage = t('branchSelection.locationTimeout', 'Location request timed out. Showing all branches.');
+      } else if (error.code === error.PERMISSION_DENIED) {
+        errorMessage = t('branchSelection.locationPermission', 'Location access denied. Showing all branches.');
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        errorMessage = t('branchSelection.locationUnavailable', 'Location unavailable. Showing all branches.');
+      }
+      
       setLocationStatus({
         loading: false,
-        error: t('branchSelection.locationError', 'Could not determine your location.')
+        error: errorMessage
       });
       
       return branchesList; // Return unchanged
@@ -233,26 +263,29 @@ const BranchSelectionEnhanced: React.FC = () => {
       const branchesWithDist = await getUserLocation(list);
       setBranches(branchesWithDist);
       
+      // Find and set the nearest branch
+      const nearest = findNearestBranch(branchesWithDist);
+      setNearestBranch(nearest);
+      
       // Select default: last used or nearest
       const lastBranchId = localStorage.getItem('lastActiveBranchId');
       const lastBranch = lastBranchId ? branchesWithDist.find(b => b.id === lastBranchId) : null;
       
       if (lastBranch) {
         setSelectedId(lastBranch.id);
-      } else {
-        // Find nearest within 50km
-        const nearest = branchesWithDist.find(b => 
-          b.distance !== undefined && b.distance <= 50
-        );
-        if (nearest) {
-          setSelectedId(nearest.id);
-          info(t('branchSelection.nearestSelected', `Nearest branch selected: ${nearest.name}`) + ` (${nearest.distance?.toFixed(1)} km)`);
-        } else if (branchesWithDist.length > 0) {
-          setSelectedId(branchesWithDist[0].id);
-        }
+      } else if (nearest) {
+        setSelectedId(nearest.id);
+        info(t('branchSelection.nearestSelected', `Nearest branch selected: ${nearest.name}`) + ` (${nearest.distance?.toFixed(1)} km)`);
+      } else if (branchesWithDist.length > 0) {
+        setSelectedId(branchesWithDist[0].id);
       }
       
       setIsLoading(false);
+      
+      // Automatically show nearby branches dropdown after loading
+      setTimeout(() => {
+        setShowNearbyDropdown(true);
+      }, 500);
       
     } catch (e) {
       console.error('Failed to load branches from API:', e);
@@ -269,7 +302,8 @@ const BranchSelectionEnhanced: React.FC = () => {
           workingHours: 'Mon-Fri: 8:30 AM - 4:30 PM',
           isActive: true,
           latitude: 9.0054,
-          longitude: 38.7636
+          longitude: 38.7636,
+          distance: 0 // Set distance for mock data
         },
         {
           id: 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c',
@@ -281,7 +315,8 @@ const BranchSelectionEnhanced: React.FC = () => {
           workingHours: 'Mon-Sun: 6:00 AM - 10:00 PM',
           isActive: true,
           latitude: 8.9779,
-          longitude: 38.7993
+          longitude: 38.7993,
+          distance: 5 // Set distance for mock data
         },
         {
           id: 'b1d5f3a2-3c3a-4f5f-ae7b-2a1f2d3c4b5e',
@@ -293,16 +328,21 @@ const BranchSelectionEnhanced: React.FC = () => {
           workingHours: 'Mon-Fri: 8:00 AM - 5:00 PM',
           isActive: true,
           latitude: 9.0300,
-          longitude: 38.7600
+          longitude: 38.7600,
+          distance: 3 // Set distance for mock data
         }
       ];
       
       const branchesWithDist = await getUserLocation(mockBranches);
       setBranches(branchesWithDist);
       
-      const nearest = branchesWithDist.find(b => b.distance !== undefined && b.distance <= 50);
+      // Find and set the nearest branch
+      const nearest = findNearestBranch(branchesWithDist);
+      setNearestBranch(nearest);
+      
       if (nearest) {
         setSelectedId(nearest.id);
+        info(t('branchSelection.nearestSelected', `Nearest branch selected: ${nearest.name}`) + ` (${nearest.distance?.toFixed(1)} km)`);
       } else if (branchesWithDist.length > 0) {
         setSelectedId(branchesWithDist[0].id);
       }
@@ -310,8 +350,13 @@ const BranchSelectionEnhanced: React.FC = () => {
       setIsLoading(false);
       setError(t('branchSelection.demoMode', 'Demo mode: Using sample branch data'));
       info(t('branchSelection.demoNotification', 'Demo mode: Using sample branch data'));
+      
+      // Automatically show nearby branches dropdown after loading
+      setTimeout(() => {
+        setShowNearbyDropdown(true);
+      }, 500);
     }
-  }, [getUserLocation, t, info]);
+  }, [getUserLocation, t, info, findNearestBranch]);
 
   // Handle branch selection
   const handleProceed = useCallback(async () => {
@@ -488,7 +533,8 @@ const BranchSelectionEnhanced: React.FC = () => {
             </p>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar - Hidden as requested */}
+          {/* 
           <div className="relative flex-shrink-0">
             <input
               type="text"
@@ -507,96 +553,122 @@ const BranchSelectionEnhanced: React.FC = () => {
               </button>
             )}
           </div>
+          */}
 
-          {/* Nearby Branches Section */}
-          {nearbyBranches.length > 0 && !searchQuery && (
-            <div className="border-b border-gray-100 pb-2 flex-shrink-0">
-              <div className="flex items-center justify-between">
+          {/* Display only the nearest branch by default */}
+          {nearestBranch && (
+            <div className="border-b border-gray-100 pb-3 flex-shrink-0">
+              <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                   <SignalIcon className="h-3.5 w-3.5 text-fuchsia-600" />
-                  {t('branchSelection.nearbyBranches', 'Nearby Branches')}
+                  {t('branchSelection.nearestBranch', 'Nearest Branch')}
                 </h2>
-                <span className="text-xs text-fuchsia-600 bg-fuchsia-50 px-2 py-0.5 rounded-full">
-                  {nearbyBranches.length} {t('branchSelection.found', 'found')}
-                </span>
+                <button 
+                  onClick={() => setShowNearbyDropdown(!showNearbyDropdown)}
+                  className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1 transition-colors"
+                >
+                  {showNearbyDropdown ? t('branchSelection.showLess', 'Show Less') : t('branchSelection.showMore', 'Show More')}
+                  <ChevronDownIcon className={`h-3 w-3 transition-transform ${showNearbyDropdown ? 'rotate-180' : ''}`} />
+                </button>
               </div>
+              
+              {/* Nearest Branch Card */}
+              <button
+                onClick={() => setSelectedId(nearestBranch.id)}
+                className={`w-full text-left p-3 rounded-lg border-2 transition-all duration-200 ${
+                  selectedId === nearestBranch.id
+                    ? 'border-fuchsia-600 bg-fuchsia-50 shadow-md'
+                    : 'border-gray-200 bg-white hover:border-fuchsia-300 hover:shadow-sm'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-2 flex-1">
+                    <div className={`p-1.5 rounded-lg ${
+                      selectedId === nearestBranch.id ? 'bg-fuchsia-600' : 'bg-gray-100'
+                    }`}>
+                      <BuildingStorefrontIcon className={`h-4 w-4 ${
+                        selectedId === nearestBranch.id ? 'text-white' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h3 className="font-semibold text-sm text-gray-900 truncate">
+                          {nearestBranch.name}
+                        </h3>
+                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                          {nearestBranch.distance?.toFixed(1)} km
+                        </span>
+                      </div>
+                      <div className="space-y-0.5 text-xs">
+                        {nearestBranch.address && (
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <MapPinIcon className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{nearestBranch.address}</span>
+                          </div>
+                        )}
+                        {nearestBranch.phone && (
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <PhoneIcon className="h-3 w-3 flex-shrink-0" />
+                            <span>{nearestBranch.phone}</span>
+                          </div>
+                        )}
+                        {nearestBranch.workingHours && (
+                          <div className="flex items-center gap-1 text-gray-500">
+                            <ClockIcon className="h-3 w-3 flex-shrink-0" />
+                            <span>{nearestBranch.workingHours}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {selectedId === nearestBranch.id && (
+                    <CheckCircleIcon className="h-5 w-5 text-fuchsia-600 flex-shrink-0" />
+                  )}
+                </div>
+              </button>
             </div>
           )}
 
-          {/* Branch List - More compact to show 2+ branches */}
-          <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-2">
-            {filteredBranches.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <BuildingStorefrontIcon className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-                <p className="text-base font-medium">{t('branchSelection.noBranchesFound', 'No branches found')}</p>
-                <p className="text-xs mt-1">{t('branchSelection.tryDifferentSearch', 'Try a different search term')}</p>
-              </div>
-            ) : (
-              filteredBranches.map((branch) => {
-                const isNearby = nearbyBranches.some(nb => nb.id === branch.id);
-                const isSelected = selectedId === branch.id;
-                
-                return (
-                  <button
-                    key={branch.id}
-                    onClick={() => setSelectedId(branch.id)}
-                    className={`w-full text-left p-3 rounded-lg border-2 transition-all duration-200 ${
-                      isSelected
-                        ? 'border-fuchsia-600 bg-fuchsia-50 shadow-md'
-                        : 'border-gray-200 bg-white hover:border-fuchsia-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-2 flex-1">
-                        <div className={`p-1.5 rounded-lg ${
-                          isSelected ? 'bg-fuchsia-600' : 'bg-gray-100'
-                        }`}>
-                          <BuildingStorefrontIcon className={`h-4 w-4 ${
-                            isSelected ? 'text-white' : 'text-gray-600'
-                          }`} />
+          {/* Other Branches Dropdown - Only show when "Show More" is clicked */}
+          {showNearbyDropdown && nearestBranch && (
+            <div className="border-b border-gray-100 pb-3 flex-shrink-0">
+              <h2 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5 mb-2">
+                <BuildingStorefrontIcon className="h-3.5 w-3.5 text-fuchsia-600" />
+                {t('branchSelection.otherBranches', 'Other Branches')}
+              </h2>
+              
+              {/* Other Branches List */}
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {branches
+                  .filter(branch => branch.id !== nearestBranch?.id) // Exclude the nearest branch
+                  .map((branch) => (
+                    <button
+                      key={`other-${branch.id}`}
+                      onClick={() => {
+                        setSelectedId(branch.id);
+                      }}
+                      className={`w-full text-left p-2 rounded-lg border transition-all duration-200 ${
+                        selectedId === branch.id
+                          ? 'border-fuchsia-600 bg-fuchsia-50'
+                          : 'border-gray-200 bg-white hover:border-fuchsia-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <BuildingStorefrontIcon className="h-4 w-4 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-900 truncate">{branch.name}</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <h3 className="font-semibold text-sm text-gray-900 truncate">
-                              {branch.name}
-                            </h3>
-                            {isNearby && (
-                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                                {branch.distance?.toFixed(1)} km
-                              </span>
-                            )}
-                          </div>
-                          <div className="space-y-0.5 text-xs">
-                            {branch.address && (
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <MapPinIcon className="h-3 w-3 flex-shrink-0" />
-                                <span className="truncate">{branch.address}</span>
-                              </div>
-                            )}
-                            {branch.phone && (
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <PhoneIcon className="h-3 w-3 flex-shrink-0" />
-                                <span>{branch.phone}</span>
-                              </div>
-                            )}
-                            {branch.workingHours && (
-                              <div className="flex items-center gap-1 text-gray-500">
-                                <ClockIcon className="h-3 w-3 flex-shrink-0" />
-                                <span>{branch.workingHours}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                        {branch.distance !== undefined && (
+                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                            {branch.distance.toFixed(1)} km
+                          </span>
+                        )}
                       </div>
-                      {isSelected && (
-                        <CheckCircleIcon className="h-5 w-5 text-fuchsia-600 flex-shrink-0" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Location Status */}
           {locationStatus.loading && (
@@ -651,25 +723,9 @@ const BranchSelectionEnhanced: React.FC = () => {
                 t('branchSelection.proceedToLogin', 'Proceed to Login')
               )}
             </button>
-            
-            {/* QR Scanner button - Smaller */}
-            <button
-              onClick={() => setShowQRScanner(true)}
-              className="w-full py-2 px-4 border border-fuchsia-600 text-fuchsia-600 rounded-lg hover:bg-fuchsia-50 transition-all duration-300 flex items-center justify-center font-medium text-sm"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h1m-6 0h1m-6 0h1M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              {t('branchSelection.scanQR', 'Scan QR Code')}
-            </button>
           </div>
         </div>
       </div>
-
-      {/* QR Scanner Modal */}
-      {showQRScanner && (
-        <QRCodeScanner onClose={() => setShowQRScanner(false)} />
-      )}
     </div>
   );
 };

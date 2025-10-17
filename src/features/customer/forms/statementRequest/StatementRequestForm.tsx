@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 
 import { toast } from 'react-toastify';
-import { Loader2, Mail, Check, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Mail, Check, Plus, Trash2, MapPin } from 'lucide-react';
 import { statementService } from '../../../../services/statementService';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 
@@ -334,17 +334,16 @@ const StatementRequestForm: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg">
-      <div className="mb-4 sm:mb-6 bg-fuchsia-700 text-white p-3 sm:p-4 rounded-lg shadow-lg text-center">
+      <div className="mb-4 sm:mb-6 bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white p-3 sm:p-4 rounded-lg shadow-lg">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Statement Request</h1>
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mt-2">
-    <span className="bg-fuchsia-900 px-3 py-1 rounded text-xs sm:text-sm font-semibold">Branch: {user?.branchId || 'Head Office'}</span>
-          <span className="bg-fuchsia-900 px-3 py-1 rounded text-xs sm:text-sm font-semibold">Date: {currentDate}</span>
+        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+          <MapPin className="h-3 w-3" />
+          <span>{user?.branchId || 'Head Office'}</span>
         </div>
         <p className="text-white text-sm sm:text-base mt-1">Subscribe to receive periodic account statements via email</p>
       </div>
       {step === 1 && (
         <form onSubmit={handleNext} className="space-y-4 sm:space-y-6">
-          {/* Request Information section removed: branch name and date are now in the header */}
           <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
             <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Account Selection</h2>
             {renderAccountSelection()}

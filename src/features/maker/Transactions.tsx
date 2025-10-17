@@ -270,7 +270,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
     /** Call next */
     const handleCallNext = async () => {
-        if (!token || !decoded?.nameid || !assignedWindow?.id || !decoded?.BranchId)
+        if (!token || !decoded?.nameid || !assignedWindow?.id || !decoded?.BranchId || !assignedWindow?.windowType)
             return;
 
         // Always fetch the next customer from backend, do not use localStorage
@@ -281,8 +281,8 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 decoded.nameid,
                 assignedWindow.id,
                 decoded.BranchId,
-                token,
-                assignedWindow?.windowType
+                assignedWindow.windowType, // Add windowType parameter
+                token
             );
             console.log("callNextCustomer response at ui:", res);
             if (!res.success || !res.data) {

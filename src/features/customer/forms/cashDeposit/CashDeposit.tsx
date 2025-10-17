@@ -165,26 +165,22 @@ export default function CashDepositForm() {
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         
-        // Real-time validation feedback
-        if (name === 'accountNumber' && value) {
-            const validation = validateRequired(value);
-            if (!validation.isValid) {
-                setErrors(prev => ({ ...prev, accountNumber: validation.error }));
+        // Real-time validation feedback for all fields
+        if (name === 'accountNumber') {
+            // Validate account number in real-time
+            if (value.trim() === '') {
+                setErrors(prev => ({ ...prev, accountNumber: t('accountNumberRequired', 'Account number is required') }));
+            } else if (value.length < 10) {
+                setErrors(prev => ({ ...prev, accountNumber: t('accountNumberTooShort', 'Account number is too short') }));
+            } else if (value.length > 16) {
+                setErrors(prev => ({ ...prev, accountNumber: t('accountNumberTooLong', 'Account number is too long') }));
+            } else if (!/^\d+$/.test(value)) {
+                setErrors(prev => ({ ...prev, accountNumber: t('accountNumberInvalid', 'Account number must contain only digits') }));
             } else {
                 setErrors(prev => ({ ...prev, accountNumber: undefined }));
             }
-        }
-        
-        if (name === 'amount' && value) {
-            const validation = validateAmount(value, { min: 0.01, max: 1000000 });
-            if (!validation.isValid) {
-                setErrors(prev => ({ ...prev, amount: validation.error }));
-            } else {
-                setErrors(prev => ({ ...prev, amount: undefined }));
-            }
-        }
-
-        if (name === 'accountNumber') {
+            
+            // Set account holder name if account is found
             const selected = accounts.find(acc => acc.accountNumber === value);
             if (selected) {
                 setFormData(prev => ({
@@ -193,14 +189,40 @@ export default function CashDepositForm() {
                     accountHolderName: selected.accountHolderName
                 }));
                 localStorage.setItem('selectedDepositAccount', value);
+                // Clear account holder name error if account is valid
+                setErrors(prev => ({ ...prev, accountHolderName: undefined }));
                 return;
+            } else if (value.trim() !== '') {
+                // If account not found, clear account holder name but show error
+                setFormData(prev => ({
+                    ...prev,
+                    accountNumber: value,
+                    accountHolderName: ''
+                }));
+                setErrors(prev => ({ ...prev, accountHolderName: t('accountNotFound', 'Account not found') }));
             }
         }
         
         if (name === 'amount') {
+            // Validate amount in real-time
             const sanitizedValue = value.replace(/[^\d.]/g, '');
             const parts = sanitizedValue.split('.');
-            if (parts.length > 2) return;
+            
+            if (parts.length > 2) {
+                setErrors(prev => ({ ...prev, amount: t('amountInvalidFormat', 'Invalid amount format') }));
+                return;
+            }
+            
+            if (sanitizedValue === '') {
+                setErrors(prev => ({ ...prev, amount: t('amountRequired', 'Amount is required') }));
+            } else if (parseFloat(sanitizedValue) <= 0) {
+                setErrors(prev => ({ ...prev, amount: t('amountGreaterThanZero', 'Amount must be greater than 0') }));
+            } else if (parseFloat(sanitizedValue) > 1000000) {
+                setErrors(prev => ({ ...prev, amount: t('amountTooLarge', 'Amount is too large') }));
+            } else {
+                setErrors(prev => ({ ...prev, amount: undefined }));
+            }
+            
             setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
             return;
         }
@@ -211,19 +233,34 @@ export default function CashDepositForm() {
     const validateAll = (): boolean => {
         const errs: Errors = {};
         
-        const accountValidation = validateRequired(formData.accountNumber);
-        if (!accountValidation.isValid) {
-            errs.accountNumber = accountValidation.error || t('accountNumberRequired', 'Please select an account');
+        // Account number validation
+        if (!formData.accountNumber.trim()) {
+            errs.accountNumber = t('accountNumberRequired', 'Please select an account');
+        } else if (formData.accountNumber.length < 10) {
+            errs.accountNumber = t('accountNumberTooShort', 'Account number is too short');
+        } else if (formData.accountNumber.length > 16) {
+            errs.accountNumber = t('accountNumberTooLong', 'Account number is too long');
+        } else if (!/^\d+$/.test(formData.accountNumber)) {
+            errs.accountNumber = t('accountNumberInvalid', 'Account number must contain only digits');
+        } else if (!formData.accountHolderName) {
+            errs.accountHolderName = t('accountNotFound', 'Account not found');
         }
         
-        const holderValidation = validateRequired(formData.accountHolderName);
-        if (!holderValidation.isValid) {
-            errs.accountHolderName = holderValidation.error || t('accountHolderNameRequired', 'Account holder name is required');
+        // Account holder name validation
+        if (!formData.accountHolderName) {
+            errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required');
         }
         
-        const amountValidation = validateAmount(formData.amount, { min: 0.01, max: 1000000 });
-        if (!amountValidation.isValid) {
-            errs.amount = amountValidation.error || t('validAmountRequired', 'Please enter a valid amount greater than 0');
+        // Amount validation
+        if (!formData.amount.trim()) {
+            errs.amount = t('amountRequired', 'Amount is required');
+        } else {
+            const amountNum = parseFloat(formData.amount);
+            if (isNaN(amountNum) || amountNum <= 0) {
+                errs.amount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
+            } else if (amountNum > 1000000) {
+                errs.amount = t('amountTooLarge', 'Amount is too large');
+            }
         }
         
         setErrors(errs);
@@ -402,25 +439,19 @@ export default function CashDepositForm() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-4xl w-full mx-auto">
+        <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                    {/* Header with Language Switcher */}
-                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
+                    {/* Header with fuchsia-700 */}
+                    <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 p-2 rounded-lg">
-                                        <Plane className="h-5 w-5 text-white" />
-                                    </div>
                                     <div>
                                         <h1 className="text-lg font-bold">{t('cashDeposit', 'Cash Deposit')}</h1>
                                         <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
                                             <MapPin className="h-3 w-3" />
                                             <span>{branch?.name || t('branch', 'Branch')}</span>
-                                            <span>•</span>
-                                            <Calendar className="h-3 w-3" />
-                                            <span>{new Date().toLocaleDateString()}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -428,9 +459,6 @@ export default function CashDepositForm() {
                                 <div className="flex items-center gap-3">
                                     <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
                                         📱 {phone}
-                                    </div>
-                                    <div className="bg-white/20 rounded-lg p-1">
-                                        <LanguageSwitcher />
                                     </div>
                                 </div>
                             </div>
@@ -445,29 +473,11 @@ export default function CashDepositForm() {
                             </div>
                         )}
 
-                        {/* Progress Steps */}
-                        <div className="flex justify-center mb-6">
-                            <div className="flex items-center bg-gray-50 rounded-lg p-1">
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 1 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">1. {t('details', 'Details')}</span>
-                                </div>
-                                <div className="mx-1 text-gray-400 text-sm">→</div>
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 2 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">2. {t('confirm', 'Confirm')}</span>
-                                </div>
-                            </div>
-                        </div>
-
                         {/* Step 1: Account Details */}
                         {step === 1 && (
                             <form onSubmit={handleNext} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <CreditCard className="h-5 w-5 text-fuchsia-700" />
-                                        {t('accountInformation', 'Account Information')}
-                                    </h2>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-6">
+                                    <div>
                                         <Field 
                                             label={t('accountNumber', 'Account Number')} 
                                             required 
@@ -478,7 +488,7 @@ export default function CashDepositForm() {
                                                     name="accountNumber" 
                                                     value={formData.accountNumber} 
                                                     onChange={handleChange} 
-                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                                                     id="accountNumber"
                                                 >
                                                     <option value="">{t('selectAccount', 'Select account')}</option>
@@ -495,12 +505,14 @@ export default function CashDepositForm() {
                                                     value={formData.accountNumber} 
                                                     onChange={handleChange} 
                                                     readOnly={accounts.length === 1}
-                                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                                                    className="w-full p-3 rounded-lg border border-amber-200 bg-amber-50"
                                                     id="accountNumber"
                                                 />
                                             )}
                                         </Field>
-                                        
+                                    </div>
+                                    
+                                    <div>
                                         <Field 
                                             label={t('accountHolderName', 'Account Holder Name')} 
                                             required 
@@ -511,20 +523,13 @@ export default function CashDepositForm() {
                                                 name="accountHolderName" 
                                                 value={formData.accountHolderName} 
                                                 readOnly 
-                                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                                                className="w-full p-3 rounded-lg border border-amber-200 bg-amber-50"
                                                 id="accountHolderName"
                                             />
                                         </Field>
                                     </div>
-                                </div>
 
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <DollarSign className="h-5 w-5 text-fuchsia-700" />
-                                        {t('amountInformation', 'Amount Information')}
-                                    </h2>
-                                    
-                                    <div className="max-w-md">
+                                    <div>
                                         <Field 
                                             label={t('amount', 'Amount (ETB)')} 
                                             required 
@@ -532,14 +537,14 @@ export default function CashDepositForm() {
                                         >
                                             <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <span className="text-gray-600 font-medium">ETB</span>
+                                                    <span className="text-amber-700 font-medium">ETB</span>
                                                 </div>
                                                 <input 
                                                     type="text" 
                                                     name="amount" 
                                                     value={formData.amount} 
                                                     onChange={handleChange} 
-                                                    className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    className="w-full p-3 pl-16 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                                                     placeholder="0.00"
                                                     id="amount"
                                                 />
@@ -553,7 +558,7 @@ export default function CashDepositForm() {
                                 <div className="flex justify-end">
                                     <button 
                                         type="submit" 
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
                                     >
                                         <span>{t('continue', 'Continue')}</span>
                                         <ChevronRight className="h-4 w-4" />
@@ -565,26 +570,21 @@ export default function CashDepositForm() {
                         {/* Step 2: Confirmation */}
                         {step === 2 && (
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                        {t('confirmDeposit', 'Confirm Deposit')}
-                                    </h2>
-                                    
+                                <div className="space-y-4">
                                     {checkApprovalStatus()}
                                     
-                                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('accountHolder', 'Account Holder')}:</span>
+                                    <div className="bg-amber-50 rounded-lg p-4 space-y-3 border border-amber-100">
+                                        <div className="flex justify-between items-center py-2 border-b border-amber-200">
+                                            <span className="font-medium text-amber-800">{t('accountHolder', 'Account Holder')}:</span>
                                             <span className="font-semibold">{formData.accountHolderName}</span>
                                         </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('accountNumber', 'Account Number')}:</span>
+                                        <div className="flex justify-between items-center py-2 border-b border-amber-200">
+                                            <span className="font-medium text-amber-800">{t('accountNumber', 'Account Number')}:</span>
                                             <span className="font-mono font-semibold">{formData.accountNumber}</span>
                                         </div>
                                         <div className="flex justify-between items-center py-2">
-                                            <span className="font-medium text-gray-700">{t('amount', 'Amount')}:</span>
-                                            <span className="text-lg font-bold text-fuchsia-700">
+                                            <span className="font-medium text-amber-800">{t('amount', 'Amount')}:</span>
+                                            <span className="text-lg font-bold text-amber-700">
                                                 {Number(formData.amount).toLocaleString()} ETB
                                             </span>
                                         </div>
@@ -597,25 +597,24 @@ export default function CashDepositForm() {
                                     <button 
                                         type="button" 
                                         onClick={() => setStep(1)}
-                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                                        className="border border-amber-300 text-amber-700 px-6 py-3 rounded-lg hover:bg-amber-50 flex items-center gap-2 justify-center"
                                     >
-                                        <ChevronRight className="h-4 w-4 rotate-180" />
-                                        {t('back', 'Back')}
+                                        <span>{t('back', 'Back')}</span>
                                     </button>
                                     <button 
                                         type="submit" 
                                         disabled={isSubmitting}
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
                                     >
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                {t('submitting', 'Submitting...')}
+                                                <span>{t('submitting', 'Submitting...')}</span>
                                             </>
                                         ) : (
                                             <>
                                                 <CheckCircle2 className="h-4 w-4" />
-                                                {updateId ? t('updateDeposit', 'Update Deposit') : t('submitDeposit', 'Submit Deposit')}
+                                                <span>{t('submit', 'Submit')}</span>
                                             </>
                                         )}
                                     </button>

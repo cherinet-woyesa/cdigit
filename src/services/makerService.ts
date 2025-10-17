@@ -144,41 +144,19 @@ const makerService = {
     }
   },
 
-  callNextCustomer: async (makerId: string, windowId: string, branchId: string, token: string, windowType: string) => {
-   console.log("window type:", windowType)
+  callNextCustomer: async (
+    makerId: string,
+    windowId: string,
+    branchId: string,
+    windowType: string,
+    token: string
+  ) => {
     const res = await axios.get<ApiResponse<NextCustomerData>>(
       `${API_BASE_URL}/Teller/Next/${makerId}/${windowId}/${branchId}/${windowType}`,
       authHeader(token)
     );
     return res.data;
   },
-
-  // callNextCustomer: async (
-  //   makerId: string,
-  //   windowId: string,
-  //   branchId: string,
-  //   windowType: string,
-  //   token: string
-  // ) => {
-  //   console.log("makerService.callNextCustomer called with:", { makerId, windowId, branchId, windowType });
-  //   const payload = {
-  //     frontMakerId: makerId,
-  //     windowId: windowId,
-  //     branchId: branchId,
-  //     customerSegment: windowType, // e.g., "Retail", "Corporate"
-  //     // priorityLevel: 0,            // default to 0; adjust as needed
-  //     serviceType: windowType  // e.g., "Deposit", "Withdrawal"
-  //   };
-
-  //   const res = await axios.post<ApiResponse<NextCustomerData>>(
-  //     `${API_BASE_URL}/Teller/Next`,
-  //     payload,
-  //     authHeader(token)
-  //   );
-
-  //   return res.data;
-  // },
-
 
   completeTransaction: async (id: string, token: string) => {
     const res = await axios.post<ApiResponse<null>>(

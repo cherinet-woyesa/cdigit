@@ -443,27 +443,81 @@ export default function POSRequestForm() {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-4xl w-full mx-auto">
-                <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
-                        <div className="px-6 py-4"><div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"><div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Building className="h-5 w-5 text-white" /></div><div><h1 className="text-lg font-bold">{t('posRequest', 'POS Request')}</h1><div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1"><MapPin className="h-3 w-3" /><span>{branch?.name || t('branch', 'Branch')}</span><span>•</span><Calendar className="h-3 w-3" /><span>{new Date().toLocaleDateString()}</span></div></div></div><div className="flex items-center gap-3"><div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">📱 {phone}</div><div className="bg-white/20 rounded-lg p-1"><LanguageSwitcher /></div></div></div></div>
-                    </header>
-
-                    <div className="p-6">
-                        <div className="flex justify-center mb-6"><div className="flex items-center bg-gray-50 rounded-lg p-1"><div className={`flex items-center px-4 py-2 rounded-md ${step >= 1 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}><span className="font-medium text-sm">1. {t('businessInfo', 'Business Info')}</span></div><div className="mx-1 text-gray-400 text-sm">→</div><div className={`flex items-center px-4 py-2 rounded-md ${step >= 2 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}><span className="font-medium text-sm">2. {t('address', 'Address')}</span></div><div className="mx-1 text-gray-400 text-sm">→</div><div className={`flex items-center px-4 py-2 rounded-md ${step >= 3 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}><span className="font-medium text-sm">3. {t('review', 'Review')}</span></div><div className="mx-1 text-gray-400 text-sm">→</div><div className={`flex items-center px-4 py-2 rounded-md ${step >= 4 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}><span className="font-medium text-sm">4. {t('otp', 'OTP')}</span></div></div></div>
-
-                        <form onSubmit={step === 4 ? handleSubmit : handleNext} className="space-y-6">
-                            {renderStepContent()}
-                            {errors.submit && <ErrorMessage message={errors.submit} />}
-                            <div className="flex justify-between pt-4">
-                                {step > 1 ? (<button type="button" onClick={handleBack} className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2"><ChevronRight className="h-4 w-4 rotate-180" />{t('back', 'Back')}</button>) : (<div></div>)}
-                                {step < 3 ? (<button type="submit" className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"><span>{t('continue', 'Continue')}</span><ChevronRight className="h-4 w-4" /></button>) : step === 3 ? (<button type="button" onClick={handleRequestOtp} disabled={otpLoading || !formData.termsAccepted} className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 disabled:opacity-50">{otpLoading ? <><Loader2 className="h-4 w-4 animate-spin" />{t('requesting', 'Requesting...')}</> : <><Shield className="h-4 w-4" /><span>{t('requestOtp', 'Request OTP')}</span></>}</button>) : (<button type="submit" disabled={isSubmitting || formData.otpCode.length !== 6} className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center">{isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" />{t('submitting', 'Submitting...')}</>) : (<><CheckCircle2 className="h-4 w-4" />{t('submitRequest', 'Submit Request')}</>)}</button>)}
-                            </div>
-                        </form>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-4xl w-full mx-auto">
+          <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+            <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-t-lg">
+              <div className="px-6 py-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div>
+                    <h1 className="text-lg font-bold">{t('posRequest', 'POS Request')}</h1>
+                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                      <MapPin className="h-3 w-3" />
+                      <span>{branch?.name || t('branch', 'Branch')}</span>
                     </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
+                      📱 {phone}
+                    </div>
+                  </div>
                 </div>
+              </div>
+            </header>
+
+            <div className="p-6">
+              <form onSubmit={step === 4 ? handleSubmit : handleNext} className="space-y-6">
+                {renderStepContent()}
+                {errors.submit && <ErrorMessage message={errors.submit} />}
+                <div className="flex justify-between pt-4">
+                  {step > 1 ? (
+                    <button type="button" onClick={handleBack} className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                      <ChevronRight className="h-4 w-4 rotate-180" />
+                      {t('back', 'Back')}
+                    </button>
+                  ) : (
+                    <div></div>
+                  )}
+                  {step < 3 ? (
+                    <button type="submit" className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2">
+                      <span>{t('continue', 'Continue')}</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  ) : step === 3 ? (
+                    <button type="button" onClick={handleRequestOtp} disabled={otpLoading || !formData.termsAccepted} className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 disabled:opacity-50">
+                      {otpLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t('requesting', 'Requesting...')}
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="h-4 w-4" />
+                          <span>{t('requestOtp', 'Request OTP')}</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button type="submit" disabled={isSubmitting || formData.otpCode.length !== 6} className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center">
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t('submitting', 'Submitting...')}
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-4 w-4" />
+                          {t('submitRequest', 'Submit Request')}
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </form>
             </div>
+          </div>
         </div>
+      </div>
     );
 }

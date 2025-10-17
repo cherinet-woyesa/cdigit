@@ -4,22 +4,20 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
-  ArrowRightIcon,
-  DocumentTextIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   ArrowsRightLeftIcon,
   ClockIcon,
   DevicePhoneMobileIcon,
-  CreditCardIcon,
   CurrencyDollarIcon,
-  Squares2X2Icon,
-  ReceiptPercentIcon,
-  DocumentDuplicateIcon,
-  HandRaisedIcon,
-  LinkIcon,
-  XMarkIcon,
   FunnelIcon,
+  UserPlusIcon,
+  BanknotesIcon,
+  BuildingStorefrontIcon,
+  DocumentChartBarIcon,
+  NoSymbolIcon,
+  LinkIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -28,7 +26,9 @@ import TransactionFeedbackModal from '../../modals/TransactionFeedbackModal';
 import clsx from 'clsx';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import { DashboardErrorBoundary } from '../../components/dashboard/ErrorBoundary';
-import { config, BRAND_COLORS } from '../../config/env';
+import { config } from '../../config/env';
+import { fetchBranches } from '../../services/branchService';
+import { getQueueCount } from '../../services/queueService';
 
 type FormName =
   | 'accountOpening'
@@ -53,23 +53,22 @@ interface Form {
   name: FormName;
   route: string;
   icon: React.ElementType;
-  description: string;
   category: 'transactions' | 'services' | 'requests' | 'history';
 }
 
 const forms: Form[] = [
-  { name: 'accountOpening', route: '/form/account-opening', icon: DocumentTextIcon, description: 'Open a new bank account.', category: 'services' },
-  { name: 'cashDeposit', route: '/form/cash-deposit', icon: ArrowDownTrayIcon, description: 'Deposit cash to an account.', category: 'transactions' },
-  { name: 'cashWithdrawal', route: '/form/cash-withdrawal', icon: ArrowUpTrayIcon, description: 'Withdraw cash from your account.', category: 'transactions' },
-  { name: 'fundTransfer', route: '/form/fund-transfer', icon: ArrowsRightLeftIcon, description: 'Transfer funds between accounts.', category: 'transactions' },
-  { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, description: 'Apply for E-Banking services.', category: 'services' },
-  { name: 'cbeBirrRegistration', route: '/form/cbe-birr', icon: CurrencyDollarIcon, description: 'Register for CBE-Birr.', category: 'services' },
-  { name: 'posRequest', route: '/form/pos-request', icon: ReceiptPercentIcon, description: 'Request a POS device for your business.', category: 'requests' },
-  { name: 'rtgsTransfer', route: '/form/rtgs-transfer', icon: ArrowsRightLeftIcon, description: 'RTGS Customer Transfer Order.', category: 'transactions' },
-  { name: 'statementRequest', route: '/form/statement-request', icon: DocumentDuplicateIcon, description: 'Request your account statement.', category: 'requests' },
-  { name: 'stopPayment', route: '/form/stop-payment', icon: HandRaisedIcon, description: 'Request to stop payment on a cheque.', category: 'requests' },
-  { name: 'cbeBirrLink', route: '/form/cbe-birr-link', icon: LinkIcon, description: 'Link your CBE-Birr and bank account.', category: 'services' },
-  { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, description: 'View your transaction history.', category: 'history' },
+  { name: 'accountOpening', route: '/form/account-opening', icon: UserPlusIcon, category: 'services' },
+  { name: 'cashDeposit', route: '/form/cash-deposit', icon: ArrowDownTrayIcon, category: 'transactions' },
+  { name: 'cashWithdrawal', route: '/form/cash-withdrawal', icon: ArrowUpTrayIcon, category: 'transactions' },
+  { name: 'fundTransfer', route: '/form/fund-transfer', icon: ArrowsRightLeftIcon, category: 'transactions' },
+  { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, category: 'services' },
+  { name: 'cbeBirrRegistration', route: '/form/cbe-birr', icon: CurrencyDollarIcon, category: 'services' },
+  { name: 'posRequest', route: '/form/pos-request', icon: BuildingStorefrontIcon, category: 'requests' },
+  { name: 'rtgsTransfer', route: '/form/rtgs-transfer', icon: BanknotesIcon, category: 'transactions' },
+  { name: 'statementRequest', route: '/form/statement-request', icon: DocumentChartBarIcon, category: 'requests' },
+  { name: 'stopPayment', route: '/form/stop-payment', icon: NoSymbolIcon, category: 'requests' },
+  { name: 'cbeBirrLink', route: '/form/cbe-birr-link', icon: LinkIcon, category: 'services' },
+  { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, category: 'history' },
 ];
 
 // Categories for filtering
@@ -95,46 +94,30 @@ const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
       ref={ref}
       role="button"
       tabIndex={0}
-      aria-label={`${label} - ${form.description}`}
+      aria-label={`${label}`}
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={clsx(
-        'group relative bg-white p-3 rounded-xl shadow-sm border border-gray-200 transition-all duration-300 ease-out',
-        'hover:shadow-md hover:border-fuchsia-300 hover:transform hover:-translate-y-1',
-        'focus:outline-none focus:ring-4 focus:ring-fuchsia-100 focus:border-fuchsia-700',
-        isFocused && 'ring-4 ring-fuchsia-100 border-fuchsia-700 -translate-y-1',
-        'active:scale-95'
+        'group relative bg-white p-4 rounded-xl shadow-sm border border-gray-200 transition-all duration-200 ease-in-out',
+        'hover:shadow-md hover:border-fuchsia-300 hover:transform hover:-translate-y-0.5',
+        'focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500',
+        isFocused && 'ring-2 ring-fuchsia-500 border-fuchsia-500',
+        'active:scale-98'
       )}
     >
-      <div className="relative z-10 flex flex-col h-full">
-        <div className="flex-shrink-0 flex items-center gap-3 mb-2">
-          <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-fuchsia-700 group-hover:bg-fuchsia-800 transition-all">
-            <form.icon className="h-5 w-5 text-white" />
-          </div>
-          <span className={clsx(
-            'px-2 py-1 rounded-full text-[10px] font-medium capitalize',
-            'bg-fuchsia-100 text-fuchsia-800'
-          )}>
+      <div className="flex flex-col items-center text-center h-full">
+        <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-fuchsia-100 text-fuchsia-700 mb-3 transition-colors group-hover:bg-fuchsia-700 group-hover:text-white">
+          <form.icon className="h-6 w-6" />
+        </div>
+        
+        <h3 className="text-sm font-semibold text-gray-900 mb-2 leading-tight">
+          {label}
+        </h3>
+        
+        <div className="mt-auto">
+          <span className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full bg-fuchsia-50 text-fuchsia-700">
             {form.category}
           </span>
-        </div>
-        
-        <div className="flex-grow">
-          <h3 className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2 leading-tight">
-            {label}
-          </h3>
-          <p className="text-[12px] text-gray-500 line-clamp-2 leading-snug">
-            {form.description}
-          </p>
-        </div>
-        
-        <div className="flex-shrink-0 flex items-center justify-end mt-2">
-          <div className="flex items-center gap-1 text-fuchsia-700 group-hover:text-fuchsia-800 transition-colors">
-            <span className="text-xs font-semibold">
-              {form.name === 'history' ? t('viewHistory', 'View') : t('startForm', 'Start')}
-            </span>
-            <ArrowRightIcon className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-          </div>
         </div>
       </div>
     </div>
@@ -143,18 +126,13 @@ const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
 
 FormCard.displayName = 'FormCard';
 
-// Skeleton loader for better loading states
+// Simplified skeleton loader
 const FormCardSkeleton: React.FC = () => (
-  <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 animate-pulse">
-    <div className="flex items-center gap-3 mb-2">
-      <div className="h-10 w-10 rounded-lg bg-gray-200"></div>
+  <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 animate-pulse">
+    <div className="flex flex-col items-center">
+      <div className="h-12 w-12 rounded-lg bg-gray-200 mb-3"></div>
+      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
       <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
-    </div>
-    <div className="h-4 bg-gray-200 rounded mb-1 w-3/4"></div>
-    <div className="h-3 bg-gray-200 rounded mb-3 w-full"></div>
-    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-    <div className="flex justify-end mt-2">
-      <div className="h-4 w-12 bg-gray-200 rounded"></div>
     </div>
   </div>
 );
@@ -190,6 +168,12 @@ const CustomerDashboardContent: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // State for nearby branches and queue counts
+  const [nearbyBranches, setNearbyBranches] = useState<any[]>([]);
+  const [queueCounts, setQueueCounts] = useState<Record<string, number>>({});
+  const [loadingNearbyBranches, setLoadingNearbyBranches] = useState(false);
+  const [showNearbyBranches, setShowNearbyBranches] = useState(false);
+
   // Debounced search with useCallback for stability
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -212,8 +196,7 @@ const CustomerDashboardContent: React.FC = () => {
     if (debouncedQuery) {
       filtered = filtered.filter(form => {
         const label = t(`forms.${form.name}`, form.name).toLowerCase();
-        const description = form.description.toLowerCase();
-        return label.includes(debouncedQuery) || description.includes(debouncedQuery);
+        return label.includes(debouncedQuery);
       });
     }
     
@@ -240,14 +223,13 @@ const CustomerDashboardContent: React.FC = () => {
               if (retryContext.previousRetryCount >= MAX_RECONNECT_ATTEMPTS) {
                 console.warn('Max SignalR reconnection attempts reached');
                 setSignalRError(t('signalRError', 'Notifications temporarily unavailable'));
-                return null; // Stop reconnecting
+                return null;
               }
               return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
             }
           })
           .build();
 
-        // Connection state handlers
         connection.onreconnecting(() => {
           console.log('SignalR reconnecting...');
           reconnectAttempts++;
@@ -257,7 +239,6 @@ const CustomerDashboardContent: React.FC = () => {
           console.log('SignalR reconnected successfully');
           reconnectAttempts = 0;
           setSignalRError(null);
-          // Rejoin group after reconnection
           connection.invoke('JoinQueueGroup', phone).catch(console.error);
         });
 
@@ -269,16 +250,13 @@ const CustomerDashboardContent: React.FC = () => {
         console.log('SignalR connected successfully');
         
         await connection.invoke('JoinQueueGroup', phone);
-      
 
-         connection.on('CustomerCalled', (data: { message: string; windowNumber: string }) => {
+        connection.on('CustomerCalled', (data: { message: string; windowNumber: string }) => {
           setQueueNotifyModalTitle(t('beingCalled', 'You Are Being Called'));
           setQueueNotifyModalMessage(`${data.message} Window ${data.windowNumber}`);
           setIsQueueNotifyModalOpen(true);
         });
 
-
-        // Transaction Completed handler
         connection.on("TransactionCompleted", (data: any) => {
           setIsQueueNotifyModalOpen(false);
           setTransactionFeedbackModalOpen(true);
@@ -300,7 +278,6 @@ const CustomerDashboardContent: React.FC = () => {
 
     connectSignalR();
 
-    // Cleanup function
     return () => {
       if (connection) {
         console.log('Cleaning up SignalR connection');
@@ -376,6 +353,77 @@ const CustomerDashboardContent: React.FC = () => {
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
   }, [searchQuery]);
 
+  // Function to calculate distance between two coordinates
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
+  // Function to fetch nearby branches and their queue counts
+  const fetchNearbyBranches = useCallback(async () => {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation is not supported by this browser.');
+      return;
+    }
+
+    setLoadingNearbyBranches(true);
+    try {
+      // Get user's current location
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 5000,
+          maximumAge: 300000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+
+      // Fetch all branches
+      const allBranches = await fetchBranches();
+
+      // Calculate distances and filter nearby branches (within 50km)
+      const branchesWithDistance = allBranches
+        .filter(branch => branch.latitude && branch.longitude)
+        .map(branch => ({
+          ...branch,
+          distance: calculateDistance(latitude, longitude, branch.latitude!, branch.longitude!)
+        }))
+        .filter(branch => branch.distance <= 50)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 5); // Take only the 5 nearest branches
+
+      setNearbyBranches(branchesWithDistance);
+
+      // Fetch queue counts for nearby branches
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        branchesWithDistance.map(async (branch) => {
+          try {
+            const count = await getQueueCount(branch.id);
+            counts[branch.id] = count;
+          } catch (error) {
+            console.warn(`Failed to fetch queue count for branch ${branch.id}:`, error);
+            counts[branch.id] = 0;
+          }
+        })
+      );
+
+      setQueueCounts(counts);
+    } catch (error) {
+      console.error('Error fetching nearby branches:', error);
+    } finally {
+      setLoadingNearbyBranches(false);
+    }
+  }, []);
+
   // Form navigation handler
   const openForm = useCallback((form: Form) => {
     navigate(form.route);
@@ -413,16 +461,30 @@ const CustomerDashboardContent: React.FC = () => {
       <header className="bg-fuchsia-700 text-white shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            {/* Left Side: Welcome Message */}
             <div>
               <h1 className="text-xl sm:text-2xl font-bold">{t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}!</h1>
-              <p className="text-fuchsia-100 text-sm mt-1 hidden sm:block">
-                {t('welcomeSubtitle', 'Access all banking services in one place.')}
-              </p>
             </div>
             
-            {/* Right Side: Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Nearby Branches Button */}
+              <button
+                onClick={() => {
+                  setShowNearbyBranches(!showNearbyBranches);
+                  if (!showNearbyBranches && nearbyBranches.length === 0) {
+                    fetchNearbyBranches();
+                  }
+                }}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm"
+              >
+                <BuildingStorefrontIcon className="h-5 w-5" />
+                <span>{t('nearbyBranches', 'Nearby Branches')}</span>
+                {nearbyBranches.length > 0 && (
+                  <span className="bg-white text-amber-700 rounded-full px-2 py-0.5 text-xs font-bold">
+                    {nearbyBranches.reduce((total, branch) => total + (queueCounts[branch.id] || 0), 0)}
+                  </span>
+                )}
+              </button>
+              
               <button
                 onClick={() => openForm(forms.find(f => f.name === 'history')!)}
                 className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm"
@@ -438,6 +500,51 @@ const CustomerDashboardContent: React.FC = () => {
               </div>
             </div>
           </div>
+          
+          {/* Nearby Branches Dropdown */}
+          {showNearbyBranches && (
+            <div className="mt-3 bg-white/10 rounded-lg p-3 max-w-2xl">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold text-white">{t('nearbyBranches', 'Nearby Branches')}</h3>
+                <button 
+                  onClick={() => setShowNearbyBranches(false)}
+                  className="text-white hover:text-gray-200"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {loadingNearbyBranches ? (
+                <div className="text-white text-center py-2">
+                  {t('loadingNearbyBranches', 'Loading nearby branches...')}
+                </div>
+              ) : nearbyBranches.length === 0 ? (
+                <div className="text-white text-center py-2">
+                  {t('noNearbyBranches', 'No nearby branches found')}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {nearbyBranches.map((branch) => (
+                    <div 
+                      key={branch.id} 
+                      className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-white"
+                    >
+                      <div className="font-semibold text-sm truncate">{branch.name}</div>
+                      <div className="text-xs opacity-90 truncate">{branch.address}</div>
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="text-xs">
+                          {branch.distance.toFixed(1)} km
+                        </span>
+                        <span className="bg-amber-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                          {queueCounts[branch.id] !== undefined ? queueCounts[branch.id] : '...'} {t('inQueue', 'in queue')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -446,7 +553,6 @@ const CustomerDashboardContent: React.FC = () => {
         
         {/* Search and Filters */}
         <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
-          {/* Search Bar */}
           <div className="relative mb-4">
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
             <input
@@ -468,7 +574,6 @@ const CustomerDashboardContent: React.FC = () => {
             )}
           </div>
 
-          {/* Category Filters */}
           <div className="hidden md:flex flex-wrap gap-2">
             {categories.map((category) => (
               <button
@@ -496,7 +601,6 @@ const CustomerDashboardContent: React.FC = () => {
           </div>
         </div>
 
-        {/* Results Count */}
         <div className="hidden md:flex justify-between items-center mb-3">
           <p className="text-gray-600">
             {filteredForms.length} {t('servicesFound', 'services found')}
@@ -511,16 +615,14 @@ const CustomerDashboardContent: React.FC = () => {
           )}
         </div>
 
-        {/* Loading State */}
         {loading && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {[...Array(10)].map((_, i) => (
               <FormCardSkeleton key={i} />
             ))}
           </div>
         )}
 
-        {/* Services Grid */}
         {!loading && (
           <>
             {filteredForms.length === 0 ? (
@@ -539,7 +641,7 @@ const CustomerDashboardContent: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredForms.map((form, idx) => (
                   <FormCard
                     key={form.name}
@@ -555,21 +657,17 @@ const CustomerDashboardContent: React.FC = () => {
           </>
         )}
 
-        {/* Quick Actions Footer */}
         <div className="mt-8 bg-white rounded-2xl shadow-sm p-6">
           <h3 className="font-semibold text-fuchsia-700 mb-4">Need help?</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
               <div className="text-fuchsia-700 font-semibold">Visit Branch</div>
-              <div className="text-sm text-gray-600">Find nearest location</div>
             </button>
             <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
               <div className="text-fuchsia-700 font-semibold">Contact Support</div>
-              <div className="text-sm text-gray-600">Get help 24/7</div>
             </button>
             <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
               <div className="text-fuchsia-700 font-semibold">FAQ</div>
-              <div className="text-sm text-gray-600">Common questions</div>
             </button>
           </div>
         </div>

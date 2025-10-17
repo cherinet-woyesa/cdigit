@@ -120,22 +120,79 @@ export default function CashWithdrawalForm() {
         const { name, value } = e.target;
         
         // Real-time validation
-        if (name === 'amount' && value) {
-            const validation = validateAmount(value, { min: 0.01, max: 1000000 });
-            if (!validation.isValid) {
-                setErrors(prev => ({ ...prev, amount: validation.error }));
+        if (name === 'accountNumber') {
+            // Validate account number in real-time
+            if (value.trim() === '') {
+                setErrors(prev => ({ ...prev, accountNumber: t('accountNumberRequired', 'Account number is required') }));
+            } else if (value.length < 10) {
+                setErrors(prev => ({ ...prev, accountNumber: t('accountNumberTooShort', 'Account number is too short') }));
+            } else if (value.length > 16) {
+                setErrors(prev => ({ ...prev, accountNumber: t('accountNumberTooLong', 'Account number is too long') }));
+            } else if (!/^\d+$/.test(value)) {
+                setErrors(prev => ({ ...prev, accountNumber: t('accountNumberInvalid', 'Account number must contain only digits') }));
             } else {
-                setErrors(prev => ({ ...prev, amount: undefined }));
+                setErrors(prev => ({ ...prev, accountNumber: undefined }));
+            }
+            
+            // Set account holder name if account is found
+            const selected = accounts.find(acc => acc.accountNumber === value);
+            if (selected) {
+                setFormData(prev => ({
+                    ...prev,
+                    accountNumber: value,
+                    accountHolderName: selected.accountHolderName || ''
+                }));
+                localStorage.setItem('selectedWithdrawalAccount', value);
+                // Clear account holder name error if account is valid
+                setErrors(prev => ({ ...prev, accountHolderName: undefined }));
+                return;
+            } else if (value.trim() !== '') {
+                // If account not found, clear account holder name but show error
+                setFormData(prev => ({
+                    ...prev,
+                    accountNumber: value,
+                    accountHolderName: ''
+                }));
+                setErrors(prev => ({ ...prev, accountHolderName: t('accountNotFound', 'Account not found') }));
             }
         }
         
-        if (name === 'otp' && value) {
-            const validation = validateOTP(value);
-            if (!validation.isValid && value.length === 6) {
-                setErrors(prev => ({ ...prev, otp: validation.error }));
+        if (name === 'amount') {
+            // Validate amount in real-time
+            const sanitizedValue = value.replace(/[^\d.]/g, '');
+            const parts = sanitizedValue.split('.');
+            
+            if (parts.length > 2) {
+                setErrors(prev => ({ ...prev, amount: t('amountInvalidFormat', 'Invalid amount format') }));
+                return;
+            }
+            
+            if (sanitizedValue === '') {
+                setErrors(prev => ({ ...prev, amount: t('amountRequired', 'Amount is required') }));
+            } else if (parseFloat(sanitizedValue) <= 0) {
+                setErrors(prev => ({ ...prev, amount: t('amountGreaterThanZero', 'Amount must be greater than 0') }));
+            } else if (parseFloat(sanitizedValue) > 1000000) {
+                setErrors(prev => ({ ...prev, amount: t('amountTooLarge', 'Amount is too large') }));
+            } else {
+                setErrors(prev => ({ ...prev, amount: undefined }));
+            }
+            
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
+        }
+        
+        if (name === 'otp') {
+            const sanitizedValue = value.replace(/\D/g, '').slice(0, 6);
+            // Validate OTP in real-time
+            if (sanitizedValue.length === 6 && !/^\d{6}$/.test(sanitizedValue)) {
+                setErrors(prev => ({ ...prev, otp: t('validOtpRequired', 'OTP must be 6 digits') }));
+            } else if (sanitizedValue.length > 0 && sanitizedValue.length < 6) {
+                setErrors(prev => ({ ...prev, otp: t('otpIncomplete', 'OTP must be 6 digits') }));
             } else {
                 setErrors(prev => ({ ...prev, otp: undefined }));
             }
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
         }
 
         if (name === 'accountNumber') {
@@ -171,19 +228,34 @@ export default function CashWithdrawalForm() {
     const validateStep1 = (): boolean => {
         const errs: Errors = {};
         
-        const accountValidation = validateRequired(formData.accountNumber);
-        if (!accountValidation.isValid) {
-            errs.accountNumber = accountValidation.error || t('accountNumberRequired', 'Please select an account');
+        // Account number validation
+        if (!formData.accountNumber.trim()) {
+            errs.accountNumber = t('accountNumberRequired', 'Please select an account');
+        } else if (formData.accountNumber.length < 10) {
+            errs.accountNumber = t('accountNumberTooShort', 'Account number is too short');
+        } else if (formData.accountNumber.length > 16) {
+            errs.accountNumber = t('accountNumberTooLong', 'Account number is too long');
+        } else if (!/^\d+$/.test(formData.accountNumber)) {
+            errs.accountNumber = t('accountNumberInvalid', 'Account number must contain only digits');
+        } else if (!formData.accountHolderName) {
+            errs.accountHolderName = t('accountNotFound', 'Account not found');
         }
         
-        const holderValidation = validateRequired(formData.accountHolderName);
-        if (!holderValidation.isValid) {
-            errs.accountHolderName = holderValidation.error || t('accountHolderNameRequired', 'Account holder name is required');
+        // Account holder name validation
+        if (!formData.accountHolderName) {
+            errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required');
         }
         
-        const amountValidation = validateAmount(formData.amount, { min: 0.01, max: 1000000 });
-        if (!amountValidation.isValid) {
-            errs.amount = amountValidation.error || t('validAmountRequired', 'Please enter a valid amount greater than 0');
+        // Amount validation
+        if (!formData.amount.trim()) {
+            errs.amount = t('amountRequired', 'Amount is required');
+        } else {
+            const amountNum = parseFloat(formData.amount);
+            if (isNaN(amountNum) || amountNum <= 0) {
+                errs.amount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
+            } else if (amountNum > 1000000) {
+                errs.amount = t('amountTooLarge', 'Amount is too large');
+            }
         }
         
         setErrors(errs);
@@ -197,15 +269,20 @@ export default function CashWithdrawalForm() {
 
     const validateStep3 = (): boolean => {
         // Signature is optional for now, so always return true
+        // In the future, we might want to require a signature
         return true;
     };
 
     const validateStep4 = (): boolean => {
         const errs: Errors = {};
         
-        const otpValidation = validateOTP(formData.otp);
-        if (!otpValidation.isValid) {
-            errs.otp = otpValidation.error || t('validOtpRequired', 'Please enter the 6-digit OTP');
+        // OTP validation
+        if (!formData.otp) {
+            errs.otp = t('otpRequired', 'OTP is required');
+        } else if (formData.otp.length !== 6) {
+            errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+        } else if (!/^\d{6}$/.test(formData.otp)) {
+            errs.otp = t('otpInvalid', 'OTP must contain only digits');
         }
         
         setErrors(errs);
@@ -480,25 +557,19 @@ export default function CashWithdrawalForm() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-4xl w-full mx-auto">
+        <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                    {/* Header with Language Switcher */}
-                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
+                    {/* Header with fuchsia-700 */}
+                    <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 p-2 rounded-lg">
-                                        <Plane className="h-5 w-5 text-white" />
-                                    </div>
                                     <div>
                                         <h1 className="text-lg font-bold">{t('cashWithdrawal', 'Cash Withdrawal')}</h1>
                                         <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
                                             <MapPin className="h-3 w-3" />
                                             <span>{branch?.name || t('branch', 'Branch')}</span>
-                                            <span>•</span>
-                                            <Calendar className="h-3 w-3" />
-                                            <span>{new Date().toLocaleDateString()}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -507,9 +578,6 @@ export default function CashWithdrawalForm() {
                                     <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
                                         📱 {phone}
                                     </div>
-                                    <div className="bg-white/20 rounded-lg p-1">
-                                        <LanguageSwitcher />
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -517,37 +585,11 @@ export default function CashWithdrawalForm() {
 
                     {/* Main Content */}
                     <div className="p-6">
-                        {/* Progress Steps - 4 steps now with signature */}
-                        <div className="flex justify-center mb-6">
-                            <div className="flex items-center bg-gray-50 rounded-lg p-1">
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 1 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">1. {t('details', 'Details')}</span>
-                                </div>
-                                <div className="mx-1 text-gray-400 text-sm">→</div>
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 2 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">2. {t('confirm', 'Confirm')}</span>
-                                </div>
-                                <div className="mx-1 text-gray-400 text-sm">→</div>
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 3 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">3. {t('signature', 'Signature')}</span>
-                                </div>
-                                <div className="mx-1 text-gray-400 text-sm">→</div>
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 4 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">4. {t('otp', 'OTP')}</span>
-                                </div>
-                            </div>
-                        </div>
-
                         {/* Step 1: Account Details */}
                         {step === 1 && (
                             <form onSubmit={handleStep1Next} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <CreditCard className="h-5 w-5 text-fuchsia-700" />
-                                        {t('accountInformation', 'Account Information')}
-                                    </h2>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-6">
+                                    <div>
                                         <Field 
                                             label={t('accountNumber', 'Account Number')} 
                                             required 
@@ -558,7 +600,7 @@ export default function CashWithdrawalForm() {
                                                     name="accountNumber" 
                                                     value={formData.accountNumber} 
                                                     onChange={handleChange} 
-                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                                                     id="accountNumber"
                                                 >
                                                     <option value="">{t('selectAccount', 'Select account')}</option>
@@ -575,12 +617,14 @@ export default function CashWithdrawalForm() {
                                                     value={formData.accountNumber} 
                                                     onChange={handleChange} 
                                                     readOnly={accounts.length === 1}
-                                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                                                    className="w-full p-3 rounded-lg border border-amber-200 bg-amber-50"
                                                     id="accountNumber"
                                                 />
                                             )}
                                         </Field>
-                                        
+                                    </div>
+                                    
+                                    <div>
                                         <Field 
                                             label={t('accountHolderName', 'Account Holder Name')} 
                                             required 
@@ -591,20 +635,13 @@ export default function CashWithdrawalForm() {
                                                 name="accountHolderName" 
                                                 value={formData.accountHolderName} 
                                                 readOnly 
-                                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
+                                                className="w-full p-3 rounded-lg border border-amber-200 bg-amber-50"
                                                 id="accountHolderName"
                                             />
                                         </Field>
                                     </div>
-                                </div>
 
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <DollarSign className="h-5 w-5 text-fuchsia-700" />
-                                        {t('amountInformation', 'Amount Information')}
-                                    </h2>
-                                    
-                                    <div className="max-w-md">
+                                    <div>
                                         <Field 
                                             label={t('amount', 'Amount (ETB)')} 
                                             required 
@@ -612,14 +649,14 @@ export default function CashWithdrawalForm() {
                                         >
                                             <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <span className="text-gray-600 font-medium">ETB</span>
+                                                    <span className="text-amber-700 font-medium">ETB</span>
                                                 </div>
                                                 <input 
                                                     type="text" 
                                                     name="amount" 
                                                     value={formData.amount} 
                                                     onChange={handleChange} 
-                                                    className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    className="w-full p-3 pl-16 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                                                     placeholder="0.00"
                                                     id="amount"
                                                 />
@@ -633,7 +670,7 @@ export default function CashWithdrawalForm() {
                                 <div className="flex justify-end">
                                     <button 
                                         type="submit" 
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
                                     >
                                         <span>{t('continue', 'Continue')}</span>
                                         <ChevronRight className="h-4 w-4" />
@@ -645,26 +682,21 @@ export default function CashWithdrawalForm() {
                         {/* Step 2: Confirmation */}
                         {step === 2 && (
                             <form onSubmit={handleStep2Next} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                        {t('confirmWithdrawal', 'Confirm Withdrawal')}
-                                    </h2>
-                                    
+                                <div className="space-y-4">
                                     {checkApprovalStatus()}
                                     
-                                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('accountHolder', 'Account Holder')}:</span>
+                                    <div className="bg-amber-50 rounded-lg p-4 space-y-3 border border-amber-100">
+                                        <div className="flex justify-between items-center py-2 border-b border-amber-200">
+                                            <span className="font-medium text-amber-800">{t('accountHolder', 'Account Holder')}:</span>
                                             <span className="font-semibold">{formData.accountHolderName}</span>
                                         </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('accountNumber', 'Account Number')}:</span>
+                                        <div className="flex justify-between items-center py-2 border-b border-amber-200">
+                                            <span className="font-medium text-amber-800">{t('accountNumber', 'Account Number')}:</span>
                                             <span className="font-mono font-semibold">{formData.accountNumber}</span>
                                         </div>
                                         <div className="flex justify-between items-center py-2">
-                                            <span className="font-medium text-gray-700">{t('amount', 'Amount')}:</span>
-                                            <span className="text-lg font-bold text-fuchsia-700">
+                                            <span className="font-medium text-amber-800">{t('amount', 'Amount')}:</span>
+                                            <span className="text-lg font-bold text-amber-700">
                                                 {Number(formData.amount).toLocaleString()} ETB
                                             </span>
                                         </div>
@@ -677,17 +709,26 @@ export default function CashWithdrawalForm() {
                                     <button 
                                         type="button" 
                                         onClick={() => setStep(1)}
-                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                                        className="border border-amber-300 text-amber-700 px-6 py-3 rounded-lg hover:bg-amber-50 flex items-center gap-2 justify-center"
                                     >
-                                        <ChevronRight className="h-4 w-4 rotate-180" />
-                                        {t('back', 'Back')}
+                                        <span>{t('back', 'Back')}</span>
                                     </button>
                                     <button 
                                         type="submit" 
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
+                                        disabled={isSubmitting}
+                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
                                     >
-                                        <PenTool className="h-4 w-4" />
-                                        {t('addSignature', 'Add Signature')}
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span>{t('submitting', 'Submitting...')}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                <span>{t('continue', 'Continue')}</span>
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </form>
@@ -701,8 +742,8 @@ export default function CashWithdrawalForm() {
                 {t('digitalSignature', 'Digital Signature')}
             </h2>
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-blue-700">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-amber-700">
                     {t('signatureInstructions', 'Please provide your signature using your finger or stylus. This signature will be used to authorize your withdrawal transaction.')}
                 </p>
                 
@@ -754,7 +795,7 @@ export default function CashWithdrawalForm() {
             <button 
                 type="button" 
                 onClick={() => setStep(2)}
-                className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                className="border border-amber-300 text-amber-700 px-6 py-3 rounded-lg hover:bg-amber-50 flex items-center gap-2 justify-center"
             >
                 <ChevronRight className="h-4 w-4 rotate-180" />
                 {t('back', 'Back')}
@@ -762,7 +803,7 @@ export default function CashWithdrawalForm() {
             <button 
                 type="submit" 
                 disabled={otpLoading}
-                className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium disabled:opacity-50 flex items-center gap-2 justify-center"
             >
                 {otpLoading ? (
                     <>
@@ -789,10 +830,10 @@ export default function CashWithdrawalForm() {
                                         {t('otpVerification', 'OTP Verification')}
                                     </h2>
                                     
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                        <p className="text-sm text-blue-700">
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                                        <p className="text-sm text-amber-700">
                                             {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
-                                            <strong className="text-blue-900"> {phone}</strong>
+                                            <strong className="text-amber-900"> {phone}</strong>
                                         </p>
                                         {otpMessage && (
                                             <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
@@ -814,7 +855,7 @@ export default function CashWithdrawalForm() {
                                                 value={formData.otp} 
                                                 onChange={handleChange} 
                                                 maxLength={6}
-                                                className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
+                                                className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-amber-300 focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono bg-amber-50"
                                                 placeholder="000000"
                                                 id="otp"
                                             />
@@ -825,7 +866,7 @@ export default function CashWithdrawalForm() {
                                                 type="button"
                                                 onClick={handleResendOtp}
                                                 disabled={resendCooldown > 0 || otpLoading}
-                                                className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
+                                                className="text-sm text-amber-700 hover:text-amber-800 disabled:text-gray-400"
                                             >
                                                 {resendCooldown > 0 
                                                     ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
@@ -845,7 +886,7 @@ export default function CashWithdrawalForm() {
                                     <button 
                                         type="button" 
                                         onClick={() => setStep(3)}
-                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                                        className="border border-amber-300 text-amber-700 px-6 py-3 rounded-lg hover:bg-amber-50 flex items-center gap-2 justify-center"
                                     >
                                         <ChevronRight className="h-4 w-4 rotate-180" />
                                         {t('back', 'Back')}
@@ -853,7 +894,7 @@ export default function CashWithdrawalForm() {
                                     <button 
                                         type="submit" 
                                         disabled={isSubmitting || formData.otp.length !== 6}
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium disabled:opacity-50 flex items-center gap-2 justify-center"
                                     >
                                         {isSubmitting ? (
                                             <>

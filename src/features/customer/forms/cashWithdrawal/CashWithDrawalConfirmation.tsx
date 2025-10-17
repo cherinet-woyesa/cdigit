@@ -300,10 +300,10 @@ export default function WithdrawalConfirmation() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full">
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                    {/* Header with Language Switcher */}
+                    {/* Header with fuchsia-700 */}
                     <div className="bg-fuchsia-700 text-white p-4">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div className="flex items-center gap-3">
@@ -315,18 +315,12 @@ export default function WithdrawalConfirmation() {
                                     <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
                                         <MapPin className="h-3 w-3" />
                                         <span>{branchName}</span>
-                                        <span>•</span>
-                                        <Calendar className="h-3 w-3" />
-                                        <span>{new Date().toLocaleDateString()}</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
                                     📱 {phone}
-                                </div>
-                                <div className="bg-white/20 rounded p-1">
-                                    <LanguageSwitcher />
                                 </div>
                             </div>
                         </div>
@@ -336,8 +330,8 @@ export default function WithdrawalConfirmation() {
                     <div ref={componentToPrintRef} className="p-4">
                         {/* Success Icon */}
                         <div className="text-center py-4">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
-                                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-amber-600" />
                             </div>
                             <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
                             <p className="text-gray-600 text-sm">{t('withdrawalSubmitted', 'Your withdrawal request has been submitted.')}</p>
@@ -346,14 +340,14 @@ export default function WithdrawalConfirmation() {
                         {/* Queue and Token Cards */}
                         <div className="mb-4">
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-3 rounded-lg text-center text-white">
+                                <div className="bg-gradient-to-r from-amber-400 to-amber-500 p-3 rounded-lg text-center text-amber-900">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <MapPin className="h-3 w-3" />
                                         <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
                                     </div>
                                     <p className="text-2xl font-bold">{withdrawalData.queueNumber || 'N/A'}</p>
                                 </div>
-                                <div className="bg-gradient-to-r from-fuchsia-700 to-pink-700 p-3 rounded-lg text-center text-white">
+                                <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-3 rounded-lg text-center text-white">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <CreditCard className="h-3 w-3" />
                                         <span className="text-xs font-medium">{t('token', 'Token')}</span>
@@ -365,182 +359,174 @@ export default function WithdrawalConfirmation() {
 
                         {/* Transaction Summary */}
                         <div className="mb-4">
-                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                            <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                                <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
                                     <DollarSign className="h-4 w-4" />
                                     {t('transactionSummary', 'Transaction Summary')}
                                 </h3>
                                 <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <User className="h-3 w-3" />
                                             {t('accountHolder', 'Account Holder')}:
                                         </span>
                                         <span className="font-semibold text-right">{withdrawalData.accountHolderName || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <CreditCard className="h-3 w-3" />
                                             {t('accountNumber', 'Account Number')}:
                                         </span>
                                         <span className="font-mono font-semibold">{withdrawalData.accountNumber || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <Building className="h-3 w-3" />
                                             {t('branch', 'Branch')}:
                                         </span>
                                         <span>{branchName}</span>
                                     </div>
                                     <div className="flex justify-between items-center py-1">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <DollarSign className="h-3 w-3" />
                                             {t('amount', 'Amount')}:
                                         </span>
-                                        <span className="text-lg font-bold text-fuchsia-700">
-                                            {withdrawalData.withdrawal_Amount != null 
-                                                ? `${Number(withdrawalData.withdrawal_Amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` 
-                                                : 'N/A'}
+                                        <span className="text-lg font-bold text-amber-700">
+                                            {Number(withdrawalData.withdrawal_Amount || 0).toLocaleString('en-US', { 
+                                                minimumFractionDigits: 2, 
+                                                maximumFractionDigits: 2 
+                                            })} ETB
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            {t('status', 'Status')}:
-                                        </span>
-                                        <span className={`font-medium ${
-                                            withdrawalData.status === 'PENDING' ? 'text-yellow-600' : 
-                                            withdrawalData.status === 'APPROVED' ? 'text-green-600' : 
-                                            withdrawalData.status === 'CANCELLED' ? 'text-red-600' : 
-                                            'text-gray-600'
-                                        }`}>
-                                            {withdrawalData.status || 'N/A'}
-                                        </span>
-                                    </div>
-                                    {withdrawalData.remark && (
-                                        <div className="flex justify-between items-center py-1">
-                                            <span className="font-medium text-gray-700 flex items-center gap-1">
-                                                <AlertCircle className="h-3 w-3" />
-                                                {t('remark', 'Remark')}:
-                                            </span>
-                                            <span className="text-right max-w-xs">{withdrawalData.remark}</span>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
 
                         {/* Thank You Message */}
-                        <div className="text-center pt-3 border-t border-gray-200">
-                            <p className="text-gray-600 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+                        <div className="text-center pt-3 border-t border-amber-200">
+                            <p className="text-amber-700 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="p-4 border-t border-gray-200 no-print">
+                    <div className="p-4 border-t border-amber-200 no-print">
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={handleNewWithdrawal}
-                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-amber-400 text-amber-900 px-2 py-2 rounded-lg hover:bg-amber-500 font-medium"
                             >
                                 <RefreshCw className="h-3 w-3" />
                                 {t('newWithdrawal', 'New')}
                             </button>
+                            
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-amber-200 text-amber-800 px-2 py-2 rounded-lg hover:bg-amber-300 font-medium"
                             >
                                 <Printer className="h-3 w-3" />
                                 {t('print', 'Print')}
                             </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                            <button
-                                onClick={handleUpdate}
-                                disabled={isUpdating || withdrawalData.status !== 'PENDING'}
-                                className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors text-xs font-medium"
-                                title={withdrawalData.status !== 'PENDING' ? t('onlyPendingCanUpdate', 'Only pending withdrawals can be updated') : ''}
-                            >
-                                <RefreshCw className="h-3 w-3" />
-                                {isUpdating ? t('processing', 'Processing...') : t('update', 'Update')}
-                            </button>
-                            <button
-                                onClick={() => setShowCancelModal(true)}
-                                disabled={isCancelling || withdrawalData.status !== 'PENDING'}
-                                className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-xs font-medium"
-                                title={withdrawalData.status !== 'PENDING' ? t('onlyPendingCanCancel', 'Only pending withdrawals can be cancelled') : ''}
-                            >
-                                <X className="h-3 w-3" />
-                                {t('cancel', 'Cancel')}
-                            </button>
-                        </div>
+
+                        {/* Update and Cancel Buttons - Only show if entity exists and is pending */}
+                        {withdrawalData.id && withdrawalData.status?.toLowerCase() === 'pending' && (
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                <button
+                                    onClick={handleUpdate}
+                                    disabled={isUpdating}
+                                    className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 font-medium"
+                                >
+                                    <RefreshCw className="h-3 w-3" />
+                                    {isUpdating ? t('processing', 'Processing...') : t('update', 'Update')}
+                                </button>
+                                
+                                <button
+                                    onClick={() => setShowCancelModal(true)}
+                                    disabled={isUpdating}
+                                    className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+                                >
+                                    <X className="h-3 w-3" />
+                                    {t('cancel', 'Cancel')}
+                                </button>
+                            </div>
+                        )}
+
                         {/* Messages */}
                         {error && <ErrorMessage message={error} />}
-                        {printError && <ErrorMessage message={printError} />}
                         {successMessage && <SuccessMessage message={successMessage} />}
                     </div>
-
-                    {/* Cancel Confirmation Modal */}
-                    <Transition appear show={showCancelModal} as={Fragment}>
-                        <Dialog as="div" className="relative z-10" onClose={() => !isCancelling && setShowCancelModal(false)}>
-                            <Transition.Child
-                                as={Fragment}
-                                enter="ease-out duration-300"
-                                enterFrom="opacity-0"
-                                enterTo="opacity-100"
-                                leave="ease-in duration-200"
-                                leaveFrom="opacity-100"
-                                leaveTo="opacity-0"
-                            >
-                                <div className="fixed inset-0 bg-black/25" />
-                            </Transition.Child>
-                            <div className="fixed inset-0 overflow-y-auto">
-                                <div className="flex min-h-full items-center justify-center p-4 text-center">
-                                    <Transition.Child
-                                        as={Fragment}
-                                        enter="ease-out duration-300"
-                                        enterFrom="opacity-0 scale-95"
-                                        enterTo="opacity-100 scale-100"
-                                        leave="ease-in duration-200"
-                                        leaveFrom="opacity-100 scale-100"
-                                        leaveTo="opacity-0 scale-95"
-                                    >
-                                        <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                                            <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
-                                                <AlertCircle className="h-5 w-5 text-red-500" />
-                                                {t('confirmCancellation', 'Confirm Cancellation')}
-                                            </Dialog.Title>
-                                            <div className="mt-4">
-                                                <p className="text-sm text-gray-500">
-                                                    {t('cancelWithdrawalPrompt', 'Are you sure you want to cancel this withdrawal? This action cannot be undone.')}
-                                                </p>
-                                            </div>
-                                            {error && <ErrorMessage message={error} />}
-                                            <div className="mt-6 flex justify-end gap-3">
-                                                <button
-                                                    type="button"
-                                                    className="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
-                                                    onClick={() => setShowCancelModal(false)}
-                                                    disabled={isCancelling}
-                                                >
-                                                    {t('goBack', 'Go Back')}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
-                                                    onClick={handleCancel}
-                                                    disabled={isCancelling}
-                                                >
-                                                    {isCancelling ? t('cancelling', 'Cancelling...') : t('yesCancelWithdrawal', 'Yes, Cancel Withdrawal')}
-                                                </button>
-                                            </div>
-                                        </Dialog.Panel>
-                                    </Transition.Child>
-                                </div>
-                            </div>
-                        </Dialog>
-                    </Transition>
                 </div>
+
+                {/* Cancel Confirmation Modal */}
+                <Transition appear show={showCancelModal} as={Fragment}>
+                    <Dialog as="div" className="relative z-10" onClose={() => !isUpdating && setShowCancelModal(false)}>
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0"
+                            enterTo="opacity-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                        >
+                            <div className="fixed inset-0 bg-black/25" />
+                        </Transition.Child>
+
+                        <div className="fixed inset-0 overflow-y-auto">
+                            <div className="flex min-h-full items-center justify-center p-4 text-center">
+                                <Transition.Child
+                                    as={Fragment}
+                                    enter="ease-out duration-300"
+                                    enterFrom="opacity-0 scale-95"
+                                    enterTo="opacity-100 scale-100"
+                                    leave="ease-in duration-200"
+                                    leaveFrom="opacity-100 scale-100"
+                                    leaveTo="opacity-0 scale-95"
+                                >
+                                    <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                                        <Dialog.Title
+                                            as="h3"
+                                            className="text-lg font-medium leading-6 text-gray-900"
+                                        >
+                                            {t('confirmCancellation', 'Confirm Cancellation')}
+                                        </Dialog.Title>
+                                        <div className="mt-2">
+                                            <p className="text-sm text-gray-500">
+                                                {t('cancelWithdrawalConfirmation', 'Are you sure you want to cancel this withdrawal? This action cannot be undone.')}
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-4 flex gap-3">
+                                            <button
+                                                type="button"
+                                                disabled={isUpdating}
+                                                className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                                                onClick={() => setShowCancelModal(false)}
+                                            >
+                                                {t('no', 'No')}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={isUpdating}
+                                                className="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none disabled:opacity-50"
+                                                onClick={handleCancel}
+                                            >
+                                                {isUpdating ? (
+                                                    <span className="flex items-center">
+                                                        <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                                                        {t('processing', 'Processing...')}
+                                                    </span>
+                                                ) : (
+                                                    t('yesCancel', 'Yes, Cancel')
+                                                )}
+                                            </button>
+                                        </div>
+                                    </Dialog.Panel>
+                                </Transition.Child>
+                            </div>
+                        </div>
+                    </Dialog>
+                </Transition>
             </div>
         </div>
     );

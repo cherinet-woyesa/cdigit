@@ -1,47 +1,40 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { speechService } from '../services/speechService';
 import logo from '../assets/logo.jpg';
 import cbeImage from '../assets/cbe1.jpg';
 import './LanguageSelection.css';
 import { LANGUAGES, LANGUAGE_CONFIG } from '../constants/languageConfig';
 import type { LanguageCode } from '../constants/languageConfig';
 
+// Define the languages to show outside component for better performance
+const languagesToShow = ['en', 'am', 'om', 'ti', 'so'];
+
+// Filter LANGUAGES array to only include the specified languages (outside component for better performance)
+const filteredLanguagesForDisplay = LANGUAGES.filter(lang => languagesToShow.includes(lang.code));
+
 const LanguageSelection: React.FC = () => {
   const { i18n, t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const getLastUsedLanguage = useCallback((): LanguageCode | null => {
     const lang = localStorage.getItem('lastUsedLanguage');
-    return lang && LANGUAGES.some(l => l.code === lang) ? lang as LanguageCode : null;
-  }, []);
+    return lang && languagesToShow.includes(lang) ? lang as LanguageCode : null;
+  }, []); // languagesToShow is now a module-level constant, so no need to include in dependencies
 
   const saveLastUsedLanguage = useCallback((langCode: LanguageCode) => {
     localStorage.setItem('lastUsedLanguage', langCode);
   }, []);
 
-  // Memoized filtered languages for performance
-  const filteredLanguages = useMemo(() => {
-    if (!searchTerm.trim()) return LANGUAGES;
-    const query = searchTerm.toLowerCase();
-    return LANGUAGES.filter(lang =>
-      lang.name.toLowerCase().includes(query) ||
-      lang.nativeName.toLowerCase().includes(query)
-    );
-  }, [searchTerm]);
+  // Using pre-filtered languages directly for better performance
+  const filteredLanguages = filteredLanguagesForDisplay;
 
   const handleLanguageSelect = useCallback(async (langCode: LanguageCode) => {
     setSelectedLanguage(langCode);
     saveLastUsedLanguage(langCode);
-    speechService.stop();
-    
-    const confirmationText = LANGUAGE_CONFIG[langCode].name;
-    await speechService.speak(confirmationText, langCode);
     
     await new Promise(resolve => setTimeout(resolve, 800));
     
@@ -50,17 +43,20 @@ const LanguageSelection: React.FC = () => {
     document.documentElement.dir = LANGUAGE_CONFIG[langCode].direction;
     document.documentElement.lang = langCode;
     
-    navigate('/select-branch');
-  }, [i18n, navigate, saveLastUsedLanguage]);
-
-  const speakWelcomeMessage = useCallback(async (lang?: LanguageCode) => {
-    if (isSpeaking) return; // Prevent multiple simultaneous speeches
-    setIsSpeaking(true);
-    const welcomeMessage = t('welcome_message', 'Welcome to Commercial Bank of Ethiopia. Choose language to proceed.');
-    const langCode = lang || i18n.language as LanguageCode;
-    await speechService.speak(welcomeMessage, langCode, 'welcome_message');
-    setIsSpeaking(false);
-  }, [t, i18n.language, isSpeaking]);
+    // Check if we have a branchId in the URL parameters
+    const params = new URLSearchParams(location.search);
+    const branchId = params.get('branchId');
+    
+    if (branchId) {
+      // Save branch ID to localStorage for use in OTP login
+      localStorage.setItem('branchIdFromLanguageSelection', branchId);
+      // Navigate directly to OTP login for users with a branchId (QR code or in-branch flow)
+      navigate('/otp-login');
+    } else {
+      // Navigate to branch selection for remote users
+      navigate('/select-branch');
+    }
+  }, [i18n, navigate, location.search, saveLastUsedLanguage]);
 
   // Keyboard navigation handler
   const handleKeyDown = useCallback((e: React.KeyboardEvent, langCode: LanguageCode) => {
@@ -69,27 +65,6 @@ const LanguageSelection: React.FC = () => {
       handleLanguageSelect(langCode);
     }
   }, [handleLanguageSelect]);
-
-  // Play welcome message only once on initial mount
-  useEffect(() => {
-    const hasPlayedWelcome = sessionStorage.getItem('welcomePlayed');
-    
-    if (!hasPlayedWelcome) {
-      const lastUsedLanguage = getLastUsedLanguage();
-      const timer = setTimeout(() => {
-        speakWelcomeMessage(lastUsedLanguage || 'en');
-        sessionStorage.setItem('welcomePlayed', 'true');
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [getLastUsedLanguage, speakWelcomeMessage]);
-
-  useEffect(() => {
-    return () => {
-      speechService.stop();
-    };
-  }, []);
 
   return (
     <div 
@@ -144,51 +119,11 @@ const LanguageSelection: React.FC = () => {
             <p className="text-gray-600 text-sm sm:text-base pb-2">
               {t('chooseYourPreferredLanguage', 'Choose your preferred language to continue')}
             </p>
-
-            {speechService.isSupported && (
-              <div className="flex items-center justify-center">
-                <button
-                  onClick={() => speakWelcomeMessage()}
-                  className="voice-button flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-fuchsia-700 text-white rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
-                  disabled={isSpeaking}
-                >
-                  <svg className={`w-5 h-5 ${isSpeaking ? 'animate-pulse' : ''}`} fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                  </svg>
-                  <span className="hidden sm:inline">
-                    {isSpeaking 
-                      ? t('speaking', 'Speaking...') 
-                      : t('voice', 'Listen Welcome')
-                    }
-                  </span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="language-selection__search relative flex-shrink-0">
-            <input
-              type="text"
-              placeholder={t('searchLanguages', "Search languages...")}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-700 focus:border-transparent transition-colors"
-            />
-            <svg className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
           </div>
 
           <div className="flex items-center justify-between flex-shrink-0">
             <h3 className="text-base sm:text-lg font-semibold text-gray-800">
-              {searchTerm ? t('searchResults', 'Results') : t('availableLanguages', 'Available Languages')}
+              {t('availableLanguages', 'Available Languages')}
             </h3>
           </div>
 
@@ -228,11 +163,6 @@ const LanguageSelection: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p className="text-gray-600 mb-2">{t('noLanguagesFound', 'No languages found')}</p>
-                {searchTerm && (
-                  <button onClick={() => setSearchTerm('')} className="text-sm text-fuchsia-600 hover:text-fuchsia-700 transition-colors">
-                    {t('clearSearch', 'Clear search')}
-                  </button>
-                )}
               </div>
             )}
           </div>

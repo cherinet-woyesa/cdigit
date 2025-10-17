@@ -93,8 +93,8 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onClose }) => {
       const branches = await fetchBranches();
       const branch = branches.find(b => 
         b.id === branchId || 
-        b.code === branchId ||
-        b.qrCode === branchId
+        b.code === branchId
+        // Removed qrCode property as it doesn't exist in the Branch interface
       );
 
       if (!branch) {
@@ -108,9 +108,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onClose }) => {
 
       toast.success(`Selected branch: ${branch.name}`);
       
-      // Navigate directly to OTP login
-      navigate('/otp-login', { 
-        state: { from: { pathname: '/' }, fromQR: true },
+      // Navigate to language selection (not directly to OTP login)
+      // This ensures the user selects a language before proceeding
+      navigate('/language-selection', { 
+        state: { fromQR: true, branchId: branch.id },
         replace: true 
       });
 

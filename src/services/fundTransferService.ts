@@ -21,6 +21,13 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Add ApiResponse type
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T;
+};
+
 // Types based on your backend model
 export interface FundTransferRequestDto {
   PhoneNumber: string;
@@ -30,6 +37,13 @@ export interface FundTransferRequestDto {
   TransferAmount: number;
   Reason?: string;
   OtpCode: string;
+  Signatures?: SignatureDto[]; // Add signatures property
+}
+
+// Add SignatureDto interface
+export interface SignatureDto {
+  SignatoryName: string;
+  SignatureData: string;
 }
 
 export interface FundTransferResponseDto {
@@ -57,6 +71,7 @@ export interface FundTransferUpdateDto {
   TransferAmount: number;
   Reason?: string;
   OtpCode: string;
+  Signatures?: SignatureDto[]; // Add signatures property
 }
 
 // Account validation
@@ -105,7 +120,7 @@ export const getFundTransferById = async (id: string): Promise<FundTransferRespo
   }
 };
 
-// Update the service functions to return ApiResponse type
+// Update the service functions to handle signatures
 export const submitFundTransfer = async (data: {
   phoneNumber: string;
   branchId: string;
@@ -114,8 +129,15 @@ export const submitFundTransfer = async (data: {
   amount: number;
   remark?: string;
   otp: string;
+  signatures?: { signatoryName: string; signatureData: string }[]; // Add signatures parameter
 }): Promise<ApiResponse<FundTransferResponseDto>> => {
   try {
+    // Convert signatures to the format expected by the backend
+    const signatures = data.signatures?.map(sig => ({
+      SignatoryName: sig.signatoryName,
+      SignatureData: sig.signatureData
+    })) || [];
+
     const payload: FundTransferRequestDto = {
       PhoneNumber: data.phoneNumber,
       BranchId: data.branchId,
@@ -124,6 +146,7 @@ export const submitFundTransfer = async (data: {
       TransferAmount: data.amount,
       Reason: data.remark || '',
       OtpCode: data.otp,
+      Signatures: signatures.length > 0 ? signatures : undefined
     };
 
     console.log('Submitting payload:', payload); // Debug log
@@ -155,18 +178,26 @@ export const updateFundTransfer = async (
     amount: number;
     remark?: string;
     otp: string;
+    signatures?: { signatoryName: string; signatureData: string }[]; // Add signatures parameter
   }
 ): Promise<any> => {
   try {
+    // Convert signatures to the format expected by the backend
+    const signatures = data.signatures?.map(sig => ({
+      SignatoryName: sig.signatoryName,
+      SignatureData: sig.signatureData
+    })) || [];
+
     // Convert to PascalCase to match backend DTO
     const payload: FundTransferUpdateDto = {
-      PhoneNumber: data.phoneNumber,
+      PhoneNumber: data.phoneNumber || '',
       BranchId: data.branchId,
       DebitAccountNumber: data.debitAccountNumber,
       BeneficiaryAccountNumber: data.creditAccountNumber,
       TransferAmount: data.amount,
       Reason: data.remark || '',
       OtpCode: data.otp,
+      Signatures: signatures.length > 0 ? signatures : undefined
     };
 
     console.log('Updating with payload:', payload); // Debug log

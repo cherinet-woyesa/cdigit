@@ -20,7 +20,8 @@ import {
     CreditCard,
     DollarSign,
     Phone,
-    RefreshCw
+    RefreshCw,
+    AlertTriangle
 } from 'lucide-react';
 import { Dialog, Transition } from '@headlessui/react';
 
@@ -204,10 +205,10 @@ export default function EBankingConfirmation() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full">
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                    {/* Header with Language Switcher */}
+                    {/* Header with fuchsia-700 */}
                     <div className="bg-fuchsia-700 text-white p-4">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div className="flex items-center gap-3">
@@ -241,8 +242,8 @@ export default function EBankingConfirmation() {
                     <div ref={componentToPrintRef} className="p-4">
                         {/* Success Icon */}
                         <div className="text-center py-4">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
-                                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-amber-600" />
                             </div>
                             <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
                             <p className="text-gray-600 text-sm">{data?.message || t('defaultSuccessMessage', 'Your application has been submitted successfully.')}</p>
@@ -251,14 +252,14 @@ export default function EBankingConfirmation() {
                         {/* Queue and Token Cards */}
                         <div className="mb-4">
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-3 rounded-lg text-center text-white">
+                                <div className="bg-gradient-to-r from-amber-400 to-amber-500 p-3 rounded-lg text-center text-amber-900">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <MapPin className="h-3 w-3" />
                                         <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
                                     </div>
                                     <p className="text-2xl font-bold">{data?.queueNumber || 'N/A'}</p>
                                 </div>
-                                <div className="bg-gradient-to-r from-fuchsia-700 to-pink-700 p-3 rounded-lg text-center text-white">
+                                <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-3 rounded-lg text-center text-white">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <CreditCard className="h-3 w-3" />
                                         <span className="text-xs font-medium">{t('token', 'Token')}</span>
@@ -270,44 +271,32 @@ export default function EBankingConfirmation() {
 
                         {/* Transaction Summary */}
                         <div className="mb-4">
-                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                            <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                                <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
                                     <DollarSign className="h-4 w-4" />
                                     {t('applicationDetails', 'Application Details')}
                                 </h3>
                                 <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
-                                            <User className="h-3 w-3" />
-                                            {t('customerName', 'Customer Name')}:
-                                        </span>
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                        <span className="font-medium text-amber-800">{t('customerName', 'Customer Name')}:</span>
                                         <span className="font-semibold text-right">{data?.customerName || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
-                                            <CreditCard className="h-3 w-3" />
-                                            {t('accountNumber', 'Account Number')}:
-                                        </span>
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                        <span className="font-medium text-amber-800">{t('accountNumber', 'Account Number')}:</span>
                                         <span className="font-mono font-semibold">{data?.accountNumber || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
-                                            <Phone className="h-3 w-3" />
-                                            {t('mobileNumber', 'Mobile Number')}:
-                                        </span>
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                        <span className="font-medium text-amber-800">{t('mobileNumber', 'Mobile Number')}:</span>
                                         <span>{data?.mobileNumber || 'N/A'}</span>
                                     </div>
                                     {data?.ebankingChannels?.length > 0 && (
-                                        <div className="flex justify-between items-start py-1 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700 flex items-center gap-1">
-                                                <Wifi className="h-3 w-3" />
-                                                {t('requestedServices', 'Services')}:
-                                            </span>
+                                        <div className="flex justify-between items-start py-1 border-b border-amber-200">
+                                            <span className="font-medium text-amber-800">{t('requestedServices', 'Services')}:</span>
                                             <div className="flex flex-wrap gap-1 justify-end">
                                                 {data.ebankingChannels.map((channel: string) => {
                                                     const option = E_BANKING_OPTIONS.find(opt => opt.id === channel);
                                                     return (
-                                                        <span key={channel} className="inline-flex items-center gap-1 px-2 py-0.5 bg-fuchsia-100 text-fuchsia-800 rounded-full text-xs">
+                                                        <span key={channel} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs">
                                                             <span>{option?.icon}</span>
                                                             <span>{option?.label || channel}</span>
                                                         </span>
@@ -317,10 +306,7 @@ export default function EBankingConfirmation() {
                                         </div>
                                     )}
                                     <div className="flex justify-between items-center py-1">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
-                                            <AlertCircle className="h-3 w-3" />
-                                            {t('status', 'Status')}:
-                                        </span>
+                                        <span className="font-medium text-amber-800">{t('status', 'Status')}:</span>
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                             data?.status === 'OnQueue' 
                                                 ? 'bg-blue-100 text-blue-800'
@@ -334,17 +320,17 @@ export default function EBankingConfirmation() {
                         </div>
 
                         {/* Thank You Message */}
-                        <div className="text-center pt-3 border-t border-gray-200">
-                            <p className="text-gray-600 text-xs">{t('thankYouForBanking', 'Thank you for banking with us!')}</p>
+                        <div className="text-center pt-3 border-t border-amber-200">
+                            <p className="text-amber-700 text-xs">{t('thankYouForBanking', 'Thank you for banking with us!')}</p>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="p-4 border-t border-gray-200 no-print">
+                    <div className="p-4 border-t border-amber-200 no-print">
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={handleNewApplication}
-                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-amber-400 text-amber-900 px-2 py-2 rounded-lg hover:bg-amber-500 font-medium"
                             >
                                 <RefreshCw className="h-3 w-3" />
                                 {t('newApplication', 'New')}
@@ -352,7 +338,7 @@ export default function EBankingConfirmation() {
                             
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-amber-200 text-amber-800 px-2 py-2 rounded-lg hover:bg-amber-300 font-medium"
                             >
                                 <Printer className="h-3 w-3" />
                                 {t('print', 'Print')}
@@ -363,7 +349,7 @@ export default function EBankingConfirmation() {
                             <div className="grid grid-cols-2 gap-2 mt-2">
                                 <button
                                     onClick={handleUpdate}
-                                    className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors text-xs font-medium"
+                                    className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 font-medium"
                                 >
                                     <Edit className="h-3 w-3" />
                                     {t('update', 'Update')}
@@ -372,7 +358,7 @@ export default function EBankingConfirmation() {
                                 <button
                                     onClick={() => setShowCancelModal(true)}
                                     disabled={isCancelling}
-                                    className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                                    className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
                                 >
                                     {isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
                                     {t('cancel', 'Cancel')}
@@ -414,7 +400,7 @@ export default function EBankingConfirmation() {
                                 >
                                     <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                                         <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
-                                            <AlertCircle className="h-5 w-5 text-amber-500" />
+                                            <AlertTriangle className="h-5 w-5 text-amber-500" />
                                             {t('confirmCancellation', 'Confirm Cancellation')}
                                         </Dialog.Title>
                                         
@@ -429,7 +415,7 @@ export default function EBankingConfirmation() {
                                         <div className="mt-6 flex justify-end gap-3">
                                             <button
                                                 type="button"
-                                                className="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
+                                                className="inline-flex justify-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"
                                                 onClick={() => setShowCancelModal(false)}
                                                 disabled={isCancelling}
                                             >

@@ -505,31 +505,20 @@ export default function RTGSTransferForm() {
             <div className="max-w-4xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
                     {/* Header with Language Switcher */}
-                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
+                    <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-t-lg">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 p-2 rounded-lg">
-                                        <Plane className="h-5 w-5 text-white" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-lg font-bold">{t('rtgsTransfer', 'RTGS Transfer')}</h1>
-                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-                                            <MapPin className="h-3 w-3" />
-                                            <span>{branch?.name || t('branch', 'Branch')}</span>
-                                            <span>•</span>
-                                            <Calendar className="h-3 w-3" />
-                                            <span>{new Date().toLocaleDateString()}</span>
-                                        </div>
+                                <div>
+                                    <h1 className="text-lg font-bold">{t('rtgsTransfer', 'RTGS Transfer')}</h1>
+                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{branch?.name || t('branch', 'Branch')}</span>
                                     </div>
                                 </div>
                                 
                                 <div className="flex items-center gap-3">
                                     <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
                                         📱 {phone}
-                                    </div>
-                                    <div className="bg-white/20 rounded-lg p-1">
-                                        <LanguageSwitcher />
                                     </div>
                                 </div>
                             </div>
@@ -538,27 +527,6 @@ export default function RTGSTransferForm() {
 
                     {/* Main Content */}
                     <div className="p-6">
-                        {/* Progress Steps - 4 steps like withdrawal */}
-                        <div className="flex justify-center mb-6">
-                            <div className="flex items-center bg-gray-50 rounded-lg p-1">
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 1 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">1. {t('details', 'Details')}</span>
-                                </div>
-                                <div className="mx-1 text-gray-400 text-sm">→</div>
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 2 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">2. {t('review', 'Review')}</span>
-                                </div>
-                                <div className="mx-1 text-gray-400 text-sm">→</div>
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 3 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">3. {t('signature', 'Signature')}</span>
-                                </div>
-                                <div className="mx-1 text-gray-400 text-sm">→</div>
-                                <div className={`flex items-center px-4 py-2 rounded-md ${step >= 4 ? 'bg-fuchsia-700 text-white' : 'text-gray-600'}`}>
-                                    <span className="font-medium text-sm">4. {t('otp', 'OTP')}</span>
-                                </div>
-                            </div>
-                        </div>
-
                         {errors.submit && <ErrorMessage message={errors.submit} />}
 
                         {/* Step 1: Transfer Details */}
@@ -924,7 +892,7 @@ export default function RTGSTransferForm() {
                             </form>
                         )}
 
-                                                {/* Step 4: OTP Verification */}
+                        {/* Step 4: OTP Verification */}
                         {step === 4 && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="border border-gray-200 rounded-lg p-6">
@@ -940,7 +908,7 @@ export default function RTGSTransferForm() {
                                         </p>
                                         {otpMessage && (
                                             <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-                                                <CheckCircle2 className="h-33 w-3" />
+                                                <CheckCircle2 className="h-3 w-3" />
                                                 {otpMessage}
                                             </p>
                                         )}

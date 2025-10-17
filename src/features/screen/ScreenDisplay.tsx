@@ -1,3 +1,6 @@
+
+
+
 // components/ScreenDisplay.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { HubConnectionBuilder } from "@microsoft/signalr";
@@ -11,6 +14,7 @@ import type { DecodedToken } from "../../types/DecodedToken";
 import makerService from "../../services/makerService";
 import type { WindowDto } from "../../types/WindowDto";
 import { speechService } from "../../services/speechService";
+import { BranchQrDisplay } from "./BranchQrDisplay";
 
 export default function ScreenDisplay() {
   const [currentCustomer, setCurrentCustomer] = useState<QueueCustomer | null>(null);
@@ -204,7 +208,7 @@ export default function ScreenDisplay() {
   const toggleVoiceSupport = () => {
     const newVoiceEnabled = !voiceEnabled;
     setVoiceEnabled(newVoiceEnabled);
-    
+
     if (newVoiceEnabled && currentCustomer) {
       // Announce current customer when voice is enabled
       const textToSpeak = `Voice support enabled. Now serving customer ${currentCustomer.customername}, at window ${currentCustomer.windowNumber}.`;
@@ -225,13 +229,12 @@ export default function ScreenDisplay() {
         <p className="opacity-80 text-lg">Queue & Exchange Rate Display</p>
         {/* Voice Control Button */}
         {speechService.isSupported && (
-          <button 
+          <button
             onClick={toggleVoiceSupport}
-            className={`mt-2 px-4 py-2 rounded-lg font-semibold ${
-              voiceEnabled 
-                ? 'bg-green-500 hover:bg-green-600' 
+            className={`mt-2 px-4 py-2 rounded-lg font-semibold ${voiceEnabled
+                ? 'bg-green-500 hover:bg-green-600'
                 : 'bg-gray-500 hover:bg-gray-600'
-            } transition-colors`}
+              } transition-colors`}
           >
             {voiceEnabled ? '🔊 Voice Enabled' : '🔇 Voice Disabled'}
           </button>
@@ -322,128 +325,151 @@ export default function ScreenDisplay() {
           </div>
         </motion.section>
 
-        {/* Exchange Rate Section (30%) */}
+        {/* Right Side Panel: Exchange Rate + QR */}
         <motion.section
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="lg:col-span-3 bg-white/10 rounded-xl p-6 shadow-lg flex flex-col"
+          className="lg:col-span-3 flex flex-col gap-6"
         >
-          <h2 className="text-xl font-bold mb-4 text-center">Exchange Rate</h2>
-          {loadingRates ? (
-            <div className="flex items-center justify-center flex-1 text-lg animate-pulse">
-              Loading...
+          {/* Exchange Rate Section */}
+          <div className="bg-white/10 rounded-xl p-6 shadow-lg flex flex-col flex-1">
+            <h2 className="text-xl font-bold mb-4 text-center">Exchange Rate</h2>
+            {loadingRates ? (
+              <div className="flex items-center justify-center flex-1 text-lg animate-pulse">
+                Loading...
+              </div>
+            ) : (
+              <div className="overflow-y-auto flex-1">
+                <table className="w-full text-center border-separate border-spacing-y-1 text-sm">
+                  <thead>
+                    <tr className="bg-fuchsia-900 text-white">
+                      <th className="p-2">Currency</th>
+                      <th className="p-2">Cash Buying</th>
+                      <th className="p-2">Cash Selling</th>
+                      <th className="p-2">Tx Buying</th>
+                      <th className="p-2">Tx Selling</th>
+                      <th className="p-2">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rates.map((rate, idx) => (
+                      <motion.tr
+                        key={rate.id}
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: idx * 0.05 }}
+                        className="bg-fuchsia-800/30 hover:bg-fuchsia-600/40 rounded-lg"
+                      >
+                        {editingId === rate.id ? (
+                          <>
+                            <td className="p-2 font-medium">{rate.currencyCode}</td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                value={formData.cashBuying ?? ""}
+                                onChange={(e) =>
+                                  setFormData({ ...formData, cashBuying: +e.target.value })
+                                }
+                                className="w-20 p-1 rounded text-black"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                value={formData.cashSelling ?? ""}
+                                onChange={(e) =>
+                                  setFormData({ ...formData, cashSelling: +e.target.value })
+                                }
+                                className="w-20 p-1 rounded text-black"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                value={formData.transactionBuying ?? ""}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    transactionBuying: +e.target.value,
+                                  })
+                                }
+                                className="w-20 p-1 rounded text-black"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="number"
+                                value={formData.transactionSelling ?? ""}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    transactionSelling: +e.target.value,
+                                  })
+                                }
+                                className="w-20 p-1 rounded text-black"
+                              />
+                            </td>
+                            <td className="p-2 space-x-2">
+                              <button
+                                onClick={handleUpdate}
+                                className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingId(null)}
+                                className="px-3 py-1 bg-gray-500 hover:bg-gray-600 rounded text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="p-2 font-medium">{rate.currencyCode}</td>
+                            <td className="p-2">{rate.cashBuying.toFixed(2)}</td>
+                            <td className="p-2">{rate.cashSelling.toFixed(2)}</td>
+                            <td className="p-2">{rate.transactionBuying.toFixed(2)}</td>
+                            <td className="p-2">{rate.transactionSelling.toFixed(2)}</td>
+                            <td className="p-2">
+                              <button
+                                onClick={() => handleEdit(rate)}
+                                className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 rounded text-sm"
+                              >
+                                Update
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* QR Code Section */}
+          <motion.section
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-white/10 rounded-xl p-6 shadow-lg border border-white/10"
+          >
+            <h2 className="text-xl font-bold mb-4 text-center text-blue-200">
+              Scan for Digital Queue
+            </h2>
+            <div className="flex justify-center">
+              <BranchQrDisplay branchId={decoded?.BranchId || ""} />
             </div>
-          ) : (
-            <div className="overflow-y-auto flex-1">
-              <table className="w-full text-center border-separate border-spacing-y-1 text-sm">
-                <thead>
-                  <tr className="bg-fuchsia-900 text-white">
-                    <th className="p-2">Currency</th>
-                    <th className="p-2">Cash Buying</th>
-                    <th className="p-2">Cash Selling</th>
-                    <th className="p-2">Tx Buying</th>
-                    <th className="p-2">Tx Selling</th>
-                    <th className="p-2">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rates.map((rate, idx) => (
-                    <motion.tr
-                      key={rate.id}
-                      initial={{ opacity: 0, x: -30 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.4, delay: idx * 0.05 }}
-                      className="bg-fuchsia-800/30 hover:bg-fuchsia-600/40 rounded-lg"
-                    >
-                      {editingId === rate.id ? (
-                        <>
-                          <td className="p-2 font-medium">{rate.currencyCode}</td>
-                          <td className="p-2">
-                            <input
-                              type="number"
-                              value={formData.cashBuying ?? ""}
-                              onChange={(e) =>
-                                setFormData({ ...formData, cashBuying: +e.target.value })
-                              }
-                              className="w-20 p-1 rounded text-black"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="number"
-                              value={formData.cashSelling ?? ""}
-                              onChange={(e) =>
-                                setFormData({ ...formData, cashSelling: +e.target.value })
-                              }
-                              className="w-20 p-1 rounded text-black"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="number"
-                              value={formData.transactionBuying ?? ""}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  transactionBuying: +e.target.value,
-                                })
-                              }
-                              className="w-20 p-1 rounded text-black"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="number"
-                              value={formData.transactionSelling ?? ""}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  transactionSelling: +e.target.value,
-                                })
-                              }
-                              className="w-20 p-1 rounded text-black"
-                            />
-                          </td>
-                          <td className="p-2 space-x-2">
-                            <button
-                              onClick={handleUpdate}
-                              className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingId(null)}
-                              className="px-3 py-1 bg-gray-500 hover:bg-gray-600 rounded text-sm"
-                            >
-                              Cancel
-                            </button>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="p-2 font-medium">{rate.currencyCode}</td>
-                          <td className="p-2">{rate.cashBuying.toFixed(2)}</td>
-                          <td className="p-2">{rate.cashSelling.toFixed(2)}</td>
-                          <td className="p-2">{rate.transactionBuying.toFixed(2)}</td>
-                          <td className="p-2">{rate.transactionSelling.toFixed(2)}</td>
-                          <td className="p-2">
-                            <button
-                              onClick={() => handleEdit(rate)}
-                              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 rounded text-sm"
-                            >
-                              Update
-                            </button>
-                          </td>
-                        </>
-                      )}
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+            <p className="text-center text-blue-200 text-sm mt-4">
+              Scan this code to get your token number
+            </p>
+          </motion.section>
         </motion.section>
+
+
       </main>
 
       {/* Ads / Footer Ticker */}
@@ -459,3 +485,4 @@ export default function ScreenDisplay() {
     </div>
   );
 }
+

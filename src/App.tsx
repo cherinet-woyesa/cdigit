@@ -1,3 +1,8 @@
+import Entrypoint from './Entrypoint';
+import Welcome from './components/Welcome';
+import ReceptionistDashboard from './features/receptionist/ReceptionistDashboard';
+import QRLogin from './features/auth/QRLogin';
+import VipBooking from './features/vip/VipBooking';
 import { useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -51,6 +56,8 @@ import { FeedbackProvider } from './context/FeedbackContext';
 
 // Import test utilities for development
 import './utils/testApprovalWorkflows';
+import QrLoginPage from './features/auth/QrLoginPage';
+
 
 // FIXED: DashboardRouter with better role handling
 const DashboardRouter: React.FC = () => {
@@ -115,11 +122,17 @@ function App() {
       <FeedbackProvider>
         <StaffRouteGuard>
           <Routes>
+            {/* Default entry point for ALL users */}
+            <Route path="/" element={<Entrypoint />} />
+            <Route path="/welcome" element={<Welcome />} />
+
             {/* Default entry point for CUSTOMERS */}
-            <Route path="/" element={<Navigate to="/language-selection" replace />} />
             <Route path="/language-selection" element={<LanguageSelection />} />
             <Route path="/select-branch" element={<BranchSelectionEnhanced />} />
             <Route path="/otp-login" element={<OTPLogin />} />
+            <Route path="/qr-login" element={<QRLogin />} />
+            <Route path="/qr-login/:branchId/:token" element={<QrLoginPage />} />
+            <Route path="/vip-booking" element={<VipBooking />} />
             
             {/* Staff login route (accessed via link on language selection) */}
             <Route path="/staff-login" element={<StaffLogin />} />
@@ -309,6 +322,7 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/receptionist-dashboard" element={<ReceptionistDashboard />} />
             {/* Kiosk Mode route */}
             <Route path="/kiosk" element={<KioskMode />} />
 

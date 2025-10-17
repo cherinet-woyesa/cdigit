@@ -28,7 +28,7 @@ const ACTION_TYPES = [
 const CbeBirrLinkForm: React.FC = () => {
   // const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, phone } = useAuth();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
@@ -198,7 +198,6 @@ const CbeBirrLinkForm: React.FC = () => {
   // Render customer search step
   const renderSearchStep = () => (
     <div className="bg-white p-6 rounded-lg shadow">
-      <FormHeader title="CBE-Birr & Bank Account Link Application" branchName={branchName} currentDate={currentDate} />
       <h2 className="text-xl font-semibold mb-4 text-fuchsia-700">Customer Search</h2>
       <p className="text-gray-600 mb-6">
         Please enter the customer's ID number, phone number, or account number to begin.
@@ -236,7 +235,6 @@ const CbeBirrLinkForm: React.FC = () => {
     if (!customerInfo) return null;
     return (
       <div className="space-y-6">
-        <FormHeader title="CBE-Birr & Bank Account Link Application" branchName={branchName} currentDate={currentDate} />
         <CustomerInfoSection customerInfo={customerInfo} />
         {/* Form Ref ID (display only, generated on submit) */}
         <div className="bg-white p-4 rounded-lg shadow flex items-center gap-4 mb-4">
@@ -496,27 +494,30 @@ const CbeBirrLinkForm: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center">
-          <div className={`flex items-center ${step >= 1 ? 'text-fuchsia-700' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-fuchsia-700 text-white' : 'bg-gray-200'}`}>
-              1
+    <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full mx-auto">
+        <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+          <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white">
+            <div className="px-6 py-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h1 className="text-lg font-bold">CBE-Birr & Bank Account Link Application</h1>
+                  <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                    <span>{branchName}</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">📱 {phone}</div>
+                </div>
+              </div>
             </div>
-            <div className="ml-2 text-sm font-medium">Customer Search</div>
-          </div>
-          <div className={`flex-1 h-1 mx-2 ${step >= 2 ? 'bg-fuchsia-700' : 'bg-gray-200'}`}></div>
-          <div className={`flex items-center ${step >= 2 ? 'text-fuchsia-700' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-fuchsia-700 text-white' : 'bg-gray-200'}`}>
-              2
-            </div>
-            <div className="ml-2 text-sm font-medium">Account Selection</div>
-          </div>
+          </header>
+
+          {/* Form Content */}
+          {step === 1 ? renderSearchStep() : renderCustomerInfoStep()}
         </div>
       </div>
-      {/* Form Content */}
-      {step === 1 ? renderSearchStep() : renderCustomerInfoStep()}
     </div>
   );
 };

@@ -22,6 +22,7 @@ import {
     Home,
     Wifi
 } from 'lucide-react';
+import { getRegions, getZones, getWoredas } from '../../../../services/addressService';
 
 // Error message component (consistent with other forms)
 function ErrorMessage({ message }: { message: string }) {
@@ -56,8 +57,7 @@ type FormData = {
     idIssueDate: string;
     idExpiryDate: string;
     region: string;
-    city: string;
-    subCity: string;
+    zone: string;
     wereda: string;
     houseNumber: string;
     ebankingChannels: string[];
@@ -98,8 +98,7 @@ export default function EBankingApplication() {
         idIssueDate: '',
         idExpiryDate: '',
         region: '',
-        city: '',
-        subCity: '',
+        zone: '',
         wereda: '',
         houseNumber: '',
         ebankingChannels: [],
@@ -109,6 +108,14 @@ export default function EBankingApplication() {
         idCopyAttached: false,
         otpCode: '',
     });
+
+    // Address dropdown states
+    const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
+    const [zones, setZones] = useState<{ id: number; name: string; regionId: number }[]>([]);
+    const [woredas, setWoredas] = useState<{ id: number; name: string; zoneId: number }[]>([]);
+    const [regionLoading, setRegionLoading] = useState(false);
+    const [zoneLoading, setZoneLoading] = useState(false);
+    const [woredaLoading, setWoredaLoading] = useState(false);
 
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -190,18 +197,74 @@ export default function EBankingApplication() {
         })();
     }, [location.state, branch]);
 
+    // Load regions on component mount
+    useEffect(() => {
+        setRegionLoading(true);
+        getRegions()
+            .then(res => setRegions(Array.isArray(res) ? res : (res.data || [])))
+            .catch(() => console.error("Failed to load regions"))
+            .finally(() => setRegionLoading(false));
+    }, []);
+
+    // Load zones when region changes
+    useEffect(() => {
+        if (!formData.region) {
+            setZones([]);
+            setFormData(prev => ({ ...prev, zone: '', wereda: '' }));
+            return;
+        }
+        setZoneLoading(true);
+        const selectedRegion = regions.find(r => r.name === formData.region);
+        if (!selectedRegion) {
+            setZones([]);
+            setZoneLoading(false);
+            return;
+        }
+        getZones(selectedRegion.id)
+            .then(res => setZones(Array.isArray(res) ? res : (res.data || [])))
+            .catch(() => console.error("Failed to load zones"))
+            .finally(() => setZoneLoading(false));
+    }, [formData.region, regions]);
+
+    // Load woredas when zone changes
+    useEffect(() => {
+        if (!formData.zone) {
+            setWoredas([]);
+            setFormData(prev => ({ ...prev, wereda: '' }));
+            return;
+        }
+        setWoredaLoading(true);
+        const selectedZone = zones.find(z => z.name === formData.zone);
+        if (!selectedZone) {
+            setWoredas([]);
+            setWoredaLoading(false);
+            return;
+        }
+        getWoredas(selectedZone.id)
+            .then(res => setWoredas(Array.isArray(res) ? res : (res.data || [])))
+            .catch(() => console.error("Failed to load woredas"))
+            .finally(() => setWoredaLoading(false));
+    }, [formData.zone, zones]);
+
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         
-        if (errors[name as keyof Errors]) {
-            setErrors(prev => ({ ...prev, [name]: undefined }));
-        }
-
-        if (type === 'checkbox') {
+        // Reset dependent fields when parent field changes
+        if (name === "region") {
+            setFormData(prev => ({ ...prev, region: value, zone: '', wereda: '' }));
+        } else if (name === "zone") {
+            setFormData(prev => ({ ...prev, zone: value, wereda: '' }));
+        } else if (name === "wereda") {
+            setFormData(prev => ({ ...prev, wereda: value }));
+        } else if (type === 'checkbox') {
             const checked = (e.target as HTMLInputElement).checked;
             
             if (name === 'termsAccepted') {
                 setFormData(prev => ({ ...prev, [name]: checked }));
+                // Clear error when checkbox is checked
+                if (checked) {
+                    setErrors(prev => ({ ...prev, termsAccepted: undefined }));
+                }
             } else if (name === 'idCopyAttached') {
                 setFormData(prev => ({ ...prev, [name]: checked }));
             } else {
@@ -212,9 +275,132 @@ export default function EBankingApplication() {
                         ? [...prev.ebankingChannels, channel]
                         : prev.ebankingChannels.filter(c => c !== channel)
                 }));
+                // Clear error when at least one channel is selected
+                if (checked) {
+                    setErrors(prev => ({ ...prev, ebankingChannels: undefined }));
+                }
             }
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
+        }
+        
+        // Real-time validation feedback
+        if (step === 1) {
+            if (name === 'accountNumber') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, accountNumber: t('accountNumberRequired', 'Account number is required') }));
+                } else if (value.length < 10) {
+                    setErrors(prev => ({ ...prev, accountNumber: t('accountNumberTooShort', 'Account number is too short') }));
+                } else if (value.length > 16) {
+                    setErrors(prev => ({ ...prev, accountNumber: t('accountNumberTooLong', 'Account number is too long') }));
+                } else if (!/^\d+$/.test(value)) {
+                    setErrors(prev => ({ ...prev, accountNumber: t('accountNumberInvalid', 'Account number must contain only digits') }));
+                } else {
+                    setErrors(prev => ({ ...prev, accountNumber: undefined }));
+                }
+            }
+            
+            if (name === 'customerName') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, customerName: t('customerNameRequired', 'Customer name is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, customerName: t('customerNameTooShort', 'Customer name is too short') }));
+                } else {
+                    setErrors(prev => ({ ...prev, customerName: undefined }));
+                }
+            }
+            
+            if (name === 'mobileNumber') {
+                const cleanPhone = value.replace(/[^\d]/g, '');
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, mobileNumber: t('mobileNumberRequired', 'Mobile number is required') }));
+                } else if (cleanPhone.length < 9) {
+                    setErrors(prev => ({ ...prev, mobileNumber: t('mobileNumberTooShort', 'Mobile number is too short') }));
+                } else if (cleanPhone.length > 12) {
+                    setErrors(prev => ({ ...prev, mobileNumber: t('mobileNumberTooLong', 'Mobile number is too long') }));
+                } else if (!/^(\+251|0)?[97]\d{8}$/.test(cleanPhone)) {
+                    setErrors(prev => ({ ...prev, mobileNumber: t('mobileNumberInvalid', 'Invalid mobile number format') }));
+                } else {
+                    setErrors(prev => ({ ...prev, mobileNumber: undefined }));
+                }
+            }
+        }
+        
+        if (step === 2) {
+            if (name === 'idNumber') {
+                if (value.trim() === '' && !formData.idCopyAttached) {
+                    setErrors(prev => ({ ...prev, idNumber: t('idNumberRequired', 'ID number is required') }));
+                } else if (value.trim() !== '' && value.length < 5) {
+                    setErrors(prev => ({ ...prev, idNumber: t('idNumberTooShort', 'ID number is too short') }));
+                } else {
+                    setErrors(prev => ({ ...prev, idNumber: undefined }));
+                }
+            }
+            
+            if (name === 'issuingAuthority') {
+                if (value.trim() === '' && !formData.idCopyAttached) {
+                    setErrors(prev => ({ ...prev, issuingAuthority: t('issuingAuthorityRequired', 'Issuing authority is required') }));
+                } else if (value.trim() !== '' && value.length < 2) {
+                    setErrors(prev => ({ ...prev, issuingAuthority: t('issuingAuthorityTooShort', 'Issuing authority is too short') }));
+                } else {
+                    setErrors(prev => ({ ...prev, issuingAuthority: undefined }));
+                }
+            }
+        }
+        
+        if (step === 3) {
+            if (name === 'region') {
+                if (value.trim() === '' && !formData.idCopyAttached) {
+                    setErrors(prev => ({ ...prev, region: t('regionRequired', 'Region is required') }));
+                } else if (value.trim() !== '' && value.length < 2) {
+                    setErrors(prev => ({ ...prev, region: t('regionTooShort', 'Region is too short') }));
+                } else {
+                    setErrors(prev => ({ ...prev, region: undefined }));
+                }
+            }
+            
+            if (name === 'zone') {
+                if (value.trim() === '' && !formData.idCopyAttached) {
+                    setErrors(prev => ({ ...prev, zone: t('zoneRequired', 'Zone is required') }));
+                } else if (value.trim() !== '' && value.length < 2) {
+                    setErrors(prev => ({ ...prev, zone: t('zoneTooShort', 'Zone is too short') }));
+                } else {
+                    setErrors(prev => ({ ...prev, zone: undefined }));
+                }
+            }
+            
+            if (name === 'wereda') {
+                if (value.trim() === '' && !formData.idCopyAttached) {
+                    setErrors(prev => ({ ...prev, wereda: t('weredaRequired', 'Wereda is required') }));
+                } else if (value.trim() !== '' && value.length < 2) {
+                    setErrors(prev => ({ ...prev, wereda: t('weredaTooShort', 'Wereda is too short') }));
+                } else {
+                    setErrors(prev => ({ ...prev, wereda: undefined }));
+                }
+            }
+            
+            if (name === 'houseNumber') {
+                if (value.trim() === '' && !formData.idCopyAttached) {
+                    setErrors(prev => ({ ...prev, houseNumber: t('houseNumberRequired', 'House number is required') }));
+                } else if (value.trim() !== '' && value.length < 2) {
+                    setErrors(prev => ({ ...prev, houseNumber: t('houseNumberTooShort', 'House number is too short') }));
+                } else {
+                    setErrors(prev => ({ ...prev, houseNumber: undefined }));
+                }
+            }
+        }
+        
+        if (step === 7) {
+            if (name === 'otpCode') {
+                const sanitizedValue = value.replace(/\D/g, '').slice(0, 6);
+                if (sanitizedValue.length === 6 && !/^\d{6}$/.test(sanitizedValue)) {
+                    setErrors(prev => ({ ...prev, otp: t('validOtpRequired', 'OTP must be 6 digits') }));
+                } else if (sanitizedValue.length > 0 && sanitizedValue.length < 6) {
+                    setErrors(prev => ({ ...prev, otp: t('otpIncomplete', 'OTP must be 6 digits') }));
+                } else {
+                    setErrors(prev => ({ ...prev, otp: undefined }));
+                }
+            }
         }
     };
 
@@ -222,24 +408,74 @@ export default function EBankingApplication() {
         const errs: Errors = {};
         
         if (step === 1) {
-            if (!formData.accountNumber.trim()) errs.accountNumber = t('accountNumberRequired', 'Account number is required');
-            if (!formData.customerName.trim()) errs.customerName = t('customerNameRequired', 'Customer name is required');
-            if (!formData.mobileNumber.trim()) errs.mobileNumber = t('mobileNumberRequired', 'Mobile number is required');
+            if (!formData.accountNumber.trim()) {
+                errs.accountNumber = t('accountNumberRequired', 'Account number is required');
+            } else if (formData.accountNumber.length < 10) {
+                errs.accountNumber = t('accountNumberTooShort', 'Account number is too short');
+            } else if (formData.accountNumber.length > 16) {
+                errs.accountNumber = t('accountNumberTooLong', 'Account number is too long');
+            } else if (!/^\d+$/.test(formData.accountNumber)) {
+                errs.accountNumber = t('accountNumberInvalid', 'Account number must contain only digits');
+            }
+            
+            if (!formData.customerName.trim()) {
+                errs.customerName = t('customerNameRequired', 'Customer name is required');
+            } else if (formData.customerName.length < 2) {
+                errs.customerName = t('customerNameTooShort', 'Customer name is too short');
+            }
+            
+            if (!formData.mobileNumber.trim()) {
+                errs.mobileNumber = t('mobileNumberRequired', 'Mobile number is required');
+            } else {
+                const cleanPhone = formData.mobileNumber.replace(/[^\d]/g, '');
+                if (cleanPhone.length < 9) {
+                    errs.mobileNumber = t('mobileNumberTooShort', 'Mobile number is too short');
+                } else if (cleanPhone.length > 12) {
+                    errs.mobileNumber = t('mobileNumberTooLong', 'Mobile number is too long');
+                } else if (!/^(\+251|0)?[97]\d{8}$/.test(cleanPhone)) {
+                    errs.mobileNumber = t('mobileNumberInvalid', 'Invalid mobile number format');
+                }
+            }
         }
         
         if (step === 2 && !formData.idCopyAttached) {
-            if (!formData.idNumber.trim()) errs.idNumber = t('idNumberRequired', 'ID number is required');
-            if (!formData.issuingAuthority.trim()) errs.issuingAuthority = t('issuingAuthorityRequired', 'Issuing authority is required');
-            if (!formData.idIssueDate) errs.idIssueDate = t('issueDateRequired', 'Issue date is required');
-            if (!formData.idExpiryDate) errs.idExpiryDate = t('expiryDateRequired', 'Expiry date is required');
+            if (!formData.idNumber.trim()) {
+                errs.idNumber = t('idNumberRequired', 'ID number is required');
+            } else if (formData.idNumber.length < 5) {
+                errs.idNumber = t('idNumberTooShort', 'ID number is too short');
+            }
+            
+            if (!formData.issuingAuthority.trim()) {
+                errs.issuingAuthority = t('issuingAuthorityRequired', 'Issuing authority is required');
+            } else if (formData.issuingAuthority.length < 2) {
+                errs.issuingAuthority = t('issuingAuthorityTooShort', 'Issuing authority is too short');
+            }
+            
+            if (!formData.idIssueDate) {
+                errs.idIssueDate = t('issueDateRequired', 'Issue date is required');
+            }
+            
+            if (!formData.idExpiryDate) {
+                errs.idExpiryDate = t('expiryDateRequired', 'Expiry date is required');
+            }
         }
         
         if (step === 3 && !formData.idCopyAttached) {
-            if (!formData.region.trim()) errs.region = t('regionRequired', 'Region is required');
-            if (!formData.city.trim()) errs.city = t('cityRequired', 'City is required');
-            if (!formData.subCity.trim()) errs.subCity = t('subCityRequired', 'Sub-city is required');
-            if (!formData.wereda.trim()) errs.wereda = t('weredaRequired', 'Wereda is required');
-            if (!formData.houseNumber.trim()) errs.houseNumber = t('houseNumberRequired', 'House number is required');
+            if (!formData.region.trim()) {
+                errs.region = t('regionRequired', 'Region is required');
+            }
+            
+            if (!formData.zone.trim()) {
+                errs.zone = t('zoneRequired', 'Zone is required');
+            }
+            
+            if (!formData.wereda.trim()) {
+                errs.wereda = t('weredaRequired', 'Wereda is required');
+            }
+            
+            if (!formData.houseNumber.trim()) {
+                errs.houseNumber = t('houseNumberRequired', 'House number is required');
+            }
         }
         
         if (step === 4) {
@@ -255,8 +491,12 @@ export default function EBankingApplication() {
         }
         
         if (step === 7) {
-            if (!formData.otpCode || formData.otpCode.length !== 6) {
+            if (!formData.otpCode) {
+                errs.otp = t('otpRequired', 'OTP is required');
+            } else if (formData.otpCode.length !== 6) {
                 errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+            } else if (!/^\d{6}$/.test(formData.otpCode)) {
+                errs.otp = t('otpInvalid', 'OTP must contain only digits');
             }
         }
 
@@ -376,8 +616,8 @@ export default function EBankingApplication() {
                 NewPhoneNumber: formData.newPhoneNumber || undefined,
                 NewAccountNumber: formData.newAccountNumber || undefined,
                 Region: !formData.idCopyAttached ? formData.region : undefined,
-                City: !formData.idCopyAttached ? formData.city : undefined,
-                SubCity: !formData.idCopyAttached ? formData.subCity : undefined,
+                City: !formData.idCopyAttached ? formData.zone : undefined,
+                SubCity: !formData.idCopyAttached ? formData.zone : undefined,
                 Wereda: !formData.idCopyAttached ? formData.wereda : undefined,
                 HouseNumber: !formData.idCopyAttached ? formData.houseNumber : undefined,
                 IdIssueDate: formData.idIssueDate ? new Date(formData.idIssueDate).toISOString() : undefined,
@@ -659,75 +899,116 @@ export default function EBankingApplication() {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Region */}
                 <Field 
                     label={t('region', 'Region')} 
                     required 
                     error={errors.region}
                 >
-                    <input
-                        name="region"
-                        type="text"
-                        value={formData.region}
-                        onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                        id="region"
-                    />
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        {regionLoading ? (
+                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-sm">{t('loadingRegions', 'Loading regions...')}</span>
+                            </div>
+                        ) : (
+                            <select
+                                name="region"
+                                value={formData.region || ""}
+                                onChange={handleChange}
+                                className="w-full pl-10 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent bg-white"
+                                id="region"
+                            >
+                                <option value="">{t('selectRegion', 'Select your region')}</option>
+                                {regions.map(r => (
+                                    <option key={r.id} value={r.name}>{r.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
                 </Field>
+
+                {/* Zone */}
                 <Field 
-                    label={t('city', 'City')} 
+                    label={t('zone', 'Zone')} 
                     required 
-                    error={errors.city}
+                    error={errors.zone}
                 >
-                    <input
-                        name="city"
-                        type="text"
-                        value={formData.city}
-                        onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                        id="city"
-                    />
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        {zoneLoading ? (
+                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-sm">{t('loadingZones', 'Loading zones...')}</span>
+                            </div>
+                        ) : (
+                            <select
+                                name="zone"
+                                value={formData.zone || ""}
+                                onChange={handleChange}
+                                disabled={!formData.region || zoneLoading}
+                                className="w-full pl-10 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent bg-white"
+                                id="zone"
+                            >
+                                <option value="">{t('selectZone', 'Select your zone')}</option>
+                                {zones.map(z => (
+                                    <option key={z.id} value={z.name}>{z.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
                 </Field>
-                <Field 
-                    label={t('subCity', 'Sub-City')} 
-                    required 
-                    error={errors.subCity}
-                >
-                    <input
-                        name="subCity"
-                        type="text"
-                        value={formData.subCity}
-                        onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                        id="subCity"
-                    />
-                </Field>
+
+                {/* Wereda */}
                 <Field 
                     label={t('wereda', 'Wereda')} 
                     required 
                     error={errors.wereda}
                 >
-                    <input
-                        name="wereda"
-                        type="text"
-                        value={formData.wereda}
-                        onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                        id="wereda"
-                    />
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        {woredaLoading ? (
+                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-sm">{t('loadingWoredas', 'Loading woredas...')}</span>
+                            </div>
+                        ) : (
+                            <select
+                                name="wereda"
+                                value={formData.wereda || ""}
+                                onChange={handleChange}
+                                disabled={!formData.zone || woredaLoading}
+                                className="w-full pl-10 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent bg-white"
+                                id="wereda"
+                            >
+                                <option value="">{t('selectWereda', 'Select your woreda')}</option>
+                                {woredas.map(w => (
+                                    <option key={w.id} value={w.name}>{w.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
                 </Field>
+
+                {/* House Number */}
                 <Field 
                     label={t('houseNumber', 'House Number')} 
                     required 
                     error={errors.houseNumber}
                 >
-                    <input
-                        name="houseNumber"
-                        type="text"
-                        value={formData.houseNumber}
-                        onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                        id="houseNumber"
-                    />
+                    <div className="relative">
+                        <Home className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            name="houseNumber"
+                            type="text"
+                            value={formData.houseNumber}
+                            onChange={handleChange}
+                            className="w-full pl-10 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                            id="houseNumber"
+                            placeholder={t('enterHouseNumber', 'Enter house number')}
+                        />
+                    </div>
                 </Field>
             </div>
         </div>
@@ -901,7 +1182,7 @@ export default function EBankingApplication() {
                     <div>
                         <h4 className="font-medium text-gray-700 mb-2">{t('addressInformation', 'Address Information')}</h4>
                         <div className="text-sm">
-                            <p>{formData.region}, {formData.city}, {formData.subCity}</p>
+                            <p>{formData.region}, {formData.zone}</p>
                             <p>{formData.wereda}, {t('houseNumber', 'House')} {formData.houseNumber}</p>
                         </div>
                     </div>
@@ -977,25 +1258,19 @@ export default function EBankingApplication() {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-4xl w-full mx-auto">
+        <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                    {/* Header with Language Switcher */}
-                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
+                    {/* Header with fuchsia-700 */}
+                    <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 p-2 rounded-lg">
-                                        <Wifi className="h-5 w-5 text-white" />
-                                    </div>
                                     <div>
-                                        <h1 className="text-lg font-bold">{t('eBankingApplication', 'E-Banking Application')}</h1>
+                                        <h1 className="text-lg font-bold">{t('forms.eBankingApplication', 'E-Banking Application')}</h1>
                                         <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
                                             <MapPin className="h-3 w-3" />
                                             <span>{branch?.name || t('branch', 'Branch')}</span>
-                                            <span>•</span>
-                                            <Calendar className="h-3 w-3" />
-                                            <span>{new Date().toLocaleDateString()}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1003,9 +1278,6 @@ export default function EBankingApplication() {
                                 <div className="flex items-center gap-3">
                                     <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
                                         📱 {phone}
-                                    </div>
-                                    <div className="bg-white/20 rounded-lg p-1">
-                                        <LanguageSwitcher />
                                     </div>
                                 </div>
                             </div>
@@ -1020,29 +1292,6 @@ export default function EBankingApplication() {
                             </div>
                         )}
 
-                        {/* Progress Steps - 7 steps for E-Banking */}
-                        <div className="flex justify-center mb-6">
-                            <div className="flex items-center bg-gray-50 rounded-lg p-1 overflow-x-auto">
-                                {[1, 2, 3, 4, 5, 6, 7].map((stepNumber, index) => (
-                                    <div key={stepNumber} className="flex items-center">
-                                        <div className={`flex items-center px-3 py-2 rounded-md text-sm ${
-                                            step >= stepNumber ? 'bg-fuchsia-700 text-white' : 'text-gray-600'
-                                        }`}>
-                                            <span>{stepNumber}. {t(`step${stepNumber}`, 
-                                                stepNumber === 1 ? 'Customer' :
-                                                stepNumber === 2 ? 'ID Info' :
-                                                stepNumber === 3 ? 'Address' :
-                                                stepNumber === 4 ? 'Services' :
-                                                stepNumber === 5 ? 'Terms' :
-                                                stepNumber === 6 ? 'Review' : 'OTP'
-                                            )}</span>
-                                        </div>
-                                        {index < 6 && <div className="mx-1 text-gray-400 text-sm">→</div>}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
                         <form onSubmit={step === 7 ? handleSubmit : handleNext} className="space-y-6">
                             {renderStepContent()}
 
@@ -1053,7 +1302,7 @@ export default function EBankingApplication() {
                                     <button
                                         type="button"
                                         onClick={handleBack}
-                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                                        className="border border-amber-300 text-amber-700 px-6 py-3 rounded-lg hover:bg-amber-50 flex items-center gap-2"
                                     >
                                         <ChevronRight className="h-4 w-4 rotate-180" />
                                         {t('back', 'Back')}
@@ -1065,7 +1314,7 @@ export default function EBankingApplication() {
                                 {step < 6 ? (
                                     <button
                                         type="submit"
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
                                     >
                                         <span>{t('continue', 'Continue')}</span>
                                         <ChevronRight className="h-4 w-4" />
@@ -1078,7 +1327,7 @@ export default function EBankingApplication() {
                                             handleRequestOtp();
                                             setStep(7);
                                         }}
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
                                     >
                                         <Shield className="h-4 w-4" />
                                         <span>{t('requestOtp', 'Request OTP')}</span>
@@ -1087,7 +1336,7 @@ export default function EBankingApplication() {
                                     <button 
                                         type="submit" 
                                         disabled={isSubmitting || formData.otpCode.length !== 6}
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium disabled:opacity-50 flex items-center gap-2 justify-center"
                                     >
                                         {isSubmitting ? (
                                             <>

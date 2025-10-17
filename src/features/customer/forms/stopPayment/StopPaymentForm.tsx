@@ -52,7 +52,7 @@ interface FormData {
     selectedSpoId: string;
     // Common
     signature: string;
-    otp: string;
+    otpCode: string;
     termsAccepted: boolean;
 }
 
@@ -75,7 +75,7 @@ export default function EnhancedStopPaymentForm() {
         searchTerm: '',
         selectedSpoId: '',
         signature: '',
-        otp: '',
+        otpCode: '',
         termsAccepted: false,
     });
     
@@ -121,7 +121,7 @@ export default function EnhancedStopPaymentForm() {
             searchTerm: '',
             selectedSpoId: '',
             signature: '',
-            otp: '',
+            otpCode: '',
             termsAccepted: false
         }));
         setSearchResults([]);
@@ -151,7 +151,7 @@ export default function EnhancedStopPaymentForm() {
             return;
         }
 
-        if (name === 'otp') {
+        if (name === 'otpCode') {
             const sanitizedValue = value.replace(/\D/g, '').slice(0, 6);
             setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
             return;
@@ -304,7 +304,7 @@ export default function EnhancedStopPaymentForm() {
     const validateStep4 = (): boolean => {
         const errs: Errors = {};
         
-        if (!formData.otp || formData.otp.length !== 6) {
+        if (!formData.otpCode || formData.otpCode.length !== 6) {
             errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
         }
         
@@ -353,7 +353,7 @@ export default function EnhancedStopPaymentForm() {
                     reason: formData.reason,
                     signature: formData.signature,
                     branchId: branch.id,
-                    otpCode: formData.otp,
+                    otpCode: formData.otpCode,
                     phoneNumber: phone,
                 };
                 
@@ -381,7 +381,7 @@ export default function EnhancedStopPaymentForm() {
                     stopPaymentOrderId: selectedSpo.id,
                     chequeNumber: selectedSpo.chequeNumber,
                     signature: formData.signature,
-                    otpCode: formData.otp,
+                    otpCode: formData.otpCode,
                     phoneNumber: phone,
                 };
                 
@@ -445,639 +445,603 @@ export default function EnhancedStopPaymentForm() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-4xl w-full mx-auto">
-                <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                    {/* Header with Language Switcher */}
-                    <header className="bg-fuchsia-700 text-white rounded-t-lg">
-                        <div className="px-6 py-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 p-2 rounded-lg">
-                                        <FileText className="h-5 w-5 text-white" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-lg font-bold">
-                                            {formData.mode === 'spo' 
-                                                ? t('stopPaymentOrder', 'Stop Payment Order (SPO)') 
-                                                : t('revokeStopPayment', 'Revoke Stop Payment Order (RSPO)')
-                                            }
-                                        </h1>
-                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-                                            <MapPin className="h-3 w-3" />
-                                            <span>{branch?.name || t('branch', 'Branch')}</span>
-                                            <span>•</span>
-                                            <Calendar className="h-3 w-3" />
-                                            <span>{new Date().toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
-                                        📱 {phone}
-                                    </div>
-                                    <div className="bg-white/20 rounded-lg p-1">
-                                        <LanguageSwitcher />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </header>
-
-                    {/* Mode Toggle */}
-                    <div className="border-b border-gray-200">
-                        <div className="flex px-6">
-                            <button
-                                className={`py-4 px-4 font-medium border-b-2 transition-colors ${
-                                    formData.mode === 'spo'
-                                        ? 'text-fuchsia-700 border-fuchsia-700'
-                                        : 'text-gray-500 border-transparent hover:text-gray-700'
-                                }`}
-                                onClick={() => toggleMode('spo')}
-                            >
-                                {t('stopPaymentOrder', 'Stop Payment Order (SPO)')}
-                            </button>
-                            <button
-                                className={`py-4 px-4 font-medium border-b-2 transition-colors ${
-                                    formData.mode === 'rspo'
-                                        ? 'text-fuchsia-700 border-fuchsia-700'
-                                        : 'text-gray-500 border-transparent hover:text-gray-700'
-                                }`}
-                                onClick={() => toggleMode('rspo')}
-                            >
-                                {t('revokeStopPayment', 'Revoke Stop Payment (RSPO)')}
-                            </button>
-                        </div>
+          <div className="max-w-4xl w-full mx-auto">
+            <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+              {/* Header with Language Switcher */}
+              <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-t-lg">
+                <div className="px-6 py-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                      <h1 className="text-lg font-bold">
+                        {formData.mode === 'spo' 
+                          ? t('stopPaymentOrder', 'Stop Payment Order (SPO)') 
+                          : t('revokeStopPayment', 'Revoke Stop Payment Order (RSPO)')
+                        }
+                      </h1>
+                      <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                        <MapPin className="h-3 w-3" />
+                        <span>{branch?.name || t('branch', 'Branch')}</span>
+                      </div>
                     </div>
-
-                    {/* Main Content */}
-                    <div className="p-6">
-                        {/* Progress Steps */}
-                        <div className="flex justify-center mb-6">
-                            <div className="flex items-center bg-gray-50 rounded-lg p-1">
-                                {[1, 2, 3, 4].map((stepNumber) => (
-                                    <React.Fragment key={stepNumber}>
-                                        <div className={`flex items-center px-4 py-2 rounded-md ${
-                                            step >= stepNumber ? 'bg-fuchsia-700 text-white' : 'text-gray-600'
-                                        }`}>
-                                            <span className="font-medium text-sm">
-                                                {stepNumber}. {[
-                                                    t('details', 'Details'),
-                                                    t('confirm', 'Confirm'), 
-                                                    t('signature', 'Signature'),
-                                                    t('otp', 'OTP')
-                                                ][stepNumber - 1]}
-                                            </span>
-                                        </div>
-                                        {stepNumber < 4 && (
-                                            <div className="mx-1 text-gray-400 text-sm">→</div>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                        </div>
-
-                        {errors.submit && <ErrorMessage message={errors.submit} />}
-
-                        {/* Step 1: Details */}
-                        {step === 1 && (
-                            <form onSubmit={handleStep1Next} className="space-y-6">
-                                {formData.mode === 'spo' ? (
-                                    // SPO Details
-                                    <div className="space-y-6">
-                                        <div className="border border-gray-200 rounded-lg p-6">
-                                            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                                <CreditCard className="h-5 w-5 text-fuchsia-700" />
-                                                {t('accountInformation', 'Account Information')}
-                                            </h2>
-                                            <div className="grid grid-cols-1 gap-6">
-                                                <Field 
-                                                    label={t('selectAccount', 'Select Account')} 
-                                                    required 
-                                                    error={errors.accountNumber}
-                                                >
-                                                    <select
-                                                        name="accountNumber"
-                                                        value={formData.accountNumber}
-                                                        onChange={handleChange}
-                                                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                    >
-                                                        <option value="">{t('selectAccount', 'Select an account')}</option>
-                                                        {customerAccounts.map((account) => (
-                                                            <option key={account.accountNumber} value={account.accountNumber}>
-                                                                {account.accountNumber} - {account.accountType} 
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </Field>
-
-                                                {selectedAccount && (
-                                                    <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-2 gap-4 text-sm">
-                                                        <div>
-                                                            <p className="text-gray-500">{t('accountHolder', 'Account Holder')}</p>
-                                                            <p className="font-medium">{selectedAccount.accountHolderName}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-gray-500">{t('accountType', 'Account Type')}</p>
-                                                            <p className="font-medium">{selectedAccount.accountType}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-gray-500">{t('availableBalance', 'Available Balance')}</p>
-                                                            <p className="font-medium">
-                                                                {selectedAccount.currency} {selectedAccount.balance?.toLocaleString() || '0.00'}
-                                                            </p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-gray-500">{t('status', 'Status')}</p>
-                                                            <p className="font-medium">{selectedAccount.status}</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="border border-gray-200 rounded-lg p-6">
-                                            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                                <FileText className="h-5 w-5 text-fuchsia-700" />
-                                                {t('chequeDetails', 'Cheque Details')}
-                                            </h2>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <Field 
-                                                    label={t('chequeNumber', 'Cheque Number')} 
-                                                    required 
-                                                    error={errors.chequeNumber}
-                                                >
-                                                    <input
-                                                        type="text"
-                                                        name="chequeNumber"
-                                                        value={formData.chequeNumber}
-                                                        onChange={handleChange}
-                                                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                        placeholder={t('enterChequeNumber', 'Enter cheque number')}
-                                                    />
-                                                </Field>
-
-                                                <Field 
-                                                    label={`${t('amount', 'Amount')} (${selectedAccount?.currency || 'ETB'})`} 
-                                                    required 
-                                                    error={errors.amount}
-                                                >
-                                                    <div className="relative">
-                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                            <span className="text-gray-600 font-medium">{selectedAccount?.currency || 'ETB'}</span>
-                                                        </div>
-                                                        <input
-                                                            type="text"
-                                                            name="amount"
-                                                            value={formData.amount}
-                                                            onChange={handleChange}
-                                                            className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                            placeholder="0.00"
-                                                        />
-                                                    </div>
-                                                </Field>
-
-                                                <Field 
-                                                    label={t('chequeDate', 'Cheque Date')} 
-                                                    required 
-                                                    error={errors.chequeDate}
-                                                >
-                                                    <input
-                                                        type="date"
-                                                        name="chequeDate"
-                                                        value={formData.chequeDate}
-                                                        onChange={handleChange}
-                                                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                        max={new Date().toISOString().split('T')[0]}
-                                                    />
-                                                </Field>
-                                            </div>
-
-                                            <div className="mt-4">
-                                                <Field 
-                                                    label={t('reasonForStopPayment', 'Reason for Stop Payment')} 
-                                                    required 
-                                                    error={errors.reason}
-                                                >
-                                                    <textarea
-                                                        name="reason"
-                                                        value={formData.reason}
-                                                        onChange={handleChange}
-                                                        rows={3}
-                                                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                        placeholder={t('reasonPlaceholder', 'Please specify the reason for stopping payment on this cheque')}
-                                                    />
-                                                </Field>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    // RSPO Search
-                                    <div className="border border-gray-200 rounded-lg p-6">
-                                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                            <Search className="h-5 w-5 text-fuchsia-700" />
-                                            {t('searchStopPaymentOrder', 'Search Stop Payment Order')}
-                                        </h2>
-                                        
-                                        <div className="space-y-6">
-                                            <Field 
-                                                label={t('searchByAccountOrCheque', 'Search by Account Number or Cheque Number')}
-                                            required
-                                            error={errors.selectedSpoId}
-                                            >
-                                                <div className="relative">
-                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <Search className="h-5 w-5 text-gray-400" />
-                                                    </div>
-                                                    <input
-                                                        type="text"
-                                                        name="searchTerm"
-                                                        value={formData.searchTerm}
-                                                        onChange={(e) => {
-                                                            handleChange(e);
-                                                            handleSearch(e.target.value);
-                                                        }}
-                                                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                        placeholder={t('searchPlaceholder', 'Enter account number or cheque number')}
-                                                    />
-                                                </div>
-                                            </Field>
-
-                                            {/* Search Results */}
-                                            {searchResults.length > 0 && (
-                                                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                                    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                                                        <p className="text-sm font-medium text-gray-700">
-                                                            {searchResults.length} {t('activeStopPaymentOrdersFound', 'active stop payment order(s) found')}
-                                                        </p>
-                                                    </div>
-                                                    <div className="max-h-60 overflow-y-auto">
-                                                        {searchResults.map((spo) => (
-                                                            <div
-                                                                key={spo.id}
-                                                                className={`p-4 border-b border-gray-200 cursor-pointer transition-colors ${
-                                                                    selectedSpo?.id === spo.id ? 'bg-blue-50' : 'hover:bg-gray-50'
-                                                                }`}
-                                                                onClick={() => handleSelectSpo(spo)}
-                                                            >
-                                                                <div className="flex items-center gap-3">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="selectedSpo"
-                                                                        checked={selectedSpo?.id === spo.id}
-                                                                        onChange={() => handleSelectSpo(spo)}
-                                                                        className="h-4 w-4 text-fuchsia-600 focus:ring-fuchsia-500"
-                                                                    />
-                                                                    <div className="flex-1">
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div>
-                                                                                <p className="font-medium">{t('chequeNumber', 'Cheque')} #{spo.chequeNumber}</p>
-                                                                                <p className="text-sm text-gray-500">{t('account', 'Account')}: {spo.accountNumber}</p>
-                                                                            </div>
-                                                                            <p className="font-semibold text-fuchsia-700">
-                                                                                ETB {spo.chequeAmount?.toLocaleString()}
-                                                                            </p>
-                                                                        </div>
-                                                                        <p className="text-sm text-gray-600 mt-1">{spo.reason}</p>
-                                                                        <p className="text-xs text-gray-500 mt-1">
-                                                                            {t('created', 'Created')}: {new Date(spo.chequeDate).toLocaleDateString()}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {formData.searchTerm && searchResults.length === 0 && (
-                                                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                                                    <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
-                                                    <h3 className="mt-2 text-sm font-medium text-gray-900">{t('noStopPaymentOrdersFound', 'No stop payment orders found')}</h3>
-                                                    <p className="mt-1 text-sm text-gray-500">
-                                                        {t('noActiveStopPaymentOrders', 'No active stop payment orders match your search criteria.')}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="flex justify-end">
-                                    <button 
-                                        type="submit" 
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
-                                        disabled={formData.mode === 'rspo' && !selectedSpo}
-                                    >
-                                        <span>{t('continue', 'Continue')}</span>
-                                        <ChevronRight className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-
-                        {/* Step 2: Confirmation */}
-                        {step === 2 && (
-                            <form onSubmit={handleStep2Next} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                        {formData.mode === 'spo' 
-                                            ? t('confirmStopPaymentOrder', 'Confirm Stop Payment Order') 
-                                            : t('confirmRevocation', 'Confirm Revocation')
-                                        }
-                                    </h2>
-                                    
-                                    <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                                        {formData.mode === 'spo' ? (
-                                            <>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <p className="text-gray-500">{t('accountNumber', 'Account Number')}</p>
-                                                        <p className="font-semibold">{formData.accountNumber}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-gray-500">{t('chequeNumber', 'Cheque Number')}</p>
-                                                        <p className="font-semibold">{formData.chequeNumber}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-gray-500">{t('amount', 'Amount')}</p>
-                                                        <p className="font-semibold text-fuchsia-700">
-                                                            {Number(formData.amount).toLocaleString()} {selectedAccount?.currency || 'ETB'}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-gray-500">{t('chequeDate', 'Cheque Date')}</p>
-                                                        <p className="font-semibold">
-                                                            {new Date(formData.chequeDate).toLocaleDateString()}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-500">{t('reason', 'Reason')}</p>
-                                                    <p className="font-semibold">{formData.reason}</p>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            selectedSpo && (
-                                                <>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <p className="text-gray-500">{t('accountNumber', 'Account Number')}</p>
-                                                            <p className="font-semibold">{selectedSpo.accountNumber}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-gray-500">{t('chequeNumber', 'Cheque Number')}</p>
-                                                            <p className="font-semibold">{selectedSpo.chequeNumber}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-gray-500">{t('amount', 'Amount')}</p>
-                                                            <p className="font-semibold text-fuchsia-700">
-                                                                ETB {selectedSpo.chequeAmount?.toLocaleString()}
-                                                            </p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-gray-500">{t('originalReason', 'Original Reason')}</p>
-                                                            <p className="font-semibold">{selectedSpo.reason}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-blue-50 p-4 rounded-lg">
-                                                        <p className="text-sm text-blue-700">
-                                                            <strong>{t('note', 'Note')}:</strong> {t('revokeWarning', 'Revoking this stop payment order will make the cheque payable again.')}
-                                                        </p>
-                                                    </div>
-                                                </>
-                                            )
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setStep(1)}
-                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                        {t('back', 'Back')}
-                                    </button>
-                                    <button 
-                                        type="submit" 
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
-                                    >
-                                        <PenTool className="h-4 w-4" />
-                                        {t('addSignature', 'Add Signature')}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-
-                                                {/* Step 3: Signature */}
-                        {step === 3 && (
-                            <form onSubmit={handleStep3Next} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <PenTool className="h-5 w-5 text-fuchsia-700" />
-                                        {t('digitalSignature', 'Digital Signature')}
-                                    </h2>
-                                    
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                        <p className="text-sm text-blue-700">
-                                            {t('signatureInstructions', 'Please provide your signature using your finger or stylus. This signature will be used to authorize your {type} request.', { 
-                                                type: formData.mode === 'spo' ? t('stopPaymentOrder', 'stop payment order') : t('revocation', 'revocation')
-                                            })}
-                                        </p>
-                                    </div>
-
-                                    <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4">
-                                        <div className="bg-gray-100 rounded-lg p-2 mb-4">
-                                            <SignatureCanvas
-                                                ref={signaturePadRef}
-                                                onEnd={handleSignatureEnd}
-                                                canvasProps={{
-                                                    className: "w-full h-48 bg-white border border-gray-300 rounded-md cursor-crosshair"
-                                                }}
-                                                penColor="black"
-                                                backgroundColor="white"
-                                                clearOnResize={false}
-                                            />
-                                        </div>
-                                        
-                                        <div className="flex justify-between items-center">
-                                            <button
-                                                type="button"
-                                                onClick={handleSignatureClear}
-                                                className="flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                                            >
-                                                <Eraser className="h-4 w-4" />
-                                                {t('clearSignature', 'Clear Signature')}
-                                            </button>
-                                            
-                                            <div className="text-sm text-gray-500">
-                                                {!isSignatureEmpty ? (
-                                                    <span className="text-green-600 flex items-center gap-1">
-                                                        <CheckCircle2 className="h-4 w-4" />
-                                                        {t('signatureProvided', 'Signature provided')}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400">
-                                                        {t('noSignature', 'No signature provided')}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {errors.signature && <ErrorMessage message={errors.signature} />}
-                                    </div>
-
-                                    {/* Terms and Conditions */}
-                                    <div className="mt-6">
-                                        <div className="flex items-start">
-                                            <div className="flex items-center h-5">
-                                                <input
-                                                    id="terms"
-                                                    name="termsAccepted"
-                                                    type="checkbox"
-                                                    checked={formData.termsAccepted}
-                                                    onChange={handleChange}
-                                                    className="h-4 w-4 text-fuchsia-600 focus:ring-fuchsia-500 border-gray-300 rounded"
-                                                />
-                                            </div>
-                                            <div className="ml-3 text-sm">
-                                                <label htmlFor="terms" className="font-medium text-gray-700">
-                                                    {formData.mode === 'spo' 
-                                                        ? t('spoTerms', 'I acknowledge and accept the Terms and Conditions of the Stop Payment Order service.')
-                                                        : t('rspoTerms', 'I acknowledge and accept the Terms and Conditions of the Revocation service. I understand that revoking this stop payment order will make the cheque payable again.')
-                                                    }
-                                                </label>
-                                                {errors.termsAccepted && <ErrorMessage message={errors.termsAccepted} />}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setStep(2)}
-                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                        {t('back', 'Back')}
-                                    </button>
-                                    <button 
-                                        type="submit" 
-                                        disabled={otpLoading || !formData.signature || !formData.termsAccepted}
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
-                                    >
-                                        {otpLoading ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                {t('requestingOtp', 'Requesting OTP...')}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Shield className="h-4 w-4" />
-                                                {t('requestOtp', 'Request OTP')}
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-
-                        {/* Step 4: OTP Verification */}
-                        {step === 4 && (
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <Shield className="h-5 w-5 text-fuchsia-700" />
-                                        {t('otpVerification', 'OTP Verification')}
-                                    </h2>
-                                    
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                        <p className="text-sm text-blue-700">
-                                            {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
-                                            <strong className="text-blue-900"> {phone}</strong>
-                                        </p>
-                                        {otpMessage && (
-                                            <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-                                                <CheckCircle2 className="h-3 w-3" />
-                                                {otpMessage}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div className="max-w-md">
-                                        <Field 
-                                            label={t('enterOtp', 'Enter OTP Code')} 
-                                            required 
-                                            error={errors.otp}
-                                        >
-                                            <input 
-                                                type="text" 
-                                                name="otp" 
-                                                value={formData.otp} 
-                                                onChange={handleChange} 
-                                                maxLength={6}
-                                                className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
-                                                placeholder="000000"
-                                            />
-                                        </Field>
-                                        
-                                        <div className="mt-2 flex justify-between items-center">
-                                            <button
-                                                type="button"
-                                                onClick={handleResendOtp}
-                                                disabled={resendCooldown > 0 || otpLoading}
-                                                className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
-                                            >
-                                                {resendCooldown > 0 
-                                                    ? t('resendOtpIn', 'Resend OTP in {seconds}s', { seconds: resendCooldown }) 
-                                                    : t('resendOtp', 'Resend OTP')
-                                                }
-                                            </button>
-                                            <span className="text-sm text-gray-500">
-                                                {formData.otp.length}/6
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setStep(3)}
-                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                        {t('back', 'Back')}
-                                    </button>
-                                    <button 
-                                        type="submit" 
-                                        disabled={isSubmitting || formData.otp.length !== 6}
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
-                                    >
-                                        {isSubmitting ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                {t('processing', 'Processing...')}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <CheckCircle2 className="h-4 w-4" />
-                                                {formData.mode === 'spo' 
-                                                    ? t('submitStopPayment', 'Submit Stop Payment') 
-                                                    : t('revokeStopPayment', 'Revoke Stop Payment')
-                                                }
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
+                        📱 {phone}
+                      </div>
                     </div>
+                  </div>
                 </div>
+              </header>
+
+              {/* Mode Toggle */}
+              <div className="border-b border-gray-200">
+                <div className="flex px-6">
+                  <button
+                    className={`py-4 px-4 font-medium border-b-2 transition-colors ${
+                        formData.mode === 'spo'
+                            ? 'text-fuchsia-700 border-fuchsia-700'
+                            : 'text-gray-500 border-transparent hover:text-gray-700'
+                    }`}
+                    onClick={() => toggleMode('spo')}
+                  >
+                    {t('stopPaymentOrder', 'Stop Payment Order (SPO)')}
+                  </button>
+                  <button
+                    className={`py-4 px-4 font-medium border-b-2 transition-colors ${
+                        formData.mode === 'rspo'
+                            ? 'text-fuchsia-700 border-fuchsia-700'
+                            : 'text-gray-500 border-transparent hover:text-gray-700'
+                    }`}
+                    onClick={() => toggleMode('rspo')}
+                  >
+                    {t('revokeStopPayment', 'Revoke Stop Payment (RSPO)')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Content */}
+              <div className="p-6">
+                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                {/* Step 1: Details */}
+                {step === 1 && (
+                  <form onSubmit={handleStep1Next} className="space-y-6">
+                    {formData.mode === 'spo' ? (
+                      // SPO Details
+                      <div className="space-y-6">
+                        <div className="border border-gray-200 rounded-lg p-6">
+                          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <CreditCard className="h-5 w-5 text-fuchsia-700" />
+                            {t('accountInformation', 'Account Information')}
+                          </h2>
+                          <div className="grid grid-cols-1 gap-6">
+                            <Field 
+                              label={t('selectAccount', 'Select Account')} 
+                              required 
+                              error={errors.accountNumber}
+                            >
+                              <select
+                                name="accountNumber"
+                                value={formData.accountNumber}
+                                onChange={handleChange}
+                                className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                              >
+                                <option value="">{t('selectAccount', 'Select an account')}</option>
+                                {customerAccounts.map((account) => (
+                                  <option key={account.accountNumber} value={account.accountNumber}>
+                                    {account.accountNumber} - {account.accountType} 
+                                  </option>
+                                ))}
+                              </select>
+                            </Field>
+
+                            {selectedAccount && (
+                              <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <p className="text-gray-500">{t('accountHolder', 'Account Holder')}</p>
+                                  <p className="font-medium">{selectedAccount.accountHolderName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">{t('accountType', 'Account Type')}</p>
+                                  <p className="font-medium">{selectedAccount.accountType}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">{t('availableBalance', 'Available Balance')}</p>
+                                  <p className="font-medium">
+                                    {selectedAccount.currency} {selectedAccount.balance?.toLocaleString() || '0.00'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">{t('status', 'Status')}</p>
+                                  <p className="font-medium">{selectedAccount.status}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="border border-gray-200 rounded-lg p-6">
+                          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-fuchsia-700" />
+                            {t('chequeDetails', 'Cheque Details')}
+                          </h2>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Field 
+                              label={t('chequeNumber', 'Cheque Number')} 
+                              required 
+                              error={errors.chequeNumber}
+                            >
+                              <input
+                                type="text"
+                                name="chequeNumber"
+                                value={formData.chequeNumber}
+                                onChange={handleChange}
+                                className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                placeholder={t('enterChequeNumber', 'Enter cheque number')}
+                              />
+                            </Field>
+
+                            <Field 
+                              label={`${t('amount', 'Amount')} (${selectedAccount?.currency || 'ETB'})`} 
+                              required 
+                              error={errors.amount}
+                            >
+                              <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <span className="text-gray-600 font-medium">{selectedAccount?.currency || 'ETB'}</span>
+                                </div>
+                                <input
+                                  type="text"
+                                  name="amount"
+                                  value={formData.amount}
+                                  onChange={handleChange}
+                                  className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                  placeholder="0.00"
+                                />
+                              </div>
+                            </Field>
+
+                            <Field 
+                              label={t('chequeDate', 'Cheque Date')} 
+                              required 
+                              error={errors.chequeDate}
+                            >
+                              <input
+                                type="date"
+                                name="chequeDate"
+                                value={formData.chequeDate}
+                                onChange={handleChange}
+                                className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                max={new Date().toISOString().split('T')[0]}
+                              />
+                            </Field>
+                          </div>
+
+                          <div className="mt-4">
+                            <Field 
+                              label={t('reasonForStopPayment', 'Reason for Stop Payment')} 
+                              required 
+                              error={errors.reason}
+                            >
+                              <textarea
+                                name="reason"
+                                value={formData.reason}
+                                onChange={handleChange}
+                                rows={3}
+                                className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                placeholder={t('reasonPlaceholder', 'Please specify the reason for stopping payment on this cheque')}
+                              />
+                            </Field>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // RSPO Search
+                      <div className="border border-gray-200 rounded-lg p-6">
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Search className="h-5 w-5 text-fuchsia-700" />
+                          {t('searchStopPaymentOrder', 'Search Stop Payment Order')}
+                        </h2>
+                        
+                        <div className="space-y-6">
+                          <Field 
+                            label={t('searchByAccountOrCheque', 'Search by Account Number or Cheque Number')}
+                            required
+                            error={errors.selectedSpoId}
+                          >
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Search className="h-5 w-5 text-gray-400" />
+                              </div>
+                              <input
+                                type="text"
+                                name="searchTerm"
+                                value={formData.searchTerm}
+                                onChange={(e) => {
+                                  handleChange(e);
+                                  handleSearch(e.target.value);
+                                }}
+                                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                placeholder={t('searchPlaceholder', 'Enter account number or cheque number')}
+                              />
+                            </div>
+                          </Field>
+
+                          {/* Search Results */}
+                          {searchResults.length > 0 && (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                              <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                                <p className="text-sm font-medium text-gray-700">
+                                  {searchResults.length} {t('activeStopPaymentOrdersFound', 'active stop payment order(s) found')}
+                                </p>
+                              </div>
+                              <div className="max-h-60 overflow-y-auto">
+                                {searchResults.map((spo) => (
+                                  <div
+                                    key={spo.id}
+                                    className={`p-4 border-b border-gray-200 cursor-pointer transition-colors ${
+                                      selectedSpo?.id === spo.id ? 'bg-blue-50' : 'hover:bg-gray-50'
+                                    }`}
+                                    onClick={() => handleSelectSpo(spo)}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <input
+                                        type="radio"
+                                        name="selectedSpo"
+                                        checked={selectedSpo?.id === spo.id}
+                                        onChange={() => handleSelectSpo(spo)}
+                                        className="h-4 w-4 text-fuchsia-600 focus:ring-fuchsia-500"
+                                      />
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-start">
+                                          <div>
+                                            <p className="font-medium">{t('chequeNumber', 'Cheque')} #{spo.chequeNumber}</p>
+                                            <p className="text-sm text-gray-500">{t('account', 'Account')}: {spo.accountNumber}</p>
+                                          </div>
+                                          <p className="font-semibold text-fuchsia-700">
+                                            ETB {spo.chequeAmount?.toLocaleString()}
+                                          </p>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mt-1">{spo.reason}</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          {t('created', 'Created')}: {new Date(spo.chequeDate).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {formData.searchTerm && searchResults.length === 0 && (
+                            <div className="text-center py-8 bg-gray-50 rounded-lg">
+                              <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
+                              <h3 className="mt-2 text-sm font-medium text-gray-900">{t('noStopPaymentOrdersFound', 'No stop payment orders found')}</h3>
+                              <p className="mt-1 text-sm text-gray-500">
+                                {t('noActiveStopPaymentOrders', 'No active stop payment orders match your search criteria.')}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end">
+                      <button 
+                        type="submit" 
+                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                        disabled={formData.mode === 'rspo' && !selectedSpo}
+                      >
+                        <span>{t('continue', 'Continue')}</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Step 2: Confirmation */}
+                {step === 2 && (
+                  <form onSubmit={handleStep2Next} className="space-y-6">
+                    <div className="border border-gray-200 rounded-lg p-6">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        {formData.mode === 'spo' 
+                          ? t('confirmStopPaymentOrder', 'Confirm Stop Payment Order') 
+                          : t('confirmRevocation', 'Confirm Revocation')
+                        }
+                      </h2>
+                      
+                      <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+                        {formData.mode === 'spo' ? (
+                          <>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-gray-500">{t('accountNumber', 'Account Number')}</p>
+                                <p className="font-semibold">{formData.accountNumber}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">{t('chequeNumber', 'Cheque Number')}</p>
+                                <p className="font-semibold">{formData.chequeNumber}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">{t('amount', 'Amount')}</p>
+                                <p className="font-semibold text-fuchsia-700">
+                                  {Number(formData.amount).toLocaleString()} {selectedAccount?.currency || 'ETB'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">{t('chequeDate', 'Cheque Date')}</p>
+                                <p className="font-semibold">
+                                  {new Date(formData.chequeDate).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">{t('reason', 'Reason')}</p>
+                              <p className="font-semibold">{formData.reason}</p>
+                            </div>
+                          </>
+                        ) : (
+                          selectedSpo && (
+                            <>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-gray-500">{t('accountNumber', 'Account Number')}</p>
+                                  <p className="font-semibold">{selectedSpo.accountNumber}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">{t('chequeNumber', 'Cheque Number')}</p>
+                                  <p className="font-semibold">{selectedSpo.chequeNumber}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">{t('amount', 'Amount')}</p>
+                                  <p className="font-semibold text-fuchsia-700">
+                                    ETB {selectedSpo.chequeAmount?.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">{t('originalReason', 'Original Reason')}</p>
+                                  <p className="font-semibold">{selectedSpo.reason}</p>
+                                </div>
+                              </div>
+                              <div className="bg-blue-50 p-4 rounded-lg">
+                                <p className="text-sm text-blue-700">
+                                  <strong>{t('note', 'Note')}:</strong> {t('revokeWarning', 'Revoking this stop payment order will make the cheque payable again.')}
+                                </p>
+                              </div>
+                            </>
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        type="button" 
+                        onClick={() => setStep(1)}
+                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        {t('back', 'Back')}
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
+                      >
+                        <PenTool className="h-4 w-4" />
+                        {t('addSignature', 'Add Signature')}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Step 3: Signature */}
+                {step === 3 && (
+                  <form onSubmit={handleStep3Next} className="space-y-6">
+                    <div className="border border-gray-200 rounded-lg p-6">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <PenTool className="h-5 w-5 text-fuchsia-700" />
+                        {t('digitalSignature', 'Digital Signature')}
+                      </h2>
+                      
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-blue-700">
+                          {t('signatureInstructions', 'Please provide your signature using your finger or stylus. This signature will be used to authorize your {type} request.', { 
+                            type: formData.mode === 'spo' ? t('stopPaymentOrder', 'stop payment order') : t('revocation', 'revocation')
+                          })}
+                        </p>
+                      </div>
+
+                      <div className="bg-white border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        <div className="bg-gray-100 rounded-lg p-2 mb-4">
+                          <SignatureCanvas
+                            ref={signaturePadRef}
+                            onEnd={handleSignatureEnd}
+                            canvasProps={{
+                              className: "w-full h-48 bg-white border border-gray-300 rounded-md cursor-crosshair"
+                            }}
+                            penColor="black"
+                            backgroundColor="white"
+                            clearOnResize={false}
+                          />
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <button
+                            type="button"
+                            onClick={handleSignatureClear}
+                            className="flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                          >
+                            <Eraser className="h-4 w-4" />
+                            {t('clearSignature', 'Clear Signature')}
+                          </button>
+                          
+                          <div className="text-sm text-gray-500">
+                            {!isSignatureEmpty ? (
+                              <span className="text-green-600 flex items-center gap-1">
+                                <CheckCircle2 className="h-4 w-4" />
+                                {t('signatureProvided', 'Signature provided')}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">
+                                {t('noSignature', 'No signature provided')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {errors.signature && <ErrorMessage message={errors.signature} />}
+                      </div>
+
+                      {/* Terms and Conditions */}
+                      <div className="mt-6">
+                        <div className="flex items-start">
+                          <div className="flex items-center h-5">
+                            <input
+                              id="terms"
+                              name="termsAccepted"
+                              type="checkbox"
+                              checked={formData.termsAccepted}
+                              onChange={handleChange}
+                              className="h-4 w-4 text-fuchsia-600 focus:ring-fuchsia-500 border-gray-300 rounded"
+                            />
+                          </div>
+                          <div className="ml-3 text-sm">
+                            <label htmlFor="terms" className="font-medium text-gray-700">
+                              {formData.mode === 'spo' 
+                                ? t('spoTerms', 'I acknowledge and accept the Terms and Conditions of the Stop Payment Order service.')
+                                : t('rspoTerms', 'I acknowledge and accept the Terms and Conditions of the Revocation service. I understand that revoking this stop payment order will make the cheque payable again.')
+                              }
+                            </label>
+                            {errors.termsAccepted && <ErrorMessage message={errors.termsAccepted} />}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        type="button" 
+                        onClick={() => setStep(2)}
+                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        {t('back', 'Back')}
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={otpLoading || !formData.signature || !formData.termsAccepted}
+                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                      >
+                        {otpLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {t('requestingOtp', 'Requesting OTP...')}
+                          </>
+                        ) : (
+                          <>
+                            <Shield className="h-4 w-4" />
+                            {t('requestOtp', 'Request OTP')}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Step 4: OTP Verification */}
+                {step === 4 && (
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="border border-gray-200 rounded-lg p-6">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-fuchsia-700" />
+                        {t('otpVerification', 'OTP Verification')}
+                      </h2>
+                      
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-blue-700">
+                          {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
+                          <strong className="text-blue-900"> {phone}</strong>
+                        </p>
+                        {otpMessage && (
+                          <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {otpMessage}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="max-w-md">
+                        <Field 
+                          label={t('enterOtp', 'Enter OTP Code')} 
+                          required 
+                          error={errors.otp}
+                        >
+                          <input 
+                            type="text" 
+                            name="otpCode" 
+                            value={formData.otpCode} 
+                            onChange={handleChange} 
+                            maxLength={6}
+                            className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
+                            placeholder="000000"
+                            id="otpCode"
+                          />
+                        </Field>
+                        
+                        <div className="mt-2 flex justify-between items-center">
+                          <button
+                            type="button"
+                            onClick={handleResendOtp}
+                            disabled={resendCooldown > 0 || otpLoading}
+                            className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
+                          >
+                            {resendCooldown > 0 
+                              ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
+                              : t('resendOtp', 'Resend OTP')
+                            }
+                          </button>
+                          <span className="text-sm text-gray-500">
+                            {formData.otpCode.length}/6
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        type="button" 
+                        onClick={() => setStep(3)}
+                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        {t('back', 'Back')}
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={isSubmitting || formData.otpCode.length !== 6}
+                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {t('verifying', 'Verifying...')}
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4" />
+                            {t('verifyAndSubmit', 'Verify & Submit')}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
+          </div>
         </div>
     );
 }
