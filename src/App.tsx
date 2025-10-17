@@ -125,7 +125,6 @@ function App() {
             {/* Default entry point for ALL users */}
             <Route path="/" element={<Entrypoint />} />
             <Route path="/welcome" element={<Welcome />} />
-
             {/* Default entry point for CUSTOMERS */}
             <Route path="/language-selection" element={<LanguageSelection />} />
             <Route path="/select-branch" element={<BranchSelectionEnhanced />} />
