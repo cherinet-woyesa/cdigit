@@ -14,6 +14,7 @@ interface Account {
     AccountNumber?: string;
     AccountHolderName?: string;
     Type?: string;
+    isDiaspora?: boolean;
 }
 
 // Cache key generator

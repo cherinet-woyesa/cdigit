@@ -497,7 +497,7 @@ const CbeBirrLinkForm: React.FC = () => {
     <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full mx-auto">
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-          <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white">
+           <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white">
             <div className="px-6 py-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>

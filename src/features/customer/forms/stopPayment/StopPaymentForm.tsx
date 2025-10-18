@@ -5,6 +5,7 @@ import { useBranch } from '../../../../context/BranchContext';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
 import { useTranslation } from 'react-i18next';
 import stopPaymentService, { type StopPaymentOrderResponseDto } from '../../../../services/stopPaymentService';
+import authService from '../../../../services/authService';
 import { toast } from 'react-toastify';
 import SignatureCanvas from 'react-signature-canvas';
 import LanguageSwitcher from '../../../../components/LanguageSwitcher';
@@ -226,10 +227,10 @@ export default function EnhancedStopPaymentForm() {
         setOtpMessage('');
 
         try {
-            const response = await stopPaymentService.requestOtp(phone);
+            const response = await authService.requestOtp(phone);
             if (response.success) {
-                setOtpMessage(response.data?.message || t('otpSent', 'OTP sent to your phone.'));
-                setStep(4);
+                setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
+                setStep(4); // Go directly to OTP entry step
                 setResendCooldown(30);
                 
                 const timer = setInterval(() => {
@@ -243,7 +244,7 @@ export default function EnhancedStopPaymentForm() {
                 }, 1000);
                 setResendTimer(timer);
             } else {
-                setErrors({ submit: response.error || t('otpRequestFailed', 'Failed to send OTP.') });
+                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
             }
         } catch (error: any) {
             setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
@@ -287,7 +288,7 @@ export default function EnhancedStopPaymentForm() {
         return Object.keys(errs).length === 0;
     };
 
-    const validateStep3 = (): boolean => {
+    const validateSignature = (): boolean => {
         const errs: Errors = {};
         
         if (!formData.signature) {
@@ -301,7 +302,7 @@ export default function EnhancedStopPaymentForm() {
         return Object.keys(errs).length === 0;
     };
 
-    const validateStep4 = (): boolean => {
+    const validateOtp = (): boolean => {
         const errs: Errors = {};
         
         if (!formData.otpCode || formData.otpCode.length !== 6) {
@@ -320,21 +321,29 @@ export default function EnhancedStopPaymentForm() {
         }
     };
 
-    const handleStep2Next = (e: React.FormEvent) => {
+    const handleReviewNext = (e: React.FormEvent) => {
         e.preventDefault();
         setStep(3);
     };
 
-    const handleStep3Next = async (e: React.FormEvent) => {
+    const handleSignatureNext = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validateStep3()) return;
+        if (!validateSignature()) return;
         await handleRequestOtp();
     };
 
     // Form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validateStep4()) return;
+        // Validate OTP
+        const errs: Errors = {};
+        if (!formData.otpCode || formData.otpCode.length !== 6) {
+          errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+          setErrors(errs);
+          return;
+        }
+        setErrors(errs);
+        
         if (!phone || !branch?.id) {
             setErrors({ submit: t('missingInfo', 'Please ensure all information is complete.') });
             return;
@@ -343,7 +352,7 @@ export default function EnhancedStopPaymentForm() {
         setIsSubmitting(true);
         try {
             if (formData.mode === 'spo') {
-                // Submit SPO
+                // Submit SPO with OTP included in the request
                 const requestData = {
                     accountNumber: formData.accountNumber,
                     chequeNumber: formData.chequeNumber,
@@ -353,7 +362,7 @@ export default function EnhancedStopPaymentForm() {
                     reason: formData.reason,
                     signature: formData.signature,
                     branchId: branch.id,
-                    otpCode: formData.otpCode,
+                    otpCode: formData.otpCode, // Include OTP in the submission
                     phoneNumber: phone,
                 };
                 
@@ -372,7 +381,7 @@ export default function EnhancedStopPaymentForm() {
                     throw new Error(response.error || t('submissionFailed', 'Failed to submit Stop Payment Order'));
                 }
             } else {
-                // Submit RSPO
+                // Submit RSPO with OTP included in the request
                 if (!selectedSpo) {
                     throw new Error(t('noSpoSelected', 'No stop payment order selected'));
                 }
@@ -381,7 +390,7 @@ export default function EnhancedStopPaymentForm() {
                     stopPaymentOrderId: selectedSpo.id,
                     chequeNumber: selectedSpo.chequeNumber,
                     signature: formData.signature,
-                    otpCode: formData.otpCode,
+                    otpCode: formData.otpCode, // Include OTP in the submission
                     phoneNumber: phone,
                 };
                 
@@ -742,70 +751,70 @@ export default function EnhancedStopPaymentForm() {
 
                 {/* Step 2: Confirmation */}
                 {step === 2 && (
-                  <form onSubmit={handleStep2Next} className="space-y-6">
+                  <form onSubmit={handleReviewNext} className="space-y-6">
                     <div className="border border-gray-200 rounded-lg p-6">
                       <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5 text-green-600" />
                         {formData.mode === 'spo' 
-                          ? t('confirmStopPaymentOrder', 'Confirm Stop Payment Order') 
-                          : t('confirmRevocation', 'Confirm Revocation')
+                          ? t('reviewStopPaymentOrder', 'Review Stop Payment Order') 
+                          : t('reviewRevocation', 'Review Revocation')
                         }
                       </h2>
                       
                       <div className="bg-gray-50 rounded-lg p-6 space-y-4">
                         {formData.mode === 'spo' ? (
                           <>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <p className="text-gray-500">{t('accountNumber', 'Account Number')}</p>
+                                <p className="text-gray-500 text-sm">{t('accountNumber', 'Account Number')}</p>
                                 <p className="font-semibold">{formData.accountNumber}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500">{t('chequeNumber', 'Cheque Number')}</p>
+                                <p className="text-gray-500 text-sm">{t('chequeNumber', 'Cheque Number')}</p>
                                 <p className="font-semibold">{formData.chequeNumber}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500">{t('amount', 'Amount')}</p>
+                                <p className="text-gray-500 text-sm">{t('amount', 'Amount')}</p>
                                 <p className="font-semibold text-fuchsia-700">
                                   {Number(formData.amount).toLocaleString()} {selectedAccount?.currency || 'ETB'}
                                 </p>
                               </div>
                               <div>
-                                <p className="text-gray-500">{t('chequeDate', 'Cheque Date')}</p>
+                                <p className="text-gray-500 text-sm">{t('chequeDate', 'Cheque Date')}</p>
                                 <p className="font-semibold">
                                   {new Date(formData.chequeDate).toLocaleDateString()}
                                 </p>
                               </div>
                             </div>
                             <div>
-                              <p className="text-gray-500">{t('reason', 'Reason')}</p>
+                              <p className="text-gray-500 text-sm">{t('reason', 'Reason')}</p>
                               <p className="font-semibold">{formData.reason}</p>
                             </div>
                           </>
                         ) : (
                           selectedSpo && (
                             <>
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                  <p className="text-gray-500">{t('accountNumber', 'Account Number')}</p>
+                                  <p className="text-gray-500 text-sm">{t('accountNumber', 'Account Number')}</p>
                                   <p className="font-semibold">{selectedSpo.accountNumber}</p>
                                 </div>
                                 <div>
-                                  <p className="text-gray-500">{t('chequeNumber', 'Cheque Number')}</p>
+                                  <p className="text-gray-500 text-sm">{t('chequeNumber', 'Cheque Number')}</p>
                                   <p className="font-semibold">{selectedSpo.chequeNumber}</p>
                                 </div>
                                 <div>
-                                  <p className="text-gray-500">{t('amount', 'Amount')}</p>
+                                  <p className="text-gray-500 text-sm">{t('amount', 'Amount')}</p>
                                   <p className="font-semibold text-fuchsia-700">
                                     ETB {selectedSpo.chequeAmount?.toLocaleString()}
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-gray-500">{t('originalReason', 'Original Reason')}</p>
+                                  <p className="text-gray-500 text-sm">{t('originalReason', 'Original Reason')}</p>
                                   <p className="font-semibold">{selectedSpo.reason}</p>
                                 </div>
                               </div>
-                              <div className="bg-blue-50 p-4 rounded-lg">
+                              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                                 <p className="text-sm text-blue-700">
                                   <strong>{t('note', 'Note')}:</strong> {t('revokeWarning', 'Revoking this stop payment order will make the cheque payable again.')}
                                 </p>
@@ -816,21 +825,21 @@ export default function EnhancedStopPaymentForm() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="flex justify-end gap-3">
                       <button 
                         type="button" 
                         onClick={() => setStep(1)}
-                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                        className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
                       >
                         <ChevronLeft className="h-4 w-4" />
                         {t('back', 'Back')}
                       </button>
                       <button 
                         type="submit" 
-                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
+                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 flex items-center gap-2 shadow-md"
                       >
                         <PenTool className="h-4 w-4" />
-                        {t('addSignature', 'Add Signature')}
+                        {t('continueToSignature', 'Continue to Signature')}
                       </button>
                     </div>
                   </form>
@@ -838,15 +847,15 @@ export default function EnhancedStopPaymentForm() {
 
                 {/* Step 3: Signature */}
                 {step === 3 && (
-                  <form onSubmit={handleStep3Next} className="space-y-6">
+                  <form onSubmit={handleSignatureNext} className="space-y-6">
                     <div className="border border-gray-200 rounded-lg p-6">
                       <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <PenTool className="h-5 w-5 text-fuchsia-700" />
                         {t('digitalSignature', 'Digital Signature')}
                       </h2>
                       
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                        <p className="text-sm text-blue-700">
+                      <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 border border-fuchsia-200 rounded-lg p-4 mb-4">
+                        <p className="text-fuchsia-700">
                           {t('signatureInstructions', 'Please provide your signature using your finger or stylus. This signature will be used to authorize your {type} request.', { 
                             type: formData.mode === 'spo' ? t('stopPaymentOrder', 'stop payment order') : t('revocation', 'revocation')
                           })}
@@ -877,7 +886,7 @@ export default function EnhancedStopPaymentForm() {
                             {t('clearSignature', 'Clear Signature')}
                           </button>
                           
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm">
                             {!isSignatureEmpty ? (
                               <span className="text-green-600 flex items-center gap-1">
                                 <CheckCircle2 className="h-4 w-4" />
@@ -919,11 +928,11 @@ export default function EnhancedStopPaymentForm() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="flex justify-end gap-3">
                       <button 
                         type="button" 
                         onClick={() => setStep(2)}
-                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                        className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
                       >
                         <ChevronLeft className="h-4 w-4" />
                         {t('back', 'Back')}
@@ -931,7 +940,7 @@ export default function EnhancedStopPaymentForm() {
                       <button 
                         type="submit" 
                         disabled={otpLoading || !formData.signature || !formData.termsAccepted}
-                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 disabled:opacity-50 flex items-center gap-2 shadow-md"
                       >
                         {otpLoading ? (
                           <>
@@ -958,20 +967,20 @@ export default function EnhancedStopPaymentForm() {
                         {t('otpVerification', 'OTP Verification')}
                       </h2>
                       
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                        <p className="text-sm text-blue-700">
+                      <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 border border-fuchsia-200 rounded-lg p-4 mb-4">
+                        <p className="text-fuchsia-700">
                           {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
-                          <strong className="text-blue-900"> {phone}</strong>
+                          <strong className="text-fuchsia-900"> {phone}</strong>
                         </p>
                         {otpMessage && (
-                          <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                          <p className="text-green-600 mt-1 flex items-center gap-1">
                             <CheckCircle2 className="h-3 w-3" />
                             {otpMessage}
                           </p>
                         )}
                       </div>
 
-                      <div className="max-w-md">
+                      <div className="max-w-md mx-auto">
                         <Field 
                           label={t('enterOtp', 'Enter OTP Code')} 
                           required 
@@ -994,14 +1003,14 @@ export default function EnhancedStopPaymentForm() {
                             type="button"
                             onClick={handleResendOtp}
                             disabled={resendCooldown > 0 || otpLoading}
-                            className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
+                            className="text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
                           >
                             {resendCooldown > 0 
                               ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
                               : t('resendOtp', 'Resend OTP')
                             }
                           </button>
-                          <span className="text-sm text-gray-500">
+                          <span className="text-gray-500">
                             {formData.otpCode.length}/6
                           </span>
                         </div>
@@ -1010,11 +1019,11 @@ export default function EnhancedStopPaymentForm() {
 
                     {errors.submit && <ErrorMessage message={errors.submit} />}
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="flex justify-end gap-3">
                       <button 
                         type="button" 
                         onClick={() => setStep(3)}
-                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                        className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
                       >
                         <ChevronLeft className="h-4 w-4" />
                         {t('back', 'Back')}
@@ -1022,7 +1031,7 @@ export default function EnhancedStopPaymentForm() {
                       <button 
                         type="submit" 
                         disabled={isSubmitting || formData.otpCode.length !== 6}
-                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 disabled:opacity-50 flex items-center gap-2 justify-center"
+                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 disabled:opacity-50 flex items-center gap-2 shadow-md"
                       >
                         {isSubmitting ? (
                           <>

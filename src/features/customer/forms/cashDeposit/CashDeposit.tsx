@@ -11,6 +11,8 @@ import { useToast } from '../../../../context/ToastContext';
 import { validateAmount, validateRequired } from '../../../../utils/validation';
 import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
 import { requiresTransactionApproval } from '../../../../config/rbacMatrix';
+import { exchangeRateService } from '../../../../services/exchangeRateService';
+import { isDiasporaAccount } from '../../../../services/accountTypeService';
 import { 
     Loader2, 
     AlertCircle, 
@@ -49,9 +51,17 @@ interface FormData {
     accountNumber: string;
     accountHolderName: string;
     amount: string;
+    currency: string; // Add currency field
 }
 
 type Errors = Partial<Record<keyof FormData, string>> & { submit?: string };
+
+// Define currency types
+type Currency = {
+    code: string;
+    name: string;
+    rate: number; // ETB to currency rate
+};
 
 export default function CashDepositForm() {
     const { t } = useTranslation();
@@ -73,6 +83,7 @@ export default function CashDepositForm() {
         accountNumber: '',
         accountHolderName: '',
         amount: '',
+        currency: 'ETB', // Default to ETB
     });
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,6 +94,27 @@ export default function CashDepositForm() {
     const [loadingUpdate, setLoadingUpdate] = useState(false);
     const [step, setStep] = useState<number>(1);
     const [successMessage, setSuccessMessage] = useState('');
+    const [exchangeRates, setExchangeRates] = useState<Currency[]>([{ code: 'ETB', name: 'Ethiopian Birr', rate: 1 }]);
+    const [selectedAccount, setSelectedAccount] = useState<any>(null); // Track selected account
+
+    // Load exchange rates
+    useEffect(() => {
+        const loadExchangeRates = async () => {
+            try {
+                const rates = await exchangeRateService.getRates();
+                const currencies: Currency[] = rates.map(rate => ({
+                    code: rate.currencyCode,
+                    name: rate.currencyName,
+                    rate: rate.cashSelling // Use cash selling rate for deposits
+                }));
+                // Add ETB as default currency
+                setExchangeRates([{ code: 'ETB', name: 'Ethiopian Birr', rate: 1 }, ...currencies]);
+            } catch (error) {
+                console.error('Failed to load exchange rates:', error);
+            }
+        };
+        loadExchangeRates();
+    }, []);
 
     // Show success message from navigation state
     useEffect(() => {
@@ -106,18 +138,22 @@ export default function CashDepositForm() {
 
         if (accounts.length === 1) {
             const account = accounts[0];
+            setSelectedAccount(account);
             setFormData(prev => ({
                 ...prev,
                 accountNumber: account.accountNumber,
                 accountHolderName: account.accountHolderName || '',
+                currency: account.isDiaspora ? 'USD' : 'ETB' // Default to USD for Diaspora accounts
             }));
         } else if (accounts.length > 1) {
             const savedAccount = localStorage.getItem('selectedDepositAccount');
             const selectedAccount = accounts.find(a => a.accountNumber === savedAccount) || accounts[0];
+            setSelectedAccount(selectedAccount);
             setFormData(prev => ({
                 ...prev,
                 accountNumber: selectedAccount.accountNumber,
                 accountHolderName: selectedAccount.accountHolderName || '',
+                currency: selectedAccount.isDiaspora ? 'USD' : 'ETB' // Default to USD for Diaspora accounts
             }));
         }
     }, [accounts, loadingAccounts, updateId]);
@@ -183,10 +219,12 @@ export default function CashDepositForm() {
             // Set account holder name if account is found
             const selected = accounts.find(acc => acc.accountNumber === value);
             if (selected) {
+                setSelectedAccount(selected);
                 setFormData(prev => ({
                     ...prev,
                     accountNumber: value,
-                    accountHolderName: selected.accountHolderName
+                    accountHolderName: selected.accountHolderName,
+                    currency: selected.isDiaspora ? 'USD' : 'ETB' // Switch currency based on account type
                 }));
                 localStorage.setItem('selectedDepositAccount', value);
                 // Clear account holder name error if account is valid
@@ -276,23 +314,37 @@ export default function CashDepositForm() {
         const approvalCheck = requiresTransactionApproval(
             'deposit',
             Number(formData.amount),
-            'ETB',
+            formData.currency,
             'normal'
         );
 
         if (approvalCheck.required) {
             return (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-                    <p className="text-orange-800 font-medium">
+                <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 border border-fuchsia-200 rounded-lg p-4 mb-4">
+                    <p className="text-amber-800 font-medium">
                         ⚠️ {t('approvalRequired', 'This transaction will require manager approval')}
                     </p>
-                    <p className="text-sm text-orange-700 mt-1">
+                    <p className="text-sm text-fuchsia-700 mt-1">
                         {approvalCheck.reason}
                     </p>
                 </div>
             );
         }
         return null;
+    };
+
+    // Function to convert amount based on currency
+    const convertAmount = (amount: string, fromCurrency: string): string => {
+        if (!amount || fromCurrency === 'ETB') return amount;
+        
+        const amountNum = parseFloat(amount);
+        if (isNaN(amountNum)) return amount;
+        
+        const rate = exchangeRates.find(c => c.code === fromCurrency)?.rate;
+        if (!rate) return amount;
+        
+        // Convert to ETB
+        return (amountNum * rate).toFixed(2);
     };
 
     const handleNext = (e: FormEvent) => {
@@ -318,19 +370,22 @@ export default function CashDepositForm() {
 
         setIsSubmitting(true);
         try {
+            // Convert amount to ETB if needed for backend processing
+            const amountInETB = convertAmount(formData.amount, formData.currency);
+            
             const depositData = {
                 id: updateId || undefined,
                 formKey: Date.now().toString(),
                 branchId: branch.id,
                 accountHolderName: formData.accountHolderName,
                 accountNumber: formData.accountNumber,
-                amount: Number(formData.amount),
+                amount: Number(amountInETB),
                 telephoneNumber: phone,
                 amountInWords: 'N/A',
                 sourceOfProceeds: 'N/A',
-                typeOfAccount: 'N/A',
+                typeOfAccount: selectedAccount?.accountType || 'N/A',
                 DepositedBy: 'N/A',
-                transactionType: 'Cash Deposit',
+                transactionType: `Cash Deposit (${formData.currency})`,
                 status: 'Pending',
                 tokenNumber: tokenNumber || '',
                 queueNumber: queueNumber || undefined,
@@ -347,8 +402,8 @@ export default function CashDepositForm() {
                     voucherId: response.data?.id || '',
                     voucherType: 'deposit',
                     transactionType: 'deposit',
-                    amount: Number(formData.amount),
-                    currency: 'ETB',
+                    amount: Number(amountInETB),
+                    currency: 'ETB', // Always use ETB for internal processing
                     customerSegment: 'normal',
                     reason: 'Customer deposit request',
                     voucherData: depositData,
@@ -368,6 +423,7 @@ export default function CashDepositForm() {
                         accountNumber: formData.accountNumber,
                         accountHolderName: formData.accountHolderName,
                         amount: formData.amount,
+                        currency: formData.currency,
                         telephoneNumber: phone
                     },
                     tokenNumber: response.data?.tokenNumber || tokenNumber,
@@ -387,7 +443,7 @@ export default function CashDepositForm() {
     // Loading states
     if (loadingAccounts || loadingUpdate) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
@@ -400,7 +456,7 @@ export default function CashDepositForm() {
 
     if (errorAccounts) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -408,7 +464,7 @@ export default function CashDepositForm() {
                         <p className="text-gray-600 mb-4">{errorAccounts}</p>
                         <button
                             onClick={handleRefreshAccounts}
-                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                            className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-4 py-2 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 transition-all"
                         >
                             {t('tryAgain', 'Try Again')}
                         </button>
@@ -420,7 +476,7 @@ export default function CashDepositForm() {
 
     if (!loadingAccounts && accounts.length === 0) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -428,7 +484,7 @@ export default function CashDepositForm() {
                         <p className="text-gray-600 mb-4">{t('noAccountsMessage', 'No accounts found for your phone number.')}</p>
                         <button
                             onClick={handleRefreshAccounts}
-                            className="bg-fuchsia-700 text-white px-4 py-2 rounded-lg hover:bg-fuchsia-800"
+                            className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-4 py-2 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 transition-all"
                         >
                             {t('refresh', 'Refresh')}
                         </button>
@@ -439,26 +495,34 @@ export default function CashDepositForm() {
     }
 
     return (
-        <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full mx-auto">
-                <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                    {/* Header with fuchsia-700 */}
-                    <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white">
+                <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-fuchsia-200 focus-within:border-fuchsia-700 transition-colors duration-200">
+                    {/* Header with brand gradient - no icon */}
+                    <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                <div className="flex items-center gap-3">
-                                    <div>
-                                        <h1 className="text-lg font-bold">{t('cashDeposit', 'Cash Deposit')}</h1>
-                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-                                            <MapPin className="h-3 w-3" />
-                                            <span>{branch?.name || t('branch', 'Branch')}</span>
-                                        </div>
+                                <div>
+                                    <h1 className="text-lg font-bold">{t('cashDeposit', 'Cash Deposit')}</h1>
+                                    <div className="flex items-center gap-2 text-amber-100 text-xs mt-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{branch?.name || t('branch', 'Branch')}</span>
                                     </div>
                                 </div>
                                 
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
-                                        📱 {phone}
+                                    <button
+                                        onClick={() => navigate('/dashboard')}
+                                        className="bg-white text-fuchsia-700 px-3 py-1 rounded-full text-sm font-semibold hover:bg-gray-100 flex items-center gap-1"
+                                    >
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                        Home
+                                    </button>
+                                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs flex items-center gap-2">
+                                        <User className="h-3 w-3" />
+                                        {phone}
                                     </div>
                                 </div>
                             </div>
@@ -488,13 +552,13 @@ export default function CashDepositForm() {
                                                     name="accountNumber" 
                                                     value={formData.accountNumber} 
                                                     onChange={handleChange} 
-                                                    className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                                                    className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
                                                     id="accountNumber"
                                                 >
                                                     <option value="">{t('selectAccount', 'Select account')}</option>
                                                     {accounts.map(acc => (
                                                         <option key={acc.accountNumber} value={acc.accountNumber}>
-                                                            {acc.accountNumber} - {acc.accountHolderName}
+                                                            {acc.accountNumber} - {acc.accountHolderName} {acc.isDiaspora ? '(Diaspora)' : ''}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -505,7 +569,7 @@ export default function CashDepositForm() {
                                                     value={formData.accountNumber} 
                                                     onChange={handleChange} 
                                                     readOnly={accounts.length === 1}
-                                                    className="w-full p-3 rounded-lg border border-amber-200 bg-amber-50"
+                                                    className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
                                                     id="accountNumber"
                                                 />
                                             )}
@@ -523,7 +587,7 @@ export default function CashDepositForm() {
                                                 name="accountHolderName" 
                                                 value={formData.accountHolderName} 
                                                 readOnly 
-                                                className="w-full p-3 rounded-lg border border-amber-200 bg-amber-50"
+                                                className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
                                                 id="accountHolderName"
                                             />
                                         </Field>
@@ -531,24 +595,51 @@ export default function CashDepositForm() {
 
                                     <div>
                                         <Field 
-                                            label={t('amount', 'Amount (ETB)')} 
+                                            label={t('amount', 'Amount')} 
                                             required 
                                             error={errors.amount}
                                         >
-                                            <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <span className="text-amber-700 font-medium">ETB</span>
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-fuchsia-700 font-medium">
+                                                            {formData.currency}
+                                                        </span>
+                                                    </div>
+                                                    <input 
+                                                        type="text" 
+                                                        name="amount" 
+                                                        value={formData.amount} 
+                                                        onChange={handleChange} 
+                                                        className="w-full p-3 pl-16 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+                                                        placeholder="0.00"
+                                                        id="amount"
+                                                    />
                                                 </div>
-                                                <input 
-                                                    type="text" 
-                                                    name="amount" 
-                                                    value={formData.amount} 
-                                                    onChange={handleChange} 
-                                                    className="w-full p-3 pl-16 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
-                                                    placeholder="0.00"
-                                                    id="amount"
-                                                />
+                                                
+                                                {/* Currency selector for Diaspora accounts */}
+                                                {selectedAccount?.isDiaspora && (
+                                                    <select
+                                                        name="currency"
+                                                        value={formData.currency}
+                                                        onChange={handleChange}
+                                                        className="w-24 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+                                                    >
+                                                        {exchangeRates.map(currency => (
+                                                            <option key={currency.code} value={currency.code}>
+                                                                {currency.code}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
                                             </div>
+                                            
+                                            {/* Display equivalent ETB amount for Diaspora accounts */}
+                                            {selectedAccount?.isDiaspora && formData.amount && formData.currency !== 'ETB' && (
+                                                <div className="mt-2 text-sm text-fuchsia-700">
+                                                    {t('equivalentAmount', 'Equivalent ETB Amount')}: {convertAmount(formData.amount, formData.currency)} ETB
+                                                </div>
+                                            )}
                                         </Field>
                                     </div>
                                 </div>
@@ -558,7 +649,7 @@ export default function CashDepositForm() {
                                 <div className="flex justify-end">
                                     <button 
                                         type="submit" 
-                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 font-medium flex items-center gap-2 transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
                                     >
                                         <span>{t('continue', 'Continue')}</span>
                                         <ChevronRight className="h-4 w-4" />
@@ -573,19 +664,30 @@ export default function CashDepositForm() {
                                 <div className="space-y-4">
                                     {checkApprovalStatus()}
                                     
-                                    <div className="bg-amber-50 rounded-lg p-4 space-y-3 border border-amber-100">
-                                        <div className="flex justify-between items-center py-2 border-b border-amber-200">
-                                            <span className="font-medium text-amber-800">{t('accountHolder', 'Account Holder')}:</span>
-                                            <span className="font-semibold">{formData.accountHolderName}</span>
+                                    <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+                                        <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                                            <span className="font-medium text-fuchsia-800">
+                                                {t('accountHolder', 'Account Holder')}:
+                                            </span>
+                                            <span className="font-semibold text-fuchsia-900">{formData.accountHolderName}</span>
                                         </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-amber-200">
-                                            <span className="font-medium text-amber-800">{t('accountNumber', 'Account Number')}:</span>
-                                            <span className="font-mono font-semibold">{formData.accountNumber}</span>
+                                        <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                                            <span className="font-medium text-fuchsia-800">
+                                                {t('accountNumber', 'Account Number')}:
+                                            </span>
+                                            <span className="font-mono font-semibold text-fuchsia-900">{formData.accountNumber}</span>
                                         </div>
                                         <div className="flex justify-between items-center py-2">
-                                            <span className="font-medium text-amber-800">{t('amount', 'Amount')}:</span>
-                                            <span className="text-lg font-bold text-amber-700">
-                                                {Number(formData.amount).toLocaleString()} ETB
+                                            <span className="font-medium text-fuchsia-800">
+                                                {t('amount', 'Amount')}:
+                                            </span>
+                                            <span className="text-lg font-bold text-fuchsia-700">
+                                                {Number(formData.amount).toLocaleString()} {formData.currency}
+                                                {selectedAccount?.isDiaspora && formData.currency !== 'ETB' && (
+                                                    <div className="text-sm font-normal">
+                                                        ({convertAmount(formData.amount, formData.currency)} ETB)
+                                                    </div>
+                                                )}
                                             </span>
                                         </div>
                                     </div>
@@ -597,25 +699,25 @@ export default function CashDepositForm() {
                                     <button 
                                         type="button" 
                                         onClick={() => setStep(1)}
-                                        className="border border-amber-300 text-amber-700 px-6 py-3 rounded-lg hover:bg-amber-50 flex items-center gap-2 justify-center"
+                                        className="border border-fuchsia-300 text-fuchsia-700 px-6 py-3 rounded-lg hover:bg-fuchsia-50 flex items-center gap-2 justify-center transition-all"
                                     >
                                         <span>{t('back', 'Back')}</span>
                                     </button>
                                     <button 
                                         type="submit" 
                                         disabled={isSubmitting}
-                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
                                     >
                                         {isSubmitting ? (
-                                            <>
+                                            <div className="flex items-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 <span>{t('submitting', 'Submitting...')}</span>
-                                            </>
+                                            </div>
                                         ) : (
-                                            <>
+                                            <div className="flex items-center gap-2">
                                                 <CheckCircle2 className="h-4 w-4" />
                                                 <span>{t('submit', 'Submit')}</span>
-                                            </>
+                                            </div>
                                         )}
                                     </button>
                                 </div>

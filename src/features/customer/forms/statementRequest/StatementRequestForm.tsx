@@ -1,12 +1,35 @@
-import React, { useState } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../../context/AuthContext';
-
-import { toast } from 'react-toastify';
-import { Loader2, Mail, Check, Plus, Trash2, MapPin } from 'lucide-react';
-import { statementService } from '../../../../services/statementService';
+import { useBranch } from '../../../../context/BranchContext';
 import { useUserAccounts } from '../../../../hooks/useUserAccounts';
+import { statementService } from '../../../../services/statementService';
+import Field from '../../../../components/Field';
+import SignatureCanvas from 'react-signature-canvas';
+import { useToast } from '../../../../context/ToastContext';
+import { 
+    Loader2, 
+    AlertCircle, 
+    CheckCircle2, 
+    ChevronRight,
+    CreditCard,
+    User,
+    Shield,
+    MapPin,
+    PenTool,
+    Eraser
+} from 'lucide-react';
 
+// Error message component (consistent with withdrawal form)
+function ErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700">{message}</span>
+        </div>
+    );
+}
 
 // Statement frequency options
 const FREQUENCY_OPTIONS = [
@@ -16,421 +39,803 @@ const FREQUENCY_OPTIONS = [
   { value: 'quarterly', label: 'Quarterly' },
 ];
 
-const StatementRequestForm: React.FC = () => {
-  // const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const {
-    accounts,
-    loadingAccounts,
-  } = useUserAccounts();
-  const [signature, setSignature] = useState('');
-  const [step, setStep] = useState(1);
-  const [errors, setErrors] = useState<{ selectedAccounts?: string; emailAddresses?: string; signature?: string; termsAccepted?: string }>({});
+interface FormData {
+    accountNumber: string;
+    accountHolderName: string;
+    emailAddresses: string[];
+    statementFrequency: 'daily' | 'weekly' | 'monthly' | 'quarterly';
+    signature: string;
+    otp: string;
+}
 
-  // Form state
-  const [formData, setFormData] = useState({
-    emailAddresses: [''] as string[],
-    statementFrequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'quarterly',
-    selectedAccounts: [] as string[],
-    termsAccepted: false,
-  });
+type Errors = Partial<Record<keyof FormData, string>> & { submit?: string; otp?: string };
 
-  // Auto-fill branch and date
-  const branchName = user?.branchId || 'Head Office';
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+export default function StatementRequestForm() {
+    const { t } = useTranslation();
+    const { phone, user } = useAuth();
+    const { branch } = useBranch();
+    const { success: showSuccess, error: showError } = useToast();
+    const navigate = useNavigate();
+    const { 
+        accounts, 
+        accountDropdown, 
+        loadingAccounts, 
+        errorAccounts, 
+        refreshAccounts 
+    } = useUserAccounts();
 
-  // Handle email input changes
-  const handleEmailChange = (index: number, value: string) => {
-    const newEmails = [...formData.emailAddresses];
-    newEmails[index] = value;
-    setFormData(prev => ({
-      ...prev,
-      emailAddresses: newEmails
-    }));
-  };
-
-  // Add new email field
-  const addEmailField = () => {
-    setFormData(prev => ({
-      ...prev,
-      emailAddresses: [...prev.emailAddresses, '']
-    }));
-  };
-
-  // Remove email field
-  const removeEmailField = (index: number) => {
-    if (formData.emailAddresses.length <= 1) return; // Keep at least one email field
-    
-    const newEmails = formData.emailAddresses.filter((_, i) => i !== index);
-    setFormData(prev => ({
-      ...prev,
-      emailAddresses: newEmails
-    }));
-  };
-
-  // Handle account selection
-  const toggleAccount = (accountNumber: string) => {
-    setFormData(prev => {
-      const isSelected = prev.selectedAccounts.includes(accountNumber);
-      return {
-        ...prev,
-        selectedAccounts: isSelected
-          ? prev.selectedAccounts.filter(acc => acc !== accountNumber)
-          : [...prev.selectedAccounts, accountNumber]
-      };
+    const [formData, setFormData] = useState<FormData>({
+        accountNumber: '',
+        accountHolderName: '',
+        emailAddresses: [''],
+        statementFrequency: 'monthly',
+        signature: '',
+        otp: '',
     });
-  };
+    const [errors, setErrors] = useState<Errors>({});
+    const [step, setStep] = useState<number>(1);
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpMessage, setOtpMessage] = useState('');
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const [resendTimer, setResendTimer] = useState<NodeJS.Timeout | null>(null);
+    const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
+    const signaturePadRef = useRef<any>(null);
 
-  // Handle select all/none for accounts
-  const toggleAllAccounts = (selectAll: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedAccounts: selectAll 
-        ? accounts.map(acc => acc.accountNumber)
-        : []
-    }));
-  };
+    // Account selection logic (consistent with withdrawal form)
+    useEffect(() => {
+        if (loadingAccounts) return;
 
-  // Handle signature capture (simplified - in a real app, use a proper signature pad component)
-  const handleSignatureCapture = () => {
-    // In a real app, this would open a signature pad component
-    // For now, we'll just simulate a signature capture
-    setSignature('captured');
-    toast.success('Signature captured successfully');
-  };
+        if (!accounts || accounts.length === 0) {
+            setFormData(prev => ({ ...prev, accountNumber: '', accountHolderName: '' }));
+            return;
+        }
 
-  // Step 1 validation
-  const validateStep1 = () => {
-    const errs: typeof errors = {};
-    if (formData.selectedAccounts.length === 0) {
-      errs.selectedAccounts = 'Please select at least one account';
-    }
-    const emailValidation = statementService.validateEmails(
-      formData.emailAddresses.filter(email => email.trim() !== '')
-    );
-    if (!emailValidation.valid) {
-      errs.emailAddresses = `Invalid email format: ${emailValidation.invalidEmails.join(', ')}`;
-    }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+        if (accounts.length === 1) {
+            const account = accounts[0];
+            setFormData(prev => ({
+                ...prev,
+                accountNumber: account.accountNumber,
+                accountHolderName: account.accountHolderName || '',
+            }));
+        } else if (accounts.length > 1) {
+            const savedAccount = localStorage.getItem('selectedStatementAccount');
+            const selectedAccount = accounts.find(a => a.accountNumber === savedAccount) || accounts[0];
+            setFormData(prev => ({
+                ...prev,
+                accountNumber: selectedAccount.accountNumber,
+                accountHolderName: selectedAccount.accountHolderName || '',
+            }));
+        }
+    }, [accounts, loadingAccounts]);
 
-  // Step 2 validation
-  const validateStep2 = () => {
-    const errs: typeof errors = {};
-    if (!signature) {
-      errs.signature = 'Please provide your digital signature';
-    }
-    if (!formData.termsAccepted) {
-      errs.termsAccepted = 'You must accept the terms and conditions';
-    }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+    // Handle cleanup of timers
+    useEffect(() => {
+        return () => {
+            if (resendTimer) clearInterval(resendTimer);
+        };
+    }, [resendTimer]);
 
-  // Step navigation
-  const handleNext = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateStep1()) setStep(2);
-  };
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        
+        if (errors[name as keyof Errors]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
 
-  const handleBack = () => setStep(1);
-
-  // Final submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateStep2()) return;
-  // No need for setLoading, use loadingAccounts for UI
-    try {
-      const selectedAccountsDetails = accounts.filter(acc => 
-        formData.selectedAccounts.includes(acc.accountNumber)
-      );
-      const result = await statementService.submitStatementRequest({
-        branchName,
-  branchCode: (selectedAccountsDetails[0] as any)?.branchId || '100',
-        customerId: user?.id || 'CUSTOMER_ID',
-  customerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Customer',
-        accountNumbers: formData.selectedAccounts,
-        emailAddresses: formData.emailAddresses.filter(email => email.trim() !== ''),
-        statementFrequency: formData.statementFrequency,
-        termsAccepted: formData.termsAccepted,
-        signature: signature,
-        makerId: user?.id || 'SYSTEM',
-  makerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'System User',
-        makerDate: new Date().toISOString(),
-      });
-      if (result.success) {
-        navigate('/form/statement-request/confirmation', {
-          state: { request: result.data }
-        });
-      }
-    } catch (error) {
-      console.error('Error submitting statement request:', error);
-      toast.error('Failed to submit request. Please try again.');
-    } finally {
-  // No need for setLoading, use loadingAccounts for UI
-    }
-  };
-
-  // Render email fields
-  const renderEmailFields = () => (
-    <div className="space-y-3">
-      {formData.emailAddresses.map((email, index) => (
-        <div key={index} className="flex items-center space-x-2">
-          <div className="flex-1">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => handleEmailChange(index, e.target.value)}
-                className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                placeholder="Enter email address"
-                required={index === 0}
-              />
-            </div>
-            {email && !statementService.validateEmail(email) && (
-              <p className="mt-1 text-sm text-red-600">Please enter a valid email address</p>
-            )}
-          </div>
-          {formData.emailAddresses.length > 1 && (
-            <button
-              type="button"
-              onClick={() => removeEmailField(index)}
-              className="p-2 text-red-500 hover:text-red-700"
-              aria-label="Remove email"
-            >
-              <Trash2 size={18} />
-            </button>
-          )}
-        </div>
-      ))}
-      
-      <button
-        type="button"
-        onClick={addEmailField}
-        className="mt-2 inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-      >
-        <Plus size={16} className="mr-1" /> Add another email address
-      </button>
-    </div>
-  );
-
-  // Render account selection
-  const renderAccountSelection = () => (
-    <div className="space-y-3">
-      <div className="flex justify-between items-center mb-2">
-        <label className="block text-sm font-medium text-gray-700">
-          Select Accounts for Statement
-        </label>
-        <div className="flex space-x-2">
-          <button
-            type="button"
-            onClick={() => toggleAllAccounts(true)}
-            className="text-xs text-blue-600 hover:text-blue-800"
-          >
-            Select All
-          </button>
-          <span>|</span>
-          <button
-            type="button"
-            onClick={() => toggleAllAccounts(false)}
-            className="text-xs text-blue-600 hover:text-blue-800"
-          >
-            Clear All
-          </button>
-        </div>
-      </div>
-      
-      <div className="space-y-2 max-h-60 overflow-y-auto p-2 border rounded-md">
-        {loadingAccounts ? (
-          <div className="flex justify-center py-4">
-            <Loader2 className="animate-spin h-5 w-5 text-blue-600" />
-          </div>
-        ) : accounts.length > 0 ? (
-          accounts.map((account) => (
-            <div 
-              key={account.accountNumber}
-              className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                formData.selectedAccounts.includes(account.accountNumber)
-                  ? 'bg-blue-50 border-blue-200'
-                  : 'hover:bg-gray-50'
-              }`}
-              onClick={() => toggleAccount(account.accountNumber)}
-            >
-              <div className="flex items-center">
-                <div className={`flex items-center justify-center h-5 w-5 rounded border mr-3 ${
-                  formData.selectedAccounts.includes(account.accountNumber)
-                    ? 'bg-blue-600 border-blue-600 text-white'
-                    : 'border-gray-300'
-                }`}>
-                  {formData.selectedAccounts.includes(account.accountNumber) && (
-                    <Check size={14} />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between">
-                    <span className="font-medium">{account.accountHolderName}</span>
-                    <span className="text-sm text-gray-500">{account.accountType}</span>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {account.accountNumber} • {account.accountType}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-4 text-gray-500">
-            No accounts found for this customer.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // Render signature pad (simplified)
-  const renderSignaturePad = () => (
-    <div className="border-2 border-dashed rounded-lg p-4 text-center">
-      {signature ? (
-        <div className="py-8 text-green-600">
-          <Check size={48} className="mx-auto mb-2" />
-          <p>Signature captured successfully</p>
-          <button
-            type="button"
-            onClick={() => setSignature('')}
-            className="mt-2 text-sm text-red-600 hover:text-red-800"
-          >
-            Clear and retry
-          </button>
-        </div>
-      ) : (
-        <div>
-          <p className="text-sm text-gray-600 mb-4">
-            Please sign in the box below to authorize this request
-          </p>
-          <button
-            type="button"
-            onClick={handleSignatureCapture}
-            className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Click to Sign
-          </button>
-          <p className="mt-2 text-xs text-gray-500">
-            Your signature is required to process this request
-          </p>
-        </div>
-      )}
-      {errors.signature && <p className="mt-2 text-sm text-red-600">{errors.signature}</p>}
-    </div>
-  );
-
-  return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg">
-      <div className="mb-4 sm:mb-6 bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white p-3 sm:p-4 rounded-lg shadow-lg">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Statement Request</h1>
-        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-          <MapPin className="h-3 w-3" />
-          <span>{user?.branchId || 'Head Office'}</span>
-        </div>
-        <p className="text-white text-sm sm:text-base mt-1">Subscribe to receive periodic account statements via email</p>
-      </div>
-      {step === 1 && (
-        <form onSubmit={handleNext} className="space-y-4 sm:space-y-6">
-          <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Account Selection</h2>
-            {renderAccountSelection()}
-            {errors.selectedAccounts && <p className="mt-2 text-sm text-red-600">{errors.selectedAccounts}</p>}
-          </div>
-          <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Statement Preferences</h2>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Statement Frequency</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {FREQUENCY_OPTIONS.map((option) => (
-                  <div key={option.value} className="flex items-center">
-                    <input
-                      id={`frequency-${option.value}`}
-                      name="statementFrequency"
-                      type="radio"
-                      checked={formData.statementFrequency === option.value}
-                      onChange={() => setFormData(prev => ({
-                        ...prev,
-                        statementFrequency: option.value as any
-                      }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <label htmlFor={`frequency-${option.value}`} className="ml-3 block text-sm font-medium text-gray-700">{option.label}</label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address(es)</label>
-              <p className="text-sm text-gray-500 mb-3">Enter the email address(es) where you'd like to receive your statements</p>
-              {renderEmailFields()}
-              {errors.emailAddresses && <p className="mt-2 text-sm text-red-600">{errors.emailAddresses}</p>}
-            </div>
-          </div>
-          <div className="pt-3 sm:pt-4">
-            <button type="submit" disabled={loadingAccounts} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base">
-              Continue
-            </button>
-          </div>
-        </form>
-      )}
-      {step === 2 && (
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          <div className="p-3 sm:p-4 border rounded-lg shadow-sm">
-            <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Digital Signature</h2>
-            {renderSignaturePad()}
-          </div>
-          <div className="p-3 sm:p-4 border rounded-lg shadow-sm mt-4 sm:mt-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-fuchsia-700 mb-3 sm:mb-4">Terms and Conditions</h2>
-            <div className="flex items-start">
-              <div className="flex items-center h-5">
-                <input
-                  id="termsAccepted"
-                  name="termsAccepted"
-                  type="checkbox"
-                  checked={formData.termsAccepted}
-                  onChange={(e) => setFormData(prev => ({
+        if (name === 'accountNumber') {
+            const selected = accounts.find(acc => acc.accountNumber === value);
+            if (selected) {
+                setFormData(prev => ({
                     ...prev,
-                    termsAccepted: e.target.checked
-                  }))}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div className="ml-3 text-sm">
-                <label htmlFor="termsAccepted" className="font-medium text-gray-700">I agree to the terms and conditions</label>
-                <p className="text-gray-500">By checking this box, I authorize the bank to send electronic statements to the email address(es) provided above. I understand that I may be charged a fee for this service as per the bank's tariff guide.</p>
-                {errors.termsAccepted && <p className="mt-2 text-sm text-red-600">{errors.termsAccepted}</p>}
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 pt-3 sm:pt-4">
-            <button type="button" onClick={handleBack} className="w-full bg-gray-200 text-fuchsia-800 font-bold py-2 sm:py-3 px-4 rounded-lg shadow-md hover:bg-gray-300 transition">Back</button>
-            <button type="submit" disabled={loadingAccounts} className="w-full bg-fuchsia-700 hover:bg-fuchsia-800 text-white font-bold py-2 sm:py-3 px-4 rounded-lg shadow-lg transition transform duration-200 hover:scale-105 disabled:opacity-50 text-sm sm:text-base">
-              {loadingAccounts ? (
-                <>
-                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4 inline" />
-                  Submitting...
-                </>
-              ) : 'Submit Request'}
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
-  );
-};
+                    accountNumber: value,
+                    accountHolderName: selected.accountHolderName || ''
+                }));
+                localStorage.setItem('selectedStatementAccount', value);
+                return;
+            }
+        }
+        
+        if (name === 'otp') {
+            const sanitizedValue = value.replace(/\D/g, '').slice(0, 6);
+            setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
+            return;
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
-export default StatementRequestForm;
+    // Handle email input changes
+    const handleEmailChange = (index: number, value: string) => {
+        const newEmails = [...formData.emailAddresses];
+        newEmails[index] = value;
+        setFormData(prev => ({
+            ...prev,
+            emailAddresses: newEmails
+        }));
+    };
+
+    // Add new email field
+    const addEmailField = () => {
+        setFormData(prev => ({
+            ...prev,
+            emailAddresses: [...prev.emailAddresses, '']
+        }));
+    };
+
+    // Remove email field
+    const removeEmailField = (index: number) => {
+        if (formData.emailAddresses.length <= 1) return;
+        
+        const newEmails = formData.emailAddresses.filter((_, i) => i !== index);
+        setFormData(prev => ({
+            ...prev,
+            emailAddresses: newEmails
+        }));
+    };
+
+    const validateStep1 = (): boolean => {
+        const errs: Errors = {};
+        
+        if (!formData.accountNumber.trim()) {
+            errs.accountNumber = t('accountNumberRequired', 'Please select an account');
+        }
+        
+        if (!formData.accountHolderName.trim()) {
+            errs.accountHolderName = t('accountHolderNameRequired', 'Account holder name is required');
+        }
+        
+        // Email validation
+        const emailValidation = statementService.validateEmails(
+            formData.emailAddresses.filter(email => email.trim() !== '')
+        );
+        if (!emailValidation.valid) {
+            errs.emailAddresses = `Invalid email format: ${emailValidation.invalidEmails.join(', ')}`;
+        }
+        
+        if (formData.emailAddresses.filter(email => email.trim() !== '').length === 0) {
+            errs.emailAddresses = t('emailRequired', 'At least one email address is required');
+        }
+
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    const validateStep2 = (): boolean => {
+        // Signature validation - similar to withdrawal
+        if (signaturePadRef.current && signaturePadRef.current.isEmpty()) {
+            setErrors({ signature: t('signatureRequired', 'Digital signature is required') });
+            return false;
+        }
+        return true;
+    };
+
+    const validateStep3 = (): boolean => {
+        const errs: Errors = {};
+        
+        if (!formData.otp || formData.otp.length !== 6) {
+            errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+        }
+
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    const handleStep1Next = (e: FormEvent) => {
+        e.preventDefault();
+        if (!validateStep1()) {
+            const firstError = Object.keys(errors)[0];
+            if (firstError) {
+                document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
+        setStep(2);
+    };
+
+    const handleSignatureClear = () => {
+        if (signaturePadRef.current) {
+            signaturePadRef.current.clear();
+            setIsSignatureEmpty(true);
+            setFormData(prev => ({ ...prev, signature: '' }));
+        }
+    };
+
+    const handleSignatureEnd = () => {
+        if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
+            setIsSignatureEmpty(false);
+            if (errors.signature) {
+                setErrors(prev => ({ ...prev, signature: undefined }));
+            }
+        }
+    };
+
+    const handleStep2Next = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!validateStep2()) return;
+
+        // Save signature
+        if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
+            const signatureData = signaturePadRef.current.toDataURL();
+            setFormData(prev => ({ ...prev, signature: signatureData }));
+        }
+
+        if (!phone) {
+            setErrors({ submit: t('missingPhoneNumber', 'Phone number not found. Please log in again.') });
+            return;
+        }
+
+        setOtpLoading(true);
+        setErrors({});
+        setOtpMessage('');
+
+        try {
+            const response = await statementService.requestStatementOtp(phone);
+            if (response.success) {
+                const msg = response.message || t('otpSent', 'OTP sent to your phone.');
+                setOtpMessage(msg);
+                setStep(3);
+                setResendCooldown(30);
+                
+                const timer = setInterval(() => {
+                    setResendCooldown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                setResendTimer(timer);
+            } else {
+                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
+            }
+        } catch (error: any) {
+            setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (!phone || resendCooldown > 0) return;
+
+        setOtpLoading(true);
+        setErrors({});
+        setOtpMessage('');
+
+        try {
+            const response = await statementService.requestStatementOtp(phone);
+            if (response.success) {
+                setOtpMessage(t('otpResent', 'OTP resent successfully.'));
+                setResendCooldown(30);
+                
+                const timer = setInterval(() => {
+                    setResendCooldown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                setResendTimer(timer);
+            } else {
+                setErrors({ submit: response.message || t('otpRequestFailed', 'Failed to send OTP.') });
+            }
+        } catch (error: any) {
+            setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!validateStep3()) return;
+
+        if (!phone || !branch?.id) {
+            setErrors({ submit: t('missingInfo', 'Please ensure all information is complete.') });
+            return;
+        }
+
+        // Submit statement request
+        try {
+            const result = await statementService.submitStatementRequest({
+                branchName: branch?.name || '',
+                branchCode: branch?.id || '',
+                customerId: user?.id || 'CUSTOMER_ID',
+                customerName: formData.accountHolderName,
+                accountNumbers: [formData.accountNumber],
+                emailAddresses: formData.emailAddresses.filter(email => email.trim() !== ''),
+                statementFrequency: formData.statementFrequency,
+                termsAccepted: true, // Always accepted when we reach this step
+                signature: formData.signature,
+                makerId: user?.id || 'SYSTEM',
+                makerName: formData.accountHolderName,
+                makerDate: new Date().toISOString(),
+                phoneNumber: phone || '',
+                branchId: branch?.id || '',
+                otpCode: formData.otp // Pass the actual OTP entered by the user
+            });
+            
+            if (result.success) {
+                showSuccess(t('statementRequestSubmitted', 'Statement request submitted successfully!'));
+                
+                // Navigate to confirmation with the response data
+                navigate('/form/statement-request/confirmation', {
+                    state: { 
+                        request: {
+                            id: result.data?.id || '',
+                            formRefId: result.data?.formReferenceId || result.data?.id || '',
+                            date: result.data?.submittedAt || new Date().toISOString(),
+                            branchName: result.data?.branch?.name || branch?.name,
+                            branchCode: branch?.id || '',
+                            customerId: user?.id || 'CUSTOMER_ID',
+                            customerName: result.data?.accountHolderName || formData.accountHolderName,
+                            accountNumbers: [result.data?.accountNumber || formData.accountNumber],
+                            emailAddresses: result.data?.emailAddress ? result.data.emailAddress.split(',') : formData.emailAddresses.filter(email => email.trim() !== ''),
+                            statementFrequency: result.data?.statementFrequency || formData.statementFrequency,
+                            termsAccepted: result.data?.termsAccepted || true,
+                            signature: result.data?.digitalSignature || formData.signature,
+                            status: 'pending',
+                            makerId: result.data?.frontMakerId || user?.id || 'SYSTEM',
+                            makerName: result.data?.frontMaker?.userName || formData.accountHolderName,
+                            makerDate: result.data?.submittedAt || new Date().toISOString(),
+                            queueNumber: result.data?.queueNumber,
+                            tokenNumber: result.data?.tokenNumber,
+                        }
+                    }
+                });
+            } else {
+                throw new Error(result.message || t('submissionFailed', 'Submission failed'));
+            }
+        } catch (error: any) {
+            const errorMessage = error?.message || t('submissionFailed', 'Submission failed');
+            setErrors({ submit: errorMessage });
+            showError(errorMessage);
+        }
+    };
+
+    // Format frequency
+    const formatFrequency = (freq: string) => {
+        switch (freq) {
+            case 'daily':
+                return t('daily', 'Daily');
+            case 'weekly':
+                return t('weekly', 'Weekly');
+            case 'monthly':
+                return t('monthly', 'Monthly');
+            case 'quarterly':
+                return t('quarterly', 'Quarterly');
+            default:
+                return freq;
+        }
+    };
+
+    // Loading states (consistent with withdrawal form)
+    if (loadingAccounts) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
+                <div className="max-w-2xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
+                        <p className="text-gray-600">{t('loading', 'Loading...')}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (errorAccounts) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
+                <div className="max-w-2xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
+                        <p className="text-gray-600 mb-4">{errorAccounts}</p>
+                        <button
+                            onClick={() => refreshAccounts()}
+                            className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-4 py-2 rounded-lg hover:from-amber-600 hover:to-fuchsia-800"
+                        >
+                            {t('tryAgain', 'Try Again')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!loadingAccounts && accounts.length === 0) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
+                <div className="max-w-2xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noAccounts', 'No Accounts')}</h3>
+                        <p className="text-gray-600 mb-4">{t('noAccountsMessage', 'No accounts found for your phone number.')}</p>
+                        <button
+                            onClick={() => refreshAccounts()}
+                            className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-4 py-2 rounded-lg hover:from-amber-600 hover:to-fuchsia-800"
+                        >
+                            {t('refresh', 'Refresh')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full mx-auto">
+                <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-fuchsia-200 focus-within:border-fuchsia-700 transition-colors duration-200">
+                    {/* Header with brand gradient */}
+                     <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div>
+                                    <h1 className="text-lg font-bold">{t('statementRequest', 'Statement Request')}</h1>
+                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{branch?.name || t('branch', 'Branch')}</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => navigate('/dashboard')}
+                                        className="bg-white text-fuchsia-700 px-3 py-1 rounded-full text-sm font-semibold hover:bg-gray-100 flex items-center gap-1"
+                                    >
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                        Home
+                                    </button>
+                                    <button 
+                                        onClick={() => navigate('/form/statement-request/list')}
+                                        className="text-xs text-fuchsia-100 hover:text-white underline"
+                                    >
+                                        {t('viewHistory', 'View History')}
+                                    </button>
+                                    <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
+                                        📱 {phone}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <div className="p-6">
+                        {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                        {/* Step 1: Account Details & Email */}
+                        {step === 1 && (
+                            <form onSubmit={handleStep1Next} className="space-y-6">
+                                <div className="space-y-6">
+                                    <div>
+                                        <Field 
+                                            label={t('accountNumber', 'Account Number')} 
+                                            required 
+                                            error={errors.accountNumber}
+                                        >
+                                            {accountDropdown ? (
+                                                <select 
+                                                    name="accountNumber" 
+                                                    value={formData.accountNumber} 
+                                                    onChange={handleChange}
+                                                    className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+                                                    id="accountNumber"
+                                                >
+                                                    <option value="">{t('chooseAccount', 'Choose your account')}</option>
+                                                    {accounts.map(acc => (
+                                                        <option key={acc.accountNumber} value={acc.accountNumber}>
+                                                            {acc.accountNumber} - {acc.accountHolderName}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    name="accountNumber"
+                                                    value={formData.accountNumber}
+                                                    onChange={handleChange}
+                                                    disabled={accounts.length === 1}
+                                                    className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+                                                    id="accountNumber"
+                                                />
+                                            )}
+                                        </Field>
+                                    </div>
+
+                                    <div>
+                                        <Field 
+                                            label={t('accountHolderName', 'Account Holder Name')} 
+                                            required 
+                                            error={errors.accountHolderName}
+                                        >
+                                            <input
+                                                type="text"
+                                                name="accountHolderName"
+                                                value={formData.accountHolderName}
+                                                onChange={handleChange}
+                                                disabled
+                                                className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+                                                id="accountHolderName"
+                                            />
+                                        </Field>
+                                    </div>
+
+                                    <div>
+                                        <Field 
+                                            label={t('emailAddresses', 'Email Address(es)')} 
+                                            required 
+                                            error={errors.emailAddresses}
+                                        >
+                                            <div className="space-y-3">
+                                                {formData.emailAddresses.map((email, index) => (
+                                                    <div key={index} className="flex items-center space-x-2">
+                                                        <div className="flex-1">
+                                                            <input
+                                                                type="email"
+                                                                value={email}
+                                                                onChange={(e) => handleEmailChange(index, e.target.value)}
+                                                                className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+                                                                placeholder={t('enterEmail', 'Enter email address')}
+                                                                required={index === 0}
+                                                            />
+                                                            {email && !statementService.validateEmail(email) && (
+                                                                <p className="mt-1 text-sm text-red-600">
+                                                                    {t('invalidEmail', 'Please enter a valid email address')}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        {formData.emailAddresses.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeEmailField(index)}
+                                                                className="p-2 text-red-500 hover:text-red-700"
+                                                                aria-label={t('removeEmail', 'Remove email')}
+                                                            >
+                                                                <Eraser className="h-5 w-5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={addEmailField}
+                                                    className="inline-flex items-center text-sm text-fuchsia-700 hover:text-fuchsia-800"
+                                                >
+                                                    <ChevronRight className="h-4 w-4 mr-1" />
+                                                    {t('addAnotherEmail', 'Add another email')}
+                                                </button>
+                                            </div>
+                                        </Field>
+                                    </div>
+
+                                    <div>
+                                        <Field 
+                                            label={t('statementFrequency', 'Statement Frequency')} 
+                                            required
+                                        >
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                {FREQUENCY_OPTIONS.map((option) => (
+                                                    <div
+                                                        key={option.value}
+                                                        className={`border rounded-lg p-3 cursor-pointer text-center ${
+                                                            formData.statementFrequency === option.value
+                                                                ? 'border-fuchsia-500 bg-fuchsia-50'
+                                                                : 'border-fuchsia-300 hover:border-fuchsia-400'
+                                                        }`}
+                                                        onClick={() => setFormData(prev => ({ ...prev, statementFrequency: option.value as any }))}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            id={option.value}
+                                                            name="statementFrequency"
+                                                            value={option.value}
+                                                            checked={formData.statementFrequency === option.value}
+                                                            onChange={() => setFormData(prev => ({ ...prev, statementFrequency: option.value as any }))}
+                                                            className="sr-only"
+                                                        />
+                                                        <label htmlFor={option.value} className="block cursor-pointer">
+                                                            <span className="block text-sm font-medium text-gray-700">{t(option.value, option.label)}</span>
+                                                        </label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </Field>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end">
+                                    <button 
+                                        type="submit" 
+                                        className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-6 py-3 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 font-medium flex items-center gap-2 transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
+                                    >
+                                        <span>{t('continue', 'Continue')}</span>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Step 2: Digital Signature */}
+                        {step === 2 && (
+                            <form onSubmit={handleStep2Next} className="space-y-6">
+                                <div className="border border-fuchsia-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <PenTool className="h-5 w-5 text-fuchsia-700" />
+                                        {t('digitalSignature', 'Digital Signature')}
+                                    </h2>
+                                    
+                                    <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 border border-fuchsia-200 rounded-lg p-4 mb-4">
+                                        <p className="text-sm text-fuchsia-700">
+                                            {t('signatureInstructions', 'Please provide your signature using your finger or stylus. This signature will be used to authorize your statement request transaction.')}
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-white border-2 border-dashed border-fuchsia-300 rounded-lg p-4">
+                                        <div className="bg-gray-100 rounded-lg p-2 mb-4">
+                                            <SignatureCanvas
+                                                ref={signaturePadRef}
+                                                onEnd={handleSignatureEnd}
+                                                canvasProps={{
+                                                    className: "w-full h-48 bg-white border border-fuchsia-300 rounded-md cursor-crosshair"
+                                                }}
+                                                penColor="black"
+                                                backgroundColor="white"
+                                                clearOnResize={false}
+                                            />
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center">
+                                            <button
+                                                type="button"
+                                                onClick={handleSignatureClear}
+                                                className="flex items-center gap-2 px-4 py-2 text-fuchsia-700 border border-fuchsia-300 rounded-lg hover:bg-fuchsia-50 transition-all"
+                                            >
+                                                <Eraser className="h-4 w-4" />
+                                                {t('clearSignature', 'Clear Signature')}
+                                            </button>
+                                            
+                                            <div className="text-sm text-gray-500">
+                                                {!isSignatureEmpty ? (
+                                                    <span className="text-green-600 flex items-center gap-1">
+                                                        <CheckCircle2 className="h-4 w-4" />
+                                                        {t('signatureProvided', 'Signature provided')}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">
+                                                        {t('noSignature', 'No signature provided')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {errors.signature && (
+                                            <span className="text-red-500 text-xs mt-2">{errors.signature}</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(1)}
+                                        className="border border-fuchsia-300 text-fuchsia-700 px-6 py-3 rounded-lg hover:bg-fuchsia-50 flex items-center gap-2 justify-center transition-all"
+                                    >
+                                        <ChevronRight className="h-4 w-4 rotate-180" />
+                                        {t('back', 'Back')}
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={otpLoading}
+                                        className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-6 py-3 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 font-medium disabled:opacity-50 flex items-center gap-2 justify-center transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
+                                    >
+                                        {otpLoading ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                {t('requestingOtp', 'Requesting OTP...')}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Shield className="h-4 w-4" />
+                                                {t('requestOtp', 'Request OTP')}
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Step 3: OTP Verification */}
+                        {step === 3 && (
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="border border-fuchsia-200 rounded-lg p-6">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <Shield className="h-5 w-5 text-fuchsia-700" />
+                                        {t('otpVerification', 'OTP Verification')}
+                                    </h2>
+                                    
+                                    <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 border border-fuchsia-200 rounded-lg p-4 mb-4">
+                                        <p className="text-sm text-fuchsia-700">
+                                            {t('otpSentMessage', 'An OTP has been sent to your phone number:')} 
+                                            <strong className="text-fuchsia-900"> {phone}</strong>
+                                        </p>
+                                        {otpMessage && (
+                                            <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                                                <CheckCircle2 className="h-3 w-3" />
+                                                {otpMessage}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="max-w-md">
+                                        <Field 
+                                            label={t('enterOtp', 'Enter OTP')} 
+                                            required 
+                                            error={errors.otp}
+                                        >
+                                            <input 
+                                                type="text" 
+                                                name="otp" 
+                                                value={formData.otp} 
+                                                onChange={handleChange} 
+                                                maxLength={6}
+                                                className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 font-mono bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+                                                placeholder="000000"
+                                                id="otp"
+                                            />
+                                        </Field>
+                                        
+                                        <div className="mt-2 flex justify-between items-center">
+                                            <button
+                                                type="button"
+                                                onClick={handleResendOtp}
+                                                disabled={resendCooldown > 0 || otpLoading}
+                                                className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400 transition-colors"
+                                            >
+                                                {resendCooldown > 0 
+                                                    ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
+                                                    : t('resendOtp', 'Resend OTP')
+                                                }
+                                            </button>
+                                            <span className="text-sm text-gray-500">
+                                                {formData.otp.length}/6
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(2)}
+                                        className="border border-fuchsia-300 text-fuchsia-700 px-6 py-3 rounded-lg hover:bg-fuchsia-50 flex items-center gap-2 justify-center transition-all"
+                                    >
+                                        <ChevronRight className="h-4 w-4 rotate-180" />
+                                        {t('back', 'Back')}
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={formData.otp.length !== 6}
+                                        className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-6 py-3 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 font-medium disabled:opacity-50 flex items-center gap-2 justify-center transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
+                                    >
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        {t('submit', 'Submit')}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -48,7 +48,7 @@ function SuccessMessage({ message }: { message: string }) {
 const E_BANKING_OPTIONS = [
     { id: 'mobile_banking', label: 'Mobile Banking', icon: '📱' },
     { id: 'internet_banking', label: 'Internet Banking', icon: '💻' },
-    { id: 'ussd', label: 'USSD Banking', icon: '*️⃣' },
+    { id: 'ussd', label: 'USSD Banking', icon: ' *️⃣' },
     { id: 'card_banking', label: 'Card Banking', icon: '💳' },
 ];
 
@@ -164,7 +164,7 @@ export default function EBankingConfirmation() {
     // Loading state
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-2xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
@@ -178,7 +178,7 @@ export default function EBankingConfirmation() {
     // Error state
     if (error && !data) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-2xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -208,35 +208,37 @@ export default function EBankingConfirmation() {
         <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full">
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                    {/* Header with fuchsia-700 */}
-                    <div className="bg-fuchsia-700 text-white p-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white/20 p-2 rounded-lg">
-                                    <Wifi className="h-5 w-5 text-white" />
+                    {/* Header with softer gradient */}
+                    <header className="bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-lg">
+                                        <Wifi className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold">{t('eBankingApplication', 'E-Banking Application')}</h1>
+                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>{data?.branchName || branch?.name || t('branch', 'Branch')}</span>
+                                            <span>•</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h1 className="text-lg font-bold">{t('eBankingApplication', 'E-Banking Application')}</h1>
-                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-                                        <MapPin className="h-3 w-3" />
-                                        <span>{data?.branchName || branch?.name || t('branch', 'Branch')}</span>
-                                        <span>•</span>
-                                        <Calendar className="h-3 w-3" />
-                                        <span>{new Date().toLocaleDateString()}</span>
+                                
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                        📱 {phone}
+                                    </div>
+                                    <div className="bg-white/20 rounded p-1">
+                                        <LanguageSwitcher />
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div className="flex items-center gap-3">
-                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
-                                    📱 {phone}
-                                </div>
-                                <div className="bg-white/20 rounded p-1">
-                                    <LanguageSwitcher />
-                                </div>
-                            </div>
                         </div>
-                    </div>
+                    </header>
 
                     {/* Main Content */}
                     <div ref={componentToPrintRef} className="p-4">
@@ -249,17 +251,17 @@ export default function EBankingConfirmation() {
                             <p className="text-gray-600 text-sm">{data?.message || t('defaultSuccessMessage', 'Your application has been submitted successfully.')}</p>
                         </div>
 
-                        {/* Queue and Token Cards */}
+                        {/* Queue and Token Cards with improved colors */}
                         <div className="mb-4">
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gradient-to-r from-amber-400 to-amber-500 p-3 rounded-lg text-center text-amber-900">
+                                <div className="bg-gradient-to-r from-amber-300 to-amber-400 p-3 rounded-lg text-center text-amber-900 shadow-sm">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <MapPin className="h-3 w-3" />
                                         <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
                                     </div>
                                     <p className="text-2xl font-bold">{data?.queueNumber || 'N/A'}</p>
                                 </div>
-                                <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-3 rounded-lg text-center text-white">
+                                <div className="bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 p-3 rounded-lg text-center text-white shadow-sm">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <CreditCard className="h-3 w-3" />
                                         <span className="text-xs font-medium">{t('token', 'Token')}</span>
@@ -269,28 +271,28 @@ export default function EBankingConfirmation() {
                             </div>
                         </div>
 
-                        {/* Transaction Summary */}
+                        {/* Transaction Summary with softer background */}
                         <div className="mb-4">
-                            <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                            <div className="bg-amber-25 rounded-lg p-4 border border-amber-200 shadow-sm">
                                 <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
                                     <DollarSign className="h-4 w-4" />
                                     {t('applicationDetails', 'Application Details')}
                                 </h3>
                                 <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
                                         <span className="font-medium text-amber-800">{t('customerName', 'Customer Name')}:</span>
                                         <span className="font-semibold text-right">{data?.customerName || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
                                         <span className="font-medium text-amber-800">{t('accountNumber', 'Account Number')}:</span>
                                         <span className="font-mono font-semibold">{data?.accountNumber || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
                                         <span className="font-medium text-amber-800">{t('mobileNumber', 'Mobile Number')}:</span>
                                         <span>{data?.mobileNumber || 'N/A'}</span>
                                     </div>
                                     {data?.ebankingChannels?.length > 0 && (
-                                        <div className="flex justify-between items-start py-1 border-b border-amber-200">
+                                        <div className="flex justify-between items-start py-1 border-b border-amber-100">
                                             <span className="font-medium text-amber-800">{t('requestedServices', 'Services')}:</span>
                                             <div className="flex flex-wrap gap-1 justify-end">
                                                 {data.ebankingChannels.map((channel: string) => {
@@ -325,12 +327,12 @@ export default function EBankingConfirmation() {
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Action Buttons with improved colors */}
                     <div className="p-4 border-t border-amber-200 no-print">
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={handleNewApplication}
-                                className="flex items-center justify-center gap-1 w-full bg-amber-400 text-amber-900 px-2 py-2 rounded-lg hover:bg-amber-500 font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-amber-500 hover:bg-amber-600 text-white px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 <RefreshCw className="h-3 w-3" />
                                 {t('newApplication', 'New')}
@@ -338,7 +340,7 @@ export default function EBankingConfirmation() {
                             
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center justify-center gap-1 w-full bg-amber-200 text-amber-800 px-2 py-2 rounded-lg hover:bg-amber-300 font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-800 px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 <Printer className="h-3 w-3" />
                                 {t('print', 'Print')}
@@ -349,7 +351,7 @@ export default function EBankingConfirmation() {
                             <div className="grid grid-cols-2 gap-2 mt-2">
                                 <button
                                     onClick={handleUpdate}
-                                    className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 font-medium"
+                                    className="flex items-center justify-center gap-1 w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-2 py-2 rounded-lg font-medium transition-colors"
                                 >
                                     <Edit className="h-3 w-3" />
                                     {t('update', 'Update')}
@@ -358,7 +360,7 @@ export default function EBankingConfirmation() {
                                 <button
                                     onClick={() => setShowCancelModal(true)}
                                     disabled={isCancelling}
-                                    className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+                                    className="flex items-center justify-center gap-1 w-full bg-rose-500 hover:bg-rose-600 text-white px-2 py-2 rounded-lg disabled:opacity-50 font-medium transition-colors"
                                 >
                                     {isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
                                     {t('cancel', 'Cancel')}
@@ -423,7 +425,7 @@ export default function EBankingConfirmation() {
                                             </button>
                                             <button
                                                 type="button"
-                                                className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                                                className="inline-flex justify-center rounded-lg border border-transparent bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
                                                 onClick={handleCancel}
                                                 disabled={isCancelling}
                                             >

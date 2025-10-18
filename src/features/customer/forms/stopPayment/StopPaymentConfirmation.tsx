@@ -201,7 +201,7 @@ export default function StopPaymentConfirmation() {
     // Loading state
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
@@ -215,7 +215,7 @@ export default function StopPaymentConfirmation() {
     // Error state with auto-redirect
     if (error && !stopPaymentData.id) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -248,7 +248,7 @@ export default function StopPaymentConfirmation() {
     // Success state after cancellation
     if (successMessage) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
@@ -287,49 +287,51 @@ export default function StopPaymentConfirmation() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full">
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                    {/* Header with Language Switcher */}
-                    <div className="bg-fuchsia-700 text-white p-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white/20 p-2 rounded-lg">
-                                    <FileText className="h-5 w-5 text-white" />
+                    {/* Header with softer gradient */}
+                    <header className="bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-lg">
+                                        <FileText className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold">
+                                            {isRevoke 
+                                                ? t('revokeStopPaymentConfirmation', 'Revoke Stop Payment Confirmation')
+                                                : t('stopPaymentConfirmation', 'Stop Payment Confirmation')
+                                            }
+                                        </h1>
+                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>{branchName}</span>
+                                            <span>•</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h1 className="text-lg font-bold">
-                                        {isRevoke 
-                                            ? t('revokeStopPaymentConfirmation', 'Revoke Stop Payment Confirmation')
-                                            : t('stopPaymentConfirmation', 'Stop Payment Confirmation')
-                                        }
-                                    </h1>
-                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-                                        <MapPin className="h-3 w-3" />
-                                        <span>{branchName}</span>
-                                        <span>•</span>
-                                        <Calendar className="h-3 w-3" />
-                                        <span>{new Date().toLocaleDateString()}</span>
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                        📱 {phone}
+                                    </div>
+                                    <div className="bg-white/20 rounded p-1">
+                                        <LanguageSwitcher />
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
-                                    📱 {phone}
-                                </div>
-                                <div className="bg-white/20 rounded p-1">
-                                    <LanguageSwitcher />
-                                </div>
-                            </div>
                         </div>
-                    </div>
+                    </header>
 
                     {/* Main Content */}
                     <div ref={componentToPrintRef} className="p-4">
                         {/* Success Icon */}
                         <div className="text-center py-4">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
-                                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-amber-600" />
                             </div>
                             <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
                             <p className="text-gray-600 text-sm">
@@ -340,9 +342,9 @@ export default function StopPaymentConfirmation() {
                             </p>
                         </div>
 
-                        {/* Reference ID Card */}
+                        {/* Reference ID Card with improved colors */}
                         <div className="mb-4">
-                            <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-4 rounded-lg text-center text-white">
+                            <div className="bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 p-4 rounded-lg text-center text-white shadow-sm">
                                 <div className="flex items-center justify-center gap-2 mb-2">
                                     <Shield className="h-4 w-4" />
                                     <span className="text-sm font-medium">
@@ -360,10 +362,10 @@ export default function StopPaymentConfirmation() {
                             </div>
                         </div>
 
-                        {/* Transaction Summary */}
+                        {/* Transaction Summary with softer background */}
                         <div className="mb-4">
-                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                            <div className="bg-amber-25 rounded-lg p-4 border border-amber-200 shadow-sm">
+                                <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
                                     <FileText className="h-4 w-4" />
                                     {isRevoke 
                                         ? t('revocationSummary', 'Revocation Summary')
@@ -371,75 +373,75 @@ export default function StopPaymentConfirmation() {
                                     }
                                 </h3>
                                 <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <User className="h-3 w-3" />
                                             {t('customerName', 'Customer Name')}:
                                         </span>
                                         <span className="font-semibold text-right">{stopPaymentData.customerName || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <CreditCard className="h-3 w-3" />
                                             {t('accountNumber', 'Account Number')}:
                                         </span>
                                         <span className="font-mono font-semibold">{stopPaymentData.accountNumber || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <FileText className="h-3 w-3" />
                                             {t('chequeNumber', 'Cheque Number')}:
                                         </span>
                                         <span className="font-mono font-semibold">{stopPaymentData.chequeNumber || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <DollarSign className="h-3 w-3" />
                                             {t('chequeAmount', 'Cheque Amount')}:
                                         </span>
-                                        <span className="font-semibold text-fuchsia-700">
+                                        <span className="font-semibold text-amber-700">
                                             {stopPaymentData.chequeAmount != null 
                                                 ? `${Number(stopPaymentData.chequeAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` 
                                                 : 'N/A'}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <Calendar className="h-3 w-3" />
                                             {t('chequeDate', 'Cheque Date')}:
                                         </span>
-                                        <span>
+                                        <span className="text-amber-700">
                                             {stopPaymentData.chequeDate 
                                                 ? new Date(stopPaymentData.chequeDate).toLocaleDateString()
                                                 : 'N/A'
                                             }
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-start py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-start py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <AlertCircle className="h-3 w-3" />
                                             {t('reason', 'Reason')}:
                                         </span>
-                                        <span className="text-right max-w-xs">{stopPaymentData.reason || 'N/A'}</span>
+                                        <span className="text-right max-w-xs text-amber-700">{stopPaymentData.reason || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <Building className="h-3 w-3" />
                                             {t('branch', 'Branch')}:
                                         </span>
-                                        <span>{branchName}</span>
+                                        <span className="text-amber-700">{branchName}</span>
                                     </div>
                                     {stopPaymentData.frontMakerName && (
-                                        <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700 flex items-center gap-1">
+                                        <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                            <span className="font-medium text-amber-800 flex items-center gap-1">
                                                 <User className="h-3 w-3" />
                                                 {t('processedBy', 'Processed By')}:
                                             </span>
-                                            <span>{stopPaymentData.frontMakerName}</span>
+                                            <span className="text-amber-700">{stopPaymentData.frontMakerName}</span>
                                         </div>
                                     )}
                                     <div className="flex justify-between items-center py-1">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             {getStatusIcon(stopPaymentData.status || '')}
                                             {t('status', 'Status')}:
                                         </span>
@@ -468,24 +470,24 @@ export default function StopPaymentConfirmation() {
                         </div>
 
                         {/* Thank You Message */}
-                        <div className="text-center pt-3 border-t border-gray-200">
-                            <p className="text-gray-600 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+                        <div className="text-center pt-3 border-t border-amber-200">
+                            <p className="text-amber-700 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="p-4 border-t border-gray-200 no-print">
+                    {/* Action Buttons with improved colors */}
+                    <div className="p-4 border-t border-amber-200 no-print">
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={handleNewStopPayment}
-                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-amber-500 hover:bg-amber-600 text-white px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 <RefreshCw className="h-3 w-3" />
                                 {t('newRequest', 'New Request')}
                             </button>
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-800 px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 <Printer className="h-3 w-3" />
                                 {t('print', 'Print')}
@@ -495,7 +497,7 @@ export default function StopPaymentConfirmation() {
                             <button
                                 onClick={() => setShowCancelModal(true)}
                                 disabled={isCancelling || stopPaymentData.status !== 'Pending'}
-                                className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-rose-500 hover:bg-rose-600 text-white px-2 py-2 rounded-lg disabled:opacity-50 font-medium transition-colors"
                                 title={stopPaymentData.status !== 'Pending' ? t('onlyPendingCanCancel', 'Only pending requests can be cancelled') : ''}
                             >
                                 <X className="h-3 w-3" />
@@ -536,7 +538,7 @@ export default function StopPaymentConfirmation() {
                                     >
                                         <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                                             <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
-                                                <AlertCircle className="h-5 w-5 text-red-500" />
+                                                <AlertCircle className="h-5 w-5 text-amber-500" />
                                                 {t('confirmCancellation', 'Confirm Cancellation')}
                                             </Dialog.Title>
                                             <div className="mt-4">
@@ -548,7 +550,7 @@ export default function StopPaymentConfirmation() {
                                             <div className="mt-6 flex justify-end gap-3">
                                                 <button
                                                     type="button"
-                                                    className="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
+                                                    className="inline-flex justify-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"
                                                     onClick={() => setShowCancelModal(false)}
                                                     disabled={isCancelling}
                                                 >
@@ -556,7 +558,7 @@ export default function StopPaymentConfirmation() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                                                    className="inline-flex justify-center rounded-lg border border-transparent bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
                                                     onClick={handleCancel}
                                                     disabled={isCancelling}
                                                 >

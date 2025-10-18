@@ -47,10 +47,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
         !!current.beneficiaryAccountNumber
     );
 
-
     const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
-    const [showServices, setShowServices] = useState(false);
-
 
     // Served count
     const [totalServed, setTotalServed] = useState(0);
@@ -59,6 +56,9 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showFormRefModal, setShowFormRefModal] = useState(false);
     const [showDenomModal, setShowDenomModal] = useState(false);
+
+    const [priorityCount, setPriorityCount] = useState(0);
+
 
     const [denomForm, setDenomForm] = useState<{
         formReferenceId: string;
@@ -164,9 +164,24 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
         }
     };
 
+    const refreshPriorityCount = async () => {
+        if (!token || !decoded?.BranchId || !decoded?.nameid) return;
+        try {
+            const res = await makerService.getPriorityCount(decoded.BranchId, decoded.nameid, token);
+            if (typeof res === "number") setPriorityCount(res);
+        } catch (err) {
+            console.error("Error fetching priority count:", err);
+        }
+    };
+
+
     useEffect(() => {
         if (decoded?.BranchId) void refreshQueue();
     }, [decoded?.BranchId]);
+
+    useEffect(() => {
+        if (decoded?.BranchId && decoded?.nameid) void refreshPriorityCount();
+    }, [decoded?.BranchId, decoded?.nameid]);
 
     /** Stats */
     const stats = useMemo(() => {
@@ -239,7 +254,8 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
                 // Join group with Branch id
                 await connection.invoke('JoinBranchCustomersQueueGroup', decoded.BranchId);
-
+                await connection.invoke('JoinMakerPriorityGroup', decoded.nameid);
+                console.log(`Joined SignalR groups for Branch: ${decoded.BranchId} and Maker: ${decoded.nameid}`); 
                 // Listen for messages
                 connection.on('NewCustomer', (data: any) => {
                     console.log('New customer notification received:', data);
@@ -250,6 +266,13 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                     );
                     void refreshQueue();
                 });
+
+                // ✅ Listen for PriorityUpdated notifications
+                connection.on('PriorityUpdated', async (data: any) => {
+                    console.log('Priority update notification:', data);
+                    await refreshPriorityCount(); // function we’ll define below
+                });
+
             } catch (error) {
                 console.error('SignalR connection failed:', error);
             }
@@ -398,12 +421,12 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             {/* Action Message */}
             {actionMessage && (
                 <div className={`rounded-lg p-4 mb-6 border-l-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 ${actionMessage.type === 'success'
-                        ? 'bg-green-50 border-green-500 text-green-800'
-                        : actionMessage.type === 'error'
-                            ? 'bg-red-50 border-red-500 text-red-800'
-                            : actionMessage.type === 'warning'
-                                ? 'bg-amber-50 border-amber-500 text-amber-800'
-                                : 'bg-blue-50 border-blue-500 text-blue-800'
+                    ? 'bg-green-50 border-green-500 text-green-800'
+                    : actionMessage.type === 'error'
+                        ? 'bg-red-50 border-red-500 text-red-800'
+                        : actionMessage.type === 'warning'
+                            ? 'bg-amber-50 border-amber-500 text-amber-800'
+                            : 'bg-blue-50 border-blue-500 text-blue-800'
                     }`}>
                     <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
@@ -481,14 +504,28 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
             {/* Actions */}
             <section className="flex flex-wrap gap-3">
-                <button
+                {/* <button
                     onClick={handleCallNext}
                     disabled={!assignedWindow || busyAction === "calling"}
                     className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold px-6 py-3 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                     <FontAwesomeIcon icon={faDoorOpen} />
                     {busyAction === "calling" ? "Calling…" : "Call Next Customer"}
+                </button> */}
+
+                <button
+                    onClick={handleCallNext}
+                    disabled={!assignedWindow || busyAction === "calling" || priorityCount > 0}
+                    className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold px-6 py-3 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                    <FontAwesomeIcon icon={faDoorOpen} />
+                    {busyAction === "calling"
+                        ? "Calling…"
+                        : priorityCount > 0
+                            ? `Waiting ${priorityCount} Priority`
+                            : "Call Next Customer"}
                 </button>
+
 
                 <button
                     onClick={() => setShowFormRefModal(true)}
@@ -496,13 +533,11 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 >
                     Search by Form Ref ID
                 </button>
+                <span className="px-4 py-3 bg-yellow-50 border border-yellow-300 text-yellow-700 rounded-lg font-medium">
+                    Priority: {priorityCount}
+                </span>
 
-                <button
-                    onClick={() => setShowServices((prev) => !prev)}
-                    className="px-6 py-3 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm transition-all font-medium"
-                >
-                    {showServices ? "Hide Services" : "Other Services"}
-                </button>
+
             </section>
 
             {/* Queue */}
@@ -533,10 +568,10 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                                 <div className="flex items-center justify-between mb-3">
                                     <span
                                         className={`text-xs font-semibold px-3 py-1 rounded-full ${q.transactionType === "Deposit"
-                                                ? "bg-blue-100 text-blue-700"
-                                                : q.transactionType === "Withdrawal"
-                                                    ? "bg-amber-100 text-amber-700"
-                                                    : "bg-purple-100 text-purple-700"
+                                            ? "bg-blue-100 text-blue-700"
+                                            : q.transactionType === "Withdrawal"
+                                                ? "bg-amber-100 text-amber-700"
+                                                : "bg-purple-100 text-purple-700"
                                             }`}
                                     >
                                         {q.transactionType}

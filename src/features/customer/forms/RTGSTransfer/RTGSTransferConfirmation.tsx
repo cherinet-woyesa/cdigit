@@ -215,7 +215,7 @@ export default function RTGSTransferConfirmation() {
     // Loading state
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-2xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-700 mx-auto mb-4"></div>
@@ -229,7 +229,7 @@ export default function RTGSTransferConfirmation() {
     // Error state
     if (error && !data.formReferenceId) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-2xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
@@ -258,56 +258,58 @@ export default function RTGSTransferConfirmation() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full">
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                    {/* Header with Language Switcher */}
-                    <div className="bg-fuchsia-700 text-white p-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white/20 p-2 rounded-lg">
-                                    <Plane className="h-5 w-5 text-white" />
+                    {/* Header with softer gradient */}
+                    <header className="bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-lg">
+                                        <Plane className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold">{t('rtgsConfirmation', 'RTGS Transfer Confirmation')}</h1>
+                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>{data.branchName || branch?.name || t('selectedBranch', 'Selected Branch')}</span>
+                                            <span>•</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h1 className="text-lg font-bold">{t('rtgsConfirmation', 'RTGS Transfer Confirmation')}</h1>
-                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-                                        <MapPin className="h-3 w-3" />
-                                        <span>{data.branchName || branch?.name || t('selectedBranch', 'Selected Branch')}</span>
-                                        <span>•</span>
-                                        <Calendar className="h-3 w-3" />
-                                        <span>{new Date().toLocaleDateString()}</span>
+                                
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                        📱 {phone}
+                                    </div>
+                                    <div className="bg-white/20 rounded p-1">
+                                        <LanguageSwitcher />
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div className="flex items-center gap-3">
-                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
-                                    📱 {phone}
-                                </div>
-                                <div className="bg-white/20 rounded p-1">
-                                    <LanguageSwitcher />
-                                </div>
-                            </div>
                         </div>
-                    </div>
+                    </header>
 
                     {/* Main Content */}
                     <div ref={componentToPrintRef} className="p-4">
                         {/* Success Icon */}
                         <div className="text-center py-4">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
-                                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-3">
+                                <CheckCircle2 className="h-10 w-10 text-amber-600" />
                             </div>
                             <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
                             <p className="text-gray-600 text-sm">{t('transferSubmitted', 'Your RTGS transfer has been submitted.')}</p>
                         </div>
 
-                        {/* Queue and Token Cards */}
+                        {/* Queue and Token Cards with improved colors */}
                         {(data.queueNumber || data.tokenNumber) && (
                             <div className="mb-4">
                                 <div className="grid grid-cols-2 gap-3">
                                     {data.queueNumber && (
-                                        <div className="bg-gradient-to-r from-fuchsia-600 to-purple-600 p-3 rounded-lg text-center text-white">
+                                        <div className="bg-gradient-to-r from-amber-300 to-amber-400 p-3 rounded-lg text-center text-amber-900 shadow-sm">
                                             <div className="flex items-center justify-center gap-1 mb-1">
                                                 <MapPin className="h-3 w-3" />
                                                 <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
@@ -316,7 +318,7 @@ export default function RTGSTransferConfirmation() {
                                         </div>
                                     )}
                                     {data.tokenNumber && data.tokenNumber !== 'N/A' && (
-                                        <div className="bg-gradient-to-r from-fuchsia-700 to-pink-700 p-3 rounded-lg text-center text-white">
+                                        <div className="bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 p-3 rounded-lg text-center text-white shadow-sm">
                                             <div className="flex items-center justify-center gap-1 mb-1">
                                                 <CreditCard className="h-3 w-3" />
                                                 <span className="text-xs font-medium">{t('token', 'Token')}</span>
@@ -328,67 +330,67 @@ export default function RTGSTransferConfirmation() {
                             </div>
                         )}
 
-                        {/* Transaction Summary */}
+                        {/* Transaction Summary with softer background */}
                         <div className="mb-4">
-                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                <h3 className="text-md font-bold text-fuchsia-700 mb-3 flex items-center gap-2">
+                            <div className="bg-amber-25 rounded-lg p-4 border border-amber-200 shadow-sm">
+                                <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
                                     <DollarSign className="h-4 w-4" />
                                     {t('transactionSummary', 'Transaction Summary')}
                                 </h3>
                                 <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <CreditCard className="h-3 w-3" />
                                             {t('referenceNumber', 'Reference')}:
                                         </span>
                                         <span className="font-mono font-semibold">{data.formReferenceId || 'Pending'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <User className="h-3 w-3" />
                                             {t('customer', 'Customer')}:
                                         </span>
                                         <span className="text-right font-semibold">{data.orderingCustomerName || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <CreditCard className="h-3 w-3" />
                                             {t('fromAccount', 'From Account')}:
                                         </span>
                                         <span className="font-mono font-semibold">{data.orderingAccountNumber || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <User className="h-3 w-3" />
                                             {t('beneficiary', 'Beneficiary')}:
                                         </span>
                                         <span className="font-semibold">{data.beneficiaryName || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <CreditCard className="h-3 w-3" />
                                             {t('toAccount', 'To Account')}:
                                         </span>
                                         <span className="font-mono font-semibold">{data.beneficiaryAccountNumber || 'N/A'}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <Building className="h-3 w-3" />
                                             {t('bankBranch', 'Bank/Branch')}:
                                         </span>
                                         <span className="text-right">{data.beneficiaryBank || 'N/A'}{data.beneficiaryBranch ? ` / ${data.beneficiaryBranch}` : ''}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <DollarSign className="h-3 w-3" />
                                             {t('amount', 'Amount')}:
                                         </span>
-                                        <span className="text-lg font-bold text-fuchsia-700">
+                                        <span className="text-lg font-bold text-amber-700">
                                             {data.transferAmount ? `${data.transferAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` : 'N/A'}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <Clock className="h-3 w-3" />
                                             {t('status', 'Status')}:
                                         </span>
@@ -402,37 +404,37 @@ export default function RTGSTransferConfirmation() {
                                         </span>
                                     </div>
                                     {data.paymentNarrative && (
-                                        <div className="flex justify-between items-start py-1 border-t border-gray-200 mt-2 pt-2">
-                                            <span className="font-medium text-gray-700 flex items-center gap-1">
+                                        <div className="flex justify-between items-start py-1 border-t border-amber-100 mt-2 pt-2">
+                                            <span className="font-medium text-amber-800 flex items-center gap-1">
                                                 <FileText className="h-3 w-3" />
                                                 {t('narrative', 'Narrative')}:
                                             </span>
                                             <span className="text-right text-sm max-w-xs">{data.paymentNarrative}</span>
                                         </div>
                                     )}
-                                    <div className="flex justify-between items-center py-1 border-t border-gray-200 mt-2 pt-2">
-                                        <span className="font-medium text-gray-700 flex items-center gap-1">
+                                    <div className="flex justify-between items-center py-1 border-t border-amber-100 mt-2 pt-2">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
                                             <Calendar className="h-3 w-3" />
                                             {t('submittedAt', 'Submitted')}:
                                         </span>
-                                        <span className="text-sm text-gray-500">{formatDate(data.submittedAt)}</span>
+                                        <span className="text-sm text-amber-600">{formatDate(data.submittedAt)}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Thank You Message */}
-                        <div className="text-center pt-3 border-t border-gray-200">
-                            <p className="text-gray-600 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+                        <div className="text-center pt-3 border-t border-amber-200">
+                            <p className="text-amber-700 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="p-4 border-t border-gray-200 no-print">
+                    {/* Action Buttons with improved colors */}
+                    <div className="p-4 border-t border-amber-200 no-print">
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={handleNewTransfer}
-                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-700 text-white px-2 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-amber-500 hover:bg-amber-600 text-white px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 <RefreshCw className="h-3 w-3" />
                                 {t('newTransfer', 'New')}
@@ -440,7 +442,7 @@ export default function RTGSTransferConfirmation() {
                             
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center justify-center gap-1 w-full bg-gray-200 text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-300 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-800 px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 <Printer className="h-3 w-3" />
                                 {t('print', 'Print')}
@@ -453,7 +455,7 @@ export default function RTGSTransferConfirmation() {
                                 <button
                                     onClick={() => setShowCancelModal(true)}
                                     disabled={submitting}
-                                    className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                                    className="flex items-center justify-center gap-1 w-full bg-rose-500 hover:bg-rose-600 text-white px-2 py-2 rounded-lg disabled:opacity-50 font-medium transition-colors"
                                 >
                                     <X className="h-3 w-3" />
                                     {submitting ? t('cancelling', 'Cancelling...') : t('cancel', 'Cancel')}
@@ -465,7 +467,7 @@ export default function RTGSTransferConfirmation() {
                         <div className="mt-2">
                             <button
                                 onClick={handleBackToDashboard}
-                                className="flex items-center justify-center gap-1 w-full border border-gray-300 text-gray-700 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium"
+                                className="flex items-center justify-center gap-1 w-full border border-amber-300 text-amber-700 hover:bg-amber-50 px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 {t('backToDashboard', 'Back to Dashboard')}
                             </button>
@@ -520,7 +522,7 @@ export default function RTGSTransferConfirmation() {
                                         <div className="mt-6 flex justify-end gap-3">
                                             <button
                                                 type="button"
-                                                className="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 disabled:opacity-50"
+                                                className="inline-flex justify-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"
                                                 onClick={() => setShowCancelModal(false)}
                                                 disabled={submitting}
                                             >
@@ -528,7 +530,7 @@ export default function RTGSTransferConfirmation() {
                                             </button>
                                             <button
                                                 type="button"
-                                                className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+                                                className="inline-flex justify-center rounded-lg border border-transparent bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
                                                 onClick={handleCancelTransfer}
                                                 disabled={submitting}
                                             >

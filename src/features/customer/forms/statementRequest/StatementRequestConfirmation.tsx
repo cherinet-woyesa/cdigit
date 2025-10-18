@@ -1,11 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Printer, ArrowLeft, Mail, FileText } from 'lucide-react';
+import { useAuth } from '../../../../context/AuthContext'; // Add for phone number
+import { useBranch } from '../../../../context/BranchContext'; // Add for branch info
+import { CheckCircle2, Printer, RefreshCw, ChevronRight, MapPin, User, Hash, Calendar, Clock, FileText, Mail, CreditCard } from 'lucide-react';
 import { type StatementRequestData } from '../../../../services/statementService';
 
 const StatementRequestConfirmation: React.FC = () => {
   const { t } = useTranslation();
+  const { phone } = useAuth(); // Get phone for header
+  const { branch } = useBranch(); // Get branch info
   const navigate = useNavigate();
   const { state } = useLocation();
   
@@ -19,7 +23,10 @@ const StatementRequestConfirmation: React.FC = () => {
     }
   }, [request, navigate]);
   
-  // Handle print (moved to below for printRef support)
+  // Handle print
+  const handlePrint = () => {
+    window.print();
+  };
   
   // Format date
   const formatDate = (dateString: string) => {
@@ -27,6 +34,14 @@ const StatementRequestConfirmation: React.FC = () => {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
+  // Format time only
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -57,144 +72,161 @@ const StatementRequestConfirmation: React.FC = () => {
   if (!request) {
     return null;
   }
-  
-  // For print support
-  const printRef = useRef<HTMLDivElement>(null);
-  const handlePrint = () => {
-    if (window) window.print();
-  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-4 sm:p-6 print-confirmation">
-      <div ref={printRef} className="max-w-2xl w-full bg-white p-4 sm:p-6 rounded-lg shadow-lg print:shadow-none">
-        <div className="mb-6 bg-fuchsia-700 text-white p-4 rounded-lg shadow-lg text-center">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Statement Request Confirmation</h1>
-        </div>
-        <div className="text-center mb-4">
-          <CheckCircle2 className="h-14 w-14 mx-auto text-green-500" />
-          <h1 className="text-xl font-extrabold text-fuchsia-800 mt-2">Success!</h1>
-          <p className="text-gray-600 text-sm">Your statement request has been submitted.</p>
-        </div>
-        
-        {/* Request Summary */}
-        <div className="border border-gray-200 rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-4 pb-2 border-b text-fuchsia-700">Request Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <p className="text-sm text-gray-500">Reference Number</p>
-              <p className="font-medium">{request.formRefId}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Date & Time</p>
-              <p className="font-medium">{formatDate(request.date)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Branch</p>
-              <p className="font-medium">{request.branchName}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Customer Name</p>
-              <p className="font-medium">{request.customerName}</p>
-            </div>
-          </div>
-          <div className="mb-6">
-            <h3 className="font-medium mb-2 text-fuchsia-700">Selected Accounts</h3>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <ul className="space-y-2">
-                {request.accountNumbers.map((accountNumber, index) => (
-                  <li key={index} className="flex items-center">
-                    <FileText className="h-4 w-4 text-gray-400 mr-2" />
-                    <span className="font-mono">{maskAccountNumber(accountNumber)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium mb-2 text-fuchsia-700">Statement Frequency</h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p>{formatFrequency(request.statementFrequency)}</p>
+    <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4 print:bg-white">
+      <div className="max-w-2xl w-full">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Header with softer gradient */}
+          <header className="bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white">
+            <div className="px-6 py-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-2 rounded-lg">
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold">{t('statementRequestConfirmation', 'Statement Request Confirmation')}</h1>
+                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                      <MapPin className="h-3 w-3" />
+                      <span>{branch?.name || request.branchName || t('branch', 'Branch')}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                    📱 {phone}
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <h3 className="font-medium mb-2 text-fuchsia-700">Email Address(es)</h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <ul className="space-y-1">
-                  {request.emailAddresses.map((email, index) => (
-                    <li key={index} className="flex items-center">
-                      <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                      <span>{email}</span>
-                    </li>
-                  ))}
-                </ul>
+          </header>
+
+          {/* Main Content */}
+          <div className="p-4">
+            {/* Success Icon */}
+            <div className="text-center py-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-3">
+                <CheckCircle2 className="h-10 w-10 text-amber-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
+              <p className="text-gray-600 text-sm">{t('requestSubmitted', 'Your statement request has been submitted.')}</p>
+            </div>
+
+            {/* Queue and Token Cards with improved colors */}
+            <div className="mb-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gradient-to-r from-amber-300 to-amber-400 p-3 rounded-lg text-center text-amber-900 shadow-sm">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <Hash className="h-3 w-3" />
+                    <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
+                  </div>
+                  <p className="text-2xl font-bold">{request.queueNumber || 'N/A'}</p>
+                </div>
+                <div className="bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 p-3 rounded-lg text-center text-white shadow-sm">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <CreditCard className="h-3 w-3" />
+                    <span className="text-xs font-medium">{t('token', 'Token')}</span>
+                  </div>
+                  <p className="text-2xl font-bold">{request.tokenNumber || 'N/A'}</p>
+                </div>
               </div>
             </div>
+
+            {/* Transaction Summary with softer background */}
+            <div className="mb-4">
+              <div className="bg-amber-25 rounded-lg p-4 border border-amber-200 shadow-sm">
+                <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  {t('requestDetails', 'Request Details')}
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                    <span className="font-medium text-amber-800 flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {t('customerName', 'Customer Name')}:
+                    </span>
+                    <span className="font-semibold text-right">{request.customerName}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                    <span className="font-medium text-amber-800 flex items-center gap-1">
+                      <CreditCard className="h-3 w-3" />
+                      {t('accountNumber', 'Account Number')}:
+                    </span>
+                    <span className="font-mono font-semibold">{maskAccountNumber(request.accountNumbers[0])}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                    <span className="font-medium text-amber-800 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {t('branch', 'Branch')}:
+                    </span>
+                    <span>{branch?.name || request.branchName}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                    <span className="font-medium text-amber-800 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {t('statementFrequency', 'Statement Frequency')}:
+                    </span>
+                    <span>{formatFrequency(request.statementFrequency)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="font-medium text-amber-800 flex items-center gap-1">
+                      <Mail className="h-3 w-3" />
+                      {t('emailAddresses', 'Email Address(es)')}:
+                    </span>
+                    <span className="text-right break-all">{request.emailAddresses.join(', ')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Thank You Message */}
+            <div className="text-center pt-3 border-t border-amber-200">
+              <p className="text-amber-700 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
+            </div>
           </div>
-        </div>
-        
-        {/* Next Steps */}
-        <div className="bg-fuchsia-50 p-4 rounded-lg mb-8">
-          <h3 className="font-medium text-fuchsia-800 mb-2">What happens next?</h3>
-          <p className="text-fuchsia-700 text-sm">
-            Your statement request has been submitted successfully. Your {formatFrequency(request.statementFrequency).toLowerCase()} 
-            statements will be delivered to the registered email address(es) as per your selected frequency. 
-            Please allow up to 24 hours for the changes to take effect.
-          </p>
-        </div>
-        
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-4">
-          <button
-            onClick={() => navigate('/customer/dashboard')}
-            className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-fuchsia-700 bg-white hover:bg-fuchsia-50 font-semibold"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </button>
-          <div className="space-x-3">
-            <button
-              onClick={handlePrint}
-              className="flex items-center justify-center px-4 py-2 border border-fuchsia-700 rounded-md text-fuchsia-700 bg-white hover:bg-fuchsia-50 font-semibold"
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Print Receipt
-            </button>
-            <button
-              onClick={() => navigate('/form/statement-request')}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-fuchsia-700 hover:bg-fuchsia-800 font-semibold"
-            >
-              New Request
-            </button>
+
+          {/* Action Buttons with improved colors */}
+          <div className="p-4 border-t border-amber-200 print:hidden">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => navigate('/customer/dashboard')}
+                className="flex items-center justify-center gap-1 w-full bg-amber-500 hover:bg-amber-600 text-white px-2 py-2 rounded-lg font-medium transition-colors"
+              >
+                <ChevronRight className="h-3 w-3 rotate-180" />
+                {t('dashboard', 'Dashboard')}
+              </button>
+              
+              <button
+                onClick={handlePrint}
+                className="flex items-center justify-center gap-1 w-full bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-800 px-2 py-2 rounded-lg font-medium transition-colors"
+              >
+                <Printer className="h-3 w-3" />
+                {t('print', 'Print')}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button
+                onClick={() => navigate('/form/statement-request/list')}
+                className="flex items-center justify-center gap-1 w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-2 py-2 rounded-lg font-medium transition-colors"
+              >
+                <FileText className="h-3 w-3" />
+                {t('viewHistory', 'History')}
+              </button>
+              
+              <button
+                onClick={() => navigate('/form/statement-request')}
+                className="flex items-center justify-center gap-1 w-full bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-2 rounded-lg font-medium transition-colors"
+              >
+                <RefreshCw className="h-3 w-3" />
+                {t('newRequest', 'New Request')}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-      
-      {/* Print-only styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print-confirmation,
-          .print-confirmation * {
-            visibility: visible;
-          }
-          .print-confirmation {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            padding: 0;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print\:shadow-none {
-            box-shadow: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

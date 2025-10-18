@@ -19,3 +19,8 @@ export async function getAccountTypes(): Promise<AccountType[]> {
     if (!payload.success) throw new Error(payload.message || 'Failed to fetch account types');
     return payload.data || [];
 }
+
+// Function to check if an account type is a Diaspora account
+export function isDiasporaAccount(accountType: string): boolean {
+    return accountType.toLowerCase() === 'diaspora';
+}

@@ -144,35 +144,37 @@ export default function FundTransferConfirmation() {
         <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full">
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                    {/* Header */}
-                    <div className="bg-fuchsia-700 text-white p-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white/20 p-2 rounded-lg">
-                                    <ArrowRightLeft className="h-5 w-5 text-white" />
+                    {/* Header with softer gradient */}
+                    <header className="bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white">
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-lg">
+                                        <ArrowRightLeft className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold">{t('fundTransferConfirmation', 'Fund Transfer Confirmation')}</h1>
+                                        <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>{branchName}</span>
+                                            <span>•</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{new Date().toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h1 className="text-lg font-bold">{t('fundTransferConfirmation', 'Fund Transfer Confirmation')}</h1>
-                                    <div className="flex items-center gap-2 text-fuchsia-100 text-xs mt-1">
-                                        <MapPin className="h-3 w-3" />
-                                        <span>{branchName}</span>
-                                        <span>•</span>
-                                        <Calendar className="h-3 w-3" />
-                                        <span>{new Date().toLocaleDateString()}</span>
+                                
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
+                                        📱 {phone}
+                                    </div>
+                                    <div className="bg-white/20 rounded p-1">
+                                        <LanguageSwitcher />
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div className="flex items-center gap-3">
-                                <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">
-                                    📱 {phone}
-                                </div>
-                                <div className="bg-white/20 rounded p-1">
-                                    <LanguageSwitcher />
-                                </div>
-                            </div>
                         </div>
-                    </div>
+                    </header>
 
                     {/* Main Content */}
                     <div ref={componentToPrintRef} className="p-4">
@@ -185,17 +187,17 @@ export default function FundTransferConfirmation() {
                             <p className="text-gray-600 text-sm">{t('transferSubmitted', 'Your fund transfer has been submitted.')}</p>
                         </div>
 
-                        {/* Queue and Token Cards */}
+                        {/* Queue and Token Cards with improved colors */}
                         <div className="mb-4">
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gradient-to-r from-amber-400 to-amber-500 p-3 rounded-lg text-center text-amber-900">
+                                <div className="bg-gradient-to-r from-amber-300 to-amber-400 p-3 rounded-lg text-center text-amber-900 shadow-sm">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <MapPin className="h-3 w-3" />
                                         <span className="text-xs font-medium">{t('queueNumber', 'Queue #')}</span>
                                     </div>
                                     <p className="text-2xl font-bold">{queueNumber}</p>
                                 </div>
-                                <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-3 rounded-lg text-center text-white">
+                                <div className="bg-gradient-to-r from-fuchsia-500 to-fuchsia-600 p-3 rounded-lg text-center text-white shadow-sm">
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <CreditCard className="h-3 w-3" />
                                         <span className="text-xs font-medium">{t('token', 'Token')}</span>
@@ -205,28 +207,40 @@ export default function FundTransferConfirmation() {
                             </div>
                         </div>
 
-                        {/* Transaction Summary */}
+                        {/* Transaction Summary with softer background */}
                         <div className="mb-4">
-                            <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                            <div className="bg-amber-25 rounded-lg p-4 border border-amber-200 shadow-sm">
                                 <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
                                     <DollarSign className="h-4 w-4" />
                                     {t('transactionSummary', 'Transaction Summary')}
                                 </h3>
                                 <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
-                                        <span className="font-medium text-amber-800">{t('fromAccount', 'From Account')}:</span>
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
+                                            <CreditCard className="h-3 w-3" />
+                                            {t('debitAccount', 'Debit Account')}:
+                                        </span>
                                         <span className="font-mono font-semibold">{debitAccount}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
-                                        <span className="font-medium text-amber-800">{t('toAccount', 'To Account')}:</span>
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
+                                            <CreditCard className="h-3 w-3" />
+                                            {t('creditAccount', 'Credit Account')}:
+                                        </span>
                                         <span className="font-mono font-semibold">{creditAccount}</span>
                                     </div>
-                                    <div className="flex justify-between items-center py-1 border-b border-amber-200">
-                                        <span className="font-medium text-amber-800">{t('branch', 'Branch')}:</span>
+                                    <div className="flex justify-between items-center py-1 border-b border-amber-100">
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
+                                            <Building className="h-3 w-3" />
+                                            {t('branch', 'Branch')}:
+                                        </span>
                                         <span>{branchName}</span>
                                     </div>
                                     <div className="flex justify-between items-center py-1">
-                                        <span className="font-medium text-amber-800">{t('amount', 'Amount')}:</span>
+                                        <span className="font-medium text-amber-800 flex items-center gap-1">
+                                            <DollarSign className="h-3 w-3" />
+                                            {t('amount', 'Amount')}:
+                                        </span>
                                         <span className="text-lg font-bold text-amber-700">{amount}</span>
                                     </div>
                                 </div>
@@ -239,12 +253,12 @@ export default function FundTransferConfirmation() {
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Action Buttons with improved colors */}
                     <div className="p-4 border-t border-amber-200 no-print">
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={handleNewTransfer}
-                                className="flex items-center justify-center gap-1 w-full bg-amber-400 text-amber-900 px-2 py-2 rounded-lg hover:bg-amber-500 font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-amber-500 hover:bg-amber-600 text-white px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 <RefreshCw className="h-3 w-3" />
                                 {t('newTransfer', 'New')}
@@ -252,19 +266,20 @@ export default function FundTransferConfirmation() {
                             
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center justify-center gap-1 w-full bg-amber-200 text-amber-800 px-2 py-2 rounded-lg hover:bg-amber-300 font-medium"
+                                className="flex items-center justify-center gap-1 w-full bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-800 px-2 py-2 rounded-lg font-medium transition-colors"
                             >
                                 <Printer className="h-3 w-3" />
                                 {t('print', 'Print')}
                             </button>
                         </div>
 
+                        {/* Update and Cancel Buttons - Only show if entity exists */}
                         {entityId && (
                             <div className="grid grid-cols-2 gap-2 mt-2">
                                 <button
                                     onClick={handleUpdateTransfer}
                                     disabled={submitting}
-                                    className="flex items-center justify-center gap-1 w-full bg-amber-500 text-white px-2 py-2 rounded-lg hover:bg-amber-600 disabled:opacity-50 font-medium"
+                                    className="flex items-center justify-center gap-1 w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white px-2 py-2 rounded-lg disabled:opacity-50 font-medium transition-colors"
                                 >
                                     <RefreshCw className="h-3 w-3" />
                                     {submitting ? t('processing', 'Processing...') : t('update', 'Update')}
@@ -273,7 +288,7 @@ export default function FundTransferConfirmation() {
                                 <button
                                     onClick={() => setShowCancelModal(true)}
                                     disabled={submitting}
-                                    className="flex items-center justify-center gap-1 w-full bg-red-600 text-white px-2 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+                                    className="flex items-center justify-center gap-1 w-full bg-rose-500 hover:bg-rose-600 text-white px-2 py-2 rounded-lg disabled:opacity-50 font-medium transition-colors"
                                 >
                                     <X className="h-3 w-3" />
                                     {t('cancel', 'Cancel')}
@@ -281,6 +296,7 @@ export default function FundTransferConfirmation() {
                             </div>
                         )}
 
+                        {/* Messages */}
                         {error && <ErrorMessage message={error} />}
                         {successMessage && <SuccessMessage message={successMessage} />}
                     </div>
@@ -313,35 +329,41 @@ export default function FundTransferConfirmation() {
                                     leaveTo="opacity-0 scale-95"
                                 >
                                     <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                                        <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2">
-                                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                        <Dialog.Title
+                                            as="h3"
+                                            className="text-lg font-medium leading-6 text-gray-900"
+                                        >
                                             {t('confirmCancellation', 'Confirm Cancellation')}
                                         </Dialog.Title>
-                                        
-                                        <div className="mt-4">
+                                        <div className="mt-2">
                                             <p className="text-sm text-gray-500">
-                                                {t('cancelTransferPrompt', 'Are you sure you want to cancel this fund transfer? This action cannot be undone.')}
+                                                {t('cancelTransferConfirmation', 'Are you sure you want to cancel this fund transfer? This action cannot be undone.')}
                                             </p>
                                         </div>
 
-                                        {error && <ErrorMessage message={error} />}
-
-                                        <div className="mt-6 flex justify-end gap-3">
+                                        <div className="mt-4 flex gap-3">
                                             <button
                                                 type="button"
-                                                className="inline-flex justify-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"
-                                                onClick={() => setShowCancelModal(false)}
                                                 disabled={submitting}
+                                                className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                                                onClick={() => setShowCancelModal(false)}
                                             >
-                                                {t('goBack', 'Go Back')}
+                                                {t('no', 'No')}
                                             </button>
                                             <button
                                                 type="button"
-                                                className="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
-                                                onClick={handleCancelTransfer}
                                                 disabled={submitting}
+                                                className="inline-flex justify-center rounded-md border border-transparent bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 focus:outline-none disabled:opacity-50"
+                                                onClick={handleCancelTransfer}
                                             >
-                                                {submitting ? t('cancelling', 'Cancelling...') : t('yesCancelTransfer', 'Yes, Cancel Transfer')}
+                                                {submitting ? (
+                                                    <span className="flex items-center">
+                                                        <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                                                        {t('processing', 'Processing...')}
+                                                    </span>
+                                                ) : (
+                                                    t('yesCancel', 'Yes, Cancel')
+                                                )}
                                             </button>
                                         </div>
                                     </Dialog.Panel>

@@ -20,7 +20,8 @@ import {
     Calendar,
     Mail,
     Heart,
-    BookOpen
+    BookOpen,
+    Home
 } from 'lucide-react';
 
 // Error message component
@@ -80,7 +81,7 @@ export default function CbeBirrRegistrationForm() {
     
     const [formData, setFormData] = useState<FormData>({
         name: '',
-        phoneNumber: '',
+        phoneNumber: phone || '', // Initialize with phone from AuthContext
         fullName: '',
         fatherName: '',
         grandfatherName: '',
@@ -119,47 +120,171 @@ export default function CbeBirrRegistrationForm() {
         };
     }, [resendTimer]);
 
-    // Step-wise validation
-    const validateStep = (): boolean => {
-        const errs: Errors = {};
+    // Initialize or update phone number when auth context phone changes
+    useEffect(() => {
+        if (phone) {
+            setFormData(prev => ({ ...prev, phoneNumber: phone }));
+        }
+    }, [phone]);
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
         
+        // Update form data without showing real-time validation errors
+        setFormData(prev => ({ ...prev, [name]: value }));
+        
+        // Clear error for this field when user starts typing
+        if (errors[name as keyof Errors]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+    };
+
+    // New function to handle field blur (when user moves away from field)
+    const handleBlur = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        
+        // Apply validation only when user leaves the field
         if (step === 1) {
-            if (!formData.phoneNumber.trim()) errs.phoneNumber = t('phoneNumberRequired', 'Phone number is required');
-            if (!formData.fullName.trim()) errs.fullName = t('fullNameRequired', 'Full name is required');
-            if (!formData.fatherName.trim()) errs.fatherName = t('fatherNameRequired', "Father's name is required");
-            if (!formData.grandfatherName.trim()) errs.grandfatherName = t('grandfatherNameRequired', "Grandfather's name is required");
-            if (!formData.placeOfBirth.trim()) errs.placeOfBirth = t('placeOfBirthRequired', 'Place of birth is required');
-            if (!formData.dateOfBirth) errs.dateOfBirth = t('dateOfBirthRequired', 'Date of birth is required');
+            if (name === 'fullName') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, fullName: t('fullNameRequired', 'First name is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, fullName: t('fullNameTooShort', 'First name is too short') }));
+                }
+            }
+            
+            if (name === 'fatherName') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, fatherName: t('fatherNameRequired', 'Father name is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, fatherName: t('fatherNameTooShort', 'Father name is too short') }));
+                }
+            }
+            
+            if (name === 'grandfatherName') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, grandfatherName: t('grandfatherNameRequired', 'Grandfather name is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, grandfatherName: t('grandfatherNameTooShort', 'Grandfather name is too short') }));
+                }
+            }
+            
+            if (name === 'placeOfBirth') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, placeOfBirth: t('placeOfBirthRequired', 'Place of birth is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, placeOfBirth: t('placeOfBirthTooShort', 'Place of birth is too short') }));
+                }
+            }
+            
+            if (name === 'dateOfBirth') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, dateOfBirth: t('dateOfBirthRequired', 'Date of birth is required') }));
+                } else {
+                    // Check if date is in the future
+                    const selectedDate = new Date(value);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    if (selectedDate > today) {
+                        setErrors(prev => ({ ...prev, dateOfBirth: t('dateOfBirthInFuture', 'Date of birth cannot be in the future') }));
+                    }
+                }
+            }
         }
         
         if (step === 2) {
-            if (!formData.city.trim()) errs.city = t('cityRequired', 'City is required');
-            if (!formData.wereda.trim()) errs.wereda = t('weredaRequired', 'Wereda is required');
-            if (!formData.kebele.trim()) errs.kebele = t('kebeleRequired', 'Kebele is required');
-            if (formData.email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formData.email)) {
-                errs.email = t('invalidEmail', 'Please enter a valid email address');
+            if (name === 'city') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, city: t('cityRequired', 'City is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, city: t('cityTooShort', 'City is too short') }));
+                }
+            }
+            
+            if (name === 'wereda') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, wereda: t('weredaRequired', 'Wereda is required') }));
+                }
+            }
+            
+            if (name === 'kebele') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, kebele: t('kebeleRequired', 'Kebele is required') }));
+                }
+            }
+            
+            if (name === 'email') {
+                if (value.trim() !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                    setErrors(prev => ({ ...prev, email: t('invalidEmail', 'Please enter a valid email address') }));
+                }
             }
         }
         
         if (step === 3) {
-            if (!formData.idNumber.trim()) errs.idNumber = t('idNumberRequired', 'ID number is required');
-            if (!formData.issuedBy.trim()) errs.issuedBy = t('issuedByRequired', 'Issued by is required');
+            if (name === 'idNumber') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, idNumber: t('idNumberRequired', 'ID number is required') }));
+                } else if (value.length < 5) {
+                    setErrors(prev => ({ ...prev, idNumber: t('idNumberTooShort', 'ID number is too short') }));
+                }
+            }
+            
+            if (name === 'issuedBy') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, issuedBy: t('issuedByRequired', 'Issued by is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, issuedBy: t('issuedByTooShort', 'Issued by is too short') }));
+                }
+            }
         }
         
         if (step === 4) {
-            if (!formData.motherName.trim()) errs.motherName = t('motherNameRequired', "Mother's name is required");
-            if (!formData.motherFatherName.trim()) errs.motherFatherName = t('motherFatherNameRequired', "Mother's father name is required");
-            if (!formData.motherGrandfatherName.trim()) errs.motherGrandfatherName = t('motherGrandfatherNameRequired', "Mother's grandfather name is required");
+            if (name === 'motherName') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, motherName: t('motherNameRequired', 'Mother name is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, motherName: t('motherNameTooShort', 'Mother name is too short') }));
+                }
+            }
+            
+            if (name === 'motherFatherName') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, motherFatherName: t('motherFatherNameRequired', 'Mother father name is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, motherFatherName: t('motherFatherNameTooShort', 'Mother father name is too short') }));
+                }
+            }
+            
+            if (name === 'motherGrandfatherName') {
+                if (value.trim() === '') {
+                    setErrors(prev => ({ ...prev, motherGrandfatherName: t('motherGrandfatherNameRequired', 'Mother grandfather name is required') }));
+                } else if (value.length < 2) {
+                    setErrors(prev => ({ ...prev, motherGrandfatherName: t('motherGrandfatherNameTooShort', 'Mother grandfather name is too short') }));
+                }
+            }
         }
         
         if (step === 6) { // OTP step
-            if (!formData.otpCode || formData.otpCode.length !== 6) {
-                errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
+            if (name === 'otpCode') {
+                const sanitizedValue = value.replace(/\D/g, '').slice(0, 6);
+                if (sanitizedValue.length === 6 && !/^\d{6}$/.test(sanitizedValue)) {
+                    setErrors(prev => ({ ...prev, otp: t('validOtpRequired', 'OTP must be 6 digits') }));
+                } else if (sanitizedValue.length > 0 && sanitizedValue.length < 6) {
+                    setErrors(prev => ({ ...prev, otp: t('otpIncomplete', 'OTP must be 6 digits') }));
+                }
             }
         }
+    };
 
-        setErrors(errs);
-        return Object.keys(errs).length === 0;
+    const handleRadioChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        
+        // Clear error when radio button is selected
+        if (errors[name as keyof Errors]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
     };
 
     const handleNext = (e: FormEvent) => {
@@ -172,221 +297,74 @@ export default function CbeBirrRegistrationForm() {
             return;
         }
         setStep(prev => prev + 1);
-        window.scrollTo(0, 0);
     };
 
     const handleBack = () => {
         setStep(prev => prev - 1);
-        window.scrollTo(0, 0);
     };
 
-    useEffect(() => {
-        if (phone) {
-            setFormData(prev => ({ ...prev, phoneNumber: phone }));
-        }
-
-        const initializeUpdate = async () => {
-            const updateId = navState?.updateId as string | undefined;
-            if (!updateId) return;
-            try {
-                const res = await getCbeBirrRegistration(updateId);
-                const d = res?.data;
-                if (d) {
-                    const [fn, ff = '', fg = ''] = (d.FullName || '').split(' ');
-                    const [mn, mf = '', mg = ''] = (d.MothersFullName || '').split(' ');
-                    const iso = d.DateOfBirth ? new Date(d.DateOfBirth).toISOString().slice(0,10) : '';
-                    setFormData(prev => ({
-                        ...prev,
-                        phoneNumber: d.CustomerPhoneNumber || prev.phoneNumber,
-                        fullName: fn || prev.fullName,
-                        fatherName: ff || prev.fatherName,
-                        grandfatherName: fg || prev.grandfatherName,
-                        placeOfBirth: d.PlaceOfBirth || prev.placeOfBirth,
-                        dateOfBirth: iso,
-                        gender: (d.Gender as any) || prev.gender,
-                        city: d.City || prev.city,
-                        wereda: d.Wereda || prev.wereda,
-                        kebele: d.Kebele || prev.kebele,
-                        email: d.Email || prev.email,
-                        idNumber: d.IdNumber || prev.idNumber,
-                        issuedBy: d.IssuedBy || prev.issuedBy,
-                        maritalStatus: (d.MaritalStatus as any) || prev.maritalStatus,
-                        educationLevel: d.EducationLevel || prev.educationLevel,
-                        motherName: mn || prev.motherName,
-                        motherFatherName: mf || prev.motherFatherName,
-                        motherGrandfatherName: mg || prev.motherGrandfatherName,
-                        digitalSignature: d.DigitalSignature || prev.digitalSignature,
-                    }));
-                    setIsUpdate(true);
-                    setCurrentId(d.Id || updateId);
-                    setStep(5); // Start at review step for updates
-                }
-            } catch (e) {
-                console.error('Failed to load registration for update', e);
-            }
-        };
-
-        initializeUpdate();
-    }, [phone, navState]);
-
-    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
+    // Step-wise validation
+    const validateStep = (): boolean => {
+        const errs: Errors = {};
         
-        // Real-time validation feedback
         if (step === 1) {
-            if (name === 'fullName') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, fullName: t('fullNameRequired', 'Full name is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, fullName: t('fullNameTooShort', 'Full name is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, fullName: undefined }));
-                }
-            }
-            
-            if (name === 'fatherName') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, fatherName: t('fatherNameRequired', 'Father name is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, fatherName: t('fatherNameTooShort', 'Father name is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, fatherName: undefined }));
-                }
-            }
-            
-            if (name === 'grandfatherName') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, grandfatherName: t('grandfatherNameRequired', 'Grandfather name is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, grandfatherName: t('grandfatherNameTooShort', 'Grandfather name is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, grandfatherName: undefined }));
-                }
-            }
-            
-            if (name === 'placeOfBirth') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, placeOfBirth: t('placeOfBirthRequired', 'Place of birth is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, placeOfBirth: t('placeOfBirthTooShort', 'Place of birth is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, placeOfBirth: undefined }));
-                }
-            }
-            
-            if (name === 'dateOfBirth') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, dateOfBirth: t('dateOfBirthRequired', 'Date of birth is required') }));
-                } else {
-                    setErrors(prev => ({ ...prev, dateOfBirth: undefined }));
+            if (!formData.phoneNumber.trim()) errs.phoneNumber = t('phoneNumberRequired', 'Phone number is required');
+            if (!formData.fullName.trim()) errs.fullName = t('fullNameRequired', 'First name is required');
+            else if (formData.fullName.length < 2) errs.fullName = t('fullNameTooShort', 'First name is too short');
+            if (!formData.fatherName.trim()) errs.fatherName = t('fatherNameRequired', "Father's name is required");
+            else if (formData.fatherName.length < 2) errs.fatherName = t('fatherNameTooShort', 'Father name is too short');
+            if (!formData.grandfatherName.trim()) errs.grandfatherName = t('grandfatherNameRequired', "Grandfather's name is required");
+            else if (formData.grandfatherName.length < 2) errs.grandfatherName = t('grandfatherNameTooShort', 'Grandfather name is too short');
+            if (!formData.placeOfBirth.trim()) errs.placeOfBirth = t('placeOfBirthRequired', 'Place of birth is required');
+            else if (formData.placeOfBirth.length < 2) errs.placeOfBirth = t('placeOfBirthTooShort', 'Place of birth is too short');
+            if (!formData.dateOfBirth) {
+                errs.dateOfBirth = t('dateOfBirthRequired', 'Date of birth is required');
+            } else {
+                // Check if date is in the future
+                const selectedDate = new Date(formData.dateOfBirth);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                if (selectedDate > today) {
+                    errs.dateOfBirth = t('dateOfBirthInFuture', 'Date of birth cannot be in the future');
                 }
             }
         }
         
         if (step === 2) {
-            if (name === 'city') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, city: t('cityRequired', 'City is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, city: t('cityTooShort', 'City is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, city: undefined }));
-                }
-            }
-            
-            if (name === 'wereda') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, wereda: t('weredaRequired', 'Wereda is required') }));
-                } else {
-                    setErrors(prev => ({ ...prev, wereda: undefined }));
-                }
-            }
-            
-            if (name === 'kebele') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, kebele: t('kebeleRequired', 'Kebele is required') }));
-                } else {
-                    setErrors(prev => ({ ...prev, kebele: undefined }));
-                }
+            if (!formData.city.trim()) errs.city = t('cityRequired', 'City is required');
+            else if (formData.city.length < 2) errs.city = t('cityTooShort', 'City is too short');
+            if (!formData.wereda.trim()) errs.wereda = t('weredaRequired', 'Wereda is required');
+            if (!formData.kebele.trim()) errs.kebele = t('kebeleRequired', 'Kebele is required');
+            if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                errs.email = t('invalidEmail', 'Please enter a valid email address');
             }
         }
         
         if (step === 3) {
-            if (name === 'idNumber') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, idNumber: t('idNumberRequired', 'ID number is required') }));
-                } else if (value.length < 5) {
-                    setErrors(prev => ({ ...prev, idNumber: t('idNumberTooShort', 'ID number is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, idNumber: undefined }));
-                }
-            }
-            
-            if (name === 'issuedBy') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, issuedBy: t('issuedByRequired', 'Issued by is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, issuedBy: t('issuedByTooShort', 'Issued by is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, issuedBy: undefined }));
-                }
-            }
+            if (!formData.idNumber.trim()) errs.idNumber = t('idNumberRequired', 'ID number is required');
+            else if (formData.idNumber.length < 5) errs.idNumber = t('idNumberTooShort', 'ID number is too short');
+            if (!formData.issuedBy.trim()) errs.issuedBy = t('issuedByRequired', 'Issued by is required');
+            else if (formData.issuedBy.length < 2) errs.issuedBy = t('issuedByTooShort', 'Issued by is too short');
         }
         
         if (step === 4) {
-            if (name === 'motherName') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, motherName: t('motherNameRequired', 'Mother name is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, motherName: t('motherNameTooShort', 'Mother name is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, motherName: undefined }));
-                }
-            }
-            
-            if (name === 'motherFatherName') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, motherFatherName: t('motherFatherNameRequired', 'Mother father name is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, motherFatherName: t('motherFatherNameTooShort', 'Mother father name is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, motherFatherName: undefined }));
-                }
-            }
-            
-            if (name === 'motherGrandfatherName') {
-                if (value.trim() === '') {
-                    setErrors(prev => ({ ...prev, motherGrandfatherName: t('motherGrandfatherNameRequired', 'Mother grandfather name is required') }));
-                } else if (value.length < 2) {
-                    setErrors(prev => ({ ...prev, motherGrandfatherName: t('motherGrandfatherNameTooShort', 'Mother grandfather name is too short') }));
-                } else {
-                    setErrors(prev => ({ ...prev, motherGrandfatherName: undefined }));
-                }
-            }
+            if (!formData.motherName.trim()) errs.motherName = t('motherNameRequired', "Mother's name is required");
+            else if (formData.motherName.length < 2) errs.motherName = t('motherNameTooShort', 'Mother name is too short');
+            if (!formData.motherFatherName.trim()) errs.motherFatherName = t('motherFatherNameRequired', "Mother's father name is required");
+            else if (formData.motherFatherName.length < 2) errs.motherFatherName = t('motherFatherNameTooShort', 'Mother father name is too short');
+            if (!formData.motherGrandfatherName.trim()) errs.motherGrandfatherName = t('motherGrandfatherNameRequired', "Mother's grandfather name is required");
+            else if (formData.motherGrandfatherName.length < 2) errs.motherGrandfatherName = t('motherGrandfatherNameTooShort', 'Mother grandfather name is too short');
         }
         
         if (step === 6) { // OTP step
-            if (name === 'otpCode') {
-                const sanitizedValue = value.replace(/\D/g, '').slice(0, 6);
-                if (sanitizedValue.length === 6 && !/^\d{6}$/.test(sanitizedValue)) {
-                    setErrors(prev => ({ ...prev, otp: t('validOtpRequired', 'OTP must be 6 digits') }));
-                } else if (sanitizedValue.length > 0 && sanitizedValue.length < 6) {
-                    setErrors(prev => ({ ...prev, otp: t('otpIncomplete', 'OTP must be 6 digits') }));
-                } else {
-                    setErrors(prev => ({ ...prev, otp: undefined }));
-                }
+            if (!formData.otpCode || formData.otpCode.length !== 6) {
+                errs.otp = t('validOtpRequired', 'Please enter the 6-digit OTP');
             }
         }
 
-        if (errors[name as keyof Errors]) {
-            setErrors(prev => ({ ...prev, [name]: undefined }));
-        }
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleRadioChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
     };
 
     const handleRequestOtp = async () => {
@@ -545,51 +523,286 @@ export default function CbeBirrRegistrationForm() {
     };
 
     const renderStep1 = () => (
-        <div className="border border-amber-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('customerInformation', 'Personal Information')}</h2>
+        <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label={t('phoneNumber', 'Phone Number')} required error={errors.phoneNumber}><input name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleChange} disabled={!!phone} placeholder="+251XXXXXXXXX" className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="phoneNumber" /></Field>
-                <Field label={t('fullName', 'Full Name')} required error={errors.fullName}><input name="fullName" type="text" value={formData.fullName} onChange={handleChange} placeholder="Your full name" className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="fullName" /></Field>
-                <Field label={t('fatherName', 'Father\'s Name')} required error={errors.fatherName}><input name="fatherName" type="text" value={formData.fatherName} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="fatherName" /></Field>
-                <Field label={t('grandfatherName', 'Grandfather\'s Name')} required error={errors.grandfatherName}><input name="grandfatherName" type="text" value={formData.grandfatherName} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="grandfatherName" /></Field>
-                <Field label={t('placeOfBirth', 'Place of Birth')} required error={errors.placeOfBirth}><input name="placeOfBirth" type="text" value={formData.placeOfBirth} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="placeOfBirth" /></Field>
-                <Field label={t('dateOfBirth', 'Date of Birth')} required error={errors.dateOfBirth}><input name="dateOfBirth" type="date" value={formData.dateOfBirth} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="dateOfBirth" /></Field>
-                <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-2">Gender *</label><div className="flex space-x-6"><label className="inline-flex items-center"><input type="radio" name="gender" value="Male" checked={formData.gender === 'Male'} onChange={handleRadioChange} className="h-4 w-4 text-amber-600 focus:ring-amber-500" /><span className="ml-2">Male</span></label><label className="inline-flex items-center"><input type="radio" name="gender" value="Female" checked={formData.gender === 'Female'} onChange={handleRadioChange} className="h-4 w-4 text-amber-600 focus:ring-amber-500" /><span className="ml-2">Female</span></label></div>{errors.gender && <p className="mt-1 text-sm text-red-600">{errors.gender}</p>}</div>
+                <Field label={t('phoneNumber', 'Phone Number')} required error={errors.phoneNumber}>
+                    <input 
+                        name="phoneNumber" 
+                        type="tel" 
+                        value={formData.phoneNumber} 
+                        onChange={handleChange} 
+                        disabled={!!phone} 
+                        placeholder="+251XXXXXXXXX" 
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        id="phoneNumber" 
+                    />
+                </Field>
+                <Field label={t('firstName', 'First Name')} required error={errors.fullName}>
+                    <input 
+                        name="fullName" 
+                        type="text" 
+                        value={formData.fullName} 
+                        onChange={handleChange} 
+                        onBlur={handleBlur} 
+                        placeholder="Your first name" 
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        id="fullName" 
+                    />
+                </Field>
+                <Field label={t('fatherName', 'Father\'s Name')} required error={errors.fatherName}>
+                    <input 
+                        name="fatherName" 
+                        type="text" 
+                        value={formData.fatherName} 
+                        onChange={handleChange} 
+                        onBlur={handleBlur} 
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        id="fatherName" 
+                    />
+                </Field>
+                <Field label={t('grandfatherName', 'Grandfather\'s Name')} required error={errors.grandfatherName}>
+                    <input 
+                        name="grandfatherName" 
+                        type="text" 
+                        value={formData.grandfatherName} 
+                        onChange={handleChange} 
+                        onBlur={handleBlur} 
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        id="grandfatherName" 
+                    />
+                </Field>
+                <Field label={t('placeOfBirth', 'Place of Birth')} required error={errors.placeOfBirth}>
+                    <input 
+                        name="placeOfBirth" 
+                        type="text" 
+                        value={formData.placeOfBirth} 
+                        onChange={handleChange} 
+                        onBlur={handleBlur} 
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        id="placeOfBirth" 
+                    />
+                </Field>
+                <Field label={t('dateOfBirth', 'Date of Birth')} required error={errors.dateOfBirth}>
+                    <input 
+                        name="dateOfBirth" 
+                        type="date" 
+                        value={formData.dateOfBirth} 
+                        onChange={handleChange} 
+                        onBlur={handleBlur} 
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        id="dateOfBirth" 
+                    />
+                </Field>
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('gender', 'Gender')} *</label>
+                    <div className="flex space-x-6">
+                        <label className="inline-flex items-center">
+                            <input 
+                                type="radio" 
+                                name="gender" 
+                                value="Male" 
+                                checked={formData.gender === 'Male'} 
+                                onChange={handleRadioChange} 
+                                className="h-4 w-4 text-amber-600 focus:ring-amber-500" 
+                            />
+                            <span className="ml-2">{t('male', 'Male')}</span>
+                        </label>
+                        <label className="inline-flex items-center">
+                            <input 
+                                type="radio" 
+                                name="gender" 
+                                value="Female" 
+                                checked={formData.gender === 'Female'} 
+                                onChange={handleRadioChange} 
+                                className="h-4 w-4 text-amber-600 focus:ring-amber-500" 
+                            />
+                            <span className="ml-2">{t('female', 'Female')}</span>
+                        </label>
+                    </div>
+                    {errors.gender && <p className="mt-1 text-sm text-red-600">{errors.gender}</p>}
+                </div>
             </div>
         </div>
     );
 
     const renderStep2 = () => (
-        <div className="border border-amber-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('addressInformation', 'Address Information')}</h2>
+        <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Field label={t('city', 'City')} required error={errors.city}><input name="city" type="text" value={formData.city} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="city" /></Field>
-                <Field label={t('wereda', 'Wereda')} required error={errors.wereda}><input name="wereda" type="text" value={formData.wereda} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="wereda" /></Field>
-                <Field label={t('kebele', 'Kebele')} required error={errors.kebele}><input name="kebele" type="text" value={formData.kebele} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="kebele" /></Field>
-                <div className="md:col-span-3"><Field label={t('email', 'Email Address')} error={errors.email}><input name="email" type="email" value={formData.email} onChange={handleChange} placeholder="example@domain.com" className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="email" /></Field></div>
+                <Field label={t('city', 'City')} required error={errors.city}>
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input 
+                            name="city" 
+                            type="text" 
+                            value={formData.city} 
+                            onChange={handleChange} 
+                            onBlur={handleBlur} 
+                            className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                            id="city" 
+                        />
+                    </div>
+                </Field>
+                <Field label={t('wereda', 'Wereda')} required error={errors.wereda}>
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input 
+                            name="wereda" 
+                            type="text" 
+                            value={formData.wereda} 
+                            onChange={handleChange} 
+                            onBlur={handleBlur} 
+                            className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                            id="wereda" 
+                        />
+                    </div>
+                </Field>
+                <Field label={t('kebele', 'Kebele')} required error={errors.kebele}>
+                    <div className="relative">
+                        <Home className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input 
+                            name="kebele" 
+                            type="text" 
+                            value={formData.kebele} 
+                            onChange={handleChange} 
+                            onBlur={handleBlur} 
+                            className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                            id="kebele" 
+                        />
+                    </div>
+                </Field>
+                <div className="md:col-span-3">
+                    <Field label={t('email', 'Email Address')} error={errors.email}>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input 
+                                name="email" 
+                                type="email" 
+                                value={formData.email} 
+                                onChange={handleChange} 
+                                onBlur={handleBlur} 
+                                placeholder="example@domain.com" 
+                                className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                                id="email" 
+                            />
+                        </div>
+                    </Field>
+                </div>
             </div>
         </div>
     );
 
     const renderStep3 = () => (
-        <div className="border border-amber-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('idInformation', 'ID Information')}</h2>
+        <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label={t('idNumber', 'ID Number')} required error={errors.idNumber}><input name="idNumber" type="text" value={formData.idNumber} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="idNumber" /></Field>
-                <Field label={t('issuedBy', 'Issued By')} required error={errors.issuedBy}><input name="issuedBy" type="text" value={formData.issuedBy} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="issuedBy" /></Field>
-                <div className="md:col-span-2"><Field label={t('maritalStatus', 'Marital Status')} required><select name="maritalStatus" value={formData.maritalStatus} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"><option value="Single">Single</option><option value="Married">Married</option><option value="Divorced">Divorced</option><option value="Widow">Widow</option></select></Field></div>
-                <div className="md:col-span-2"><Field label={t('educationLevel', 'Education Level')} required><select name="educationLevel" value={formData.educationLevel} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50">{educationLevels.map(level => (<option key={level} value={level}>{level}</option>))}</select></Field></div>
+                <Field label={t('idNumber', 'ID Number')} required error={errors.idNumber}>
+                    <div className="relative">
+                        <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input 
+                            name="idNumber" 
+                            type="text" 
+                            value={formData.idNumber} 
+                            onChange={handleChange} 
+                            onBlur={handleBlur} 
+                            className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                            id="idNumber" 
+                        />
+                    </div>
+                </Field>
+                <Field label={t('issuedBy', 'Issued By')} required error={errors.issuedBy}>
+                    <input 
+                        name="issuedBy" 
+                        type="text" 
+                        value={formData.issuedBy} 
+                        onChange={handleChange} 
+                        onBlur={handleBlur} 
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        id="issuedBy" 
+                    />
+                </Field>
+                <div className="md:col-span-2">
+                    <Field label={t('maritalStatus', 'Marital Status')} required>
+                        <select 
+                            name="maritalStatus" 
+                            value={formData.maritalStatus} 
+                            onChange={handleChange} 
+                            className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        >
+                            <option value="Single">{t('single', 'Single')}</option>
+                            <option value="Married">{t('married', 'Married')}</option>
+                            <option value="Divorced">{t('divorced', 'Divorced')}</option>
+                            <option value="Widow">{t('widow', 'Widow')}</option>
+                        </select>
+                    </Field>
+                </div>
+                <div className="md:col-span-2">
+                    <Field label={t('educationLevel', 'Education Level')} required>
+                        <select 
+                            name="educationLevel" 
+                            value={formData.educationLevel} 
+                            onChange={handleChange} 
+                            className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                        >
+                            {educationLevels.map(level => (
+                                <option key={level} value={level}>{t(level.toLowerCase().replace(/\s+/g, ''), level)}</option>
+                            ))}
+                        </select>
+                    </Field>
+                </div>
             </div>
         </div>
     );
 
     const renderStep4 = () => (
-        <div className="border border-amber-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('mothersInformation', 'Mother\'s Information')}</h2>
+        <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Field label={t('motherName', 'Mother\'s Name')} required error={errors.motherName}><input name="motherName" type="text" value={formData.motherName} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="motherName" /></Field>
-                <Field label={t('motherFatherName', 'Mother\'s Father Name')} required error={errors.motherFatherName}><input name="motherFatherName" type="text" value={formData.motherFatherName} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="motherFatherName" /></Field>
-                <Field label={t('motherGrandfatherName', 'Mother\'s Grandfather Name')} required error={errors.motherGrandfatherName}><input name="motherGrandfatherName" type="text" value={formData.motherGrandfatherName} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50" id="motherGrandfatherName" /></Field>
+                <Field label={t('motherName', 'Mother\'s Name')} required error={errors.motherName}>
+                    <div className="relative">
+                        <Heart className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input 
+                            name="motherName" 
+                            type="text" 
+                            value={formData.motherName} 
+                            onChange={handleChange} 
+                            onBlur={handleBlur} 
+                            className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                            id="motherName" 
+                        />
+                    </div>
+                </Field>
+                <Field label={t('motherFatherName', 'Mother\'s Father Name')} required error={errors.motherFatherName}>
+                    <div className="relative">
+                        <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input 
+                            name="motherFatherName" 
+                            type="text" 
+                            value={formData.motherFatherName} 
+                            onChange={handleChange} 
+                            onBlur={handleBlur} 
+                            className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                            id="motherFatherName" 
+                        />
+                    </div>
+                </Field>
+                <Field label={t('motherGrandfatherName', 'Mother\'s Grandfather Name')} required error={errors.motherGrandfatherName}>
+                    <div className="relative">
+                        <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input 
+                            name="motherGrandfatherName" 
+                            type="text" 
+                            value={formData.motherGrandfatherName} 
+                            onChange={handleChange} 
+                            onBlur={handleBlur} 
+                            className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
+                            id="motherGrandfatherName" 
+                        />
+                    </div>
+                </Field>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-700">
+                    {t('cbeBirrRegistrationInfo', 'You are registering for CBE Birr mobile money service. After registration, you will be able to use mobile money transfer services.')}
+                </p>
             </div>
         </div>
     );
@@ -623,16 +836,41 @@ export default function CbeBirrRegistrationForm() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('otpVerification', 'OTP Verification')}</h2>
             <div className="space-y-4">
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <p className="text-sm text-amber-700">{t('otpInstructions', 'An OTP has been sent to your phone number:')} <strong className="text-amber-900"> {formData.phoneNumber}</strong></p>
-                    {otpMessage && <p className="text-sm text-green-600 mt-1 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />{otpMessage}</p>}
+                    <p className="text-sm text-amber-700">
+                        {t('otpInstructions', 'An OTP has been sent to your phone number:')} 
+                        <strong className="text-amber-900"> {formData.phoneNumber}</strong>
+                    </p>
+                    {otpMessage && (
+                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {otpMessage}
+                        </p>
+                    )}
                 </div>
                 <div className="max-w-md">
                     <Field label={t('enterOtp', 'Enter OTP')} required error={errors.otp}>
-                        <input type="text" name="otpCode" value={formData.otpCode} onChange={handleChange} maxLength={6} className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono bg-amber-50" placeholder="000000" id="otpCode" />
+                        <input 
+                            type="text" 
+                            name="otpCode" 
+                            value={formData.otpCode} 
+                            onChange={handleChange} 
+                            maxLength={6} 
+                            className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono bg-amber-50" 
+                            placeholder="000000" 
+                            id="otpCode" 
+                        />
                     </Field>
                     <div className="mt-2 flex justify-between items-center">
-                        <button type="button" onClick={handleResendOtp} disabled={resendCooldown > 0 || otpLoading} className="text-sm text-amber-700 hover:text-amber-800 disabled:text-gray-400">
-                            {resendCooldown > 0 ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) : t('resendOtp', 'Resend OTP')}
+                        <button 
+                            type="button" 
+                            onClick={handleResendOtp} 
+                            disabled={resendCooldown > 0 || otpLoading} 
+                            className="text-sm text-amber-700 hover:text-amber-800 disabled:text-gray-400"
+                        >
+                            {resendCooldown > 0 
+                                ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
+                                : t('resendOtp', 'Resend OTP')
+                            }
                         </button>
                         <span className="text-sm text-gray-500">{formData.otpCode.length}/6</span>
                     </div>
@@ -646,7 +884,7 @@ export default function CbeBirrRegistrationForm() {
             <div className="max-w-2xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
                     {/* Header with fuchsia-700 */}
-                    <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white">
+                     <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div className="flex items-center gap-3">

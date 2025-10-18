@@ -197,10 +197,19 @@ const makerService = {
     return res.data;
   },
 
-  //get total served by current logged in maker
+  //get total served by current logged in maker getPriorityCount
   getTotalServed: async (makerId: string, token: string) => {
     const res = await axios.get<ApiResponse<number>>(
       `${API_BASE_URL}/Teller/TotalServed/${makerId}`,
+      authHeader(token)
+    );
+    return res.data;
+  },
+
+  //get priority count for current logged in maker
+getPriorityCount: async (branchId: string, makerId: string, token: string) => {
+    const res = await axios.get<ApiResponse<number>>(
+      `${API_BASE_URL}/QueueManager/countPriority/${branchId}/${makerId}`,
       authHeader(token)
     );
     return res.data;

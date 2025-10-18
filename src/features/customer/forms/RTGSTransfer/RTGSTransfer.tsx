@@ -107,7 +107,7 @@ export default function RTGSTransferForm() {
 
     const [errors, setErrors] = useState<Errors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [step, setStep] = useState<number>(1); // 1: Details, 2: Review, 3: Signature, 4: OTP
+    const [step, setStep] = useState<number>(1); // 1: Account & Amount, 2: Beneficiary Info, 3: Review, 4: Signature, 5: OTP
     const [otpLoading, setOtpLoading] = useState(false);
     const [otpMessage, setOtpMessage] = useState('');
     const [resendCooldown, setResendCooldown] = useState(0);
@@ -190,6 +190,17 @@ export default function RTGSTransferForm() {
         if (!formData.orderingCustomerName.trim()) {
             errs.orderingCustomerName = t('customerNameRequired', 'Customer name is required');
         }
+
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    const validateStep2 = (): boolean => {
+        const errs: Errors = {};
+        
+        if (!formData.transferAmount || Number(formData.transferAmount) <= 0) {
+            errs.transferAmount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
+        }
         
         if (!formData.beneficiaryBank.trim()) {
             errs.beneficiaryBank = t('beneficiaryBankRequired', 'Beneficiary bank is required');
@@ -205,10 +216,6 @@ export default function RTGSTransferForm() {
         
         if (!formData.beneficiaryName.trim()) {
             errs.beneficiaryName = t('beneficiaryNameRequired', 'Beneficiary name is required');
-        }
-        
-        if (!formData.transferAmount || Number(formData.transferAmount) <= 0) {
-            errs.transferAmount = t('validAmountRequired', 'Please enter a valid amount greater than 0');
         }
         
         if (!formData.paymentNarrative.trim()) {
@@ -255,7 +262,33 @@ export default function RTGSTransferForm() {
 
     const handleStep2Next = (e: FormEvent) => {
         e.preventDefault();
+        if (!validateStep2()) {
+            const firstError = Object.keys(errors)[0];
+            if (firstError) {
+                document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
         setStep(3);
+    };
+
+
+
+    const handleSignatureClear = () => {
+        if (signaturePadRef.current) {
+            signaturePadRef.current.clear();
+            setIsSignatureEmpty(true);
+            setFormData(prev => ({ ...prev, digitalSignature: '' }));
+        }
+    };
+
+    const handleSignatureEnd = () => {
+        if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
+            setIsSignatureEmpty(false);
+            if (errors.digitalSignature) {
+                setErrors(prev => ({ ...prev, digitalSignature: undefined }));
+            }
+        }
     };
 
     const handleStep3Next = async (e: FormEvent) => {
@@ -281,7 +314,7 @@ export default function RTGSTransferForm() {
             const response = await requestRtgsTransferOtp(phone);
             if (response.success) {
                 setOtpMessage(response.message || t('otpSent', 'OTP sent to your phone.'));
-                setStep(4);
+                setStep(5);
                 setResendCooldown(30);
                 
                 const timer = setInterval(() => {
@@ -301,23 +334,6 @@ export default function RTGSTransferForm() {
             setErrors({ submit: error?.message || t('otpRequestFailed', 'Failed to send OTP.') });
         } finally {
             setOtpLoading(false);
-        }
-    };
-
-    const handleSignatureClear = () => {
-        if (signaturePadRef.current) {
-            signaturePadRef.current.clear();
-            setIsSignatureEmpty(true);
-            setFormData(prev => ({ ...prev, digitalSignature: '' }));
-        }
-    };
-
-    const handleSignatureEnd = () => {
-        if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
-            setIsSignatureEmpty(false);
-            if (errors.digitalSignature) {
-                setErrors(prev => ({ ...prev, digitalSignature: undefined }));
-            }
         }
     };
 
@@ -450,7 +466,7 @@ export default function RTGSTransferForm() {
     if (loadingAccounts) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="max-w-4xl w-full">
+                <div className="max-w-2xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
                         <p className="text-gray-600">{t('loading', 'Loading...')}</p>
@@ -463,7 +479,7 @@ export default function RTGSTransferForm() {
     if (errorAccounts) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="max-w-4xl w-full">
+                <div className="max-w-2xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('error', 'Error')}</h3>
@@ -483,7 +499,7 @@ export default function RTGSTransferForm() {
     if (!loadingAccounts && accounts.length === 0) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="max-w-4xl w-full">
+                <div className="max-w-2xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noAccounts', 'No Accounts')}</h3>
@@ -502,10 +518,10 @@ export default function RTGSTransferForm() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-4xl w-full mx-auto">
+            <div className="max-w-2xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
                     {/* Header with Language Switcher */}
-                    <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-t-lg">
+                     <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white rounded-t-lg">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div>
@@ -517,6 +533,15 @@ export default function RTGSTransferForm() {
                                 </div>
                                 
                                 <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => navigate('/dashboard')}
+                                        className="bg-white text-fuchsia-700 px-3 py-1 rounded-full text-sm font-semibold hover:bg-gray-100 flex items-center gap-1"
+                                    >
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                        Home
+                                    </button>
                                     <div className="bg-fuchsia-800/50 px-3 py-1 rounded-full text-xs">
                                         📱 {phone}
                                     </div>
@@ -529,16 +554,11 @@ export default function RTGSTransferForm() {
                     <div className="p-6">
                         {errors.submit && <ErrorMessage message={errors.submit} />}
 
-                        {/* Step 1: Transfer Details */}
+                        {/* Step 1: Account Information */}
                         {step === 1 && (
                             <form onSubmit={handleStep1Next} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <CreditCard className="h-5 w-5 text-fuchsia-700" />
-                                        {t('customerInformation', 'Customer Information')}
-                                    </h2>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div>
                                         <Field 
                                             label={t('phoneNumber', 'Phone Number')} 
                                             required
@@ -550,7 +570,9 @@ export default function RTGSTransferForm() {
                                                 className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
                                             />
                                         </Field>
+                                    </div>
 
+                                    <div>
                                         <Field 
                                             label={t('accountNumber', 'Account Number')} 
                                             required 
@@ -583,7 +605,9 @@ export default function RTGSTransferForm() {
                                                 />
                                             )}
                                         </Field>
+                                    </div>
 
+                                    <div>
                                         <Field 
                                             label={t('customerName', 'Customer Name')} 
                                             required 
@@ -599,7 +623,104 @@ export default function RTGSTransferForm() {
                                                 id="orderingCustomerName"
                                             />
                                         </Field>
+                                    </div>
+                                </div>
 
+                                <div className="flex justify-end">
+                                    <button 
+                                        type="submit" 
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
+                                    >
+                                        <span>{t('continue', 'Continue')}</span>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Step 2: Transfer Details */}
+                        {step === 2 && (
+                            <form onSubmit={handleStep2Next} className="space-y-6">
+                                <div className="space-y-4">
+                                    {/* Beneficiary Bank and Branch side by side */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Field 
+                                                label={t('beneficiaryBank', 'Beneficiary Bank')} 
+                                                required 
+                                                error={errors.beneficiaryBank}
+                                            >
+                                                <select
+                                                    name="beneficiaryBank"
+                                                    value={formData.beneficiaryBank}
+                                                    onChange={handleChange}
+                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    id="beneficiaryBank"
+                                                >
+                                                    <option value="">{t('selectBank', 'Select a bank')}</option>
+                                                    {BANKS.map(bank => (
+                                                        <option key={bank} value={bank}>{bank}</option>
+                                                    ))}
+                                                </select>
+                                            </Field>
+                                        </div>
+
+                                        <div>
+                                            <Field 
+                                                label={t('beneficiaryBranch', 'Beneficiary Branch')} 
+                                                required 
+                                                error={errors.beneficiaryBranch}
+                                            >
+                                                <input
+                                                    type="text"
+                                                    name="beneficiaryBranch"
+                                                    value={formData.beneficiaryBranch}
+                                                    onChange={handleChange}
+                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    id="beneficiaryBranch"
+                                                />
+                                            </Field>
+                                        </div>
+                                    </div>
+
+                                    {/* Beneficiary Account and Name side by side */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Field 
+                                                label={t('beneficiaryAccount', 'Beneficiary Account')} 
+                                                required 
+                                                error={errors.beneficiaryAccountNumber}
+                                            >
+                                                <input
+                                                    type="text"
+                                                    name="beneficiaryAccountNumber"
+                                                    value={formData.beneficiaryAccountNumber}
+                                                    onChange={handleChange}
+                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    id="beneficiaryAccountNumber"
+                                                />
+                                            </Field>
+                                        </div>
+
+                                        <div>
+                                            <Field 
+                                                label={t('beneficiaryName', 'Beneficiary Name')} 
+                                                required 
+                                                error={errors.beneficiaryName}
+                                            >
+                                                <input
+                                                    type="text"
+                                                    name="beneficiaryName"
+                                                    value={formData.beneficiaryName}
+                                                    onChange={handleChange}
+                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                                    id="beneficiaryName"
+                                                />
+                                            </Field>
+                                        </div>
+                                    </div>
+
+                                    <div>
                                         <Field 
                                             label={t('transferAmount', 'Transfer Amount (ETB)')} 
                                             required 
@@ -621,164 +742,30 @@ export default function RTGSTransferForm() {
                                             </div>
                                         </Field>
                                     </div>
-                                </div>
 
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <Building className="h-5 w-5 text-fuchsia-700" />
-                                        {t('beneficiaryInformation', 'Beneficiary Information')}
-                                    </h2>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
                                         <Field 
-                                            label={t('beneficiaryBank', 'Beneficiary Bank')} 
+                                            label={t('paymentNarrative', 'Payment Narrative')} 
                                             required 
-                                            error={errors.beneficiaryBank}
+                                            error={errors.paymentNarrative}
                                         >
-                                            <select
-                                                name="beneficiaryBank"
-                                                value={formData.beneficiaryBank}
+                                            <textarea
+                                                name="paymentNarrative"
+                                                rows={3}
+                                                value={formData.paymentNarrative}
                                                 onChange={handleChange}
                                                 className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                id="beneficiaryBank"
-                                            >
-                                                <option value="">{t('selectBank', 'Select a bank')}</option>
-                                                {BANKS.map(bank => (
-                                                    <option key={bank} value={bank}>{bank}</option>
-                                                ))}
-                                            </select>
-                                        </Field>
-
-                                        <Field 
-                                            label={t('beneficiaryBranch', 'Beneficiary Branch')} 
-                                            required 
-                                            error={errors.beneficiaryBranch}
-                                        >
-                                            <input
-                                                type="text"
-                                                name="beneficiaryBranch"
-                                                value={formData.beneficiaryBranch}
-                                                onChange={handleChange}
-                                                className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                id="beneficiaryBranch"
+                                                placeholder={t('narrativePlaceholder', 'Describe the purpose of this transfer (10-200 characters)')}
+                                                maxLength={200}
+                                                id="paymentNarrative"
                                             />
+                                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                                <span>{formData.paymentNarrative.length}/200</span>
+                                                {errors.paymentNarrative && (
+                                                    <span className="text-red-500">{errors.paymentNarrative}</span>
+                                                )}
+                                            </div>
                                         </Field>
-
-                                        <Field 
-                                            label={t('beneficiaryAccount', 'Beneficiary Account')} 
-                                            required 
-                                            error={errors.beneficiaryAccountNumber}
-                                        >
-                                            <input
-                                                type="text"
-                                                name="beneficiaryAccountNumber"
-                                                value={formData.beneficiaryAccountNumber}
-                                                onChange={handleChange}
-                                                className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                id="beneficiaryAccountNumber"
-                                            />
-                                        </Field>
-
-                                        <Field 
-                                            label={t('beneficiaryName', 'Beneficiary Name')} 
-                                            required 
-                                            error={errors.beneficiaryName}
-                                        >
-                                            <input
-                                                type="text"
-                                                name="beneficiaryName"
-                                                value={formData.beneficiaryName}
-                                                onChange={handleChange}
-                                                className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                id="beneficiaryName"
-                                            />
-                                        </Field>
-
-                                        <div className="md:col-span-2">
-                                            <Field 
-                                                label={t('paymentNarrative', 'Payment Narrative')} 
-                                                required 
-                                                error={errors.paymentNarrative}
-                                            >
-                                                <textarea
-                                                    name="paymentNarrative"
-                                                    rows={3}
-                                                    value={formData.paymentNarrative}
-                                                    onChange={handleChange}
-                                                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
-                                                    placeholder={t('narrativePlaceholder', 'Describe the purpose of this transfer (10-200 characters)')}
-                                                    maxLength={200}
-                                                    id="paymentNarrative"
-                                                />
-                                                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                                    <span>{formData.paymentNarrative.length}/200</span>
-                                                    {errors.paymentNarrative && (
-                                                        <span className="text-red-500">{errors.paymentNarrative}</span>
-                                                    )}
-                                                </div>
-                                            </Field>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end">
-                                    <button 
-                                        type="submit" 
-                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2"
-                                    >
-                                        <span>{t('continue', 'Continue')}</span>
-                                        <ChevronRight className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-
-                        {/* Step 2: Review */}
-                        {step === 2 && (
-                            <form onSubmit={handleStep2Next} className="space-y-6">
-                                <div className="border border-gray-200 rounded-lg p-6">
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                        <FileText className="h-5 w-5 text-green-600" />
-                                        {t('reviewTransfer', 'Review Transfer')}
-                                    </h2>
-                                    
-                                    {checkApprovalStatus()}
-                                    
-                                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('accountNumber', 'Account Number')}:</span>
-                                            <span className="font-mono font-semibold">{formData.orderingAccountNumber}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('customerName', 'Customer Name')}:</span>
-                                            <span className="font-semibold">{formData.orderingCustomerName}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('beneficiaryBank', 'Beneficiary Bank')}:</span>
-                                            <span className="font-semibold">{formData.beneficiaryBank}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('beneficiaryBranch', 'Beneficiary Branch')}:</span>
-                                            <span className="font-semibold">{formData.beneficiaryBranch}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('beneficiaryAccount', 'Beneficiary Account')}:</span>
-                                            <span className="font-mono font-semibold">{formData.beneficiaryAccountNumber}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('beneficiaryName', 'Beneficiary Name')}:</span>
-                                            <span className="font-semibold">{formData.beneficiaryName}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                            <span className="font-medium text-gray-700">{t('transferAmount', 'Transfer Amount')}:</span>
-                                            <span className="text-lg font-bold text-fuchsia-700">
-                                                {parseFloat(formData.transferAmount).toLocaleString()} ETB
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-start py-2">
-                                            <span className="font-medium text-gray-700">{t('paymentNarrative', 'Payment Narrative')}:</span>
-                                            <span className="text-right max-w-xs">{formData.paymentNarrative}</span>
-                                        </div>
                                     </div>
                                 </div>
 
@@ -795,6 +782,102 @@ export default function RTGSTransferForm() {
                                         type="submit" 
                                         className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
                                     >
+                                        <span>{t('continue', 'Continue')}</span>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Step 3: Review */}
+                        {step === 3 && (
+                            <form onSubmit={(e) => { e.preventDefault(); setStep(4); }} className="space-y-6">
+                                <div className="space-y-4">
+                                    {checkApprovalStatus()}
+                                    
+                                    <div className="bg-gray-50 rounded-lg p-4 space-y-4 border border-gray-200">
+                                        {/* Account Number and Customer Name side by side - matching step 2 style */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <Field label={t('accountNumber', 'Account Number')}>
+                                                    <div className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 font-mono">
+                                                        {formData.orderingAccountNumber}
+                                                    </div>
+                                                </Field>
+                                            </div>
+                                            <div>
+                                                <Field label={t('customerName', 'Customer Name')}>
+                                                    <div className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50">
+                                                        {formData.orderingCustomerName}
+                                                    </div>
+                                                </Field>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Beneficiary Bank and Branch side by side - matching step 2 style */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <Field label={t('beneficiaryBank', 'Beneficiary Bank')}>
+                                                    <div className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50">
+                                                        {formData.beneficiaryBank}
+                                                    </div>
+                                                </Field>
+                                            </div>
+                                            <div>
+                                                <Field label={t('beneficiaryBranch', 'Beneficiary Branch')}>
+                                                    <div className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50">
+                                                        {formData.beneficiaryBranch}
+                                                    </div>
+                                                </Field>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Beneficiary Account and Name side by side - matching step 2 style */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <Field label={t('beneficiaryAccount', 'Beneficiary Account')}>
+                                                    <div className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 font-mono">
+                                                        {formData.beneficiaryAccountNumber}
+                                                    </div>
+                                                </Field>
+                                            </div>
+                                            <div>
+                                                <Field label={t('beneficiaryName', 'Beneficiary Name')}>
+                                                    <div className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50">
+                                                        {formData.beneficiaryName}
+                                                    </div>
+                                                </Field>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                            <span className="font-medium text-gray-700">{t('transferAmount', 'Transfer Amount')}:</span>
+                                            <span className="text-lg font-bold text-fuchsia-700">
+                                                {parseFloat(formData.transferAmount).toLocaleString()} ETB
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-start py-2">
+                                            <span className="font-medium text-gray-700">{t('paymentNarrative', 'Payment Narrative')}:</span>
+                                            <span className="text-right max-w-xs">{formData.paymentNarrative}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {errors.submit && <ErrorMessage message={errors.submit} />}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setStep(2)}
+                                        className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        {t('back', 'Back')}
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 flex items-center gap-2 justify-center"
+                                    >
                                         <PenTool className="h-4 w-4" />
                                         {t('addSignature', 'Add Signature')}
                                     </button>
@@ -802,8 +885,8 @@ export default function RTGSTransferForm() {
                             </form>
                         )}
 
-                        {/* Step 3: Digital Signature */}
-                        {step === 3 && (
+                        {/* Step 4: Digital Signature */}
+                        {step === 4 && (
                             <form onSubmit={handleStep3Next} className="space-y-6">
                                 <div className="border border-gray-200 rounded-lg p-6">
                                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -865,7 +948,7 @@ export default function RTGSTransferForm() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <button 
                                         type="button" 
-                                        onClick={() => setStep(2)}
+                                        onClick={() => setStep(3)}
                                         className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
                                     >
                                         <ChevronLeft className="h-4 w-4" />
@@ -892,8 +975,8 @@ export default function RTGSTransferForm() {
                             </form>
                         )}
 
-                        {/* Step 4: OTP Verification */}
-                        {step === 4 && (
+                        {/* Step 5: OTP Verification */}
+                        {step === 5 && (
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="border border-gray-200 rounded-lg p-6">
                                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -956,7 +1039,7 @@ export default function RTGSTransferForm() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <button 
                                         type="button" 
-                                        onClick={() => setStep(3)}
+                                        onClick={() => setStep(4)}
                                         className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-2 justify-center"
                                     >
                                         <ChevronLeft className="h-4 w-4" />

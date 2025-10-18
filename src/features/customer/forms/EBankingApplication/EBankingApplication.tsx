@@ -15,12 +15,11 @@ import {
     ChevronRight,
     CreditCard,
     User,
-    MapPin,
-    Calendar,
     Shield,
     FileText,
     Home,
-    Wifi
+    Wifi,
+    MapPin
 } from 'lucide-react';
 import { getRegions, getZones, getWoredas } from '../../../../services/addressService';
 
@@ -45,8 +44,6 @@ function SuccessMessage({ message }: { message: string }) {
 }
 
 type FormData = {
-    branchName: string;
-    date: string;
     accountNumber: string;
     customerName: string;
     mobileNumber: string;
@@ -61,8 +58,6 @@ type FormData = {
     wereda: string;
     houseNumber: string;
     ebankingChannels: string[];
-    newPhoneNumber: string;
-    newAccountNumber: string;
     termsAccepted: boolean;
     idCopyAttached: boolean;
     otpCode: string;
@@ -86,8 +81,6 @@ export default function EBankingApplication() {
     const { accounts, loadingAccounts, errorAccounts, refreshAccounts } = useUserAccounts();
 
     const [formData, setFormData] = useState<FormData>({
-        branchName: branch?.name || 'Ayer Tena Branch',
-        date: new Date().toISOString().split('T')[0],
         accountNumber: '',
         customerName: '',
         mobileNumber: phone || '',
@@ -102,8 +95,6 @@ export default function EBankingApplication() {
         wereda: '',
         houseNumber: '',
         ebankingChannels: [],
-        newPhoneNumber: '',
-        newAccountNumber: '',
         termsAccepted: false,
         idCopyAttached: false,
         otpCode: '',
@@ -128,13 +119,7 @@ export default function EBankingApplication() {
     const [showTerms, setShowTerms] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
-    // Initialize form data from accounts and branch context
-    useEffect(() => {
-        if (branch?.name) {
-            setFormData(prev => ({ ...prev, branchName: branch.name }));
-        }
-    }, [branch]);
-
+    // Initialize form data from accounts
     useEffect(() => {
         if (loadingAccounts) return;
 
@@ -188,14 +173,13 @@ export default function EBankingApplication() {
                     customerName: d.AccountHolderName || d.accountHolderName || prev.customerName,
                     mobileNumber: d.PhoneNumber || d.phoneNumber || prev.mobileNumber,
                     ebankingChannels: services,
-                    branchName: d.BranchName || branch?.name || prev.branchName,
                 }));
-                setStep(6); // Start at review step for updates
+                setStep(4); // Start at review step for updates
             } catch (e) {
                 console.error('Failed to load e-banking application for update:', e);
             }
         })();
-    }, [location.state, branch]);
+    }, [location.state]);
 
     // Load regions on component mount
     useEffect(() => {
@@ -275,10 +259,6 @@ export default function EBankingApplication() {
                         ? [...prev.ebankingChannels, channel]
                         : prev.ebankingChannels.filter(c => c !== channel)
                 }));
-                // Clear error when at least one channel is selected
-                if (checked) {
-                    setErrors(prev => ({ ...prev, ebankingChannels: undefined }));
-                }
             }
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
@@ -346,6 +326,71 @@ export default function EBankingApplication() {
                     setErrors(prev => ({ ...prev, issuingAuthority: undefined }));
                 }
             }
+            
+            // Date validation
+            if (name === 'idIssueDate') {
+                if (value.trim() === '' && !formData.idCopyAttached) {
+                    setErrors(prev => ({ ...prev, idIssueDate: t('issueDateRequired', 'Issue date is required') }));
+                } else if (value.trim() !== '') {
+                    // Check if issue date is in the future
+                    const issueDate = new Date(value);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    if (issueDate > today) {
+                        setErrors(prev => ({ ...prev, idIssueDate: t('issueDateInFuture', 'Issue date cannot be in the future') }));
+                    } else if (formData.idExpiryDate) {
+                        // Check if issue date is before expiry date
+                        const expiryDate = new Date(formData.idExpiryDate);
+                        if (issueDate >= expiryDate) {
+                            setErrors(prev => ({ ...prev, idIssueDate: t('issueDateAfterExpiry', 'Issue date must be before expiry date') }));
+                        } else {
+                            setErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.idIssueDate;
+                                delete newErrors.idExpiryDate; // Also clear expiry date error if it was related
+                                return newErrors;
+                            });
+                        }
+                    } else {
+                        setErrors(prev => ({ ...prev, idIssueDate: undefined }));
+                    }
+                } else {
+                    setErrors(prev => ({ ...prev, idIssueDate: undefined }));
+                }
+            }
+            
+            if (name === 'idExpiryDate') {
+                if (value.trim() === '' && !formData.idCopyAttached) {
+                    setErrors(prev => ({ ...prev, idExpiryDate: t('expiryDateRequired', 'Expiry date is required') }));
+                } else if (value.trim() !== '') {
+                    // Check if expiry date is in the past
+                    const expiryDate = new Date(value);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    if (expiryDate < today) {
+                        setErrors(prev => ({ ...prev, idExpiryDate: t('expiryDateInPast', 'Expiry date cannot be in the past') }));
+                    } else if (formData.idIssueDate) {
+                        // Check if expiry date is after issue date
+                        const issueDate = new Date(formData.idIssueDate);
+                        if (expiryDate <= issueDate) {
+                            setErrors(prev => ({ ...prev, idExpiryDate: t('expiryDateBeforeIssue', 'Expiry date must be after issue date') }));
+                        } else {
+                            setErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.idExpiryDate;
+                                delete newErrors.idIssueDate; // Also clear issue date error if it was related
+                                return newErrors;
+                            });
+                        }
+                    } else {
+                        setErrors(prev => ({ ...prev, idExpiryDate: undefined }));
+                    }
+                } else {
+                    setErrors(prev => ({ ...prev, idExpiryDate: undefined }));
+                }
+            }
         }
         
         if (step === 3) {
@@ -390,7 +435,7 @@ export default function EBankingApplication() {
             }
         }
         
-        if (step === 7) {
+        if (step === 4) {
             if (name === 'otpCode') {
                 const sanitizedValue = value.replace(/\D/g, '').slice(0, 6);
                 if (sanitizedValue.length === 6 && !/^\d{6}$/.test(sanitizedValue)) {
@@ -453,10 +498,39 @@ export default function EBankingApplication() {
             
             if (!formData.idIssueDate) {
                 errs.idIssueDate = t('issueDateRequired', 'Issue date is required');
+            } else {
+                // Check if issue date is in the future
+                const issueDate = new Date(formData.idIssueDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                if (issueDate > today) {
+                    errs.idIssueDate = t('issueDateInFuture', 'Issue date cannot be in the future');
+                }
             }
             
             if (!formData.idExpiryDate) {
                 errs.idExpiryDate = t('expiryDateRequired', 'Expiry date is required');
+            } else {
+                // Check if expiry date is in the past
+                const expiryDate = new Date(formData.idExpiryDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                if (expiryDate < today) {
+                    errs.idExpiryDate = t('expiryDateInPast', 'Expiry date cannot be in the past');
+                }
+            }
+            
+            // Check date relationship
+            if (formData.idIssueDate && formData.idExpiryDate) {
+                const issueDate = new Date(formData.idIssueDate);
+                const expiryDate = new Date(formData.idExpiryDate);
+                
+                if (issueDate >= expiryDate) {
+                    errs.idIssueDate = t('issueDateAfterExpiry', 'Issue date must be before expiry date');
+                    errs.idExpiryDate = t('expiryDateBeforeIssue', 'Expiry date must be after issue date');
+                }
             }
         }
         
@@ -478,19 +552,13 @@ export default function EBankingApplication() {
             }
         }
         
-        if (step === 4) {
-            if (formData.ebankingChannels.length === 0) {
-                errs.ebankingChannels = t('servicesRequired', 'Please select at least one e-banking service');
-            }
-        }
-        
         if (step === 5) {
             if (!formData.termsAccepted) {
                 errs.termsAccepted = t('termsAcceptanceRequired', 'You must accept the terms and conditions');
             }
         }
         
-        if (step === 7) {
+        if (step === 6) {
             if (!formData.otpCode) {
                 errs.otp = t('otpRequired', 'OTP is required');
             } else if (formData.otpCode.length !== 6) {
@@ -612,9 +680,7 @@ export default function EBankingApplication() {
                 NationalIdNumber: isNationalId ? formData.idNumber : undefined,
                 AltIdNumber: !isNationalId ? formData.idNumber : undefined,
                 AltIdIssuer: !isNationalId ? formData.issuingAuthority : undefined,
-                ServicesSelected: formData.ebankingChannels,
-                NewPhoneNumber: formData.newPhoneNumber || undefined,
-                NewAccountNumber: formData.newAccountNumber || undefined,
+                ServicesSelected: formData.ebankingChannels, // This can be empty array now
                 Region: !formData.idCopyAttached ? formData.region : undefined,
                 City: !formData.idCopyAttached ? formData.zone : undefined,
                 SubCity: !formData.idCopyAttached ? formData.zone : undefined,
@@ -669,7 +735,7 @@ export default function EBankingApplication() {
     // Loading states
     if (loadingAccounts) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <Loader2 className="h-12 w-12 text-fuchsia-700 animate-spin mx-auto mb-4" />
@@ -682,7 +748,7 @@ export default function EBankingApplication() {
 
     if (errorAccounts) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -702,7 +768,7 @@ export default function EBankingApplication() {
 
     if (!loadingAccounts && accounts.length === 0) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
                 <div className="max-w-4xl w-full">
                     <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                         <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -734,37 +800,14 @@ export default function EBankingApplication() {
                 return renderStep5();
             case 6:
                 return renderStep6();
-            case 7:
-                return renderStep7();
             default:
                 return null;
         }
     };
 
     const renderStep1 = () => (
-        <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <User className="h-5 w-5 text-fuchsia-700" />
-                {t('customerInformation', 'Customer Information')}
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label={t('branchName', 'Branch Name')}>
-                    <input
-                        type="text"
-                        value={formData.branchName}
-                        disabled
-                        className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
-                    />
-                </Field>
-                <Field label={t('date', 'Date')}>
-                    <input
-                        type="date"
-                        value={formData.date}
-                        disabled
-                        className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50"
-                    />
-                </Field>
+        <div className="space-y-6">
+            <div>
                 <Field 
                     label={t('accountNumber', 'Account Number')} 
                     required 
@@ -775,10 +818,12 @@ export default function EBankingApplication() {
                         type="text"
                         value={formData.accountNumber}
                         onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                         id="accountNumber"
                     />
                 </Field>
+            </div>
+            <div>
                 <Field 
                     label={t('customerName', 'Customer Name')} 
                     required 
@@ -789,10 +834,12 @@ export default function EBankingApplication() {
                         type="text"
                         value={formData.customerName}
                         onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                         id="customerName"
                     />
                 </Field>
+            </div>
+            <div>
                 <Field 
                     label={t('mobileNumber', 'Mobile Number')} 
                     required 
@@ -803,7 +850,7 @@ export default function EBankingApplication() {
                         type="tel"
                         value={formData.mobileNumber}
                         onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                         id="mobileNumber"
                     />
                 </Field>
@@ -812,19 +859,14 @@ export default function EBankingApplication() {
     );
 
     const renderStep2 = () => (
-        <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-fuchsia-700" />
-                {t('idInformation', 'ID Information')}
-            </h2>
-            
+        <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Field label={t('idType', 'ID Type')} required>
                     <select
                         name="idType"
                         value={formData.idType}
                         onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                     >
                         <option value="national_id">{t('nationalId', 'National ID')}</option>
                         <option value="passport">{t('passport', 'Passport')}</option>
@@ -841,7 +883,7 @@ export default function EBankingApplication() {
                         type="text"
                         value={formData.idNumber}
                         onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                         id="idNumber"
                     />
                 </Field>
@@ -855,7 +897,7 @@ export default function EBankingApplication() {
                         type="text"
                         value={formData.issuingAuthority}
                         onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                         id="issuingAuthority"
                     />
                 </Field>
@@ -869,7 +911,7 @@ export default function EBankingApplication() {
                         type="date"
                         value={formData.idIssueDate}
                         onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                         id="idIssueDate"
                     />
                 </Field>
@@ -883,7 +925,7 @@ export default function EBankingApplication() {
                         type="date"
                         value={formData.idExpiryDate}
                         onChange={handleChange}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                         id="idExpiryDate"
                     />
                 </Field>
@@ -892,12 +934,7 @@ export default function EBankingApplication() {
     );
 
     const renderStep3 = () => (
-        <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Home className="h-5 w-5 text-fuchsia-700" />
-                {t('addressInformation', 'Address Information')}
-            </h2>
-            
+        <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Region */}
                 <Field 
@@ -908,7 +945,7 @@ export default function EBankingApplication() {
                     <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         {regionLoading ? (
-                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3">
+                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3 bg-amber-50 rounded-lg">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span className="text-sm">{t('loadingRegions', 'Loading regions...')}</span>
                             </div>
@@ -917,7 +954,7 @@ export default function EBankingApplication() {
                                 name="region"
                                 value={formData.region || ""}
                                 onChange={handleChange}
-                                className="w-full pl-10 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent bg-white"
+                                className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                                 id="region"
                             >
                                 <option value="">{t('selectRegion', 'Select your region')}</option>
@@ -938,7 +975,7 @@ export default function EBankingApplication() {
                     <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         {zoneLoading ? (
-                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3">
+                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3 bg-amber-50 rounded-lg">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span className="text-sm">{t('loadingZones', 'Loading zones...')}</span>
                             </div>
@@ -948,7 +985,7 @@ export default function EBankingApplication() {
                                 value={formData.zone || ""}
                                 onChange={handleChange}
                                 disabled={!formData.region || zoneLoading}
-                                className="w-full pl-10 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent bg-white"
+                                className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                                 id="zone"
                             >
                                 <option value="">{t('selectZone', 'Select your zone')}</option>
@@ -969,7 +1006,7 @@ export default function EBankingApplication() {
                     <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         {woredaLoading ? (
-                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3">
+                            <div className="flex items-center gap-2 text-gray-500 pl-10 p-3 bg-amber-50 rounded-lg">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span className="text-sm">{t('loadingWoredas', 'Loading woredas...')}</span>
                             </div>
@@ -979,7 +1016,7 @@ export default function EBankingApplication() {
                                 value={formData.wereda || ""}
                                 onChange={handleChange}
                                 disabled={!formData.zone || woredaLoading}
-                                className="w-full pl-10 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent bg-white"
+                                className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                                 id="wereda"
                             >
                                 <option value="">{t('selectWereda', 'Select your woreda')}</option>
@@ -1004,7 +1041,7 @@ export default function EBankingApplication() {
                             type="text"
                             value={formData.houseNumber}
                             onChange={handleChange}
-                            className="w-full pl-10 p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                            className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-amber-50"
                             id="houseNumber"
                             placeholder={t('enterHouseNumber', 'Enter house number')}
                         />
@@ -1015,27 +1052,20 @@ export default function EBankingApplication() {
     );
 
     const renderStep4 = () => (
-        <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Wifi className="h-5 w-5 text-fuchsia-700" />
-                {t('eBankingServices', 'E-Banking Services')}
-            </h2>
-            
+        <div className="space-y-6">
             <div className="space-y-4">
-                <p className="text-sm text-gray-600">{t('selectServices', 'Select the services you would like to apply for:')}</p>
-                
-                {errors.ebankingChannels && <ErrorMessage message={errors.ebankingChannels} />}
+                <p className="text-sm text-gray-600">{t('selectServices', 'Select the services you would like to apply for:')} <span className="text-gray-400">({t('optional', 'Optional')})</span></p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {E_BANKING_OPTIONS.map(option => (
-                        <label key={option.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <label key={option.id} className="flex items-center p-3 border border-amber-200 rounded-lg hover:bg-amber-50 cursor-pointer bg-amber-50">
                             <input
                                 type="checkbox"
                                 name="ebankingChannels"
                                 value={option.id}
                                 checked={formData.ebankingChannels.includes(option.id)}
                                 onChange={handleChange}
-                                className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-amber-700 focus:ring-amber-500 border-amber-300 rounded"
                             />
                             <span className="ml-3 text-sm font-medium text-gray-700">
                                 <span className="mr-2">{option.icon}</span>
@@ -1044,17 +1074,20 @@ export default function EBankingApplication() {
                         </label>
                     ))}
                 </div>
+                
+                {formData.ebankingChannels.length === 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-700">
+                            {t('noServicesSelected', 'You have not selected any e-banking services. You can proceed without selecting services.')}
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );
 
     const renderStep5 = () => (
-        <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-fuchsia-700" />
-                {t('termsAndConditions', 'Terms and Conditions')}
-            </h2>
-            
+        <div className="space-y-6">
             <div className="space-y-4">
                 <div className="flex items-start">
                     <div className="flex items-center h-5">
@@ -1064,7 +1097,7 @@ export default function EBankingApplication() {
                             type="checkbox"
                             checked={formData.idCopyAttached}
                             onChange={handleChange}
-                            className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-500 border-gray-300 rounded"
+                            className="h-4 w-4 text-amber-700 focus:ring-amber-500 border-amber-300 rounded"
                         />
                     </div>
                     <div className="ml-3 text-sm">
@@ -1085,7 +1118,7 @@ export default function EBankingApplication() {
                             type="checkbox"
                             checked={formData.termsAccepted}
                             onChange={handleChange}
-                            className="h-4 w-4 text-fuchsia-700 focus:ring-fuchsia-500 border-gray-300 rounded"
+                            className="h-4 w-4 text-amber-700 focus:ring-amber-500 border-amber-300 rounded"
                         />
                     </div>
                     <div className="ml-3 text-sm">
@@ -1094,7 +1127,7 @@ export default function EBankingApplication() {
                             <button
                                 type="button"
                                 onClick={() => setShowTerms(true)}
-                                className="text-fuchsia-700 hover:text-fuchsia-800 underline"
+                                className="text-amber-700 hover:text-amber-800 underline"
                             >
                                 {t('termsAndConditions', 'Terms and Conditions')}
                             </button>{' '}
@@ -1109,7 +1142,7 @@ export default function EBankingApplication() {
                 {showTerms && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
                         <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4">
-                            <h3 className="text-lg font-bold text-fuchsia-700 mb-4">{t('termsAndConditions', 'Terms and Conditions')}</h3>
+                            <h3 className="text-lg font-bold text-amber-700 mb-4">{t('termsAndConditions', 'Terms and Conditions')}</h3>
                             <div className="max-h-96 overflow-y-auto text-sm text-gray-700 space-y-3">
                                 <p>{t('termsIntroduction', 'By applying for E-Banking services, you agree to abide by the bank\'s policies and procedures.')}</p>
                                 
@@ -1133,7 +1166,7 @@ export default function EBankingApplication() {
                                 <button
                                     type="button"
                                     onClick={() => setShowTerms(false)}
-                                    className="px-4 py-2 bg-fuchsia-700 text-white rounded-lg hover:bg-fuchsia-800"
+                                    className="px-4 py-2 bg-amber-700 text-white rounded-lg hover:bg-amber-800"
                                 >
                                     {t('close', 'Close')}
                                 </button>
@@ -1146,16 +1179,11 @@ export default function EBankingApplication() {
     );
 
     const renderStep6 = () => (
-        <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                {t('reviewApplication', 'Review Application')}
-            </h2>
-            
-            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+        <div className="space-y-6">
+            <div className="bg-amber-50 rounded-lg p-4 space-y-4 border border-amber-100">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <h4 className="font-medium text-gray-700 mb-2">{t('customerDetails', 'Customer Details')}</h4>
+                        <h4 className="font-medium text-amber-700 mb-2">{t('customerDetails', 'Customer Details')}</h4>
                         <div className="space-y-1 text-sm">
                             <p><span className="font-medium">Account:</span> {formData.accountNumber}</p>
                             <p><span className="font-medium">Name:</span> {formData.customerName}</p>
@@ -1163,24 +1191,28 @@ export default function EBankingApplication() {
                         </div>
                     </div>
                     <div>
-                        <h4 className="font-medium text-gray-700 mb-2">{t('selectedServices', 'Selected Services')}</h4>
-                        <ul className="text-sm space-y-1">
-                        {formData.ebankingChannels.map(channel => {
-                                const option = E_BANKING_OPTIONS.find(opt => opt.id === channel);
-                                return (
-                                    <li key={channel} className="flex items-center gap-2">
-                                        <span>{option?.icon}</span>
-                                        <span>{option?.label}</span>
-                                    </li>
-                                );
-                            })}
-                        </ul>
+                        <h4 className="font-medium text-amber-700 mb-2">{t('selectedServices', 'Selected Services')}</h4>
+                        {formData.ebankingChannels.length > 0 ? (
+                            <ul className="text-sm space-y-1">
+                            {formData.ebankingChannels.map(channel => {
+                                    const option = E_BANKING_OPTIONS.find(opt => opt.id === channel);
+                                    return (
+                                        <li key={channel} className="flex items-center gap-2">
+                                            <span>{option?.icon}</span>
+                                            <span>{option?.label}</span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-gray-500">{t('noServicesSelected', 'No services selected')}</p>
+                        )}
                     </div>
                 </div>
                 
                 {!formData.idCopyAttached && (
                     <div>
-                        <h4 className="font-medium text-gray-700 mb-2">{t('addressInformation', 'Address Information')}</h4>
+                        <h4 className="font-medium text-amber-700 mb-2">{t('addressInformation', 'Address Information')}</h4>
                         <div className="text-sm">
                             <p>{formData.region}, {formData.zone}</p>
                             <p>{formData.wereda}, {t('houseNumber', 'House')} {formData.houseNumber}</p>
@@ -1194,64 +1226,53 @@ export default function EBankingApplication() {
                     </p>
                 </div>
             </div>
-        </div>
-    );
-
-    const renderStep7 = () => (
-        <div className="border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Shield className="h-5 w-5 text-fuchsia-700" />
-                {t('otpVerification', 'OTP Verification')}
-            </h2>
             
-            <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm text-blue-700">
-                        {t('otpInstructions', 'An OTP has been sent to your phone number:')} 
-                        <strong className="text-blue-900"> {formData.mobileNumber || phone}</strong>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-700">
+                    {t('otpInstructions', 'An OTP will be sent to your phone number:')} 
+                    <strong className="text-amber-900"> {formData.mobileNumber || phone}</strong>
+                </p>
+                {otpMessage && (
+                    <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        {otpMessage}
                     </p>
-                    {otpMessage && (
-                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
-                            {otpMessage}
-                        </p>
-                    )}
-                </div>
+                )}
+            </div>
 
-                <div className="max-w-md">
-                    <Field 
-                        label={t('enterOtp', 'Enter OTP')} 
-                        required 
-                        error={errors.otp}
+            <div className="max-w-md">
+                <Field 
+                    label={t('enterOtp', 'Enter OTP')} 
+                    required 
+                    error={errors.otp}
+                >
+                    <input 
+                        type="text" 
+                        name="otpCode" 
+                        value={formData.otpCode} 
+                        onChange={handleChange} 
+                        maxLength={6}
+                        className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-amber-300 focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono bg-amber-50"
+                        placeholder="000000"
+                        id="otpCode"
+                    />
+                </Field>
+                
+                <div className="mt-2 flex justify-between items-center">
+                    <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={resendCooldown > 0 || otpLoading}
+                        className="text-sm text-amber-700 hover:text-amber-800 disabled:text-gray-400"
                     >
-                        <input 
-                            type="text" 
-                            name="otpCode" 
-                            value={formData.otpCode} 
-                            onChange={handleChange} 
-                            maxLength={6}
-                            className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent font-mono"
-                            placeholder="000000"
-                            id="otpCode"
-                        />
-                    </Field>
-                    
-                    <div className="mt-2 flex justify-between items-center">
-                        <button
-                            type="button"
-                            onClick={handleResendOtp}
-                            disabled={resendCooldown > 0 || otpLoading}
-                            className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
-                        >
-                            {resendCooldown > 0 
-                                ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
-                                : t('resendOtp', 'Resend OTP')
-                            }
-                        </button>
-                        <span className="text-sm text-gray-500">
-                            {formData.otpCode.length}/6
-                        </span>
-                    </div>
+                        {resendCooldown > 0 
+                            ? t('resendOtpIn', `Resend OTP in ${resendCooldown}s`) 
+                            : t('resendOtp', 'Resend OTP')
+                        }
+                    </button>
+                    <span className="text-sm text-gray-500">
+                        {formData.otpCode.length}/6
+                    </span>
                 </div>
             </div>
         </div>
@@ -1261,8 +1282,8 @@ export default function EBankingApplication() {
         <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                    {/* Header with fuchsia-700 */}
-                    <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white">
+                    {/* Header with consistent styling */}
+                     <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div className="flex items-center gap-3">
@@ -1292,8 +1313,20 @@ export default function EBankingApplication() {
                             </div>
                         )}
 
-                        <form onSubmit={step === 7 ? handleSubmit : handleNext} className="space-y-6">
-                            {renderStepContent()}
+                        <form onSubmit={step === 6 ? handleSubmit : handleNext} className="space-y-6">
+                            <div className="border border-amber-200 rounded-lg p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                    {step === 1 && <User className="h-5 w-5 text-amber-700" />}
+                                    {step === 2 && <FileText className="h-5 w-5 text-amber-700" />}
+                                    {step === 3 && <Home className="h-5 w-5 text-amber-700" />}
+                                    {step === 4 && <Wifi className="h-5 w-5 text-amber-700" />}
+                                    {step === 5 && <FileText className="h-5 w-5 text-amber-700" />}
+                                    {step === 6 && <Shield className="h-5 w-5 text-amber-700" />}
+                                    {t(`step${step}Title`, `Step ${step}`)}
+                                </h2>
+                                
+                                {renderStepContent()}
+                            </div>
 
                             {errors.submit && <ErrorMessage message={errors.submit} />}
 
@@ -1311,7 +1344,7 @@ export default function EBankingApplication() {
                                     <div></div> // Spacer for alignment
                                 )}
                                 
-                                {step < 6 ? (
+                                {step < 5 ? (
                                     <button
                                         type="submit"
                                         className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
@@ -1319,13 +1352,13 @@ export default function EBankingApplication() {
                                         <span>{t('continue', 'Continue')}</span>
                                         <ChevronRight className="h-4 w-4" />
                                     </button>
-                                ) : step === 6 ? (
+                                ) : step === 5 ? (
                                     <button
                                         type="submit"
                                         onClick={(e) => {
                                             e.preventDefault();
                                             handleRequestOtp();
-                                            setStep(7);
+                                            setStep(6);
                                         }}
                                         className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
                                     >

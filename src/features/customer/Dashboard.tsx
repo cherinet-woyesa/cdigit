@@ -23,12 +23,15 @@ import { useTranslation } from 'react-i18next';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import QueueNotifyModal from '../../modals/QueueNotifyModal';
 import TransactionFeedbackModal from '../../modals/TransactionFeedbackModal';
+import NearbyBranchesModal from '../../modals/NearbyBranchesModal';
 import clsx from 'clsx';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import { DashboardErrorBoundary } from '../../components/dashboard/ErrorBoundary';
 import { config } from '../../config/env';
 import { fetchBranches } from '../../services/branchService';
 import { getQueueCount } from '../../services/queueService';
+// Import the logo
+import logo from '../../assets/logo.jpg';
 
 type FormName =
   | 'accountOpening'
@@ -98,7 +101,7 @@ const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={clsx(
-        'group relative bg-white p-4 rounded-xl shadow-sm border border-gray-200 transition-all duration-200 ease-in-out',
+        'group relative bg-white p-4 rounded-xl shadow-sm border border-amber-100 transition-all duration-200 ease-in-out',
         'hover:shadow-md hover:border-fuchsia-300 hover:transform hover:-translate-y-0.5',
         'focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500',
         isFocused && 'ring-2 ring-fuchsia-500 border-fuchsia-500',
@@ -106,7 +109,7 @@ const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
       )}
     >
       <div className="flex flex-col items-center text-center h-full">
-        <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-fuchsia-100 text-fuchsia-700 mb-3 transition-colors group-hover:bg-fuchsia-700 group-hover:text-white">
+        <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white mb-3 transition-all group-hover:from-amber-500 group-hover:to-fuchsia-700 group-hover:scale-105">
           <form.icon className="h-6 w-6" />
         </div>
         
@@ -115,7 +118,7 @@ const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
         </h3>
         
         <div className="mt-auto">
-          <span className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full bg-fuchsia-50 text-fuchsia-700">
+          <span className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full bg-gradient-to-r from-amber-50 to-fuchsia-50 text-fuchsia-700 border border-fuchsia-200">
             {form.category}
           </span>
         </div>
@@ -128,11 +131,11 @@ FormCard.displayName = 'FormCard';
 
 // Simplified skeleton loader
 const FormCardSkeleton: React.FC = () => (
-  <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 animate-pulse">
+  <div className="bg-white p-4 rounded-xl shadow-sm border border-amber-100 animate-pulse">
     <div className="flex flex-col items-center">
-      <div className="h-12 w-12 rounded-lg bg-gray-200 mb-3"></div>
-      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-      <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
+      <div className="h-12 w-12 rounded-lg bg-gradient-to-r from-amber-200 to-fuchsia-300 mb-3"></div>
+      <div className="h-4 bg-gradient-to-r from-amber-200 to-fuchsia-200 rounded w-3/4 mb-2"></div>
+      <div className="h-5 w-16 bg-gradient-to-r from-amber-200 to-fuchsia-200 rounded-full"></div>
     </div>
   </div>
 );
@@ -172,7 +175,7 @@ const CustomerDashboardContent: React.FC = () => {
   const [nearbyBranches, setNearbyBranches] = useState<any[]>([]);
   const [queueCounts, setQueueCounts] = useState<Record<string, number>>({});
   const [loadingNearbyBranches, setLoadingNearbyBranches] = useState(false);
-  const [showNearbyBranches, setShowNearbyBranches] = useState(false);
+  const [isNearbyBranchesModalOpen, setIsNearbyBranchesModalOpen] = useState(false);
 
   // Debounced search with useCallback for stability
   useEffect(() => {
@@ -436,7 +439,7 @@ const CustomerDashboardContent: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100" ref={containerRef}>
+    <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50" ref={containerRef}>
       {/* Notification Modals */}
       <QueueNotifyModal
         isOpen={isQueueNotifyModalOpen}
@@ -457,29 +460,43 @@ const CustomerDashboardContent: React.FC = () => {
         message={TransactionCompletdModalMessage}
       />
 
-      {/* Header */}
-      <header className="bg-fuchsia-700 text-white shadow-lg sticky top-0 z-50">
+      <NearbyBranchesModal
+        isOpen={isNearbyBranchesModalOpen}
+        onClose={() => setIsNearbyBranchesModalOpen(false)}
+        loadingNearbyBranches={loadingNearbyBranches}
+        nearbyBranches={nearbyBranches}
+        queueCounts={queueCounts}
+        fetchNearbyBranches={fetchNearbyBranches}
+      />
+
+      {/* Header with brand gradient */}
+      <header className="bg-fuchsia-700 text-white shadow-lg z-50 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">{t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}!</h1>
+            <div className="flex items-center gap-4">
+              {/* Logo */}
+              <img src={logo} alt="Bank Logo" className="h-16 w-16 rounded-full object-contain" />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold">{t('bankName', 'Commercial Bank of Ethiopia')}</h1>
+                <p className="text-fuchsia-100 text-sm">{t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}!</p>
+              </div>
             </div>
             
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Nearby Branches Button */}
+              {/* Nearby Branches Button with brand colors */}
               <button
                 onClick={() => {
-                  setShowNearbyBranches(!showNearbyBranches);
-                  if (!showNearbyBranches && nearbyBranches.length === 0) {
+                  setIsNearbyBranchesModalOpen(true);
+                  if (nearbyBranches.length === 0) {
                     fetchNearbyBranches();
                   }
                 }}
-                className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm"
+                className="bg-gradient-to-r from-amber-600 to-fuchsia-700 hover:from-amber-700 hover:to-fuchsia-800 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm shadow-md"
               >
                 <BuildingStorefrontIcon className="h-5 w-5" />
                 <span>{t('nearbyBranches', 'Nearby Branches')}</span>
                 {nearbyBranches.length > 0 && (
-                  <span className="bg-white text-amber-700 rounded-full px-2 py-0.5 text-xs font-bold">
+                  <span className="bg-white text-fuchsia-700 rounded-full px-2 py-0.5 text-xs font-bold">
                     {nearbyBranches.reduce((total, branch) => total + (queueCounts[branch.id] || 0), 0)}
                   </span>
                 )}
@@ -487,189 +504,129 @@ const CustomerDashboardContent: React.FC = () => {
               
               <button
                 onClick={() => openForm(forms.find(f => f.name === 'history')!)}
-                className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm"
+                className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm"
               >
                 <ClockIcon className="h-5 w-5" />
                 <span>{t('transactionHistory', 'History')}</span>
               </button>
-              <div className="bg-white/10 px-3 py-2 rounded-lg text-sm font-mono flex items-center gap-2">
+              <div className="bg-white/20 px-3 py-2 rounded-lg text-sm font-mono flex items-center gap-2">
                 <DevicePhoneMobileIcon className="h-5 w-5" /> {phone}
               </div>
-              <div className="bg-white/10 rounded-lg">
-                <LanguageSwitcher />
-              </div>
+              
             </div>
           </div>
-          
-          {/* Nearby Branches Dropdown */}
-          {showNearbyBranches && (
-            <div className="mt-3 bg-white/10 rounded-lg p-3 max-w-2xl">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold text-white">{t('nearbyBranches', 'Nearby Branches')}</h3>
-                <button 
-                  onClick={() => setShowNearbyBranches(false)}
-                  className="text-white hover:text-gray-200"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
-              </div>
-              
-              {loadingNearbyBranches ? (
-                <div className="text-white text-center py-2">
-                  {t('loadingNearbyBranches', 'Loading nearby branches...')}
-                </div>
-              ) : nearbyBranches.length === 0 ? (
-                <div className="text-white text-center py-2">
-                  {t('noNearbyBranches', 'No nearby branches found')}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                  {nearbyBranches.map((branch) => (
-                    <div 
-                      key={branch.id} 
-                      className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-white"
-                    >
-                      <div className="font-semibold text-sm truncate">{branch.name}</div>
-                      <div className="text-xs opacity-90 truncate">{branch.address}</div>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-xs">
-                          {branch.distance.toFixed(1)} km
-                        </span>
-                        <span className="bg-amber-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
-                          {queueCounts[branch.id] !== undefined ? queueCounts[branch.id] : '...'} {t('inQueue', 'in queue')}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        
-        {/* Search and Filters */}
-        <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
-          <div className="relative mb-4">
-            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('searchPlaceholder', 'Search for services...')}
-              className="w-full pl-12 pr-10 py-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-fuchsia-700 focus:ring-4 focus:ring-fuchsia-100 transition-all"
-            />
-            {searchQuery && (
+      {/* Main Content - Scrollable area */}
+      <main className="flex-grow overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          
+          {/* Search and Filters */}
+          <div className="bg-white rounded-2xl shadow-sm p-4 mb-4 border border-fuchsia-100">
+            <div className="relative mb-4">
+              <MagnifyingGlassIcon className="h-5 w-5 text-fuchsia-500 absolute left-4 top-1/2 -translate-y-1/2" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('searchPlaceholder', 'Search for services...')}
+                className="w-full pl-12 pr-10 py-3 border-2 border-fuchsia-100 rounded-xl text-base focus:outline-none focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-100 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-fuchsia-500 hover:text-fuchsia-700 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+
+            <div className="hidden md:flex flex-wrap gap-2">
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={clsx(
+                    'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
+                    selectedCategory === category.id
+                      ? 'bg-gradient-to-r from-amber-500 to-fuchsia-600 text-white shadow-lg'
+                      : 'bg-gradient-to-r from-amber-50 to-fuchsia-50 text-fuchsia-700 hover:from-amber-100 hover:to-fuchsia-100 hover:text-fuchsia-800 border border-fuchsia-200'
+                  )}
+                >
+                  <FunnelIcon className="h-4 w-4" />
+                  {category.label}
+                  <span className={clsx(
+                    'px-1.5 py-0.5 rounded-full text-xs',
+                    selectedCategory === category.id
+                      ? 'bg-white/20'
+                      : 'bg-white text-fuchsia-700'
+                  )}>
+                    {category.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="hidden md:flex justify-between items-center mb-3">
+            {/* <p className="text-fuchsia-700 font-medium">
+              {filteredForms.length} {t('servicesFound', 'services found')}
+            </p> */}
+            {debouncedQuery && (
               <button
                 onClick={clearSearch}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Clear search"
+                className="text-sm text-fuchsia-700 hover:text-fuchsia-900 font-medium"
               >
-                <XMarkIcon className="h-5 w-5" />
+                Clear search
               </button>
             )}
           </div>
 
-          <div className="hidden md:flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={clsx(
-                  'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
-                  selectedCategory === category.id
-                    ? 'bg-fuchsia-700 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-fuchsia-50 hover:text-fuchsia-700'
-                )}
-              >
-                <FunnelIcon className="h-4 w-4" />
-                {category.label}
-                <span className={clsx(
-                  'px-1.5 py-0.5 rounded-full text-xs',
-                  selectedCategory === category.id
-                    ? 'bg-white/20'
-                    : 'bg-fuchsia-100 text-fuchsia-700'
-                )}>
-                  {category.count}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="hidden md:flex justify-between items-center mb-3">
-          <p className="text-gray-600">
-            {filteredForms.length} {t('servicesFound', 'services found')}
-          </p>
-          {debouncedQuery && (
-            <button
-              onClick={clearSearch}
-              className="text-sm text-fuchsia-700 hover:text-fuchsia-900 font-medium"
-            >
-              Clear search
-            </button>
+          {loading && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {[...Array(10)].map((_, i) => (
+                <FormCardSkeleton key={i} />
+              ))}
+            </div>
           )}
-        </div>
 
-        {loading && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {[...Array(10)].map((_, i) => (
-              <FormCardSkeleton key={i} />
-            ))}
-          </div>
-        )}
-
-        {!loading && (
-          <>
-            {filteredForms.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="bg-fuchsia-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MagnifyingGlassIcon className="h-8 w-8 text-fuchsia-600" />
+          {!loading && (
+            <>
+              {filteredForms.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="bg-gradient-to-r from-amber-100 to-fuchsia-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MagnifyingGlassIcon className="h-8 w-8 text-fuchsia-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {t('noResults', 'No services found')}
+                  </h3>
+                  <p className="text-gray-600">
+                    {debouncedQuery 
+                      ? t('noResultsForQuery', 'Try adjusting your search or filters')
+                      : t('noServicesAvailable', 'No services available in this category')
+                    }
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {t('noResults', 'No services found')}
-                </h3>
-                <p className="text-gray-600">
-                  {debouncedQuery 
-                    ? t('noResultsForQuery', 'Try adjusting your search or filters')
-                    : t('noServicesAvailable', 'No services available in this category')
-                  }
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {filteredForms.map((form, idx) => (
-                  <FormCard
-                    key={form.name}
-                    form={form}
-                    onClick={() => openForm(form)}
-                    isFocused={focusedIndex === idx}
-                    onKeyDown={handleCardKeyDown(idx)}
-                    ref={(el: HTMLDivElement | null) => { cardRefs.current[idx] = el; }}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        <div className="mt-8 bg-white rounded-2xl shadow-sm p-6">
-          <h3 className="font-semibold text-fuchsia-700 mb-4">Need help?</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
-              <div className="text-fuchsia-700 font-semibold">Visit Branch</div>
-            </button>
-            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
-              <div className="text-fuchsia-700 font-semibold">Contact Support</div>
-            </button>
-            <button className="text-left p-4 rounded-xl border-2 border-gray-100 hover:border-fuchsia-700 transition-colors">
-              <div className="text-fuchsia-700 font-semibold">FAQ</div>
-            </button>
-          </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {filteredForms.map((form, idx) => (
+                    <FormCard
+                      key={form.name}
+                      form={form}
+                      onClick={() => openForm(form)}
+                      isFocused={focusedIndex === idx}
+                      onKeyDown={handleCardKeyDown(idx)}
+                      ref={(el: HTMLDivElement | null) => { cardRefs.current[idx] = el; }}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </main>
     </div>
