@@ -7,28 +7,30 @@ import {
   UserCircleIcon, 
   WifiIcon,
   CogIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  BuildingStorefrontIcon,
+  ComputerDesktopIcon
 } from "@heroicons/react/24/outline";
 
 interface HeaderProps {
   assignedWindow?: WindowDto | null;
   handleOpenChangeWindow: () => void;
-  branchName?: string; // Add this
-  decoded?: DecodedToken | null; // Add this
+  branchName?: string;
+  decoded?: DecodedToken | null;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
   assignedWindow, 
   handleOpenChangeWindow,
-  branchName, // Add to destructuring
-  decoded // Add to destructuring
+  branchName,
+  decoded
 }) => {
   const { token, user } = useAuth();
   const [localDecoded, setLocalDecoded] = React.useState<DecodedToken | null>(decoded || null);
 
   /** Decode token for branch info - only if not passed as prop */
   React.useEffect(() => {
-    if (!token || decoded) return; // Skip if decoded is already provided
+    if (!token || decoded) return;
     try {
       const d = jwtDecode<DecodedToken>(token);
       setLocalDecoded(d);
@@ -44,48 +46,64 @@ const Header: React.FC<HeaderProps> = ({
   const displayBranchName = branchName || currentDecoded?.BranchId || 'N/A';
 
   return (
-    <header className="bg-gradient-to-r from-fuchsia-700 to-fuchsia-600 text-white shadow-md sticky top-0 z-40">
+    <header className="bg-white text-gray-800 shadow-md sticky top-0 z-40 border-b border-gray-200">
       <div className="px-6 py-4">
         <div className="flex justify-between items-center">
           {/* Left Side - Welcome */}
           <div>
-            <h1 className="text-xl font-bold text-white">
-              Welcome, {user?.firstName || currentDecoded?.unique_name || 'Maker'}
+            <h1 className="text-3xl font-black text-gray-900 mb-1">
+              Welcome, {user?.firstName || currentDecoded?.unique_name || 'Maker'}!
             </h1>
-            <p className="text-sm text-fuchsia-50 mt-0.5">
-              Branch: <span className="font-semibold text-white">{displayBranchName}</span>
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-1.5">
+                <BuildingStorefrontIcon className="h-4 w-4 text-amber-500" />
+                <span className="text-gray-600">
+                  Branch: <span className="font-semibold text-gray-900">{displayBranchName}</span>
+                </span>
+              </div>
               {assignedWindow && (
-                <>
-                  <span className="mx-2 text-fuchsia-200">•</span>
-                  Window <span className="font-semibold text-white">#{assignedWindow.windowNumber}</span>
-                </>
+                <div className="flex items-center gap-1.5">
+                  <ComputerDesktopIcon className="h-4 w-4 text-amber-500" />
+                  <span className="text-gray-600">
+                    Window <span className="font-semibold text-gray-900">#{assignedWindow.windowNumber}</span>
+                  </span>
+                </div>
               )}
-            </p>
+            </div>
           </div>
           
-          {/* Right Side - Actions & Status */}
+          {/* Right Side - Actions & Status - Smaller and compact */}
           <div className="flex items-center gap-3">
-            {/* Window Status Badge */}
+            {/* Role Badge - Small and in top right */}
+            <div className="bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+              <div className="text-xs font-bold text-amber-700 uppercase tracking-wide">Role</div>
+              <div className="text-sm font-bold text-amber-800">Maker</div>
+            </div>
+
+            {/* Window Status Badge - Smaller */}
             {assignedWindow && (
-              <div className="bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-2 rounded-lg">
-                <div className="text-xs text-fuchsia-100 font-medium">Active Window</div>
-                <div className="font-bold text-white text-lg">#{assignedWindow.windowNumber}</div>
+              <div className="bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
+                <div className="text-xs text-gray-500 font-medium">Active Window</div>
+                <div className="font-bold text-gray-900 text-base">#{assignedWindow.windowNumber}</div>
               </div>
             )}
 
-            {/* Change Window Button */}
+            {/* Change Window Button - Smaller */}
             <button
               onClick={handleOpenChangeWindow}
-              className="bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/30 text-white font-medium px-4 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2"
+              className="bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-medium px-3 py-1.5 rounded-lg text-sm transition-all duration-200 flex items-center gap-2"
             >
               <CogIcon className="h-4 w-4" />
               {assignedWindow ? "Change Window" : "Select Window"}
             </button>
 
-            {/* Connection Status */}
-            <div className="flex items-center gap-2 bg-green-500/20 backdrop-blur-sm border border-green-400/30 px-3 py-2 rounded-lg">
-              <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
-              <span className="text-green-50 text-sm font-medium">Online</span>
+            {/* Connection Status - Smaller */}
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <div>
+                <div className="text-xs text-green-600 font-medium">Status</div>
+                <div className="text-sm font-bold text-green-700">Online</div>
+              </div>
             </div>
           </div>
         </div>

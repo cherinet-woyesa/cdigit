@@ -26,18 +26,12 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Transaction types
+  // Transaction types based on the actual data
   const transactionTypes = [
-    'Cash Deposit',
-    'Cash Withdrawal',
-    'Transfer',
-    'Check Deposit',
-    'Check Withdrawal',
-    'Account Opening',
-    'Account Closure',
-    'Foreign Exchange',
-    'Standing Order',
-    'Other',
+    'Deposit',
+    'Withdrawal',
+    'FundTransfer',
+    'RTGS',
   ];
 
   // Currency options
@@ -45,22 +39,9 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
 
   // Status options (only allow certain status transitions)
   const getAvailableStatuses = (currentStatus: VoucherStatus): VoucherStatus[] => {
-    switch (currentStatus) {
-      case 'draft':
-        return ['draft', 'initiated'];
-      case 'initiated':
-        return ['initiated', 'pending_verification'];
-      case 'pending_verification':
-        return ['pending_verification', 'verified', 'rejected'];
-      case 'verified':
-        return ['verified', 'validated', 'rejected'];
-      case 'validated':
-        return ['validated', 'pending_approval'];
-      case 'pending_approval':
-        return ['pending_approval', 'approved', 'rejected'];
-      default:
-        return [currentStatus]; // No changes allowed for final states
-    }
+    // In the real system, status transitions would be more complex
+    // For now, we'll allow all statuses to be selected
+    return ['Cancelled', 'OnQueue', 'OnProgress', 'Completed', 'Skipped'];
   };
 
   // Initialize form data when voucher changes
@@ -68,9 +49,6 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
     if (voucher) {
       setFormData({
         ...voucher,
-        // Ensure dates are properly formatted for input fields
-        createdAt: voucher.createdAt,
-        updatedAt: voucher.updatedAt,
       });
       setErrors({});
     }
@@ -101,37 +79,12 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
       newErrors.customerName = 'Customer name is required';
     }
 
-    if (!formData.customerId?.trim()) {
-      newErrors.customerId = 'Customer ID is required';
-    }
-
-    if (!formData.accountNumber?.trim()) {
-      newErrors.accountNumber = 'Account number is required';
-    }
-
-    if (!formData.transactionType?.trim()) {
-      newErrors.transactionType = 'Transaction type is required';
-    }
-
     if (!formData.amount || formData.amount <= 0) {
       newErrors.amount = 'Amount must be greater than 0';
     }
 
-    if (!formData.currency?.trim()) {
-      newErrors.currency = 'Currency is required';
-    }
-
-    // Business rule validations
-    if (formData.amount && formData.amount > 1000000) {
-      newErrors.amount = 'Amount cannot exceed 1,000,000';
-    }
-
-    if (formData.accountNumber && !/^\d{10,16}$/.test(formData.accountNumber)) {
-      newErrors.accountNumber = 'Account number must be 10-16 digits';
-    }
-
-    if (formData.customerId && !/^[A-Z0-9]{8,12}$/.test(formData.customerId)) {
-      newErrors.customerId = 'Customer ID must be 8-12 alphanumeric characters';
+    if (!formData.transactionType?.trim()) {
+      newErrors.transactionType = 'Transaction type is required';
     }
 
     setErrors(newErrors);
@@ -154,7 +107,6 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
         ...voucher,
         ...formData,
         updatedAt: new Date(),
-        lastModifiedBy: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Unknown',
       } as Voucher;
 
       // Log the edit action
@@ -211,7 +163,7 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
                 <input
                   id="customerName"
                   type="text"
-                  value={formData.customerName || ''}
+                  value={formData.customerName || voucher.customerName || ''}
                   onChange={(e) => handleInputChange('customerName', e.target.value)}
                   className={errors.customerName ? 'error' : ''}
                   disabled={isSubmitting}
@@ -223,37 +175,15 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
               </div>
 
               <div className="form-group">
-                <label htmlFor="customerId">Customer ID *</label>
+                <label htmlFor="accountHolderName">Account Holder Name</label>
                 <input
-                  id="customerId"
+                  id="accountHolderName"
                   type="text"
-                  value={formData.customerId || ''}
-                  onChange={(e) => handleInputChange('customerId', e.target.value.toUpperCase())}
-                  className={errors.customerId ? 'error' : ''}
+                  value={formData.accountHolderName || voucher.accountHolderName || ''}
+                  onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
                   disabled={isSubmitting}
-                  placeholder="e.g., CUST12345678"
-                  maxLength={12}
+                  maxLength={100}
                 />
-                {errors.customerId && (
-                  <span className="error-message">{errors.customerId}</span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="accountNumber">Account Number *</label>
-                <input
-                  id="accountNumber"
-                  type="text"
-                  value={formData.accountNumber || ''}
-                  onChange={(e) => handleInputChange('accountNumber', e.target.value)}
-                  className={errors.accountNumber ? 'error' : ''}
-                  disabled={isSubmitting}
-                  placeholder="e.g., 1234567890123456"
-                  maxLength={16}
-                />
-                {errors.accountNumber && (
-                  <span className="error-message">{errors.accountNumber}</span>
-                )}
               </div>
             </div>
 
@@ -265,7 +195,7 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
                 <label htmlFor="transactionType">Transaction Type *</label>
                 <select
                   id="transactionType"
-                  value={formData.transactionType || ''}
+                  value={formData.transactionType || voucher.transactionType || ''}
                   onChange={(e) => handleInputChange('transactionType', e.target.value)}
                   className={errors.transactionType ? 'error' : ''}
                   disabled={isSubmitting}
@@ -289,35 +219,13 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
                   type="number"
                   min="0.01"
                   step="0.01"
-                  max="1000000"
-                  value={formData.amount || ''}
+                  value={formData.amount || voucher.amount || ''}
                   onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
                   className={errors.amount ? 'error' : ''}
                   disabled={isSubmitting}
                 />
                 {errors.amount && (
                   <span className="error-message">{errors.amount}</span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="currency">Currency *</label>
-                <select
-                  id="currency"
-                  value={formData.currency || ''}
-                  onChange={(e) => handleInputChange('currency', e.target.value)}
-                  className={errors.currency ? 'error' : ''}
-                  disabled={isSubmitting}
-                >
-                  <option value="">Select Currency</option>
-                  {currencies.map((curr) => (
-                    <option key={curr} value={curr}>
-                      {curr}
-                    </option>
-                  ))}
-                </select>
-                {errors.currency && (
-                  <span className="error-message">{errors.currency}</span>
                 )}
               </div>
             </div>
@@ -330,59 +238,28 @@ const VoucherEditModal: React.FC<VoucherEditModalProps> = ({
                 <label htmlFor="status">Status</label>
                 <select
                   id="status"
-                  value={formData.status || voucher.status}
+                  value={formData.status || voucher.status || 'OnQueue'}
                   onChange={(e) => handleInputChange('status', e.target.value as VoucherStatus)}
                   disabled={isSubmitting}
                 >
                   {availableStatuses.map((status) => (
                     <option key={status} value={status}>
-                      {status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {status.replace(/([A-Z])/g, ' $1').trim()}
                     </option>
                   ))}
                 </select>
-                <small className="help-text">
-                  Only certain status transitions are allowed based on business rules
-                </small>
               </div>
 
               <div className="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={formData.requiresApproval ?? voucher.requiresApproval}
-                    onChange={(e) => handleInputChange('requiresApproval', e.target.checked)}
-                    disabled={isSubmitting}
-                  />
-                  Requires Manager Approval
-                </label>
+                <label htmlFor="queueNumber">Queue Number</label>
+                <input
+                  id="queueNumber"
+                  type="number"
+                  value={formData.queueNumber || voucher.queueNumber || ''}
+                  onChange={(e) => handleInputChange('queueNumber', parseInt(e.target.value) || 0)}
+                  disabled={isSubmitting}
+                />
               </div>
-
-              <div className="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={formData.isException ?? voucher.isException}
-                    onChange={(e) => handleInputChange('isException', e.target.checked)}
-                    disabled={isSubmitting}
-                  />
-                  Mark as Exception
-                </label>
-              </div>
-
-              {(formData.isException ?? voucher.isException) && (
-                <div className="form-group">
-                  <label htmlFor="exceptionReason">Exception Reason</label>
-                  <textarea
-                    id="exceptionReason"
-                    value={formData.exceptionReason || ''}
-                    onChange={(e) => handleInputChange('exceptionReason', e.target.value)}
-                    disabled={isSubmitting}
-                    placeholder="Explain why this voucher is marked as an exception..."
-                    rows={3}
-                    maxLength={500}
-                  />
-                </div>
-              )}
             </div>
           </div>
 
