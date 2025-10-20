@@ -457,7 +457,7 @@ export default function EnhancedStopPaymentForm() {
           <div className="max-w-4xl w-full mx-auto">
             <div className="bg-white shadow-lg rounded-lg overflow-hidden">
               {/* Header with Language Switcher */}
-              <header className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-t-lg">
+              <header className="bg-fuchsia-700 text-white rounded-t-lg">
                 <div className="px-6 py-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
@@ -836,7 +836,7 @@ export default function EnhancedStopPaymentForm() {
                       </button>
                       <button 
                         type="submit" 
-                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 flex items-center gap-2 shadow-md"
+                        className="px-6 py-3 bg-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 flex items-center gap-2 shadow-md"
                       >
                         <PenTool className="h-4 w-4" />
                         {t('continueToSignature', 'Continue to Signature')}
@@ -940,7 +940,7 @@ export default function EnhancedStopPaymentForm() {
                       <button 
                         type="submit" 
                         disabled={otpLoading || !formData.signature || !formData.termsAccepted}
-                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 disabled:opacity-50 flex items-center gap-2 shadow-md"
+                        className="px-6 py-3 bg-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 disabled:opacity-50 flex items-center gap-2 shadow-md"
                       >
                         {otpLoading ? (
                           <>
@@ -1031,7 +1031,7 @@ export default function EnhancedStopPaymentForm() {
                       <button 
                         type="submit" 
                         disabled={isSubmitting || formData.otpCode.length !== 6}
-                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 disabled:opacity-50 flex items-center gap-2 shadow-md"
+                        className="px-6 py-3 bg-fuchsia-700 text-white rounded-lg hover:from-amber-600 hover:to-fuchsia-800 disabled:opacity-50 flex items-center gap-2 shadow-md"
                       >
                         {isSubmitting ? (
                           <>

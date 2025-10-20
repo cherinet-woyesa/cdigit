@@ -730,7 +730,7 @@ export default function POSRequestForm() {
             <div className="max-w-4xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
                     {/* Header with consistent styling - removed icons per policy */}
-                     <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white">
+                    <header className="bg-fuchsia-700 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div>

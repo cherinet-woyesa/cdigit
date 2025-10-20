@@ -471,7 +471,7 @@ export default function StatementRequestForm() {
             <div className="max-w-2xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-fuchsia-200 focus-within:border-fuchsia-700 transition-colors duration-200">
                     {/* Header with brand gradient */}
-                     <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white">
+                    <header className="bg-fuchsia-700 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div>
@@ -651,9 +651,9 @@ export default function StatementRequestForm() {
                                 </div>
 
                                 <div className="flex justify-end">
-                                    <button 
+                                     <button 
                                         type="submit" 
-                                        className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-6 py-3 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 font-medium flex items-center gap-2 transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 font-medium flex items-center gap-2 transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
                                     >
                                         <span>{t('continue', 'Continue')}</span>
                                         <ChevronRight className="h-4 w-4" />
@@ -731,10 +731,11 @@ export default function StatementRequestForm() {
                                         <ChevronRight className="h-4 w-4 rotate-180" />
                                         {t('back', 'Back')}
                                     </button>
-                                    <button 
+                                   
+                                         <button 
                                         type="submit" 
                                         disabled={otpLoading}
-                                        className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-6 py-3 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 font-medium disabled:opacity-50 flex items-center gap-2 justify-center transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 font-medium flex items-center gap-2 transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
                                     >
                                         {otpLoading ? (
                                             <>
@@ -825,7 +826,7 @@ export default function StatementRequestForm() {
                                     <button 
                                         type="submit" 
                                         disabled={formData.otp.length !== 6}
-                                        className="bg-gradient-to-r from-amber-500 to-fuchsia-700 text-white px-6 py-3 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 font-medium disabled:opacity-50 flex items-center gap-2 justify-center transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:from-amber-600 hover:to-fuchsia-800 font-medium disabled:opacity-50 flex items-center gap-2 justify-center transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
                                     >
                                         <CheckCircle2 className="h-4 w-4" />
                                         {t('submit', 'Submit')}

@@ -93,7 +93,7 @@ const POSRequestConfirmation: React.FC = () => {
       <div className="max-w-2xl w-full">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Header with softer gradient */}
-          <header className="bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white">
+          <header className="bg-fuchsia-700 text-white">
             <div className="px-6 py-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex items-center gap-3">
@@ -113,7 +113,7 @@ const POSRequestConfirmation: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="bg-fuchsia-800/50 px-2 py-1 rounded-full text-xs">📱 {phone}</div>
-                  <div className="bg-white/20 rounded p-1"><LanguageSwitcher /></div>
+                  {/* <div className="bg-white/20 rounded p-1"><LanguageSwitcher /></div> */}
                 </div>
               </div>
             </div>
@@ -122,18 +122,19 @@ const POSRequestConfirmation: React.FC = () => {
           {/* Main Content */}
           <div ref={printRef} className="p-4">
           {/* Success Message */}
-          <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <CheckCircle2 className="h-5 w-5 text-green-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-green-700">
+          <div className="text-center py-4">
+  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+    <CheckCircle2 className="h-10 w-10 text-green-600" />
+  </div>
+  <h2 className="text-lg font-bold text-gray-900 mb-1">
+    {t('success', 'Success!')}
+  </h2>
+  <p className="text-sm text-green-700">
                   {t('requestSubmittedSuccessfully', 'Your POS request has been submitted successfully.')}
                 </p>
-              </div>
-            </div>
-          </div>
+</div>
+
+          
           
             {/* Queue and Token Cards with improved colors */}
             <div className="mb-4">

@@ -109,7 +109,7 @@ const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
       )}
     >
       <div className="flex flex-col items-center text-center h-full">
-        <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white mb-3 transition-all group-hover:from-amber-500 group-hover:to-fuchsia-700 group-hover:scale-105">
+        <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-amber-400 text-white mb-3 transition-all group-hover:from-amber-500 group-hover:to-fuchsia-700 group-hover:scale-105">
           <form.icon className="h-6 w-6" />
         </div>
         
@@ -553,7 +553,7 @@ const CustomerDashboardContent: React.FC = () => {
                   className={clsx(
                     'px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2',
                     selectedCategory === category.id
-                      ? 'bg-gradient-to-r from-amber-500 to-fuchsia-600 text-white shadow-lg'
+                      ? 'bg-fuchsia-600 text-white shadow-lg'
                       : 'bg-gradient-to-r from-amber-50 to-fuchsia-50 text-fuchsia-700 hover:from-amber-100 hover:to-fuchsia-100 hover:text-fuchsia-800 border border-fuchsia-200'
                   )}
                 >

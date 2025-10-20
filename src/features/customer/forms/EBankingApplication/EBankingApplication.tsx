@@ -1283,7 +1283,7 @@ export default function EBankingApplication() {
             <div className="max-w-2xl w-full mx-auto">
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden">
                     {/* Header with consistent styling */}
-                     <header className="bg-gradient-to-r from-fuchsia-700 to-amber-400 text-white">
+                    <header className="bg-fuchsia-700 text-white">
                         <div className="px-6 py-4">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div className="flex items-center gap-3">
@@ -1347,7 +1347,7 @@ export default function EBankingApplication() {
                                 {step < 5 ? (
                                     <button
                                         type="submit"
-                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 font-medium flex items-center gap-2 transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
                                     >
                                         <span>{t('continue', 'Continue')}</span>
                                         <ChevronRight className="h-4 w-4" />
@@ -1360,7 +1360,7 @@ export default function EBankingApplication() {
                                             handleRequestOtp();
                                             setStep(6);
                                         }}
-                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium flex items-center gap-2"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 font-medium flex items-center gap-2 transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
                                     >
                                         <Shield className="h-4 w-4" />
                                         <span>{t('requestOtp', 'Request OTP')}</span>
@@ -1369,7 +1369,7 @@ export default function EBankingApplication() {
                                     <button 
                                         type="submit" 
                                         disabled={isSubmitting || formData.otpCode.length !== 6}
-                                        className="bg-amber-400 text-amber-900 px-6 py-3 rounded-lg hover:bg-amber-500 font-medium disabled:opacity-50 flex items-center gap-2 justify-center"
+                                        className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 font-medium flex items-center gap-2 transition-all shadow-md border-2 border-transparent hover:border-fuchsia-900"
                                     >
                                         {isSubmitting ? (
                                             <>

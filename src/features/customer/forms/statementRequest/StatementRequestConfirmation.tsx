@@ -78,7 +78,7 @@ const StatementRequestConfirmation: React.FC = () => {
       <div className="max-w-2xl w-full">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Header with softer gradient */}
-          <header className="bg-gradient-to-r from-amber-400 to-fuchsia-600 text-white">
+          <header className="bg-fuchsia-700 text-white">
             <div className="px-6 py-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex items-center gap-3">
@@ -107,9 +107,9 @@ const StatementRequestConfirmation: React.FC = () => {
           <div className="p-4">
             {/* Success Icon */}
             <div className="text-center py-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-3">
-                <CheckCircle2 className="h-10 w-10 text-amber-600" />
-              </div>
+               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+    <CheckCircle2 className="h-10 w-10 text-green-600" />
+  </div>
               <h2 className="text-lg font-bold text-gray-900 mb-1">{t('success', 'Success!')}</h2>
               <p className="text-gray-600 text-sm">{t('requestSubmitted', 'Your statement request has been submitted.')}</p>
             </div>
