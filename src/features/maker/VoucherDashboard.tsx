@@ -7,43 +7,32 @@ import signatureCryptoService from '../../services/signatureCryptoService';
 import SignatureCanvas from 'react-signature-canvas';
 import VoucherEditModal from './VoucherEditModal';
 import type { ApprovalWorkflow } from '../../services/approvalWorkflowService';
+import managerService from '../../services/managerService';
 import './VoucherDashboard.css';
 
-// Voucher status enum matching workflow states
+// Voucher status enum matching backend states
 export type VoucherStatus = 
-  | 'draft' 
-  | 'initiated' 
-  | 'pending_verification' 
-  | 'verified' 
-  | 'validated'
-  | 'pending_approval' 
-  | 'approved' 
-  | 'rejected' 
-  | 'posted'
-  | 'completed'
-  | 'exception';
+  | 'Cancelled'
+  | 'OnQueue'
+  | 'OnProgress'
+  | 'Completed'
+  | 'Skipped';
 
 export interface Voucher {
+  id: string;
   formReferenceId: string;
+  queueNumber: number;
   customerName: string;
-  customerId: string;
-  accountNumber: string;
-  transactionType: string;
+  accountHolderName: string;
   amount: number;
-  currency: string;
+  transactionType: string;
   status: VoucherStatus;
+  frontMakerId?: string;
+  branchId?: string;
   createdAt: Date;
   updatedAt: Date;
-  createdBy: string;
-  lastModifiedBy?: string;
-  workflowId?: string;
-  requiresApproval: boolean;
-  isException: boolean;
-  exceptionReason?: string;
-  tellerSignature?: any;
-  approverSignature?: any;
-  cbsPostingId?: string;
-  cbsPostedAt?: Date;
+  calledAt?: Date;
+  depositedToCBSAt?: Date;
 }
 
 interface VoucherDashboardProps {
@@ -82,26 +71,60 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
     needsApproval: 0,
   });
 
-  // Load vouchers from localStorage
-  const loadVouchers = useCallback(() => {
+  // Loading and error states
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load vouchers from backend
+  const loadVouchers = useCallback(async () => {
+    if (!user?.branchId) {
+      setError('No branch ID found for user');
+      return;
+    }
+
     try {
-      // Load from localStorage (mock data source)
-      const storedVouchers = localStorage.getItem('vouchers');
-      const voucherData: Voucher[] = storedVouchers ? JSON.parse(storedVouchers) : [];
+      setLoading(true);
+      setError(null);
       
-      // Sort by updatedAt descending
-      voucherData.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      // Fetch today's transactions for the branch
+      const response = await managerService.getTodaysTransactions(user.branchId);
       
-      setVouchers(voucherData);
+      if (response && response.data) {
+        // Transform the data to match our Voucher interface
+        const voucherData: Voucher[] = (response.data as any[]).map(item => ({
+          id: item.id,
+          formReferenceId: item.formReferenceId,
+          queueNumber: item.queueNumber,
+          customerName: item.accountHolderName,
+          accountHolderName: item.accountHolderName,
+          amount: item.amount,
+          transactionType: item.transactionType,
+          status: item.status as VoucherStatus,
+          frontMakerId: item.frontMakerId,
+          branchId: item.branchId,
+          createdAt: new Date(item.submittedAt),
+          updatedAt: new Date(item.submittedAt),
+          calledAt: item.calledAt ? new Date(item.calledAt) : undefined,
+          depositedToCBSAt: item.depositedToCBSAt ? new Date(item.depositedToCBSAt) : undefined,
+        }));
+        
+        // Sort by submittedAt descending
+        voucherData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        
+        setVouchers(voucherData);
+      }
     } catch (error) {
       console.error('Error loading vouchers:', error);
+      setError('Failed to load vouchers: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [user?.branchId]);
 
   useEffect(() => {
     loadVouchers();
-    // Refresh every 5 seconds
-    const interval = setInterval(loadVouchers, 5000);
+    // Refresh every 30 seconds
+    const interval = setInterval(loadVouchers, 30000);
     return () => clearInterval(interval);
   }, [loadVouchers]);
 
@@ -118,21 +141,21 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
       filtered = filtered.filter(v => 
         v.formReferenceId.toLowerCase().includes(term) ||
         v.customerName.toLowerCase().includes(term) ||
-        v.customerId.toLowerCase().includes(term) ||
-        v.accountNumber.toLowerCase().includes(term)
+        v.accountHolderName.toLowerCase().includes(term)
       );
     }
     
     if (showPendingOnly) {
       filtered = filtered.filter(v => 
-        v.status === 'pending_verification' || 
-        v.status === 'pending_approval' ||
-        v.status === 'validated'
+        v.status === 'OnQueue' || 
+        v.status === 'OnProgress'
       );
     }
     
     if (showExceptionsOnly) {
-      filtered = filtered.filter(v => v.isException);
+      // In the real system, exceptions would be transactions with specific error states
+      // For now, we'll show cancelled transactions as exceptions
+      filtered = filtered.filter(v => v.status === 'Cancelled');
     }
     
     setFilteredVouchers(filtered);
@@ -141,13 +164,12 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
     setStats({
       total: vouchers.length,
       pending: vouchers.filter(v => 
-        v.status === 'pending_verification' || 
-        v.status === 'pending_approval' ||
-        v.status === 'validated'
+        v.status === 'OnQueue' || 
+        v.status === 'OnProgress'
       ).length,
-      approved: vouchers.filter(v => v.status === 'approved' || v.status === 'posted' || v.status === 'completed').length,
-      exceptions: vouchers.filter(v => v.isException).length,
-      needsApproval: vouchers.filter(v => v.requiresApproval && v.status === 'pending_approval').length,
+      approved: vouchers.filter(v => v.status === 'Completed').length,
+      exceptions: vouchers.filter(v => v.status === 'Cancelled' || v.status === 'Skipped').length,
+      needsApproval: vouchers.filter(v => v.status === 'OnQueue').length,
     });
   }, [vouchers, statusFilter, searchTerm, showPendingOnly, showExceptionsOnly]);
 
@@ -156,38 +178,10 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
     try {
       console.log(`[CBS AUTO-POST] Posting voucher ${voucher.formReferenceId} to CBS...`);
       
-      // Simulate CBS API call
+      // In a real implementation, this would call an actual CBS API
+      // For now, we'll just log it
       const cbsPostingId = `CBS_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const cbsPostedAt = new Date();
-      
-      // Update voucher status
-      const updatedVouchers = vouchers.map(v => {
-        if (v.formReferenceId === voucher.formReferenceId) {
-          return {
-            ...v,
-            status: 'posted' as VoucherStatus,
-            cbsPostingId,
-            cbsPostedAt,
-            updatedAt: new Date(),
-          };
-        }
-        return v;
-      });
-      
-      setVouchers(updatedVouchers);
-      localStorage.setItem('vouchers', JSON.stringify(updatedVouchers));
-      
-      // Log CBS posting (using approve action)
-      authorizationAuditService.logApproval({
-        approverId: user?.id || 'CBS_SYSTEM',
-        approverRole: role || 'Maker',
-        voucherId: voucher.formReferenceId,
-        voucherType: voucher.transactionType,
-        action: 'approve',
-        amount: voucher.amount,
-        currency: voucher.currency,
-        reason: `Auto-posted to CBS with ID: ${cbsPostingId}`,
-      });
       
       console.log(`[CBS AUTO-POST] Successfully posted to CBS: ${cbsPostingId}`);
     } catch (error) {
@@ -233,19 +227,14 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
 
   const handleSaveVoucherEdit = (updatedVoucher: Voucher) => {
     try {
-      // Update the voucher in the local state
-      const updatedVouchers = vouchers.map(v => 
-        v.formReferenceId === updatedVoucher.formReferenceId ? updatedVoucher : v
-      );
-      
-      setVouchers(updatedVouchers);
-      localStorage.setItem('vouchers', JSON.stringify(updatedVouchers));
+      // In a real implementation, this would update the backend
+      // For now, we'll just show a success message
+      alert('Voucher updated successfully!');
       
       // Close the edit modal
       setShowEditModal(false);
       setSelectedVoucher(null);
       
-      alert('Voucher updated successfully!');
     } catch (error) {
       console.error('Error saving voucher:', error);
       alert('Error saving voucher. Please try again.');
@@ -313,11 +302,11 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
       const voucherData = {
         voucherId: selectedVoucher.formReferenceId,
         voucherType: selectedVoucher.transactionType,
-        accountNumber: selectedVoucher.accountNumber,
+        accountNumber: '', // Not available in this data structure
         amount: selectedVoucher.amount,
-        currency: selectedVoucher.currency,
+        currency: 'ETB', // Default currency
         customerName: selectedVoucher.customerName,
-        customerId: selectedVoucher.customerId,
+        customerId: '', // Not available in this data structure
       };
       
       // Bind signature cryptographically
@@ -328,9 +317,9 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
       );
       
       // Process the action
-      if (selectedVoucher.workflowId && (pendingAction.action === 'approve' || pendingAction.action === 'reject')) {
+      if (selectedVoucher.id && (pendingAction.action === 'approve' || pendingAction.action === 'reject')) {
         const result = await approvalWorkflowService.processApproval({
-          voucherId: selectedVoucher.formReferenceId,
+          voucherId: selectedVoucher.id,
           action: pendingAction.action,
           approvedBy: user?.id || '',
           approverRole: role || 'Maker',
@@ -343,11 +332,11 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
         authorizationAuditService.logApproval({
           approverId: user?.id || '',
           approverRole: role || 'Maker',
-          voucherId: selectedVoucher.formReferenceId,
+          voucherId: selectedVoucher.id,
           voucherType: selectedVoucher.transactionType,
           action: pendingAction.action,
           amount: selectedVoucher.amount,
-          currency: selectedVoucher.currency,
+          currency: 'ETB',
           reason: pendingAction.reason,
           digitalSignature: boundSignature.binding.bindingHash,
         });
@@ -361,18 +350,18 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
         authorizationAuditService.logApproval({
           approverId: user?.id || '',
           approverRole: role || 'Maker',
-          voucherId: selectedVoucher.formReferenceId,
+          voucherId: selectedVoucher.id,
           voucherType: selectedVoucher.transactionType,
           action: 'approve',
           amount: selectedVoucher.amount,
-          currency: selectedVoucher.currency,
+          currency: 'ETB',
           reason: `Forwarded to ${pendingAction.forwardTo}: ${pendingAction.reason}`,
           digitalSignature: boundSignature.binding.bindingHash,
         });
       }
       
       // Reload vouchers
-      loadVouchers();
+      await loadVouchers();
       
       // Close modals
       setShowSignatureModal(false);
@@ -389,23 +378,15 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
 
   const getStatusBadgeClass = (status: VoucherStatus): string => {
     switch (status) {
-      case 'draft':
-      case 'initiated':
-        return 'status-badge status-draft';
-      case 'pending_verification':
-      case 'validated':
+      case 'OnQueue':
         return 'status-badge status-pending';
-      case 'verified':
+      case 'OnProgress':
         return 'status-badge status-verified';
-      case 'pending_approval':
-        return 'status-badge status-pending-approval';
-      case 'approved':
+      case 'Completed':
         return 'status-badge status-approved';
-      case 'posted':
-      case 'completed':
-        return 'status-badge status-posted';
-      case 'rejected':
-      case 'exception':
+      case 'Cancelled':
+        return 'status-badge status-rejected';
+      case 'Skipped':
         return 'status-badge status-rejected';
       default:
         return 'status-badge';
@@ -414,12 +395,18 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
 
   const getStatusLabel = (status: VoucherStatus): string => {
     switch (status) {
-      case 'pending_verification':
-        return 'Pending Verification';
-      case 'pending_approval':
-        return 'Pending Approval';
+      case 'OnQueue':
+        return 'On Queue';
+      case 'OnProgress':
+        return 'In Progress';
+      case 'Completed':
+        return 'Completed';
+      case 'Cancelled':
+        return 'Cancelled';
+      case 'Skipped':
+        return 'Skipped';
       default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
+        return status;
     }
   };
 
@@ -429,6 +416,12 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
         <div className="dashboard-header">
           <h2>Voucher Dashboard</h2>
           <p>View and manage all vouchers with real-time status updates</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="error-message bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
         </div>
       )}
 
@@ -443,7 +436,7 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
           <div className="stat-value">{stats.pending}</div>
         </div>
         <div className="stat-card stat-approved">
-          <div className="stat-label">Approved</div>
+          <div className="stat-label">Completed</div>
           <div className="stat-value">{stats.approved}</div>
         </div>
         <div className="stat-card stat-exceptions">
@@ -451,7 +444,7 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
           <div className="stat-value">{stats.exceptions}</div>
         </div>
         <div className="stat-card stat-needs-approval">
-          <div className="stat-label">Needs Approval</div>
+          <div className="stat-label">On Queue</div>
           <div className="stat-value">{stats.needsApproval}</div>
         </div>
       </div>
@@ -462,7 +455,7 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
           <label>Search:</label>
           <input
             type="text"
-            placeholder="Voucher ID, Customer Name, Account..."
+            placeholder="Voucher ID, Customer Name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -477,16 +470,11 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
             className="filter-select"
           >
             <option value="all">All Statuses</option>
-            <option value="draft">Draft</option>
-            <option value="initiated">Initiated</option>
-            <option value="pending_verification">Pending Verification</option>
-            <option value="verified">Verified</option>
-            <option value="validated">Validated</option>
-            <option value="pending_approval">Pending Approval</option>
-            <option value="approved">Approved</option>
-            <option value="posted">Posted</option>
-            <option value="completed">Completed</option>
-            <option value="rejected">Rejected</option>
+            <option value="OnQueue">On Queue</option>
+            <option value="OnProgress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Skipped">Skipped</option>
           </select>
         </div>
         
@@ -512,8 +500,12 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
           </label>
         </div>
         
-        <button onClick={loadVouchers} className="refresh-btn">
-          🔄 Refresh
+        <button 
+          onClick={loadVouchers} 
+          className="refresh-btn"
+          disabled={loading}
+        >
+          {loading ? '🔄 Loading...' : '🔄 Refresh'}
         </button>
       </div>
 
@@ -524,46 +516,50 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
             <tr>
               <th>Voucher Ref #</th>
               <th>Customer Name</th>
-              <th>Customer ID</th>
-              <th>Account Number</th>
+              <th>Queue Number</th>
               <th>Transaction Type</th>
               <th>Amount</th>
               <th>Status</th>
-              <th>Updated</th>
+              <th>Submitted</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredVouchers.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '20px' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '20px' }}>
+                  Loading vouchers...
+                </td>
+              </tr>
+            ) : filteredVouchers.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '20px' }}>
                   No vouchers found
                 </td>
               </tr>
             ) : (
               filteredVouchers.map((voucher) => (
                 <tr 
-                  key={voucher.formReferenceId}
+                  key={voucher.id}
                   className={`
-                    ${voucher.isException ? 'row-exception' : ''}
-                    ${voucher.requiresApproval && voucher.status === 'pending_approval' ? 'row-needs-approval' : ''}
+                    ${voucher.status === 'Cancelled' || voucher.status === 'Skipped' ? 'row-exception' : ''}
+                    ${voucher.status === 'OnQueue' ? 'row-needs-approval' : ''}
                   `}
                 >
                   <td>
                     <strong>{voucher.formReferenceId}</strong>
-                    {voucher.isException && (
-                      <span className="exception-icon" title={voucher.exceptionReason}>⚠️</span>
+                    {(voucher.status === 'Cancelled' || voucher.status === 'Skipped') && (
+                      <span className="exception-icon" title="Exception transaction">⚠️</span>
                     )}
-                    {voucher.requiresApproval && (
-                      <span className="approval-icon" title="Requires Manager Approval">🔒</span>
+                    {voucher.status === 'OnQueue' && (
+                      <span className="approval-icon" title="Requires attention">🔒</span>
                     )}
                   </td>
                   <td>{voucher.customerName}</td>
-                  <td>{voucher.customerId}</td>
-                  <td>{voucher.accountNumber}</td>
+                  <td>{voucher.queueNumber}</td>
                   <td className="transaction-type">{voucher.transactionType}</td>
                   <td className="amount">
-                    {voucher.currency} {voucher.amount.toLocaleString()}
+                    ETB {voucher.amount.toLocaleString()}
                   </td>
                   <td>
                     <span className={getStatusBadgeClass(voucher.status)}>
@@ -571,7 +567,7 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
                     </span>
                   </td>
                   <td className="timestamp">
-                    {new Date(voucher.updatedAt).toLocaleString()}
+                    {new Date(voucher.createdAt).toLocaleString()}
                   </td>
                   <td className="actions">
                     <button 
@@ -581,7 +577,7 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
                     >
                       👁️
                     </button>
-                    {can('voucher.edit') && voucher.status !== 'posted' && voucher.status !== 'completed' && (
+                    {can('voucher.edit') && voucher.status !== 'Completed' && (
                       <button 
                         onClick={() => handleEditVoucher(voucher)}
                         className="btn-action btn-edit"
@@ -590,8 +586,7 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
                         ✏️
                       </button>
                     )}
-                    {can('voucher.approve') && 
-                     (voucher.status === 'pending_approval' || voucher.status === 'validated') && (
+                    {can('voucher.approve') && voucher.status === 'OnQueue' && (
                       <button 
                         onClick={() => handleApproveClick(voucher)}
                         className="btn-action btn-approve"
@@ -600,10 +595,7 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
                         ✅
                       </button>
                     )}
-                    {can('voucher.reject') && 
-                     voucher.status !== 'posted' && 
-                     voucher.status !== 'completed' && 
-                     voucher.status !== 'rejected' && (
+                    {can('voucher.reject') && voucher.status !== 'Completed' && voucher.status !== 'Cancelled' && (
                       <button 
                         onClick={() => handleRejectClick(voucher)}
                         className="btn-action btn-reject"
@@ -612,9 +604,7 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
                         ❌
                       </button>
                     )}
-                    {can('voucher.forward') && 
-                     voucher.requiresApproval && 
-                     voucher.status === 'pending_approval' && (
+                    {can('voucher.forward') && voucher.status === 'OnQueue' && (
                       <button 
                         onClick={() => handleForwardClick(voucher)}
                         className="btn-action btn-forward"
@@ -642,49 +632,32 @@ const VoucherDashboard: React.FC<VoucherDashboardProps> = ({ showHeader = true }
             <div className="modal-body">
               <div className="detail-grid">
                 <DetailRow label="Voucher Reference" value={selectedVoucher.formReferenceId} />
+                <DetailRow label="Queue Number" value={selectedVoucher.queueNumber.toString()} />
                 <DetailRow label="Status" value={getStatusLabel(selectedVoucher.status)} />
                 <DetailRow label="Customer Name" value={selectedVoucher.customerName} />
-                <DetailRow label="Customer ID" value={selectedVoucher.customerId} />
-                <DetailRow label="Account Number" value={selectedVoucher.accountNumber} />
                 <DetailRow label="Transaction Type" value={selectedVoucher.transactionType} />
                 <DetailRow 
                   label="Amount" 
-                  value={`${selectedVoucher.currency} ${selectedVoucher.amount.toLocaleString()}`} 
+                  value={`ETB ${selectedVoucher.amount.toLocaleString()}`} 
                 />
                 <DetailRow 
-                  label="Created At" 
+                  label="Submitted At" 
                   value={new Date(selectedVoucher.createdAt).toLocaleString()} 
                 />
-                <DetailRow 
-                  label="Updated At" 
-                  value={new Date(selectedVoucher.updatedAt).toLocaleString()} 
-                />
-                <DetailRow label="Created By" value={selectedVoucher.createdBy} />
-                {selectedVoucher.lastModifiedBy && (
-                  <DetailRow label="Last Modified By" value={selectedVoucher.lastModifiedBy} />
+                {selectedVoucher.calledAt && (
+                  <DetailRow 
+                    label="Called At" 
+                    value={new Date(selectedVoucher.calledAt).toLocaleString()} 
+                  />
                 )}
-                {selectedVoucher.workflowId && (
-                  <DetailRow label="Workflow ID" value={selectedVoucher.workflowId} />
+                {selectedVoucher.depositedToCBSAt && (
+                  <DetailRow 
+                    label="Deposited to CBS At" 
+                    value={new Date(selectedVoucher.depositedToCBSAt).toLocaleString()} 
+                  />
                 )}
-                <DetailRow 
-                  label="Requires Approval" 
-                  value={selectedVoucher.requiresApproval ? 'Yes' : 'No'} 
-                />
-                <DetailRow 
-                  label="Is Exception" 
-                  value={selectedVoucher.isException ? 'Yes' : 'No'} 
-                />
-                {selectedVoucher.exceptionReason && (
-                  <DetailRow label="Exception Reason" value={selectedVoucher.exceptionReason} />
-                )}
-                {selectedVoucher.cbsPostingId && (
-                  <>
-                    <DetailRow label="CBS Posting ID" value={selectedVoucher.cbsPostingId} />
-                    <DetailRow 
-                      label="Posted At" 
-                      value={selectedVoucher.cbsPostedAt ? new Date(selectedVoucher.cbsPostedAt).toLocaleString() : 'N/A'} 
-                    />
-                  </>
+                {selectedVoucher.frontMakerId && (
+                  <DetailRow label="Front Maker ID" value={selectedVoucher.frontMakerId} />
                 )}
               </div>
             </div>

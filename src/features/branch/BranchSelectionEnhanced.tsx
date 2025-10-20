@@ -92,8 +92,8 @@ const BranchSelectionEnhanced: React.FC = () => {
     error: string | null;
     coordinates?: { lat: number; lng: number };
   }>({ loading: false, error: null });
-  // State for showing nearby branches dropdown
-  const [showNearbyDropdown, setShowNearbyDropdown] = useState<boolean>(false);
+  // State for showing nearby branches dropdown - CHANGED: back to default false
+  const [showOtherBranches, setShowOtherBranches] = useState<boolean>(false);
   // State for the nearest branch
   const [nearestBranch, setNearestBranch] = useState<BranchWithDistance | null>(null);
 
@@ -117,10 +117,10 @@ const BranchSelectionEnhanced: React.FC = () => {
     [branches, selectedId]
   );
 
-  // Memoized nearby branches (with distance <= 50km)
+  // Memoized nearby branches (with distance <= 10km) - CHANGED: reduced distance to 10km for better recommendations
   const nearbyBranches = useMemo(() => {
     const withDistance = branches.filter(branch => 
-      branch.distance !== undefined && branch.distance <= 50
+      branch.distance !== undefined && branch.distance <= 10
     );
     return withDistance
       .sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity))
@@ -136,10 +136,11 @@ const BranchSelectionEnhanced: React.FC = () => {
     }
 
     // Sort to find the nearest one
-    const [nearest] = [...validBranches].sort((a, b) => a.distance! - b.distance!);
+    const sortedBranches = [...validBranches].sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+    const nearest = sortedBranches[0];
     
-    // Only recommend if it's within a reasonable distance
-    return nearest.distance! <= 50 ? nearest : null;
+    // Only recommend if it's within a reasonable distance - CHANGED: reduced to 10km
+    return nearest.distance !== undefined && nearest.distance <= 10 ? nearest : null;
   }, []);
 
   // Select default branch (last used or first active)
@@ -180,7 +181,7 @@ const BranchSelectionEnhanced: React.FC = () => {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         const timeoutId = setTimeout(() => {
           reject(new Error('Geolocation request timed out'));
-        }, 3000); // Reduced to 3 seconds for better UX
+        }, 5000); // Increased to 5 seconds for better UX
 
         navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -192,8 +193,8 @@ const BranchSelectionEnhanced: React.FC = () => {
             reject(error);
           },
           {
-            enableHighAccuracy: false, // Better performance with false
-            timeout: 3000, // Reduced to 3 seconds
+            enableHighAccuracy: true, // Enable high accuracy for better results
+            timeout: 5000, // Increased to 5 seconds
             maximumAge: 300000 // Cache for 5 minutes
           }
         );
@@ -236,6 +237,8 @@ const BranchSelectionEnhanced: React.FC = () => {
         errorMessage = t('branchSelection.locationPermission', 'Location access denied. Showing all branches.');
       } else if (error.code === error.POSITION_UNAVAILABLE) {
         errorMessage = t('branchSelection.locationUnavailable', 'Location unavailable. Showing all branches.');
+      } else if (error.message === 'Geolocation request timed out') {
+        errorMessage = t('branchSelection.locationTimeout', 'Location request timed out. Showing all branches.');
       }
       
       setLocationStatus({
@@ -275,17 +278,15 @@ const BranchSelectionEnhanced: React.FC = () => {
         setSelectedId(lastBranch.id);
       } else if (nearest) {
         setSelectedId(nearest.id);
-        info(t('branchSelection.nearestSelected', `Nearest branch selected: ${nearest.name}`) + ` (${nearest.distance?.toFixed(1)} km)`);
+        info(t('branchSelection.nearestSelected', `Nearest branch selected: ${nearest.name}`));
       } else if (branchesWithDist.length > 0) {
         setSelectedId(branchesWithDist[0].id);
       }
       
       setIsLoading(false);
       
-      // Automatically show nearby branches dropdown after loading
-      setTimeout(() => {
-        setShowNearbyDropdown(true);
-      }, 500);
+      // Remove the line that was forcing the dropdown to show
+      // setShowOtherBranches(true);
       
     } catch (e) {
       console.error('Failed to load branches from API:', e);
@@ -342,7 +343,7 @@ const BranchSelectionEnhanced: React.FC = () => {
       
       if (nearest) {
         setSelectedId(nearest.id);
-        info(t('branchSelection.nearestSelected', `Nearest branch selected: ${nearest.name}`) + ` (${nearest.distance?.toFixed(1)} km)`);
+        info(t('branchSelection.nearestSelected', `Nearest branch selected: ${nearest.name}`));
       } else if (branchesWithDist.length > 0) {
         setSelectedId(branchesWithDist[0].id);
       }
@@ -351,10 +352,8 @@ const BranchSelectionEnhanced: React.FC = () => {
       setError(t('branchSelection.demoMode', 'Demo mode: Using sample branch data'));
       info(t('branchSelection.demoNotification', 'Demo mode: Using sample branch data'));
       
-      // Automatically show nearby branches dropdown after loading
-      setTimeout(() => {
-        setShowNearbyDropdown(true);
-      }, 500);
+      // Remove the line that was forcing the dropdown to show
+      // setShowOtherBranches(true);
     }
   }, [getUserLocation, t, info, findNearestBranch]);
 
@@ -564,15 +563,15 @@ const BranchSelectionEnhanced: React.FC = () => {
                   {t('branchSelection.nearestBranch', 'Nearest Branch')}
                 </h2>
                 <button 
-                  onClick={() => setShowNearbyDropdown(!showNearbyDropdown)}
-                  className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1 transition-colors"
+                  onClick={() => setShowOtherBranches(!showOtherBranches)}
+                  className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1 transition-colors font-medium"
                 >
-                  {showNearbyDropdown ? t('branchSelection.showLess', 'Show Less') : t('branchSelection.showMore', 'Show More')}
-                  <ChevronDownIcon className={`h-3 w-3 transition-transform ${showNearbyDropdown ? 'rotate-180' : ''}`} />
+                  {showOtherBranches ? t('branchSelection.showLess', 'Show Less') : t('branchSelection.showMore', 'Show More')}
+                  <ChevronDownIcon className={`h-3 w-3 transition-transform ${showOtherBranches ? 'rotate-180' : ''}`} />
                 </button>
               </div>
               
-              {/* Nearest Branch Card */}
+              {/* Nearest Branch Card - REMOVED: distance display as requested */}
               <button
                 onClick={() => setSelectedId(nearestBranch.id)}
                 className={`w-full text-left p-3 rounded-lg border-2 transition-all duration-200 ${
@@ -595,9 +594,7 @@ const BranchSelectionEnhanced: React.FC = () => {
                         <h3 className="font-semibold text-sm text-gray-900 truncate">
                           {nearestBranch.name}
                         </h3>
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                          {nearestBranch.distance?.toFixed(1)} km
-                        </span>
+                        {/* REMOVED: Distance display as requested by user */}
                       </div>
                       <div className="space-y-0.5 text-xs">
                         {nearestBranch.address && (
@@ -629,15 +626,24 @@ const BranchSelectionEnhanced: React.FC = () => {
             </div>
           )}
 
-          {/* Other Branches Dropdown - Only show when "Show More" is clicked */}
-          {showNearbyDropdown && nearestBranch && (
-            <div className="border-b border-gray-100 pb-3 flex-shrink-0">
-              <h2 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5 mb-2">
+          {/* Other Branches Dropdown - Always visible by default */}
+          <div className="border-b border-gray-100 pb-3 flex-shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                 <BuildingStorefrontIcon className="h-3.5 w-3.5 text-fuchsia-600" />
-                {t('branchSelection.otherBranches', 'Other Branches')}
+                {t('branchSelection.otherBranches', 'Other Nearby Branches')}
               </h2>
-              
-              {/* Other Branches List */}
+              <button 
+                onClick={() => setShowOtherBranches(!showOtherBranches)}
+                className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1 transition-colors font-medium"
+              >
+                {showOtherBranches ? t('branchSelection.showLess', 'Show Less') : t('branchSelection.showMore', 'Show More')}
+                <ChevronDownIcon className={`h-3 w-3 transition-transform ${showOtherBranches ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+            
+            {/* Other Branches List - REMOVED: distance display as requested */}
+            {showOtherBranches && (
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {branches
                   .filter(branch => branch.id !== nearestBranch?.id) // Exclude the nearest branch
@@ -658,17 +664,13 @@ const BranchSelectionEnhanced: React.FC = () => {
                           <BuildingStorefrontIcon className="h-4 w-4 text-gray-600" />
                           <span className="text-sm font-medium text-gray-900 truncate">{branch.name}</span>
                         </div>
-                        {branch.distance !== undefined && (
-                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
-                            {branch.distance.toFixed(1)} km
-                          </span>
-                        )}
+                        {/* REMOVED: Distance display as requested by user */}
                       </div>
                     </button>
                   ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Location Status */}
           {locationStatus.loading && (

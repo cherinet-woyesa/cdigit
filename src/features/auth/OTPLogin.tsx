@@ -7,6 +7,17 @@ import speechService from '../../services/speechService';
 import logo from '../../assets/logo.jpg';
 import React from 'react';
 import authService from '../../services/authService';
+import { 
+    Loader2, 
+    AlertCircle, 
+    CheckCircle2, 
+    ChevronRight,
+    Phone,
+    Shield,
+    ArrowLeft,
+    RefreshCw,
+    Volume2
+} from 'lucide-react';
 
 // --- Constants ---
 const OTP_LENGTH = 6;
@@ -31,7 +42,7 @@ const FormInput: React.FC<FormInputProps> = React.memo((props) => {
   return (
     <input
       {...props}
-      className="mt-1 block w-full rounded-md border-gray-300 focus:border-fuchsia-500 focus:ring-fuchsia-500 text-base p-2.5 transition-all duration-200 ease-in-out hover:border-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
+      className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
     />
   );
 });
@@ -42,15 +53,16 @@ interface FormButtonProps {
   ariaLabel: string;
   className?: string;
   onClick?: () => void;
+  type?: "button" | "submit" | "reset";
 }
 
-const FormButton: React.FC<FormButtonProps> = React.memo(({ disabled, children, ariaLabel, className, onClick }) => {
+const FormButton: React.FC<FormButtonProps> = React.memo(({ disabled, children, ariaLabel, className, onClick, type = "button" }) => {
   return (
     <button
-      type={onClick ? "button" : "submit"}
+      type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`w-full bg-fuchsia-600 text-white py-2.5 rounded-md hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ease-in-out transform hover:scale-[1.02] active:scale-[0.98] text-base font-medium flex items-center justify-center shadow-sm hover:shadow-md ${className || ''}`}
+      className={`w-full bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center ${className || ''}`}
       aria-label={ariaLabel}
     >
       {children}
@@ -58,15 +70,25 @@ const FormButton: React.FC<FormButtonProps> = React.memo(({ disabled, children, 
   );
 });
 
-const LoadingSpinner: React.FC<{ size?: number }> = ({ size = 4 }) => (
-  <div className="flex items-center justify-center">
-    <div 
-      className="animate-spin rounded-full border-2 border-solid border-current border-r-transparent"
-      style={{ width: `${size * 0.25}rem`, height: `${size * 0.25}rem` }}
-    />
-    <span className="ml-2 text-sm">Processing...</span>
-  </div>
-);
+// --- Error and Success Message Components ---
+
+function ErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700">{message}</span>
+        </div>
+    );
+}
+
+function SuccessMessage({ message }: { message: string }) {
+    return (
+        <div className="flex items-center gap-2 mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span className="text-sm text-green-700">{message}</span>
+        </div>
+    );
+}
 
 // --- Custom Hooks for Logic Encapsulation ---
 
@@ -167,18 +189,18 @@ interface RequestOtpFormProps {
 
 const RequestOtpForm: React.FC<RequestOtpFormProps> = React.memo(({ phoneNumber, setPhoneNumber, handleRequestOtp, loading, t }) => (
   <>
-    <form onSubmit={handleRequestOtp} className="space-y-4">
+    <form onSubmit={handleRequestOtp} className="space-y-6">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-fuchsia-100 to-pink-100 rounded-full flex items-center justify-center">
-          <svg className="w-7 h-7 text-fuchsia-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-          </svg>
+        <div className="w-12 h-12 mx-auto mb-4 bg-gradient-to-r from-amber-400 to-fuchsia-600 rounded-lg flex items-center justify-center">
+          <Phone className="w-6 h-6 text-white" />
         </div>
-        <p className="text-gray-600 text-sm">{t('enterPhonePrompt')}</p>
+        <p className="text-gray-600">{t('enterPhonePrompt')}</p>
       </div>
 
       <div>
-        <label htmlFor="phone-input" className="text-gray-700 font-medium text-sm block mb-1">{t('phoneNumber')}</label>
+        <label htmlFor="phone-input" className="block text-sm font-medium text-gray-700 mb-2">
+          {t('phoneNumber')}
+        </label>
         <FormInput
           id="phone-input"
           type="tel"
@@ -192,25 +214,29 @@ const RequestOtpForm: React.FC<RequestOtpFormProps> = React.memo(({ phoneNumber,
         />
       </div>
       
-      <FormButton disabled={!phoneNumber.trim() || loading} ariaLabel={t('requestOtp')}>
-        {loading ? <LoadingSpinner /> : (
-          <span className="flex items-center justify-center">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+      <FormButton 
+        disabled={!phoneNumber.trim() || loading} 
+        ariaLabel={t('requestOtp')}
+        type="submit"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('requestingOtp')}
+          </>
+        ) : (
+          <>
+            <Shield className="h-4 w-4" />
             {t('requestOtp')}
-          </span>
+          </>
         )}
       </FormButton>
     </form>
     
-    <div className="text-center pt-3 border-t border-gray-200">
+    <div className="text-center pt-4 border-t border-gray-200 mt-6">
       <span className="text-gray-600 text-sm">{t('noAccount')}</span>
-      <Link to="/form/account-opening" className="ml-1.5 text-fuchsia-600 font-semibold hover:text-fuchsia-700 transition-colors text-sm inline-flex items-center">
+      <Link to="/form/account-opening" className="ml-2 text-fuchsia-700 font-semibold hover:text-fuchsia-800 transition-colors text-sm">
         {t('createAccount')}
-        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-        </svg>
       </Link>
     </div>
   </>
@@ -232,20 +258,20 @@ const VerifyOtpForm: React.FC<VerifyOtpFormProps> = React.memo(({ submitOtp, loa
   const { otpDigits, otpRefs, handleOtpChangeAt, handleOtpKeyDown, handleOtpPaste, isOtpComplete } = otpInput;
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); submitOtp(); }} className="space-y-4">
+    <form onSubmit={(e) => { e.preventDefault(); submitOtp(); }} className="space-y-6">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
-          <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
+        <div className="w-12 h-12 mx-auto mb-4 bg-gradient-to-r from-amber-400 to-fuchsia-600 rounded-lg flex items-center justify-center">
+          <Shield className="w-6 h-6 text-white" />
         </div>
-        <p className="text-gray-600 text-sm">{t('enterOtp')}</p>
-        <p className="text-xs text-gray-500 mt-1">Code sent to: <span className="font-medium text-gray-700">{maskPhone(effectivePhone) || '—'}</span></p>
+        <p className="text-gray-600">{t('enterOtp')}</p>
+        <p className="text-xs text-gray-500 mt-1">
+          {t('codeSentTo')} <span className="font-medium text-gray-700">{maskPhone(effectivePhone) || '—'}</span>
+        </p>
       </div>
 
       <fieldset>
         <legend className="sr-only">{t('enterOtp')}</legend>
-        <div className="grid grid-cols-6 gap-2" onPaste={handleOtpPaste}>
+        <div className="grid grid-cols-6 gap-3" onPaste={handleOtpPaste}>
           {otpDigits.map((d, idx) => (
             <input
               key={idx}
@@ -253,51 +279,64 @@ const VerifyOtpForm: React.FC<VerifyOtpFormProps> = React.memo(({ submitOtp, loa
               type="tel"
               inputMode="numeric"
               maxLength={1}
-              className={`w-full text-center text-lg p-2.5 border-2 rounded-md transition-all duration-200 focus:ring-2 focus:border-fuchsia-500 focus:ring-fuchsia-200 ${d ? 'border-fuchsia-500 bg-fuchsia-50' : 'border-gray-300 hover:border-gray-400'} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`w-full text-center text-lg p-3 border-2 rounded-lg transition-all ${d ? 'border-fuchsia-500 bg-fuchsia-50' : 'border-gray-300 hover:border-gray-400'} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
               value={d}
               onChange={(e) => handleOtpChangeAt(idx, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-              aria-label={`OTP digit ${idx + 1}`}
+              aria-label={`${t('otpDigit')} ${idx + 1}`}
               disabled={loading}
             />
           ))}
         </div>
       </fieldset>
       
-      <FormButton disabled={!isOtpComplete || loading} ariaLabel={t('verifyOtp')}>
-        {loading ? <LoadingSpinner /> : (
-          <span className="flex items-center justify-center">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <FormButton 
+        disabled={!isOtpComplete || loading} 
+        ariaLabel={t('verifyOtp')}
+        type="submit"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('verifyingOtp')}
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="h-4 w-4" />
             {t('verifyOtp')}
-          </span>
+          </>
         )}
       </FormButton>
       
-      <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-        <button type="button" onClick={handleBack} disabled={loading} className="text-fuchsia-600 hover:text-fuchsia-700 text-sm font-medium inline-flex items-center transition-colors disabled:opacity-50" aria-label={t('backToPhone')}>
-          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {t('backToPhone')}
+      <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-6">
+        <button 
+          type="button" 
+          onClick={handleBack} 
+          disabled={loading}
+          className="text-fuchsia-700 hover:text-fuchsia-800 text-sm font-medium flex items-center gap-1 disabled:opacity-50"
+          aria-label={t('backToPhone')}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t('back')}
         </button>
         
-        <button type="button" onClick={() => { if (resendCooldown === 0) requestOtpDirect(); }} disabled={resendCooldown > 0 || loading} className="text-fuchsia-600 hover:text-fuchsia-700 text-sm font-medium inline-flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed" aria-label={t('resendOtp')}>
+        <button 
+          type="button" 
+          onClick={() => { if (resendCooldown === 0) requestOtpDirect(); }} 
+          disabled={resendCooldown > 0 || loading}
+          className="text-fuchsia-700 hover:text-fuchsia-800 text-sm font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label={t('resendOtp')}
+        >
           {resendCooldown > 0 ? (
-            <span className="inline-flex items-center">
-              <svg className="w-4 h-4 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
               {t('resendTimer', { seconds: resendCooldown })}
-            </span>
+            </>
           ) : (
-            <span className="inline-flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+            <>
+              <RefreshCw className="h-4 w-4" />
               {t('resendOtp')}
-            </span>
+            </>
           )}
         </button>
       </div>
@@ -498,94 +537,73 @@ const OTPLogin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-fuchsia-50 via-white to-pink-50 px-4 py-8">
-      <div className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl p-6 sm:p-8 space-y-4 border border-fuchsia-100">
-        {/* Header */}
-        <div className="text-center space-y-3">
-          <div className="flex items-center justify-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-fuchsia-600 to-pink-600 rounded-full flex items-center justify-center shadow-lg">
-              <img src={logo} alt={t('logoAlt')} className="h-8 w-8 object-contain rounded-full" />
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+          {/* Header */}
+          <header className="bg-fuchsia-700 text-white">
+            <div className="px-6 py-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                    <img src={logo} alt={t('logoAlt')} className="h-6 w-6 object-contain rounded-full" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold">{t('bankName')}</h1>
+                    {/* <p className="text-fuchsia-100 text-xs">{t('otpLogin')}</p> */}
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => speechService.speak(`${t('bankName')}. ${t('otpLogin')}. ${t('enterPhonePrompt')}`, i18n.language.startsWith('am') ? 'am' : 'en')}
+                  className="bg-fuchsia-800/50 px-3 py-1.5 rounded-full text-xs flex items-center gap-1 hover:bg-fuchsia-900/50 transition-colors"
+                  aria-label={t('speakWelcome')}
+                >
+                  <Volume2 className="h-3 w-3" />
+                  {t('voice')}
+                </button>
+              </div>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 uppercase tracking-wide">{t('bankName')}</h1>
+          </header>
+
+          {/* Progress Indicator */}
+          <div className="flex justify-center space-x-2 py-4 bg-gray-50">
+            <div className={`w-3 h-3 rounded-full transition-all ${step === 'request' ? 'bg-fuchsia-600' : 'bg-gray-300'}`}></div>
+            <div className={`w-3 h-3 rounded-full transition-all ${step === 'verify' ? 'bg-fuchsia-600' : 'bg-gray-300'}`}></div>
           </div>
-          
-          <div className="space-y-1">
-            <h2 className="text-2xl font-extrabold bg-gradient-to-r from-fuchsia-600 to-pink-600 bg-clip-text text-transparent">
-              {t('welcome')}
-            </h2>
-            <div className="w-20 h-1 bg-gradient-to-r from-fuchsia-400 to-pink-400 rounded-full mx-auto"></div>
+
+          {/* Main Content */}
+          <div className="p-6">
+            {/* Messages */}
+            <div className="mb-6">
+              {message && <SuccessMessage message={message} />}
+              {error && <ErrorMessage message={error} />}
+            </div>
+
+            {/* Form Content */}
+            {step === 'request' ? (
+              <RequestOtpForm
+                phoneNumber={phoneNumber}
+                setPhoneNumber={setPhoneNumber}
+                handleRequestOtp={handleRequestOtp}
+                loading={loading}
+                t={t}
+              />
+            ) : (
+              <VerifyOtpForm
+                submitOtp={submitOtp}
+                loading={loading}
+                effectivePhone={effectivePhone}
+                resendCooldown={resendCooldown}
+                requestOtpDirect={requestOtpDirect}
+                handleBack={handleBackToRequest}
+                maskPhone={maskPhone}
+                t={t}
+                otpInput={otpInput}
+              />
+            )}
           </div>
-
-          {/* Speech Button */}
-          <button
-            type="button"
-            onClick={() => speechService.speak(`${t('bankName')}. ${t('welcome')}. ${t('enterPhonePrompt')}`, i18n.language.startsWith('am') ? 'am' : 'en')}
-            className="inline-flex items-center px-3 py-1.5 bg-white border border-fuchsia-200 text-fuchsia-700 rounded-full hover:bg-fuchsia-50 transition-all duration-200 text-xs font-medium shadow-sm hover:shadow-md"
-            aria-label={t('speakWelcome', 'Speak welcome message')}
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-            {t('speakButton', 'Speak')}
-          </button>
-        </div>
-
-        {/* Progress Indicator */}
-        <div className="flex justify-center space-x-2 pt-2">
-          <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${step === 'request' ? 'bg-fuchsia-600 scale-110' : 'bg-gray-300'}`}></div>
-          <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${step === 'verify' ? 'bg-fuchsia-600 scale-110' : 'bg-gray-300'}`}></div>
-        </div>
-
-        {/* Messages */}
-        <div aria-live="polite" className="!mt-4 space-y-2">
-          {message && (
-            <div className="p-2.5 bg-green-50 border border-green-200 rounded-md flex items-center">
-              <svg className="w-5 h-5 text-green-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-green-800 text-sm font-medium">{message}</p>
-            </div>
-          )}
-          {error && (
-            <div className="p-2.5 bg-red-50 border border-red-200 rounded-md flex items-center">
-              <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-red-800 text-sm font-medium">{error}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Form Content */}
-        <div className="!mt-4">
-          {step === 'request' ? (
-            <RequestOtpForm
-              phoneNumber={phoneNumber}
-              setPhoneNumber={setPhoneNumber}
-              handleRequestOtp={handleRequestOtp}
-              loading={loading}
-              t={t}
-            />
-          ) : (
-            <VerifyOtpForm
-              submitOtp={submitOtp}
-              loading={loading}
-              effectivePhone={effectivePhone}
-              resendCooldown={resendCooldown}
-              requestOtpDirect={requestOtpDirect}
-              handleBack={handleBackToRequest}
-              maskPhone={maskPhone}
-              t={t}
-              otpInput={otpInput}
-            />
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="text-center pt-3 !mt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-400">
-            Secure authentication • {new Date().getFullYear()} • CBE Digital Services
-          </p>
         </div>
       </div>
     </div>
