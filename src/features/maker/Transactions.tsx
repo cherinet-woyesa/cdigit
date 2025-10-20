@@ -49,9 +49,6 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
 
     const [actionMessage, setActionMessage] = useState<ActionMessage | null>(null);
 
-    // Served count
-    const [totalServed, setTotalServed] = useState(0);
-
     // Modals
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [showFormRefModal, setShowFormRefModal] = useState(false);
@@ -196,19 +193,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
         return { ...totals, total: queue.length };
     }, [queue]);
 
-    /** Refresh served */
-    const refreshTotalServed = async () => {
-        if (!token || !decoded?.nameid) return;
-        try {
-            const res = await makerService.getTotalServed(decoded.nameid, token);
-            if (res.success && res.data != null) setTotalServed(res.data);
-        } catch { }
-    };
 
-    //refresh total setved
-    useEffect(() => {
-        if (decoded?.nameid) void refreshTotalServed();
-    }, [decoded?.nameid]);
 
 
 
@@ -330,7 +315,6 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             }
 
             await refreshQueue();
-            await refreshTotalServed();
         } catch (error) {
             console.error('Call next customer error:', error);
             setActionMessage({ type: 'error', content: "Failed to call next customer." });
@@ -357,7 +341,6 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
             localStorage.removeItem("currentCustomer");
 
             await refreshQueue();
-            await refreshTotalServed();
         } catch {
             setActionMessage({ type: 'error', content: "Failed to complete." });
         } finally {
@@ -596,22 +579,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 )}
             </section>
 
-            {/* Served */}
-            <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1 h-6 bg-fuchsia-700 rounded-full"></div>
-                    <h3 className="text-sm font-semibold text-gray-900">
-                        Your Performance Today
-                    </h3>
-                </div>
-                <div className="flex items-center justify-center">
-                    <div className="text-center p-6 bg-green-50 rounded-xl border border-green-200">
-                        <FontAwesomeIcon icon={faCheckCircle} className="text-green-600 text-3xl mb-3" />
-                        <p className="text-sm text-green-600 font-medium mb-1">Total Served</p>
-                        <p className="text-4xl font-bold text-green-700">{totalServed}</p>
-                    </div>
-                </div>
-            </section>
+
 
 
 
@@ -640,7 +608,6 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
                 isOpen={showFormRefModal}
                 onClose={() => setShowFormRefModal(false)}
                 token={token}
-                onRefreshServed={refreshTotalServed}
                 branchId={decoded.BranchId}
             />
 
