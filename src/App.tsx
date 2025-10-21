@@ -57,7 +57,9 @@ import { FeedbackProvider } from './context/FeedbackContext';
 // Import test utilities for development
 import './utils/testApprovalWorkflows';
 import QrLoginPage from './features/auth/QrLoginPage';
-
+import AuditorDashboard from './features/auditor/AuditorDashboard';
+import AuthorizerDashboard from './features/authorizer/AuthorizerDashboard';
+// import GreeterDashboard from './features/greeter/GreeterDashboard';
 
 // FIXED: DashboardRouter with better role handling
 const DashboardRouter: React.FC = () => {
@@ -85,6 +87,21 @@ const DashboardRouter: React.FC = () => {
             navigate('/maker-dashboard', { replace: true });
           }
           break;
+        case 'Auditor':
+          if (window.location.pathname === '/dashboard') {
+            navigate('/auditor-dashboard', { replace: true });
+          }
+          break;
+        case 'Authorizer':
+          if (window.location.pathname === '/dashboard') {
+            navigate('/authorizer-dashboard', { replace: true });
+          }
+          break;
+        case 'Greeter':
+          if (window.location.pathname === '/dashboard') {
+            navigate('/greeter-dashboard', { replace: true });
+          }
+          break;
       }
     }
   }, [user?.role, navigate]);
@@ -98,6 +115,15 @@ const DashboardRouter: React.FC = () => {
   if (user?.role === 'Maker') {
     return <MakerDashboard />;
   }
+  if (user?.role === 'Auditor') {
+    return <AuditorDashboard />;
+  }
+  if (user?.role === 'Authorizer') {
+    return <AuthorizerDashboard />;
+  }
+  // if (user?.role === 'Greeter') {
+  //   return <GreeterDashboard />;
+  // }
   if (user?.role === 'Customer' || !user?.role) {
     return <Dashboard />;
   }
@@ -136,10 +162,10 @@ function App() {
             {/* Staff login route (accessed via link on language selection) */}
             <Route path="/staff-login" element={<StaffLogin />} />
             
-            {/* Direct dashboard routes for staff roles - UPDATED to use MakerDashboard */}
+            {/* Direct dashboard routes for staff roles */}
             <Route path="/maker-dashboard" element={
               <ProtectedRoute role="Maker">
-                <MakerDashboard /> {/* CHANGED: Use MakerDashboard instead of MakerLayout */}
+                <MakerDashboard />
               </ProtectedRoute>
             } />
             <Route path="/admin-dashboard" element={
@@ -152,6 +178,23 @@ function App() {
                 <ManagerDashboard />
               </ProtectedRoute>
             } />
+            {/* New routes for Auditor and Authorizer roles */}
+            <Route path="/auditor-dashboard" element={
+              <ProtectedRoute role="Auditor">
+                <AuditorDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/authorizer-dashboard" element={
+              <ProtectedRoute role="Authorizer">
+                <AuthorizerDashboard />
+              </ProtectedRoute>
+            } />
+            {/* New route for Greeter role */}
+            {/* <Route path="/greeter-dashboard" element={
+              <ProtectedRoute role="Greeter">
+                <GreeterDashboard />
+              </ProtectedRoute>
+            } /> */}
 
             {/* Public forms */}
             <Route path="/form/account-opening" element={<AccountOpeningForm />} />
@@ -252,9 +295,27 @@ function App() {
             } />
             <Route path="/dashboard/maker" element={
               <ProtectedRoute role="Maker">
-                <MakerDashboard /> {/* CHANGED: Use MakerDashboard instead of MakerLayout */}
+                <MakerDashboard />
               </ProtectedRoute>
             } />
+            
+            {/* New routes for Auditor and Authorizer roles */}
+            <Route path="/dashboard/auditor" element={
+              <ProtectedRoute role="Auditor">
+                <AuditorDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/authorizer" element={
+              <ProtectedRoute role="Authorizer">
+                <AuthorizerDashboard />
+              </ProtectedRoute>
+            } />
+            {/* New route for Greeter role */}
+            {/* <Route path="/dashboard/greeter" element={
+              <ProtectedRoute role="Greeter">
+                <GreeterDashboard />
+              </ProtectedRoute>
+            } /> */}
             
             {/* Additional forms */}
             <Route path="/form/pos-request" element={
@@ -267,66 +328,19 @@ function App() {
                 <POSRequestConfirmation />
               </ProtectedRoute>
             } />
-            <Route path="/form/statement-request" element={
-              <ProtectedRoute>
-                <StatementRequestForm />
+            
+            {/* Staff dashboard routes */}
+            <Route path="/staff-dashboard" element={
+              <ProtectedRoute role="Maker">
+                <MakerDashboard />
               </ProtectedRoute>
             } />
-            <Route path="/form/statement-request/confirmation" element={
-              <ProtectedRoute>
-                <StatementRequestConfirmation />
-              </ProtectedRoute>
-            } />
-            <Route path="/form/cbe-birr-link" element={
-              <ProtectedRoute>
-                <CbeBirrLinkForm />
-              </ProtectedRoute>
-            } />
-            <Route path="/form/cbe-birr-link/confirmation" element={
-              <ProtectedRoute>
-                <CbeBirrLinkConfirmation />
-              </ProtectedRoute>
-            } />
-            <Route path="/form/stop-payment" element={
-              <ProtectedRoute>
-                <StopPaymentForm />
-              </ProtectedRoute>
-            } />
-            <Route path="/form/stop-payment/confirmation" element={
-              <ProtectedRoute>
-                <StopPaymentConfirmation />
-              </ProtectedRoute>
-            } />
-
-            {/* Utility routes */}
-            <Route path="/qr-generator" element={<QRCodeGenerator />} />
-            <Route path="/qr-test" element={<QRTestPage />} />
-
-            {/* Internal routes */}
-            <Route path="/internal/petty-cash" element={
-              <ProtectedRoute role="internal">
-                <PettyCashForm />
-              </ProtectedRoute>
-            } />
-            <Route path="/internal/petty-cash/confirmation" element={
-              <ProtectedRoute role="internal">
-                <PettyCashConfirmation />
-              </ProtectedRoute>
-            } />
-
-            {/* Document Management route */}
-            <Route path="/documents" element={
-              <ProtectedRoute>
-                <DocumentManagement />
-              </ProtectedRoute>
-            } />
-
-            <Route path="/receptionist-dashboard" element={<ReceptionistDashboard />} />
-            {/* Kiosk Mode route */}
+            
+            {/* Kiosk mode */}
             <Route path="/kiosk" element={<KioskMode />} />
-
-            {/* Fallback route - default to customer flow (language selection) */}
-            <Route path="*" element={<Navigate to="/language-selection" replace />} />
+            
+            {/* Catch-all route */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </StaffRouteGuard>
       </FeedbackProvider>

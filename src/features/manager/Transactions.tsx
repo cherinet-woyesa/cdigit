@@ -106,6 +106,7 @@ export default function Transactions({ branchId }: { branchId: string }) {
 
   // Modal state
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+  const [selectedMakerId, setSelectedMakerId] = useState<string>("");
 
   // 🆕 Feedback state
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);

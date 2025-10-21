@@ -1,5 +1,7 @@
 // src/auth/depositService.ts
 
+import axios from "axios";
+
 const API_BASE_URL = 'http://localhost:5268/api/Deposits';
 
 async function parseJsonSafe<T>(response: Response): Promise<T | null> {
@@ -320,6 +322,28 @@ const depositService = {
             throw error;
         }
     },
+
+
+
+     // 🔹 get all deposits (old behavior)
+  async getByBranch(branchId: string) {
+    return await axios.get(`/api/Deposits?branchId=${branchId}`);
+  },
+
+  // 🔹 NEW: get completed deposits for today
+  async getCompletedTodayByBranch(branchId: string) {
+    return await axios.get(`${API_BASE_URL}/completed/today?branchId=${branchId}`);
+  },
+
+  async authorize(depositId: string, userId: string) {
+    return await axios.put(`${API_BASE_URL}/authorize`, { depositId, userId });
+  },
+
+  async audit(depositId: string, userId: string) {
+    return await axios.put(`${API_BASE_URL}/audit`, { depositId, userId });
+  },
+
+
 };
 
 export default depositService;

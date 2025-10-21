@@ -34,10 +34,12 @@ const FormReferenceSearchModal: React.FC<Props> = ({
         searchRefId,
         token
       );
+      console.log("Customer res:", res);
       if (res.success && res.data) {
         setSearchResult(res.data);
       } else {
         setSearchResult(null);
+        console.log("Customer res:", res.message);
         setMessage(res.message || "Customer not found");
       }
     } catch (err) {
