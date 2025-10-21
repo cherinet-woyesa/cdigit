@@ -22,7 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
     { id: "approvals", label: "✅ Approvals", icon: DocumentCheckIcon },
     { id: "users", label: " 👥 AD Users", icon: DocumentTextIcon, badgeCount: 3 },
     { id: "windows", label: "🪟 Windows", icon: HandRaisedIcon, badgeCount: 5 },
-    { id: "corporate-customers", label: "🏢 Corporate", icon: ChartBarIcon },
+    { id: "Vip-customers", label: "🏢 Vip-customers", icon: ChartBarIcon },
     { id: "assign", label: "🔗 Assign Maker", icon: CogIcon },
     { id: "transactions", label: "💸 Transactions", icon: CurrencyDollarIcon },
     { id: "petty-cash", label: "💰 Petty Cash", icon: HandRaisedIcon },

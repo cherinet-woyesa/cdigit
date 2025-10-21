@@ -7,7 +7,7 @@ import BranchAdUsers from "./BranchAdUsers";
 import Windows from "./Windows";
 import AssignMaker from "./AssignMaker";
 import Transactions from "./Transactions";
-import CorporateCustomers from "./CorporateCustomers";
+import VipCustomers from "./VipCustomer";
 import PettyCash from "./PettyCash";
 import ApprovalDashboard from "./ApprovalDashboard";
 import ScreenDisplay from "../screen/ScreenDisplay";
@@ -16,18 +16,8 @@ import CreateManagerBranchModal from "./CreateManagerBranchModal";
 import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
 import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
 import MainLayout from "./ManagerLayout";
+import type { Branch } from "../../types/Branch";
 
-interface Branch {
-  id: string;
-  name: string;
-  code: string;
-  location?: string;
-  latitude?: number;
-  longitude?: number;
-  status: string;
-  isApproved: boolean;
-  managerId: string;
-}
 
 interface DashboardStats {
   totalTransactions: number;
@@ -161,7 +151,7 @@ export default function ManagerDashboard() {
           {activeSection === "approvals" && <ApprovalDashboard />}
           {activeSection === "users" && <BranchAdUsers branchId={branchId} />}
           {activeSection === "windows" && <Windows branchId={branchId} />}
-          {activeSection === "corporate-customers" && <CorporateCustomers managerId={managerId} />}
+          {activeSection === "Vip-customers" && <VipCustomers managerId={managerId} branchId={branchId}/>}
           {activeSection === "assign" && <AssignMaker branchId={branchId} />}
           {activeSection === "transactions" && <Transactions branchId={branchId} />}
           {activeSection === "petty-cash" && (

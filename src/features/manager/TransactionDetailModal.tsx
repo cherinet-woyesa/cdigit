@@ -10,7 +10,8 @@ interface TransactionDetailModalProps {
 
 interface Maker {
   id: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
 }
 
 export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
@@ -33,6 +34,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       try {
         const res = await axios.get(`/api/users/by-branch/${branchId}`);
         if (res.data.success) setMakers(res.data.data);
+        console.log("Makers loaded:", res.data.data);
       } catch (err) {
         console.error("Error loading makers:", err);
       }
@@ -195,18 +197,23 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
               <div>
                 <label className="font-semibold text-sm text-gray-700">Assign Maker</label>
+
+
+
                 <select
                   value={selectedMakerId}
                   onChange={(e) => setSelectedMakerId(e.target.value)}
                   className="w-full border border-gray-300 rounded-md p-2 mt-1"
                 >
                   <option value="">Select maker...</option>
-                  {makers.map((m) => (
-                    <option key={m.id} value={m.id} className="font-semibold text-sm text-gray-700">
-                      {m.fullName}
-                    </option>
-                  ))}
+                  {makers.map((m) => (<option key={m.id} value={m.id}
+                    className="font-semibold text-sm text-gray-700">
+                    {m.firstName + m.lastName}
+                  </option>)
+                  )}
                 </select>
+
+
               </div>
             </div>
 

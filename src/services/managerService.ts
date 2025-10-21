@@ -147,24 +147,24 @@ const managerService = {
   },
 
 
-  // --- CORPORATE CUSTOMERS ---
-  getCorporateCustomers: async () => {
+  // --- Vip CUSTOMERS ---
+  getVipCustomers: async () => {
     const res = await axios.get(`${API_BASE_URL}/CorporateCustomer`, authHeader());
     return res.data;
   },
 
-  createCorporateCustomer: async (customer: { accountNumber: string; phoneNumber: string; description?: string; creatorUserId: string }) => {
+  createVipCustomer: async (customer: { accountNumber: string; phoneNumber: string; vipType?: string; companyName: string; description?: string; creatorUserId: string; branchId: string }) => {
     const res = await axios.post(`${API_BASE_URL}/CorporateCustomer`, customer, authHeader());
     return res.data;
   },
 
-  updateCorporateCustomer: async (id: string, customer: { accountNumber?: string; phoneNumber?: string; description?: string; status?: string }) => {
+  updateVipCustomer: async (id: string, customer: { accountNumber?: string; phoneNumber?: string;  description?: string; status?: string; }) => {
     const res = await axios.put(`${API_BASE_URL}/CorporateCustomer/${id}`, customer, authHeader());
     return res.data;
   },
 
-  changeCorporateCustomerStatus: async (id: string, newStatus: string) => {
-    console.log("at frontend: Changing corporate customer status to:", newStatus, "manager id:", id)
+  changeVipCustomerStatus: async (id: string, newStatus: string) => {
+    console.log("at frontend: Changing Vip customer status to:", newStatus, "manager id:", id)
     const res = await axios.put(
       `${API_BASE_URL}/CorporateCustomer/${id}/status`,
       newStatus, // raw string
@@ -179,7 +179,7 @@ const managerService = {
     return res.data;
   },
 
-  deleteCorporateCustomer: async (id: string) => {
+  deleteVipCustomer: async (id: string) => {
     const res = await axios.delete(`${API_BASE_URL}/CorporateCustomer/${id}`, authHeader());
     return res.data;
   },

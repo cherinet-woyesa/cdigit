@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useMemo } from "react";
 import managerService from "../../services/managerService";
-import CreateCorporateCustomerModal from "./CreateCorporateCustomerModal";
+import CreateVipCustomerModal from "./CreateVipCustomerModal";
 
 
-interface CorporateCustomer {
+interface VipCustomer {
   id: string;
   accountNumber: string;
   phoneNumber: string;
+  vipType?: string;
+  companyName?: string;
   description?: string;
   status: string;
   creatorUserId?: string;
@@ -14,27 +16,28 @@ interface CorporateCustomer {
 
 interface Props {
   managerId: string;
+  branchId: string;
 }
 
 const statusOptions = ["Active", "Inactive", "Pending"];
 
-export default function CorporateCustomers({ managerId }: Props) {
-  const [customers, setCustomers] = useState<CorporateCustomer[]>([]);
+export default function VipCustomers({ managerId, branchId }: Props) {
+  const [customers, setCustomers] = useState<VipCustomer[]>([]);
   const [loading, setLoading] = useState(true);
 
   // --- search, sort, pagination, filters ---
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [sortColumn, setSortColumn] = useState<keyof CorporateCustomer>("accountNumber");
+  const [sortColumn, setSortColumn] = useState<keyof VipCustomer>("accountNumber");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
   // --- edit & status states ---
-  const [editingCustomer, setEditingCustomer] = useState<CorporateCustomer | null>(null);
-  const [formData, setFormData] = useState<Partial<CorporateCustomer>>({});
+  const [editingCustomer, setEditingCustomer] = useState<VipCustomer | null>(null);
+  const [formData, setFormData] = useState<Partial<VipCustomer>>({});
   const [statusModalOpen, setStatusModalOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<CorporateCustomer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<VipCustomer | null>(null);
   const [newStatus, setNewStatus] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -43,10 +46,10 @@ export default function CorporateCustomers({ managerId }: Props) {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await managerService.getCorporateCustomers();
+      const res = await managerService.getVipCustomers();
       setCustomers(res?.data || []);
     } catch (err) {
-      console.error("Error fetching corporate customers:", err);
+      console.error("Error fetching VipCustomers:", err);
     } finally {
       setLoading(false);
     }
@@ -59,7 +62,7 @@ export default function CorporateCustomers({ managerId }: Props) {
   // --- derived data ---
   const filtered = useMemo(() => {
     return customers.filter((c) => {
-      const matchesSearch = [c.accountNumber, c.phoneNumber, c.description || ""]
+      const matchesSearch = [c.accountNumber, c.phoneNumber, c.description, c.vipType, c.companyName || ""]
         .join(" ")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
@@ -87,19 +90,22 @@ export default function CorporateCustomers({ managerId }: Props) {
   const totalPages = Math.ceil(sorted.length / pageSize);
 
   // --- actions ---
-  const handleEditClick = (customer: CorporateCustomer) => {
+  const handleEditClick = (customer: VipCustomer) => {
     setEditingCustomer(customer);
     setFormData({
       accountNumber: customer.accountNumber,
       phoneNumber: customer.phoneNumber,
+      vipType: customer.vipType,
+      companyName: customer.companyName,
       description: customer.description,
+
     });
   };
 
   const handleSaveEdit = async () => {
     if (!editingCustomer) return;
     try {
-      await managerService.updateCorporateCustomer(editingCustomer.id, formData);
+      await managerService.updateVipCustomer(editingCustomer.id, formData);
       // Update state instantly
       setCustomers((prev) =>
         prev.map((c) =>
@@ -113,7 +119,7 @@ export default function CorporateCustomers({ managerId }: Props) {
     }
   };
 
-  const openStatusModal = (customer: CorporateCustomer) => {
+  const openStatusModal = (customer: VipCustomer) => {
     setSelectedCustomer(customer);
     setNewStatus(customer.status);
     setStatusModalOpen(true);
@@ -122,7 +128,7 @@ export default function CorporateCustomers({ managerId }: Props) {
   const handleStatusSave = async () => {
     if (!selectedCustomer) return;
     try {
-      await managerService.changeCorporateCustomerStatus(selectedCustomer.id, newStatus);
+      await managerService.changeVipCustomerStatus(selectedCustomer.id, newStatus);
       // Update state instantly
       setCustomers((prev) =>
         prev.map((c) =>
@@ -146,7 +152,7 @@ export default function CorporateCustomers({ managerId }: Props) {
     }
   };
 
-  const handleSort = (column: keyof CorporateCustomer) => {
+  const handleSort = (column: keyof VipCustomer) => {
     if (sortColumn === column) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -161,7 +167,7 @@ export default function CorporateCustomers({ managerId }: Props) {
     <div className="p-4">
       {/* Create Customer Button */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-purple-800">🏢 Corporate Customers</h2>
+        <h2 className="text-xl font-bold text-purple-800">🏢 VIP Customers</h2>
         <button
           onClick={() => setShowCreateModal(true)}
           className="bg-gradient-to-r from-purple-600 to-purple-400 text-white px-4 py-2 rounded hover:from-purple-700 hover:to-purple-500 transition-all"
@@ -224,11 +230,11 @@ export default function CorporateCustomers({ managerId }: Props) {
         <table className="w-full text-left border-collapse">
           <thead className="bg-gradient-to-r from-purple-700 to-purple-500 text-white">
             <tr>
-              {["accountNumber", "phoneNumber", "description", "status"].map((col) => (
+              {["accountNumber", "phoneNumber", "vipType", "companyName", "description", "status"].map((col) => (
                 <th
                   key={col}
                   className="p-3 cursor-pointer select-none"
-                  onClick={() => handleSort(col as keyof CorporateCustomer)}
+                  onClick={() => handleSort(col as keyof VipCustomer)}
                 >
                   {col.charAt(0).toUpperCase() + col.slice(1)}
                   {sortColumn === col && (sortDirection === "asc" ? " ▲" : " ▼")}
@@ -243,6 +249,8 @@ export default function CorporateCustomers({ managerId }: Props) {
                 <tr key={c.id} className="border-b hover:bg-purple-50 transition">
                   <td className="p-3">{c.accountNumber}</td>
                   <td className="p-3">{c.phoneNumber}</td>
+                  <td className="p-3">{c.vipType || "-"}</td>
+                  <td className="p-3">{c.companyName || "-"}</td>
                   <td className="p-3">{c.description || "-"}</td>
                   <td className="p-3">
                     <span className={`px-3 py-1 rounded-full text-white text-sm ${getStatusColor(c.status)}`}>
@@ -268,7 +276,7 @@ export default function CorporateCustomers({ managerId }: Props) {
             ) : (
               <tr>
                 <td colSpan={5} className="p-4 text-center text-gray-500">
-                  No corporate customers found.
+                  No VipCustomer found.
                 </td>
               </tr>
             )}
@@ -384,11 +392,12 @@ export default function CorporateCustomers({ managerId }: Props) {
       )}
 
       {/* Create Modal */}
-      <CreateCorporateCustomerModal
+      <CreateVipCustomerModal
         open={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreated={fetchCustomers}
         managerId={managerId}
+        branchId={branchId}
       />
 
     </div>

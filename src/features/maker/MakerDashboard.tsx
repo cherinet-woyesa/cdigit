@@ -23,6 +23,7 @@ import {
     UserCircleIcon
 } from "@heroicons/react/24/outline";
 import MakerPerformance from "./MakerPerformance";
+import AccountSearch from "./AccountSearch";
 
 type Props = {
     activeSection?: string;
@@ -476,6 +477,9 @@ const MakerDashboardContent: React.FC<Props> = ({
                         </div>
                     </div>
                 )}
+
+                {currentSection === "account-search" && <AccountSearch />}
+
             </div>
         );
     };
