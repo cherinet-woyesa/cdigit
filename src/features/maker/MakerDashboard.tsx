@@ -23,6 +23,7 @@ import {
     UserCircleIcon
 } from "@heroicons/react/24/outline";
 import MakerPerformance from "./MakerPerformance";
+import AccountSearch from "./AccountSearch";
 
 type Props = {
     activeSection?: string;
@@ -158,11 +159,12 @@ const MakerDashboardContent: React.FC<Props> = ({
             try {
                 console.log('Loading metrics for branch:', decodedToken.BranchId);
 
-                if (!decodedToken.BranchId || !decodedToken.nameid) {
-                    console.error('BranchId or nameid is missing from decoded token');
+                // Validate branchId before making the call
+                if (!decodedToken.BranchId) {
+                    console.error('BranchId is missing from decoded token');
                     setActionMessage({
                         type: 'error',
-                        content: 'User/Branch information missing. Please contact administrator.'
+                        content: 'Branch information missing. Please contact administrator.'
                     });
                     return;
                 }
@@ -178,25 +180,18 @@ const MakerDashboardContent: React.FC<Props> = ({
                     return;
                 }
 
-                const [queueResponse, servedResponse, performanceResponse] = await Promise.all([
-                    makerService.getAllCustomersOnQueueByBranch(decodedToken.BranchId, token),
-                    makerService.getTotalServed(decodedToken.nameid, token),
-                    makerService.getMakerPerformance(decodedToken.nameid, decodedToken.BranchId, token)
-                ]);
+                const queueResponse = await makerService.getAllCustomersOnQueueByBranch(decodedToken.BranchId, token);
+                const servedResponse = await makerService.getTotalServed(decodedToken.nameid, token);
 
                 console.log('Queue response:', queueResponse);
                 console.log('Served response:', servedResponse);
-                console.log('Performance response:', performanceResponse);
 
+                // Handle both success and "no customers" cases
                 const pendingTransactions = (queueResponse.success || (queueResponse.message && queueResponse.message.includes('No customers in queue')))
                     ? (queueResponse.data?.length || 0)
                     : 0;
 
                 const completedToday = servedResponse.data || 0;
-                
-                const avgServiceTime = performanceResponse?.avgServiceTime 
-                    ? `${performanceResponse.avgServiceTime.toFixed(1)}m`
-                    : "N/A";
 
                 const metrics: Metric[] = [
                     {
@@ -215,7 +210,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                     },
                     {
                         label: "Avg. Process Time",
-                        value: avgServiceTime,
+                        value: "4.2m",
                         color: "blue",
                         icon: <ArrowPathIcon className="h-4 w-4" />,
                         trend: "down"
@@ -238,6 +233,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                     branchId: decodedToken?.BranchId
                 });
 
+                // More specific error messages based on error type
                 let errorMessage = 'Failed to load dashboard metrics. Please check your connection.';
 
                 if (error.response?.status === 404) {
@@ -253,6 +249,7 @@ const MakerDashboardContent: React.FC<Props> = ({
                     content: errorMessage
                 });
 
+                // Also show global notification
                 showError('Dashboard Error', errorMessage);
             }
         };
@@ -480,6 +477,9 @@ const MakerDashboardContent: React.FC<Props> = ({
                         </div>
                     </div>
                 )}
+
+                {currentSection === "account-search" && <AccountSearch />}
+
             </div>
         );
     };

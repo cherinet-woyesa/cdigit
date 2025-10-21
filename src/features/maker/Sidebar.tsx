@@ -10,6 +10,7 @@ import {
   DocumentCheckIcon
 } from "@heroicons/react/24/outline";
 import cbelogo from '../../assets/logo.jpg';
+import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 
 interface SidebarProps {
   onNavigate: (section: string) => void;
@@ -23,6 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeSection, onLogout }
     { id: "vouchers", label: "Voucher Dashboard", icon: DocumentCheckIcon },
     { id: "petty", label: "Petty Cash", icon: DocumentTextIcon, badgeCount: 3 },
     { id: "other", label: "Other Services", icon: HandRaisedIcon, badgeCount: 5 },
+    { id: "account-search", label: "Account Search", icon: "Search" },
     { id: "performance", label: "My Performance", icon: ChartBarIcon },
     { id: "settings", label: "Settings", icon: CogIcon },
   ];
