@@ -3,7 +3,7 @@
  * Defines permissions for all user roles in the system
  */
 
-export type UserRole = 'Customer' | 'Maker' | 'Manager' | 'Admin';
+export type UserRole = 'Customer' | 'Maker' | 'Manager' | 'Admin' | 'Auditor' | 'Authorizer' | 'Greeter';
 
 export type Permission =
   // Voucher permissions
@@ -15,6 +15,7 @@ export type Permission =
   | 'voucher.reject'
   | 'voucher.verify'
   | 'voucher.forward'
+  | 'voucher.audit' // New permission for auditors
   
   // Transaction permissions
   | 'transaction.deposit.create'
@@ -55,6 +56,8 @@ export type Permission =
   | 'audit.export'
   | 'reports.generate'
   | 'reports.view'
+  | 'audit.compliance' // New permission for auditors
+  | 'audit.transactions' // New permission for auditors
   
   // Stop payment and other services
   | 'stoppayment.create'
@@ -65,7 +68,18 @@ export type Permission =
   // System administration
   | 'system.config'
   | 'system.backup'
-  | 'system.restore';
+  | 'system.restore'
+  
+  // Authorization permissions
+  | 'authorization.approve' // New permission for authorizers
+  | 'authorization.reject'  // New permission for authorizers
+  | 'authorization.review'  // New permission for authorizers
+  
+  // Greeter permissions
+  | 'customer.greet'        // New permission for greeters
+  | 'customer.direct'       // New permission for greeters
+  | 'queue.manage'          // New permission for greeters
+  | 'information.provide';  // New permission for greeters
 
 /**
  * RBAC Permission Matrix
@@ -187,6 +201,53 @@ export const RBAC_MATRIX: Record<UserRole, Permission[]> = {
     'system.config',
     'system.backup',
     'system.restore',
+  ],
+  
+  Auditor: [
+    // Auditors can view and audit transactions
+    'voucher.view',
+    'voucher.audit',
+    'transaction.deposit.create',
+    'transaction.withdrawal.create',
+    'transaction.transfer.create',
+    'transaction.rtgs.create',
+    'account.view',
+    'audit.view',
+    'audit.compliance',
+    'audit.transactions',
+    'audit.export',
+    'reports.view',
+    'reports.generate',
+  ],
+  
+  Authorizer: [
+    // Authorizers can approve specific high-value transactions
+    'voucher.view',
+    'voucher.approve',
+    'voucher.reject',
+    'authorization.approve',
+    'authorization.reject',
+    'authorization.review',
+    'transaction.deposit.approve',
+    'transaction.withdrawal.approve',
+    'transaction.transfer.approve',
+    'transaction.rtgs.approve',
+    'highvalue.approve',
+    'fx.approve',
+    'largecash.approve',
+    'account.opening.approve',
+    'stoppayment.approve',
+    'cheque.approve',
+    'reports.view',
+  ],
+  
+  Greeter: [
+    // Greeters can greet customers and provide basic information
+    'customer.greet',
+    'customer.direct',
+    'queue.manage',
+    'information.provide',
+    'reports.view',
   ],
 };
 

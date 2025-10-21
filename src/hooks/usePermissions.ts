@@ -162,11 +162,11 @@ export const usePermissions = (): UsePermissionsReturn => {
   };
 
   const isStaff = useMemo(() => {
-    return userRole !== null && ['Maker', 'Manager', 'Admin'].includes(userRole);
+    return userRole !== null && ['Maker', 'Manager', 'Admin', 'Auditor', 'Authorizer', 'Greeter'].includes(userRole);
   }, [userRole]);
 
   const canApprove = useMemo(() => {
-    return userRole !== null && ['Manager', 'Admin'].includes(userRole);
+    return userRole !== null && ['Manager', 'Admin', 'Authorizer'].includes(userRole);
   }, [userRole]);
 
   const isAdmin = useMemo(() => {
@@ -184,3 +184,5 @@ export const usePermissions = (): UsePermissionsReturn => {
     isAdmin,
   };
 };
+
+export default usePermissions;

@@ -130,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.log('AuthContext: Loaded user from storage', {
                     role: parsedUser.role,
                     branchId: parsedUser.branchId,
-                    isStaff: ['Maker', 'Admin', 'Manager'].includes(parsedUser.role)
+                    isStaff: ['Maker', 'Admin', 'Manager', 'Auditor', 'Authorizer', 'Greeter'].includes(parsedUser.role)
                 });
             } catch (e) {
                 console.error("Failed to parse user from local storage", e);
@@ -155,7 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Log role detection for debugging
             console.log('AuthContext: Detected user role:', userRole);
             console.log('AuthContext: Detected branch ID:', branchId);
-            console.log('AuthContext: Is staff user:', ['Maker', 'Admin', 'Manager'].includes(userRole));
+            console.log('AuthContext: Is staff user:', ['Maker', 'Admin', 'Manager', 'Auditor', 'Authorizer', 'Greeter'].includes(userRole));
 
             const userPayload: User = {
                 id: userId,
@@ -177,7 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(userPayload);
 
             // Clear phone if this is a staff login (staff don't use phone-based auth)
-            if (['Maker', 'Admin', 'Manager'].includes(userRole)) {
+            if (['Maker', 'Admin', 'Manager', 'Auditor', 'Authorizer', 'Greeter'].includes(userRole)) {
                 setPhone(null);
                 localStorage.removeItem('phone');
             }
@@ -221,7 +221,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // Helper function to check if user is staff
-    const isStaffUser = user?.role && ['Maker', 'Admin', 'Manager'].includes(user.role);
+    const isStaffUser = user?.role && ['Maker', 'Admin', 'Manager', 'Auditor', 'Authorizer', 'Greeter'].includes(user.role);
 
     return (
         <AuthContext.Provider value={{
