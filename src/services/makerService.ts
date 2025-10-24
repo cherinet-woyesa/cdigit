@@ -42,14 +42,41 @@ export interface NextCustomerData {
 
 /** Update denominations DTO */
 export interface DepositDenominationsUpdateDto {
-  formReferenceId: string;            // (We’ll pass the same formReferenceId here)
+  formReferenceId: string;            // (We'll pass the same formReferenceId here)
   frontMakerId: string;       // maker GUID from token (nameid)
   denominations: { [key: string]: number };
+}
+
+// Define the WindowDto interface to match backend WindowReadDto
+export interface WindowDto {
+  id: string;
+  windowNumber: number;
+  branchId: string;
+  windowType: string;
+  status?: string;
+  frontMakerId?: string;
+  [key: string]: any; // Allow additional properties
 }
 
 const authHeader = (token: string) => ({
   headers: { Authorization: `Bearer ${token}` },
 });
+
+// Transform backend WindowReadDto to frontend WindowDto
+const transformWindowData = (windowData: any): WindowDto | null => {
+  if (!windowData) return null;
+  
+  return {
+    id: windowData.id,
+    windowNumber: windowData.windowNumber,
+    branchId: windowData.branchId,
+    windowType: windowData.windowType,
+    status: windowData.status,
+    frontMakerId: windowData.frontMakerId,
+    // Include any other properties from the backend data
+    ...windowData
+  };
+};
 
 const makerService = {
   /** WINDOWS */
@@ -62,7 +89,8 @@ const makerService = {
 
   getAssignedWindowForMaker: async (makerId: string, token: string) => {
     const res = await axios.get(`${API_BASE_URL}/Window/assigned-to-maker/${makerId}`, authHeader(token));
-    return res.data?.data || null;
+    const windowData = res.data?.data || null;
+    return transformWindowData(windowData);
   },
 
   assignMakerToWindow: async (windowId: string, makerId: string, token: string) => {

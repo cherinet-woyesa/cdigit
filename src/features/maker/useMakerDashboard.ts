@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
 import type { DecodedToken } from "types/DecodedToken";
 import type { ActionMessage } from "types/ActionMessage";
-import type { WindowDto } from "types/WindowDto";
+import type { WindowDto } from "../../services/makerService";
 import makerService from "../../services/makerService";
 import type { Metric } from "../../components/dashboard/DashboardMetrics";
 

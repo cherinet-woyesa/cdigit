@@ -3,7 +3,7 @@ import React from 'react';
 export interface Metric {
   label: string;
   value: number | string;
-  color: 'fuchsia' | 'green' | 'blue' | 'orange' | 'purple';
+  color: 'fuchsia' | 'green' | 'blue' | 'orange' | 'purple' | 'red';
   icon?: React.ReactNode;
   trend?: 'up' | 'down' | 'neutral';
 }
@@ -19,6 +19,7 @@ const colorClasses = {
   blue: 'bg-gradient-to-br from-blue-500 to-blue-600',
   orange: 'bg-gradient-to-br from-orange-500 to-orange-600',
   purple: 'bg-gradient-to-br from-purple-500 to-purple-600',
+  red: 'bg-gradient-to-br from-red-500 to-red-600',
 };
 
 const trendIcons = {

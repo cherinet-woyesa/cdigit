@@ -18,13 +18,13 @@ const StaffLogin: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await authService.staffLogin(email, password);
-      if (response.token) {
+      const response = await authService.staffLogin({ email, password });
+      if (response.data.token) {
         // Use the AuthContext login method which properly decodes and handles the token
-        login(response.token);
+        login(response.data.token);
         
         // Decode token to get role for redirection
-        const base64Url = response.token.split('.')[1];
+        const base64Url = response.data.token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const decodedPayload = JSON.parse(window.atob(base64));
         

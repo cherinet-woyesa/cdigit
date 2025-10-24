@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { getAssignedWindow } from '../services/windowService';
-import { WindowDto } from '../types/WindowDto';
-import { DecodedToken } from "../types/DecodedToken";
+import makerService, { type WindowDto } from '../services/makerService';
+import type { DecodedToken } from "../types/DecodedToken";
 import { jwtDecode } from 'jwt-decode';
 
 interface WindowContextType {
@@ -33,10 +32,8 @@ export const WindowProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const fetchWindow = async () => {
       if (token && decoded?.nameid) {
         try {
-          const response = await getAssignedWindow(decoded.nameid, token);
-          if (response.success) {
-            setAssignedWindow(response.data);
-          }
+          const window = await makerService.getAssignedWindowForMaker(decoded.nameid, token);
+          setAssignedWindow(window);
         } catch (error) {
           console.error('Failed to fetch assigned window', error);
         } finally {

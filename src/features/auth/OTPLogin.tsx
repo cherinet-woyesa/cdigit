@@ -15,7 +15,7 @@ import {
     Phone,
     Shield,
     ArrowLeft,
-    RefreshCw,
+    RefreshCcw,
     Volume2
 } from 'lucide-react';
 
@@ -329,12 +329,12 @@ const VerifyOtpForm: React.FC<VerifyOtpFormProps> = React.memo(({ submitOtp, loa
         >
           {resendCooldown > 0 ? (
             <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
+              <RefreshCcw className="h-4 w-4 animate-spin" />
               {t('resendTimer', { seconds: resendCooldown })}
             </>
           ) : (
             <>
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCcw className="h-4 w-4" />
               {t('resendOtp')}
             </>
           )}
@@ -419,14 +419,14 @@ const OTPLogin: React.FC = () => {
     let success = false;
 
     try {
-      const response = await authService.requestOtp(phoneToSend);
+      const response = await authService.requestOTP(phoneToSend);
       setMessage(response.message || t('otpSent'));
       success = true;
     } catch (err: any) {
       console.warn('First OTP attempt failed, trying alternative format.', err);
       phoneToSend = phoneToSend.startsWith('+251') ? '0' + phoneToSend.slice(-9) : '+251' + phoneToSend.slice(-9);
       try {
-        const response = await authService.requestOtp(phoneToSend);
+        const response = await authService.requestOTP(phoneToSend);
         setMessage(response.message || t('otpSent'));
         success = true;
       } catch (finalErr: any) {
@@ -459,11 +459,20 @@ const OTPLogin: React.FC = () => {
 
     try {
       const otpValue = otpInput.otpDigits.join('');
-      const response = await authService.loginWithOtp(effectivePhone, otpValue);
       
-      const token = response.token;
-      if (!token) throw new Error('No token received');
+      // Use the correct method signature for loginWithOTP
+      const response = await authService.loginWithOtp({
+        phoneNumber: effectivePhone,
+        otp: otpValue
+      });
       
+      // Access data from the response
+      const responseData = response.data;
+      if (!responseData?.token) {
+        throw new Error('No token received');
+      }
+      
+      const token = responseData.token;
       login(token);
       
       // Decode token to get role for redirection
@@ -477,7 +486,6 @@ const OTPLogin: React.FC = () => {
       console.log('User role detected:', userRole);
       
       // Check if we have branch information from previous steps
-      // This handles QR code flow, in-branch tablet flow, and language selection flow
       const branchIdFromQR = location.state?.branchId;
       const branchIdFromWelcome = localStorage.getItem('branchIdFromWelcome');
       const branchIdFromLanguageSelection = localStorage.getItem('branchIdFromLanguageSelection');
@@ -550,7 +558,6 @@ const OTPLogin: React.FC = () => {
                   </div>
                   <div>
                     <h1 className="text-lg font-bold">{t('bankName')}</h1>
-                    {/* <p className="text-fuchsia-100 text-xs">{t('otpLogin')}</p> */}
                   </div>
                 </div>
                 

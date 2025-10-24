@@ -1,127 +1,7 @@
-import axios from 'axios';
+// services/fundTransferService.ts
+import { apiClient } from './apiClient';
 
-const API_BASE_URL = 'http://localhost:5268/api';
-
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-});
-
-// Add request interceptor to include auth token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('authToken'); // or get from your auth context
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Add ApiResponse type
-type ApiResponse<T> = {
-  success: boolean;
-  message: string;
-  data: T;
-};
-
-// Types based on your backend model
-export interface FundTransferRequestDto {
-  PhoneNumber: string;
-  BranchId: string;
-  DebitAccountNumber: string;
-  BeneficiaryAccountNumber: string;
-  TransferAmount: number;
-  Reason?: string;
-  OtpCode: string;
-  Signatures?: SignatureDto[]; // Add signatures property
-}
-
-// Add SignatureDto interface
-export interface SignatureDto {
-  SignatoryName: string;
-  SignatureData: string;
-}
-
-export interface FundTransferResponseDto {
-  Id: string;
-  FormReferenceId: string;
-  DebitAccountNumber: string;
-  DebitAccountName: string;
-  BeneficiaryAccountNumber: string;
-  BeneficiaryName: string;
-  TransferAmount: number;
-  TokenNumber: string;
-  QueueNumber?: number;
-  Reason?: string;
-  Status: string;
-  SubmittedAt: string;
-  CalledAt?: string;
-  DepositedToCBSAt?: string;
-}
-
-export interface FundTransferUpdateDto {
-  PhoneNumber?: string;
-  BranchId: string;
-  DebitAccountNumber: string;
-  BeneficiaryAccountNumber: string;
-  TransferAmount: number;
-  Reason?: string;
-  OtpCode: string;
-  Signatures?: SignatureDto[]; // Add signatures property
-}
-
-// Account validation
-export const validateAccountWithCBS = async (accountNumber: string): Promise<any> => {
-  try {
-    const res = await apiClient.get(`/Accounts/AccountNumExist/${accountNumber}`);
-    return res.data?.data ?? res.data;
-  } catch (error) {
-    console.error('Account validation error:', error);
-    throw error;
-  }
-};
-
-// OTP servicess
-export const sendFundTransferOTP = async (phone: string): Promise<any> => {
-  try {
-    const res = await apiClient.post('/auth/request-otp', { PhoneNumber: phone });
-    return res.data;
-  } catch (error) {
-    console.error('OTP send error:', error);
-    throw error;
-  }
-};
-
-export const verifyFundTransferOTP = async (phone: string, otp: string): Promise<any> => {
-  try {
-    const res = await apiClient.post('/auth/verify-otp', { 
-      PhoneNumber: phone, 
-      OtpCode: otp 
-    });
-    return res.data;
-  } catch (error) {
-    console.error('OTP verification error:', error);
-    throw error;
-  }
-};
-
-// Fund Transfer CRUD operations
-export const getFundTransferById = async (id: string): Promise<FundTransferResponseDto> => {
-  try {
-    const res = await apiClient.get(`/FundTransfer/${id}`);
-    return res.data;
-  } catch (error) {
-    console.error('Get fund transfer error:', error);
-    throw error;
-  }
-};
-
-// Update the service functions to handle signatures
-export const submitFundTransfer = async (data: {
+export interface FundTransferData {
   phoneNumber: string;
   branchId: string;
   debitAccountNumber: string;
@@ -129,16 +9,43 @@ export const submitFundTransfer = async (data: {
   amount: number;
   remark?: string;
   otp: string;
-  signatures?: { signatoryName: string; signatureData: string }[]; // Add signatures parameter
-}): Promise<ApiResponse<FundTransferResponseDto>> => {
-  try {
-    // Convert signatures to the format expected by the backend
+  signatures?: { signatoryName: string; signatureData: string }[];
+}
+
+export interface FundTransferResponse {
+  id: string;
+  formReferenceId: string;
+  debitAccountNumber: string;
+  debitAccountName: string;
+  beneficiaryAccountNumber: string;
+  beneficiaryName: string;
+  transferAmount: number;
+  tokenNumber: string;
+  queueNumber?: number;
+  reason?: string;
+  status: string;
+  submittedAt: string;
+  calledAt?: string;
+  depositedToCBSAt?: string;
+}
+
+export interface AccountValidationResponse {
+  success: boolean;
+  data?: {
+    accountHolderName: string;
+    name: string;
+  };
+  message?: string;
+}
+
+class FundTransferService {
+  async submitTransfer(data: FundTransferData) {
     const signatures = data.signatures?.map(sig => ({
       SignatoryName: sig.signatoryName,
       SignatureData: sig.signatureData
     })) || [];
 
-    const payload: FundTransferRequestDto = {
+    const payload = {
       PhoneNumber: data.phoneNumber,
       BranchId: data.branchId,
       DebitAccountNumber: data.debitAccountNumber,
@@ -149,48 +56,21 @@ export const submitFundTransfer = async (data: {
       Signatures: signatures.length > 0 ? signatures : undefined
     };
 
-    console.log('Submitting payload:', payload); // Debug log
-
-    // Send directly without wrapping
-    const res = await apiClient.post('/FundTransfer/submit', payload);
-    return res.data;
-  } catch (error: any) {
-    console.error('Submit fund transfer error:', error);
-    
-    // Enhanced error logging
-    if (error.response) {
-      console.error('Response data:', error.response.data);
-      console.error('Response status:', error.response.status);
-      console.error('Response headers:', error.response.headers);
-    }
-    
-    throw error;
+    return apiClient.post<FundTransferResponse>('/FundTransfer/submit', payload);
   }
-};
 
-export const updateFundTransfer = async (
-  id: string,
-  data: {
-    phoneNumber?: string;
-    branchId: string;
-    debitAccountNumber: string;
-    creditAccountNumber: string;
-    amount: number;
-    remark?: string;
-    otp: string;
-    signatures?: { signatoryName: string; signatureData: string }[]; // Add signatures parameter
+  async sendFundTransferOTP(phoneNumber: string) {
+    return apiClient.post('/FundTransfer/request-otp', { PhoneNumber: phoneNumber });
   }
-): Promise<any> => {
-  try {
-    // Convert signatures to the format expected by the backend
+
+  async updateTransfer(id: string, data: FundTransferData) {
     const signatures = data.signatures?.map(sig => ({
       SignatoryName: sig.signatoryName,
       SignatureData: sig.signatureData
     })) || [];
 
-    // Convert to PascalCase to match backend DTO
-    const payload: FundTransferUpdateDto = {
-      PhoneNumber: data.phoneNumber || '',
+    const payload = {
+      PhoneNumber: data.phoneNumber,
       BranchId: data.branchId,
       DebitAccountNumber: data.debitAccountNumber,
       BeneficiaryAccountNumber: data.creditAccountNumber,
@@ -200,48 +80,46 @@ export const updateFundTransfer = async (
       Signatures: signatures.length > 0 ? signatures : undefined
     };
 
-    console.log('Updating with payload:', payload); // Debug log
-
-    const res = await apiClient.put(`/FundTransfer/${id}`, payload);
-    return res.data;
-  } catch (error: any) {
-    console.error('Update fund transfer error:', error);
-    
-    if (error.response) {
-      console.error('Response data:', error.response.data);
-    }
-    
-    throw error;
+    return apiClient.put<FundTransferResponse>(`/FundTransfer/${id}`, payload);
   }
-};
 
-export const cancelFundTransferByCustomer = async (id: string): Promise<any> => {
-  try {
-    const res = await apiClient.put(`/FundTransfer/cancel-by-customer/${id}`);
-    return res.data;
-  } catch (error) {
-    console.error('Cancel fund transfer error:', error);
-    throw error;
+  async getTransferById(id: string) {
+    return apiClient.get<FundTransferResponse>(`/FundTransfer/${id}`);
   }
-};
 
-// Additional utility functions
-export const getFundTransferHistory = async (phoneNumber: string): Promise<FundTransferResponseDto[]> => {
-  try {
-    const res = await apiClient.get(`/FundTransfer/history/${phoneNumber}`);
-    return res.data;
-  } catch (error) {
-    console.error('Get history error:', error);
-    throw error;
+  async cancelTransfer(id: string) {
+    return apiClient.put(`/FundTransfer/cancel-by-customer/${id}`);
   }
-};
 
-export const getFundTransferByToken = async (tokenNumber: string): Promise<FundTransferResponseDto> => {
-  try {
-    const res = await apiClient.get(`/FundTransfer/token/${tokenNumber}`);
-    return res.data;
-  } catch (error) {
-    console.error('Get by token error:', error);
-    throw error;
+  // Add the missing method that the component expects
+  async cancelFundTransferByCustomer(id: string) {
+    return this.cancelTransfer(id);
   }
-};
+
+  async getTransferHistory(phoneNumber: string) {
+    return apiClient.get<FundTransferResponse[]>(`/FundTransfer/history/${phoneNumber}`);
+  }
+
+  async getTransferByToken(tokenNumber: string) {
+    return apiClient.get<FundTransferResponse>(`/FundTransfer/token/${tokenNumber}`);
+  }
+
+  async validateAccount(accountNumber: string) {
+    return apiClient.get<AccountValidationResponse>(`/Accounts/AccountNumExist/${accountNumber}`);
+  }
+}
+
+export const fundTransferService = new FundTransferService();
+export default fundTransferService;
+
+// Named exports for backward compatibility - ADD THE MISSING EXPORTS
+export const submitTransfer = fundTransferService.submitTransfer.bind(fundTransferService);
+export const getTransferById = fundTransferService.getTransferById.bind(fundTransferService);
+export const cancelTransfer = fundTransferService.cancelTransfer.bind(fundTransferService);
+export const cancelFundTransferByCustomer = fundTransferService.cancelFundTransferByCustomer.bind(fundTransferService); // ADD THIS
+export const sendFundTransferOTP = fundTransferService.sendFundTransferOTP.bind(fundTransferService);
+export const updateTransfer = fundTransferService.updateTransfer.bind(fundTransferService);
+export const getTransferHistory = fundTransferService.getTransferHistory.bind(fundTransferService);
+export const getTransferByToken = fundTransferService.getTransferByToken.bind(fundTransferService);
+export const getFundTransferById = fundTransferService.getTransferByToken.bind(fundTransferService);
+export const validateAccount = fundTransferService.validateAccount.bind(fundTransferService);

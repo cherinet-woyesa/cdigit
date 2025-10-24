@@ -1,5 +1,5 @@
 import React from "react";
-import type { WindowDto } from "types/WindowDto";
+import type { WindowDto } from "../../services/makerService";
 import type { ActionMessage } from "types/ActionMessage";
 
 interface Props {

@@ -1,36 +1,51 @@
 // services/exchangeRateService.ts
+import { apiClient } from './apiClient';
 
-import axios from "axios";
-// import { authHeader } from "./authHeader"; // your helper that attaches JWT from localStorage/session
-import type { ExchangeRate } from "../types/ExchangeRate";
+export interface ExchangeRate {
+  id: string;
+  currencyCode: string;
+  currencyName: string;
+  cashBuying: number;
+  cashSelling: number;
+  transactionBuying: number;
+  transactionSelling: number;
+  effectiveDate: string;
+  isActive: boolean;
+}
 
-const API_BASE_URL = "http://localhost:5268/api/exchangeRate";
-
-const authHeader = () => ({
-  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-});
-
-export const exchangeRateService = {
-  getRates: async (): Promise<ExchangeRate[]> => {
-    const res = await axios.get(`${API_BASE_URL}`);
-    if (res.data.success) {
-      return res.data.data;
+class ExchangeRateService {
+  async getRates(): Promise<ExchangeRate[]> {
+    const response = await apiClient.get<ExchangeRate[]>('/exchangeRate');
+    
+    if (response.success && response.data) {
+      return response.data;
     }
+    
     return [];
-  },
+  }
 
-  createRate: async (data: ExchangeRate) => {
-    const res = await axios.post(`${API_BASE_URL}`, data, authHeader());
-    return res.data;
-  },
+  async createRate(data: Omit<ExchangeRate, 'id'>) {
+    return apiClient.post<ExchangeRate>('/exchangeRate', data);
+  }
 
-  updateRate: async (id: string, data: ExchangeRate) => {
-    const res = await axios.put(`${API_BASE_URL}/${id}`, data, authHeader());
-    return res.data;
-  },
+  async updateRate(id: string, data: Partial<ExchangeRate>) {
+    return apiClient.put<ExchangeRate>(`/exchangeRate/${id}`, data);
+  }
 
-  deleteRate: async (id: string) => {
-    const res = await axios.delete(`${API_BASE_URL}/${id}`, authHeader());
-    return res.data;
-  },
-};
+  async deleteRate(id: string) {
+    return apiClient.delete(`/exchangeRate/${id}`);
+  }
+
+  async getRatesForTransaction(type: 'cash' | 'transaction' = 'cash') {
+    const rates = await this.getRates();
+    
+    return rates.map(rate => ({
+      code: rate.currencyCode,
+      name: rate.currencyName,
+      rate: type === 'cash' ? rate.cashSelling : rate.transactionSelling
+    }));
+  }
+}
+
+export const exchangeRateService = new ExchangeRateService();
+export default exchangeRateService;

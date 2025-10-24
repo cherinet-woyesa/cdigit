@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 // components/ScreenDisplay.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { HubConnectionBuilder } from "@microsoft/signalr";
@@ -14,7 +8,7 @@ import { jwtDecode } from "jwt-decode";
 import type { QueueCustomer } from "../../types/QueueCustomer";
 import type { DecodedToken } from "../../types/DecodedToken";
 import makerService from "../../services/makerService";
-import type { WindowDto } from "../../types/WindowDto";
+import type { WindowDto } from "../../services/makerService";
 import { speechService } from "../../services/speechService";
 import { BranchQrDisplay } from "./BranchQrDisplay";
 

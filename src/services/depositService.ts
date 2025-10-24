@@ -1,349 +1,160 @@
-// src/auth/depositService.ts
+// services/depositService.ts
+import { apiClient } from './apiClient';
 
-import axios from "axios";
-
-const API_BASE_URL = 'http://localhost:5268/api/Deposits';
-
-async function parseJsonSafe<T>(response: Response): Promise<T | null> {
-    const contentType = response.headers.get('content-type') || '';
-    if (response.status === 204) return null;
-    // Some servers may omit content-type; guard with try/catch
-    if (!contentType.includes('application/json')) {
-        try {
-            const text = await response.text();
-            if (!text) return null;
-            return JSON.parse(text) as T;
-        } catch {
-            return null;
-        }
-    }
-    try {
-        return (await response.json()) as T;
-    } catch {
-        return null;
-    }
+export interface DepositData {
+  branchId: string;
+  accountHolderName: string;
+  accountNumber: string;
+  amount: number;
+  telephoneNumber: string;
+  transactionType?: string;
+  status?: string;
+  formReferenceId?: string;
+  currency?: string;
 }
 
-async function parseErrorMessage(response: Response): Promise<string> {
-    try {
-        const data = await parseJsonSafe<ErrorResponse>(response);
-        if (data) {
-            let msg = data.Message || 'Request failed.';
-            if (data.errors) {
-                const validation = Object.values(data.errors).flat().join('; ');
-                if (validation) msg += ` Details: ${validation}`;
-            }
-            return msg;
-        }
-    } catch {}
-    return response.statusText || 'Request failed.';
+export interface DepositResponse {
+  id: string;
+  formReferenceId: string;
+  queueNumber?: number;
+  accountHolderName: string;
+  accountNumber: string;
+  amount: number;
+  telephoneNumber: string;
+  tokenNumber: string;
+  transactionType: string;
+  status: string;
+  branchId?: string;
 }
 
-// The backend expects the form fields at the top level, NOT wrapped
-export type DepositFormFields = {
-    formKey: string;
-    branchId: string; // Guid as string
-    accountHolderName: string;
-    accountNumber: string;
-    typeOfAccount?: string;
-    amount: number;
-    amountInWords?: string;
-    DepositedBy?: string;
-    sourceOfProceeds?: string;
-    telephoneNumber?: string;
-    // Additional fields that might be required by the API
-    transactionType?: string;
-    status?: string;
-    tokenNumber?: string;
-    queueNumber?: number;
-    id?: string;
-    formReferenceId?: string;
-};
+export interface CancelResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
 
-type DepositResponseData = {
+export interface AccountValidationResponse {
+  success: boolean;
+  message: string;
+  data?: {
     id: string;
-    formReferenceId: string;
-    queueNumber?: number;
-    accountHolderName: string;
     accountNumber: string;
-    amount: number;
-    amountInWords: string | null;
-    depositedBy: string | null;
-    telephoneNumber: string;
-    tokenNumber: string;
-    transactionType: string;
-    status: string;
-    branchId?: string;
-    sourceOfProceeds?: string;
+    accountHolderName: string;
     typeOfAccount?: string;
-    DepositedBy?: string;
-};
+    phoneNumber?: string;
+    isDiaspora?: boolean;
+  };
+}
 
-type SubmitDepositResponse = {
-    success: boolean;
-    message: string;
-    data: DepositResponseData;
-};
+class DepositService {
+  async submitDeposit(data: DepositData) {
+    const requestData = {
+      AccountNumber: data.accountNumber,
+      AccountHolderName: data.accountHolderName,
+      Amount: data.amount,
+      BranchId: data.branchId,
+      PhoneNumber: data.telephoneNumber,
+      AmountInWords: 'N/A',
+      SourceOfProceeds: 'N/A',
+      TypeOfAccount: 'N/A',
+      DepositedBy: 'N/A',
+      TransactionType: data.transactionType || 'Cash Deposit',
+      Status: data.status || 'Pending',
+      TokenNumber: '',
+      FormReferenceId: data.formReferenceId || `dep-${Date.now()}`,
+      QueueNumber: 0
+    };
 
-type ErrorResponse = {
-    Message?: string;
-    errors?: Record<string, string[]>;
-};
+    return apiClient.post<DepositResponse>('/Deposits', requestData);
+  }
 
-const depositService = {
-    /**
-     * Submits a new cash deposit form to the backend.
-     * @param data The deposit data from the frontend form.
-     * @returns A promise that resolves with the backend's response.
-     * @throws An error if the submission fails.
-     */
-    async submitDeposit(data: DepositFormFields): Promise<SubmitDepositResponse> {
-        try {
-            // Format the data with correct casing for the API
-            const requestData = {
-                Id: data.id || '',
-                AccountNumber: data.accountNumber,
-                AccountHolderName: data.accountHolderName,
-                Amount: data.amount,
-                BranchId: data.branchId,
-                PhoneNumber: data.telephoneNumber || '',
-                // Required fields with default values
-                AmountInWords: data.amountInWords || 'N/A',
-                SourceOfProceeds: data.sourceOfProceeds || 'N/A',
-                TypeOfAccount: data.typeOfAccount || 'N/A',
-                DepositedBy: data.DepositedBy || 'N/A',
-                // Additional fields with default values
-                TransactionType: 'Cash Deposit',
-                Status: 'Pending',
-                TokenNumber: '',
-                FormReferenceId: data.formReferenceId || `dep-${Date.now()}`,
-                QueueNumber: 0
-            };
+  // FIXED: Properly handle the ApiResponse structure
+  async validateAccount(accountNumber: string): Promise<AccountValidationResponse> {
+    try {
+      const response = await apiClient.get<AccountValidationResponse>(
+        `/Accounts/AccountNumExist/${accountNumber}`
+      );
+      
+      // Your apiClient returns ApiResponse<T> which has a data property
+      // So we need to return response.data which contains AccountValidationResponse
+      if (response && response.data) {
+        return response.data;
+      } else {
+        return {
+          success: false,
+          message: 'No response data received'
+        };
+      }
+    } catch (error: any) {
+      // Handle different error scenarios
+      if (error.response?.data) {
+        return error.response.data;
+      } else {
+        return {
+          success: false,
+          message: error.message || 'Failed to validate account'
+        };
+      }
+    }
+  }
 
-            const response = await fetch(API_BASE_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestData),
-            });
+  async getDepositById(id: string) {
+    const response = await apiClient.get<DepositResponse>(`/Deposits/${id}`);
+    return response;
+  }
 
-            if (!response.ok) {
-                const errorMessage = await parseErrorMessage(response);
-                throw new Error(errorMessage || 'Failed to submit deposit.');
-            }
+  async getAllDeposits() {
+    const response = await apiClient.get<DepositResponse[]>('/Deposits');
+    return response;
+  }
 
-            const json = await parseJsonSafe<SubmitDepositResponse>(response);
-            if (json) return json;
-            // Fallback if server returned empty body
-            return { success: true, message: 'Submitted successfully.', data: undefined as any } as SubmitDepositResponse;
-        } catch (error) {
-            console.error('Error submitting deposit:', error);
-            throw error;
-        }
-    },
+  async updateDeposit(id: string, data: DepositData) {
+    const requestData = {
+      Id: id,
+      AccountNumber: data.accountNumber,
+      AccountHolderName: data.accountHolderName,
+      Amount: data.amount,
+      BranchId: data.branchId,
+      PhoneNumber: data.telephoneNumber,
+      AmountInWords: 'N/A',
+      SourceOfProceeds: 'N/A',
+      DepositedBy: 'N/A',
+      TypeOfAccount: 'N/A',
+      TransactionType: data.transactionType || 'Cash Deposit',
+      Status: data.status || 'Pending',
+      TokenNumber: '',
+      FormReferenceId: data.formReferenceId || id,
+      QueueNumber: 0
+    };
 
-    async getDepositById(id: string): Promise<SubmitDepositResponse> {
-        try {
-            const response = await fetch(`${API_BASE_URL}/${id}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+    const response = await apiClient.put<DepositResponse>(`/Deposits/update-By-Customer/${id}`, requestData);
+    return response;
+  }
 
-            if (!response.ok) {
-                const errorMessage = await parseErrorMessage(response);
-                throw new Error(errorMessage || 'Deposit not found.');
-            }
+  async cancelDepositByCustomer(id: string) {
+    const response = await apiClient.put<CancelResponse>(`/Deposits/cancel-by-customer/${id}`);
+    return response;
+  }
 
-            const json = await parseJsonSafe<SubmitDepositResponse>(response);
-            if (json) return json;
-            throw new Error('Empty response from server.');
-        } catch (error) {
-            console.error(`Error fetching deposit by ID ${id}:`, error);
-            throw error;
-        }
-    },
+  async cancelDeposit(id: string) {
+    return this.cancelDepositByCustomer(id);
+  }
 
-    async getAllDeposits(): Promise<SubmitDepositResponse[]> {
-        try {
-            const response = await fetch(API_BASE_URL, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                const errorMessage = await parseErrorMessage(response);
-                throw new Error(errorMessage || 'Failed to fetch all deposits.');
-            }
-
-            const json = await parseJsonSafe<SubmitDepositResponse[]>(response);
-            if (json) return json;
-            return [] as SubmitDepositResponse[];
-        } catch (error) {
-            console.error('Error fetching all deposits:', error);
-            throw error;
-        }
-    },
-
-    async cancelDepositByCustomer(id: string): Promise<{ success: boolean; message: string }> {
-        try {
-            const response = await fetch(`${API_BASE_URL}/cancel-by-customer/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                const errorMessage = await parseErrorMessage(response);
-                throw new Error(errorMessage || 'Failed to cancel deposit.');
-            }
-
-            const json = await parseJsonSafe<{ success: boolean; message: string }>(response);
-            if (json) return json;
-            return { success: true, message: 'Cancelled successfully.' };
-        } catch (error) {
-            console.error('Error cancelling deposit:', error);
-            throw error;
-        }
-    },
-
-    async updateDeposit(id: string, data: DepositFormFields): Promise<SubmitDepositResponse> {
-        try {
-            // Ensure we have all required fields with proper fallbacks and correct casing
-            const requestData = {
-                Id: id,
-                AccountNumber: data.accountNumber,
-                AccountHolderName: data.accountHolderName,
-                Amount: data.amount,
-                BranchId: data.branchId,
-                PhoneNumber: data.telephoneNumber || '',
-                // Required fields with empty string as fallback and correct casing
-                AmountInWords: data.amountInWords || 'N/A',
-                SourceOfProceeds: data.sourceOfProceeds || 'N/A',
-                DepositedBy: data.DepositedBy || 'N/A',
-                TypeOfAccount: data.typeOfAccount || 'N/A',
-                // Additional required fields with default values
-                TransactionType: data.transactionType || 'Cash Deposit',
-                Status: data.status || 'Pending',
-                TokenNumber: data.tokenNumber || '',
-                // Ensure these are included with default values if needed
-                FormReferenceId: data.formReferenceId || id,
-                QueueNumber: (data as any).queueNumber || 0
-            };
-
-            const response = await fetch(`${API_BASE_URL}/update-By-Customer/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestData),
-            });
-
-            if (!response.ok) {
-                // If we get a 405 Method Not Allowed, try with POST as fallback
-                if (response.status === 405) {
-                    return this.updateDepositWithPost(id, data);
-                }
-                const errorMessage = await parseErrorMessage(response);
-                throw new Error(errorMessage || 'Failed to update deposit.');
-            }
-
-            const json = await parseJsonSafe<SubmitDepositResponse>(response);
-            if (json) {
-                return {
-                    success: true,
-                    message: 'Deposit updated successfully',
-                    data: {
-                        ...json.data,
-                        id: id,
-                        formReferenceId: id
-                    }
-                };
-            }
-
-            // Fallback response if no data is returned
-            return { 
-                success: true, 
-                message: 'Deposit updated successfully', 
-                data: { 
-                    ...data, 
-                    id,
-                    formReferenceId: id,
-                    status: 'Updated',
-                    tokenNumber: data.tokenNumber || '',
-                    queueNumber: data.queueNumber,
-                    transactionType: 'Cash Deposit',
-                    amountInWords: '',
-                    depositedBy: null,
-                    telephoneNumber: data.telephoneNumber || ''
-                } as DepositResponseData 
-            };
-        } catch (error) {
-            console.error('Error updating deposit:', error);
-            throw error;
-        }
-    },
-
-    async updateDepositWithPost(id: string, data: DepositFormFields): Promise<SubmitDepositResponse> {
-        try {
-            const response = await fetch(`${API_BASE_URL}/${id}?_action=update`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const errorMessage = await parseErrorMessage(response);
-                throw new Error(errorMessage || 'Failed to update deposit using fallback method.');
-            }
-
-            const json = await parseJsonSafe<SubmitDepositResponse>(response);
-            if (json) {
-                return {
-                    ...json,
-                    data: {
-                        ...json.data,
-                        id: id,
-                        formReferenceId: id
-                    }
-                };
-            }
-
-            throw new Error('Empty response from server when updating deposit.');
-        } catch (error) {
-            console.error('Error in fallback update method:', error);
-            throw error;
-        }
-    },
-
-
-
-     // 🔹 get all deposits (old behavior)
-  async getByBranch(branchId: string) {
-    return await axios.get(`/api/Deposits?branchId=${branchId}`);
-  },
-
-  // 🔹 NEW: get completed deposits for today
   async getCompletedTodayByBranch(branchId: string) {
-    return await axios.get(`${API_BASE_URL}/completed/today?branchId=${branchId}`);
-  },
+    const response = await apiClient.get<DepositResponse[]>(`/Deposits/completed/today?branchId=${branchId}`);
+    return response;
+  }
 
   async authorize(depositId: string, userId: string) {
-    return await axios.put(`${API_BASE_URL}/authorize`, { depositId, userId });
-  },
+    const response = await apiClient.put(`/Deposits/authorize`, { depositId, userId });
+    return response;
+  }
 
   async audit(depositId: string, userId: string) {
-    return await axios.put(`${API_BASE_URL}/audit`, { depositId, userId });
-  },
+    const response = await apiClient.put(`/Deposits/audit`, { depositId, userId });
+    return response;
+  }
+}
 
-
-};
-
+export const depositService = new DepositService();
 export default depositService;
