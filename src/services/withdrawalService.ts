@@ -37,6 +37,7 @@ class WithdrawalService {
       Withdrawal_Amount: data.withdrawal_Amount,
       Remark: data.remark || '',
       OtpCode: data.otpCode,
+      Signature: data.signature || null // Add signature to payload
     };
 
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -53,6 +54,7 @@ class WithdrawalService {
       Withdrawal_Amount: data.withdrawal_Amount,
       Remark: data.remark,
       Status: data.status,
+      Signature: data.signature || null // Add signature to update payload
     };
 
     return apiClient.put<WithdrawalResponse>(`/Withdrawal/${id}`, payload);

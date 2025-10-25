@@ -11,6 +11,7 @@ export interface DepositData {
   status?: string;
   formReferenceId?: string;
   currency?: string;
+  signature?: string; // Add signature field
 }
 
 export interface DepositResponse {
@@ -25,6 +26,7 @@ export interface DepositResponse {
   transactionType: string;
   status: string;
   branchId?: string;
+  signature?: string; // Add signature field
 }
 
 export interface CancelResponse {
@@ -62,7 +64,8 @@ class DepositService {
       Status: data.status || 'Pending',
       TokenNumber: '',
       FormReferenceId: data.formReferenceId || `dep-${Date.now()}`,
-      QueueNumber: 0
+      QueueNumber: 0,
+      Signature: data.signature || null // Add signature to request data
     };
 
     return apiClient.post<DepositResponse>('/Deposits', requestData);
@@ -124,7 +127,8 @@ class DepositService {
       Status: data.status || 'Pending',
       TokenNumber: '',
       FormReferenceId: data.formReferenceId || id,
-      QueueNumber: 0
+      QueueNumber: 0,
+      Signature: data.signature || null // Add signature to update data
     };
 
     const response = await apiClient.put<DepositResponse>(`/Deposits/update-By-Customer/${id}`, requestData);

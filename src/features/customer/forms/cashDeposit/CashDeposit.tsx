@@ -13,6 +13,7 @@ import { FormLayout } from '../../components/FormLayout';
 import { AccountSelector } from '../../components/AccountSelector';
 import { AmountInput } from '../../components/AmountInput';
 import { StepNavigation } from '../../components/StepNavigation';
+import { SignatureStep } from '../../components/SignatureStep'; // Add this import
 import { depositValidationSchema } from '../../utils/validationSchemas';
 import depositService from '../../../../services/depositService';
 import { convertAmountToWords } from '../../../../utils/amountInWords';
@@ -30,6 +31,7 @@ interface FormData {
   accountHolderName: string;
   amount: string;
   currency: string;
+  signature?: string; // Add signature field
 }
 
 // Add interface for validated account
@@ -49,7 +51,7 @@ export default function CashDepositForm() {
   const location = useLocation();
 
   // Custom Hooks
-  const { step, next, prev, isFirst, isLast } = useFormSteps(2);
+  const { step, next, prev, isFirst, isLast } = useFormSteps(3); // Changed from 2 to 3 steps
   const { accounts, loadingAccounts, errorAccounts, selectedAccount, selectAccount } = useAccountSelection('selectedDepositAccount');
   const { convertAmount, getCurrencyOptions } = useCurrencyConversion();
   const { errors, validateForm, clearFieldError } = useFormValidation(depositValidationSchema);
@@ -181,7 +183,21 @@ export default function CashDepositForm() {
     setFormData(prev => ({ ...prev, currency }));
   };
 
-  // Update validation to check if account was validated
+  // Add signature state
+  const [signature, setSignature] = useState<string>('');
+  const [signatureError, setSignatureError] = useState<string>('');
+
+  // Add signature handlers
+  const handleSignatureComplete = (signatureData: string) => {
+    setSignature(signatureData);
+    setSignatureError('');
+  };
+
+  const handleSignatureClear = () => {
+    setSignature('');
+  };
+
+  // Update validation to check signature
   const handleNext = () => {
     // For step 1, we need to ensure account is validated
     if (step === 1) {
@@ -208,11 +224,18 @@ export default function CashDepositForm() {
         // If account is validated but no amount is needed yet, just move to next step
         next();
       }
-    } else {
-      // For other steps, just validate form data
-      if (validateForm(formData)) {
-        next();
+    } 
+    // For step 2 (review step), move to signature step
+    else if (step === 2) {
+      next();
+    }
+    // For step 3 (signature step), validate signature and submit
+    else {
+      if (!signature) {
+        setSignatureError('Signature is required to complete the transaction');
+        return;
       }
+      handleSubmit();
     }
   };
 
@@ -285,6 +308,7 @@ export default function CashDepositForm() {
         setAccountValidated(false);
         setAmountInWords('');
         setUpdateId(null);
+        setSignature(''); // Reset signature
         
         navigate('/form/cash-deposit/cashdepositconfirmation', {
           state: {
@@ -305,6 +329,7 @@ export default function CashDepositForm() {
           telephoneNumber: phone,
           transactionType: `Cash Deposit (${formData.currency})`,
           status: 'Pending',
+          signature: signature, // Add signature to deposit data
         };
 
         const response = await depositService.submitDeposit(depositData);
@@ -332,6 +357,7 @@ export default function CashDepositForm() {
         setValidatedAccount(null);
         setAccountValidated(false);
         setAmountInWords('');
+        setSignature(''); // Reset signature
         
         navigate('/form/cash-deposit/cashdepositconfirmation', {
           state: {
@@ -436,6 +462,16 @@ export default function CashDepositForm() {
     </div>
   );
 
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      <SignatureStep 
+        onSignatureComplete={handleSignatureComplete}
+        onSignatureClear={handleSignatureClear}
+        error={signatureError}
+      />
+    </div>
+  );
+
   return (
     <FormLayout
       title="Cash Deposit"
@@ -447,10 +483,11 @@ export default function CashDepositForm() {
       <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
+        {step === 3 && renderStep3()}
 
         <StepNavigation
           currentStep={step}
-          totalSteps={2}
+          totalSteps={3} // Changed from 2 to 3 steps
           onNext={isLast ? handleSubmit : handleNext}
           onBack={prev}
           nextLabel={isLast ? 'Submit Deposit' : 'Continue'}

@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../../context/AuthContext';
-import { Plane, User, CreditCard, DollarSign, Building } from 'lucide-react';
+import { Plane, User, CreditCard, DollarSign, Building, PenTool } from 'lucide-react';
 import depositService from '../../../../services/depositService';
 import {
     SuccessHeader,
@@ -25,6 +25,7 @@ type DepositData = {
     amount?: number;
     tokenNumber?: string;
     queueNumber?: number;
+    signature?: string; // Add signature field
     [key: string]: any;
 };
 
@@ -44,7 +45,7 @@ export default function DepositConfirmation() {
     const handlePrint = usePrint(componentToPrintRef as React.RefObject<HTMLDivElement>, t('depositConfirmation', 'Deposit Confirmation'));
 
     // Memoized data processing
-    const { data, entityId, branchName, accountNumber, accountHolderName, amount, token, queueNumber } = useMemo(() => {
+    const { data, entityId, branchName, accountNumber, accountHolderName, amount, token, queueNumber, signature } = useMemo(() => {
         const rawData = serverData?.data || state?.serverData?.data || {};
         const processedData = initializeData(state, rawData);
         
@@ -56,7 +57,8 @@ export default function DepositConfirmation() {
             accountHolderName: processedData.accountHolderName || 'N/A',
             amount: formatAmount(processedData.amount),
             token: formatQueueToken(processedData.tokenNumber),
-            queueNumber: formatQueueToken(processedData.queueNumber)
+            queueNumber: formatQueueToken(processedData.queueNumber),
+            signature: processedData.signature || null // Add signature to the memoized data
         };
     }, [serverData, state, t]);
 
@@ -189,6 +191,25 @@ export default function DepositConfirmation() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Signature Display */}
+                        {signature && (
+                            <div className="mb-4">
+                                <div className="bg-amber-25 rounded-lg p-4 border border-amber-200 shadow-sm">
+                                    <h3 className="text-md font-bold text-amber-700 mb-3 flex items-center gap-2">
+                                        <PenTool className="h-4 w-4" />
+                                        {t('digitalSignature', 'Digital Signature')}
+                                    </h3>
+                                    <div className="flex justify-center">
+                                        <img 
+                                            src={signature} 
+                                            alt="Customer Signature" 
+                                            className="max-w-full h-auto max-h-32 border border-amber-300 rounded"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="text-center pt-3 border-t border-amber-200">
                             <p className="text-amber-700 text-xs">{t('thankYouBanking', 'Thank you for banking with us!')}</p>
