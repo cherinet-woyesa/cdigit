@@ -111,19 +111,7 @@ export const BranchProvider: React.FC<BranchProviderProps> = ({ children }) => {
         
         let branchIdToUse = user?.branchId || localStorage.getItem('lastActiveBranchId');
         
-        // If we don't have a branch ID yet, check localStorage from previous steps
-        if (!branchIdToUse) {
-          branchIdToUse = localStorage.getItem('branchIdFromWelcome') || 
-                         localStorage.getItem('branchIdFromLanguageSelection');
-        }
-        
-        // Clean up the localStorage items we've checked
-        if (localStorage.getItem('branchIdFromWelcome')) {
-          localStorage.removeItem('branchIdFromWelcome');
-        }
-        if (localStorage.getItem('branchIdFromLanguageSelection')) {
-          localStorage.removeItem('branchIdFromLanguageSelection');
-        }
+        // Branch ID logic from language selection removed - customers always go to dashboard
         
         if (branchIdToUse) {
           console.log('BranchContext: Found branch ID from flow:', branchIdToUse);

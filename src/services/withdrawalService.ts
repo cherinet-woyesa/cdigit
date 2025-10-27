@@ -15,6 +15,7 @@ export interface WithdrawalData {
 }
 
 export interface WithdrawalResponse {
+  phoneNumber: any;
   id: string;
   formReferenceId: string;
   accountNumber: string;

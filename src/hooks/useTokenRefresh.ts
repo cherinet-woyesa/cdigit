@@ -14,7 +14,7 @@ interface DecodedToken {
  * Checks token expiration and prompts refresh when needed
  */
 export const useTokenRefresh = () => {
-  const { token, logout } = useAuth();
+  const { token, logout, user } = useAuth();
   const navigate = useNavigate();
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -54,10 +54,16 @@ export const useTokenRefresh = () => {
     // Example: await authService.refreshToken();
     
     logout();
-    navigate('/staff-login', { 
+    
+    // Redirect based on user role
+    // Staff roles go to staff login, customers go to OTP login
+    const isStaffUser = user?.role && ['Maker', 'Admin', 'Manager', 'Auditor', 'Authorizer', 'Greeter'].includes(user.role);
+    const redirectTo = isStaffUser ? '/staff-login' : '/otp-login';
+    
+    navigate(redirectTo, { 
       state: { message: 'Your session has expired. Please login again.' } 
     });
-  }, [logout, navigate]);
+  }, [logout, navigate, user?.role]);
 
   const scheduleTokenRefresh = useCallback((expirationTime: number) => {
     // Clear any existing timer

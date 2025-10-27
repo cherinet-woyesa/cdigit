@@ -124,6 +124,7 @@ const DashboardRouter: React.FC = () => {
   // if (user?.role === 'Greeter') {
   //   return <GreeterDashboard />;
   // }
+  // Always show customer dashboard for unauthenticated users or customers
   if (user?.role === 'Customer' || !user?.role) {
     return <Dashboard />;
   }
@@ -220,11 +221,7 @@ function App() {
             } />
 
             {/* Main dashboard route */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardRouter />
-              </ProtectedRoute>
-            } />
+            <Route path="/dashboard" element={<DashboardRouter />} />
 
             {/* Customer forms */}
             <Route path="/form/cash-deposit" element={
@@ -237,21 +234,11 @@ function App() {
                 <CashDepositConfirmation />
               </ProtectedRoute>
             } />
-            <Route path="/form/cash-withdrawal" element={
-              <ProtectedRoute>
-                <CashWithdrawal />
-              </ProtectedRoute>
-            } />
+            <Route path="/form/cash-withdrawal" element={<CashWithdrawal />} />
             <Route path="/form/cash-withdrawal/cashwithdrawalconfirmation" element={
-              <ProtectedRoute>
-                <CashWithDrawalConfirmation />
-              </ProtectedRoute>
+              <CashWithDrawalConfirmation />
             } />
-            <Route path="/form/fund-transfer" element={
-              <ProtectedRoute>
-                <FundTransfer />
-              </ProtectedRoute>
-            } />
+            <Route path="/form/fund-transfer" element={<FundTransfer />} />
             <Route path="/fund-transfer-confirmation" element={
               <ProtectedRoute>
                 <FundTransferConfirmation />

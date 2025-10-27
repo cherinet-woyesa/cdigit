@@ -1,20 +1,22 @@
 // components/AccountSelector.tsx
-import { useState, useEffect } from 'react';
-import { depositService } from '../../../services/depositService';
+import { useState } from 'react';
 import { Search, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import accountService from '../../../services/accountsService';
 
 interface Account {
   accountNumber: string;
   accountHolderName: string;
   isDiaspora?: boolean;
   accountType?: string;
+  phoneNumber?: string;
 }
 
 interface AccountSelectorProps {
-  accounts?: Account[]; // Make accounts optional
+  accounts?: Account[];
   selectedAccount: string;
   onAccountChange: (accountNumber: string, accountHolderName?: string) => void;
   onAccountValidation?: (account: Account | null) => void;
+  onPhoneNumberFetched?: (phoneNumber: string) => void;
   label?: string;
   required?: boolean;
   error?: string;
@@ -23,10 +25,11 @@ interface AccountSelectorProps {
 }
 
 export function AccountSelector({
-  accounts = [], // Default to empty array
+  accounts = [],
   selectedAccount,
   onAccountChange,
   onAccountValidation,
+  onPhoneNumberFetched,
   label = "Account Number",
   required = true,
   error,
@@ -38,6 +41,26 @@ export function AccountSelector({
   const [validationResult, setValidationResult] = useState<any>(null);
   const [searchedAccount, setSearchedAccount] = useState<Account | null>(null);
 
+  const fetchPhoneNumber = async (accountNumber: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.warn('No authentication token found, skipping phone number fetch');
+        return null;
+      }
+      
+      const response = await accountService.getPhoneByAccountNumber(accountNumber, token);
+      if (response.success && response.data) {
+        onPhoneNumberFetched?.(response.data);
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch phone number:', error);
+      return null;
+    }
+  };
+
   const handleSearchAccount = async () => {
     if (!manualAccount.trim()) return;
 
@@ -46,48 +69,35 @@ export function AccountSelector({
     setSearchedAccount(null);
 
     try {
-      const result = await depositService.validateAccount(manualAccount);
+      const response = await fetch(`http://localhost:5268/api/Accounts/AccountNumExist/${manualAccount.trim()}`);
+      const result = await response.json();
+
       setValidationResult(result);
 
-      // Check if validation was successful
-      // The apiClient extracts the data property, so we check if result has accountHolderName directly
-      if (result && (result as any).success === true) {
-        // If it's an ApiResponse structure with data property
-        const accountData = (result as any).data || result;
-        
-        if (accountData.accountHolderName) {
-          const validatedAccount: Account = {
-            accountNumber: accountData.accountNumber,
-            accountHolderName: accountData.accountHolderName,
-            isDiaspora: accountData.isDiaspora,
-            accountType: accountData.typeOfAccount || accountData.TypeOfAccount
-          };
-          setSearchedAccount(validatedAccount);
-          onAccountValidation?.(validatedAccount);
-          
-          // Auto-fill the account in parent form with holder name
-          onAccountChange(manualAccount, accountData.accountHolderName);
-        } else {
-          onAccountValidation?.(null);
-          onAccountChange(manualAccount, ''); // Clear holder name if validation fails
-        }
-      } else if (result && (result as any).accountHolderName) {
-        // Direct account data (no success property)
-        const accountData = result as any;
+      if (result.success && result.data) {
+        const accountData = result.data;
         const validatedAccount: Account = {
           accountNumber: accountData.accountNumber,
           accountHolderName: accountData.accountHolderName,
           isDiaspora: accountData.isDiaspora,
-          accountType: accountData.typeOfAccount || accountData.TypeOfAccount
+          accountType: accountData.typeOfAccount || accountData.TypeOfAccount,
+          phoneNumber: accountData.phoneNumber // Use phone number from the main account response
         };
         setSearchedAccount(validatedAccount);
         onAccountValidation?.(validatedAccount);
-        
-        // Auto-fill the account in parent form with holder name
         onAccountChange(manualAccount, accountData.accountHolderName);
+        
+        // If phone number is already in the account data, use it
+        if (accountData.phoneNumber) {
+          onPhoneNumberFetched?.(accountData.phoneNumber);
+        } else {
+          // Only try to fetch phone number if it's not in the main response
+          console.log('Phone number not in main response, trying dedicated endpoint...');
+          await fetchPhoneNumber(accountData.accountNumber);
+        }
       } else {
         onAccountValidation?.(null);
-        onAccountChange(manualAccount, ''); // Clear holder name if validation fails
+        onAccountChange(manualAccount, '');
       }
     } catch (error: any) {
       setValidationResult({
@@ -95,7 +105,7 @@ export function AccountSelector({
         message: error.message || 'Failed to validate account'
       });
       onAccountValidation?.(null);
-      onAccountChange(manualAccount, ''); // Clear holder name on error
+      onAccountChange(manualAccount, '');
     } finally {
       setIsSearching(false);
     }
@@ -103,26 +113,15 @@ export function AccountSelector({
 
   const handleManualAccountChange = (value: string) => {
     setManualAccount(value);
-    // Clear validation results when user starts typing again
     if (validationResult) {
       setValidationResult(null);
       setSearchedAccount(null);
     }
-    // Also clear any selected account and holder name
     if (selectedAccount) {
       onAccountChange('', '');
     }
   };
 
-  const handleUseDifferentAccount = () => {
-    setManualAccount('');
-    setValidationResult(null);
-    setSearchedAccount(null);
-    onAccountChange('', '');
-    onAccountValidation?.(null);
-  };
-
-  // Always show manual entry when allowManualEntry is true, regardless of accounts
   if (allowManualEntry) {
     return (
       <div>
@@ -162,7 +161,6 @@ export function AccountSelector({
           </button>
         </div>
 
-        {/* Validation Result - Show account holder details here instead of separate field */}
         {validationResult && validationResult.message && (
           <div className={`mt-3 p-3 rounded-lg border ${
             validationResult.success === true ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'
@@ -190,6 +188,9 @@ export function AccountSelector({
                   {searchedAccount.isDiaspora && (
                     <div className="text-blue-600 font-medium">Diaspora Account</div>
                   )}
+                  {searchedAccount.phoneNumber && (
+                    <div className="text-green-600 font-medium">Phone: {searchedAccount.phoneNumber}</div>
+                  )}
                 </div>
               </div>
             )}
@@ -203,7 +204,6 @@ export function AccountSelector({
     );
   }
 
-  // If no manual entry and no accounts, show empty state
   if (accounts.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -212,7 +212,6 @@ export function AccountSelector({
     );
   }
 
-  // If we have accounts but manual entry is disabled, show dropdown
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">

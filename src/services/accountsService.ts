@@ -28,10 +28,6 @@ export const checkAccountExistsByPhone = async (phoneNumber: string): Promise<bo
   }
 };
 
-
-
-
-
 const accountService = {
   // 🔍 Search accounts by name, phone, or account number
   search: async (query: string, token: string) => {
@@ -55,6 +51,15 @@ const accountService = {
   getByPhone: async (phoneNumber: string, token: string) => {
     const res = await axios.get<ApiResponse<any>>(
       `${API_BASE_URL}/Accounts/by-phone/${phoneNumber}`,
+      authHeader()
+    );
+    return res.data;
+  },
+
+  // NEW: Get phone number by account number
+  getPhoneByAccountNumber: async (accountNumber: string, token: string) => {
+    const res = await axios.get<ApiResponse<string>>(
+      `${API_BASE_URL}/Accounts/phone-by-account/${accountNumber}`,
       authHeader()
     );
     return res.data;

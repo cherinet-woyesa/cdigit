@@ -1,6 +1,6 @@
 // utils/validationSchemas.ts
 export const accountValidation = {
-  accountNumber: (value: string) => {
+  accountNumber: (value: string | undefined) => {
     if (!value?.trim()) return 'Account number is required';
     if (value.length < 10) return 'Account number is too short';
     if (value.length > 16) return 'Account number is too long';
@@ -8,14 +8,14 @@ export const accountValidation = {
     return undefined;
   },
   
-  accountHolderName: (value: string) => {
+  accountHolderName: (value: string | undefined) => {
     if (!value?.trim()) return 'Account holder name is required';
     return undefined;
   }
 };
 
 export const amountValidation = {
-  amount: (value: string, formData?: any) => {
+  amount: (value: string | undefined, formData?: any) => {
     if (!value?.trim()) return 'Amount is required';
     
     const amountNum = parseFloat(value);
@@ -27,7 +27,7 @@ export const amountValidation = {
 };
 
 export const otpValidation = {
-  otp: (value: string) => {
+  otp: (value: string | undefined) => {
     if (!value) return 'OTP is required';
     if (value.length !== 6) return 'OTP must be 6 digits';
     if (!/^\d{6}$/.test(value)) return 'OTP must contain only digits';
@@ -36,19 +36,19 @@ export const otpValidation = {
 };
 
 export const personalInfoValidation = {
-  fullName: (value: string) => {
+  fullName: (value: string | undefined) => {
     if (!value?.trim()) return 'Full name is required';
     if (value.length < 2) return 'Full name is too short';
     return undefined;
   },
   
-  phoneNumber: (value: string) => {
+  phoneNumber: (value: string | undefined) => {
     if (!value?.trim()) return 'Phone number is required';
     if (!/^\+?[\d\s-]+$/.test(value)) return 'Please enter a valid phone number';
     return undefined;
   },
   
-  email: (value: string) => {
+  email: (value: string | undefined) => {
     if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
       return 'Please enter a valid email address';
     }
@@ -58,37 +58,37 @@ export const personalInfoValidation = {
 
 // CBE Birr Registration specific validation
 export const cbeBirrRegistrationValidationSchema = {
-  phoneNumber: (value: string) => {
+  phoneNumber: (value: string | undefined) => {
     if (!value?.trim()) return 'Phone number is required';
     if (!/^\+?[\d\s-]+$/.test(value)) return 'Please enter a valid phone number';
     return undefined;
   },
 
-  fullName: (value: string) => {
+  fullName: (value: string | undefined) => {
     if (!value?.trim()) return 'First name is required';
     if (value.length < 2) return 'First name is too short';
     return undefined;
   },
 
-  fatherName: (value: string) => {
+  fatherName: (value: string | undefined) => {
     if (!value?.trim()) return "Father's name is required";
     if (value.length < 2) return 'Father name is too short';
     return undefined;
   },
 
-  grandfatherName: (value: string) => {
+  grandfatherName: (value: string | undefined) => {
     if (!value?.trim()) return "Grandfather's name is required";
     if (value.length < 2) return 'Grandfather name is too short';
     return undefined;
   },
 
-  placeOfBirth: (value: string) => {
+  placeOfBirth: (value: string | undefined) => {
     if (!value?.trim()) return 'Place of birth is required';
     if (value.length < 2) return 'Place of birth is too short';
     return undefined;
   },
 
-  dateOfBirth: (value: string) => {
+  dateOfBirth: (value: string | undefined) => {
     if (!value?.trim()) return 'Date of birth is required';
     
     const selectedDate = new Date(value);
@@ -101,69 +101,69 @@ export const cbeBirrRegistrationValidationSchema = {
     return undefined;
   },
 
-  gender: (value: string) => {
+  gender: (value: string | undefined) => {
     if (!value) return 'Gender is required';
     return undefined;
   },
 
-  city: (value: string) => {
+  city: (value: string | undefined) => {
     if (!value?.trim()) return 'City is required';
     if (value.length < 2) return 'City is too short';
     return undefined;
   },
 
-  wereda: (value: string) => {
+  wereda: (value: string | undefined) => {
     if (!value?.trim()) return 'Wereda is required';
     return undefined;
   },
 
-  kebele: (value: string) => {
+  kebele: (value: string | undefined) => {
     if (!value?.trim()) return 'Kebele is required';
     return undefined;
   },
 
-  email: (value: string) => {
+  email: (value: string | undefined) => {
     if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
       return 'Please enter a valid email address';
     }
     return undefined;
   },
 
-  idNumber: (value: string) => {
+  idNumber: (value: string | undefined) => {
     if (!value?.trim()) return 'ID number is required';
     if (value.length < 5) return 'ID number is too short';
     return undefined;
   },
 
-  issuedBy: (value: string) => {
+  issuedBy: (value: string | undefined) => {
     if (!value?.trim()) return 'Issued by is required';
     if (value.length < 2) return 'Issued by is too short';
     return undefined;
   },
 
-  maritalStatus: (value: string) => {
+  maritalStatus: (value: string | undefined) => {
     if (!value) return 'Marital status is required';
     return undefined;
   },
 
-  educationLevel: (value: string) => {
+  educationLevel: (value: string | undefined) => {
     if (!value) return 'Education level is required';
     return undefined;
   },
 
-  motherName: (value: string) => {
+  motherName: (value: string | undefined) => {
     if (!value?.trim()) return "Mother's name is required";
     if (value.length < 2) return 'Mother name is too short';
     return undefined;
   },
 
-  motherFatherName: (value: string) => {
+  motherFatherName: (value: string | undefined) => {
     if (!value?.trim()) return "Mother's father name is required";
     if (value.length < 2) return 'Mother father name is too short';
     return undefined;
   },
 
-  motherGrandfatherName: (value: string) => {
+  motherGrandfatherName: (value: string | undefined) => {
     if (!value?.trim()) return "Mother's grandfather name is required";
     if (value.length < 2) return 'Mother grandfather name is too short';
     return undefined;
@@ -176,6 +176,11 @@ export const cbeBirrRegistrationValidationSchema = {
 export const depositValidationSchema = {
   ...accountValidation,
   ...amountValidation
+};
+
+export const withdrawalStep1ValidationSchema = {
+    ...accountValidation,
+    ...amountValidation
 };
 
 export const withdrawalValidationSchema = {

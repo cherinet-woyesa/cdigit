@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -20,14 +19,9 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
-import { HubConnectionBuilder } from '@microsoft/signalr';
-import QueueNotifyModal from '../../modals/QueueNotifyModal';
-import TransactionFeedbackModal from '../../modals/TransactionFeedbackModal';
 import NearbyBranchesModal from '../../modals/NearbyBranchesModal';
 import clsx from 'clsx';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
 import { DashboardErrorBoundary } from '../../components/dashboard/ErrorBoundary';
-import { config } from '../../config/env';
 import { fetchBranches } from '../../services/branchService';
 import { getQueueCount } from '../../services/queueService';
 // Import the logo
@@ -141,30 +135,15 @@ const FormCardSkeleton: React.FC = () => (
 );
 
 const CustomerDashboardContent: React.FC = () => {
-  const { phone, user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   
   // State management
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [isQueueNotifyModalOpen, setIsQueueNotifyModalOpen] = useState(false);
-  const [queueNotifyModalMessage, setQueueNotifyModalMessage] = useState('');
-  const [queueNotifyModalTitle, setQueueNotifyModalTitle] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [signalRError, setSignalRError] = useState<string | null>(null);
+  const [loading] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [debouncedQuery, setDebouncedQuery] = useState('');
-
-  // Transaction Feedback Modal state
-  const [isTransactionFeedbackModalOpen, setTransactionFeedbackModalOpen] = useState(false);
-  const [TransactionCompletdModalTransactionId, setTransactionCompletdModalTransactionId] = useState('');
-  const [transactionCompletdModalFrontMakerId, setTransactionCompletdModalFrontMakerId] = useState('');
-  const [transactionCompletdModalBranchId, setTransactionCompletdModalBranchId] = useState('');
-  const [TransactionCompletdModalTransactionType, setTransactionCompletdModalTransactionType] = useState('');
-  const [TransactionCompletdModalTransactionAmount, setTransactionCompletdModalTransactionAmount] = useState('');
-  const [TransactionCompletdModalMessage, setTransactionCompletdModalMessage] = useState('');
-  const [TransactionCompletdModalCustomerPhone, setTransactionCompletdModalCustomerPhone] = useState('');
   
   // Refs
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -206,90 +185,7 @@ const CustomerDashboardContent: React.FC = () => {
     return filtered;
   }, [debouncedQuery, selectedCategory, t]);
 
-  // SignalR connection with better error handling and cleanup
-  useEffect(() => {
-    if (!phone) {
-      navigate('/otp-login');
-      return;
-    }
-
-    let connection: any = null;
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 5;
-    
-    const connectSignalR = async () => {
-      try {
-        connection = new HubConnectionBuilder()
-          .withUrl(`${config.SIGNALR_URL}/hub/queueHub`)
-          .withAutomaticReconnect({
-            nextRetryDelayInMilliseconds: (retryContext) => {
-              if (retryContext.previousRetryCount >= MAX_RECONNECT_ATTEMPTS) {
-                console.warn('Max SignalR reconnection attempts reached');
-                setSignalRError(t('signalRError', 'Notifications temporarily unavailable'));
-                return null;
-              }
-              return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
-            }
-          })
-          .build();
-
-        connection.onreconnecting(() => {
-          console.log('SignalR reconnecting...');
-          reconnectAttempts++;
-        });
-
-        connection.onreconnected(() => {
-          console.log('SignalR reconnected successfully');
-          reconnectAttempts = 0;
-          setSignalRError(null);
-          connection.invoke('JoinQueueGroup', phone).catch(console.error);
-        });
-
-        connection.onclose(() => {
-          console.log('SignalR connection closed');
-        });
-
-        await connection.start();
-        console.log('SignalR connected successfully');
-        
-        await connection.invoke('JoinQueueGroup', phone);
-
-        connection.on('CustomerCalled', (data: { message: string; windowNumber: string }) => {
-          setQueueNotifyModalTitle(t('beingCalled', 'You Are Being Called'));
-          setQueueNotifyModalMessage(`${data.message} Window ${data.windowNumber}`);
-          setIsQueueNotifyModalOpen(true);
-        });
-
-        connection.on("TransactionCompleted", (data: any) => {
-          setIsQueueNotifyModalOpen(false);
-          setTransactionFeedbackModalOpen(true);
-          setTransactionCompletdModalTransactionId(data.transactionId);
-          setTransactionCompletdModalFrontMakerId(data.frontMakerId);
-          setTransactionCompletdModalBranchId(data.branchId);
-          setTransactionCompletdModalCustomerPhone(data.customerPhone);
-          setTransactionCompletdModalTransactionType(data.transactionType);
-          setTransactionCompletdModalTransactionAmount(data.amount);
-          setTransactionCompletdModalMessage(data.message);
-        });
-
-        setSignalRError(null);
-      } catch (error) {
-        console.error('SignalR connection failed:', error);
-        setSignalRError(t('signalRError', 'Notifications temporarily unavailable'));
-      }
-    };
-
-    connectSignalR();
-
-    return () => {
-      if (connection) {
-        console.log('Cleaning up SignalR connection');
-        connection.off('CustomerCalled');
-        connection.off('TransactionCompleted');
-        connection.stop().catch((err: any) => console.warn('Error stopping SignalR:', err));
-      }
-    };
-  }, [phone, navigate, t]);
+  // SignalR connection removed - no authentication required
 
   // Keyboard navigation with improved accessibility
   const handleCardKeyDown = useCallback((idx: number) => (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -427,7 +323,7 @@ const CustomerDashboardContent: React.FC = () => {
     }
   }, []);
 
-  // Form navigation handler
+  // Form navigation handler - direct navigation without authentication
   const openForm = useCallback((form: Form) => {
     navigate(form.route);
   }, [navigate]);
@@ -440,26 +336,7 @@ const CustomerDashboardContent: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50" ref={containerRef}>
-      {/* Notification Modals */}
-      <QueueNotifyModal
-        isOpen={isQueueNotifyModalOpen}
-        onClose={() => setIsQueueNotifyModalOpen(false)}
-        title={queueNotifyModalTitle}
-        message={queueNotifyModalMessage}
-      />
-
-      <TransactionFeedbackModal
-        isOpen={isTransactionFeedbackModalOpen}
-        onClose={() => setTransactionFeedbackModalOpen(false)}
-        transactionId={TransactionCompletdModalTransactionId}
-        frontMakerId={transactionCompletdModalFrontMakerId}
-        branchId={transactionCompletdModalBranchId}
-        customerPhone={TransactionCompletdModalCustomerPhone}
-        transactionType={TransactionCompletdModalTransactionType}
-        transactionAmount={TransactionCompletdModalTransactionAmount}
-        message={TransactionCompletdModalMessage}
-      />
-
+      {/* Nearby Branches Modal */}
       <NearbyBranchesModal
         isOpen={isNearbyBranchesModalOpen}
         onClose={() => setIsNearbyBranchesModalOpen(false)}
@@ -478,7 +355,9 @@ const CustomerDashboardContent: React.FC = () => {
               <img src={logo} alt="Bank Logo" className="h-16 w-16 rounded-full object-contain" />
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">{t('bankName', 'Commercial Bank of Ethiopia')}</h1>
-                <p className="text-fuchsia-100 text-sm">{t('welcomeBack', 'Welcome back')}, {user?.firstName || 'Customer'}!</p>
+                <p className="text-fuchsia-100 text-sm">
+                  {t('welcomeToCBE', 'Welcome to CBE Digital Banking')}
+                </p>
               </div>
             </div>
             
@@ -509,9 +388,6 @@ const CustomerDashboardContent: React.FC = () => {
                 <ClockIcon className="h-5 w-5" />
                 <span>{t('transactionHistory', 'History')}</span>
               </button>
-              <div className="bg-white/20 px-3 py-2 rounded-lg text-sm font-mono flex items-center gap-2">
-                <DevicePhoneMobileIcon className="h-5 w-5" /> {phone}
-              </div>
               
             </div>
           </div>

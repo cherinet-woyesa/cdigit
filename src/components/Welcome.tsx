@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { speechService } from '../services/speechService';
 import { LANGUAGES, LANGUAGE_CONFIG } from '../constants/languageConfig';
@@ -15,7 +15,6 @@ const filteredLanguagesForDisplay = LANGUAGES.filter(lang => languagesToShow.inc
 const Welcome: React.FC = () => {
   const { i18n, t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const { updateUserBranch } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -27,14 +26,6 @@ const Welcome: React.FC = () => {
     setSelectedLanguage(langCode);
     speechService.stop();
 
-    const params = new URLSearchParams(location.search);
-    const branchId = params.get('branchId');
-
-    if (branchId) {
-      // Save branch ID to localStorage for use in OTP login
-      localStorage.setItem('branchIdFromWelcome', branchId);
-    }
-
     const confirmationText = LANGUAGE_CONFIG[langCode].name;
     await speechService.speak(confirmationText, langCode);
 
@@ -45,9 +36,9 @@ const Welcome: React.FC = () => {
     document.documentElement.dir = LANGUAGE_CONFIG[langCode].direction;
     document.documentElement.lang = langCode;
 
-    // Navigate to OTP login
-    navigate('/otp-login');
-  }, [i18n, navigate, location.search, updateUserBranch]);
+    // Always navigate to dashboard after language selection
+    navigate('/dashboard');
+  }, [i18n, navigate, updateUserBranch]);
 
   const speakWelcomeMessage = useCallback(async (lang?: LanguageCode) => {
     if (isSpeaking) return;

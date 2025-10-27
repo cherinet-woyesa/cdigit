@@ -30,10 +30,13 @@ interface WithdrawalData {
 
 export default function WithdrawalConfirmation() {
     const { t } = useTranslation();
-    const { phone } = useAuth();
+    const authContext = useAuth();
     const { state } = useLocation() as { state?: any };
     const navigate = useNavigate();
     const { branch } = useBranch();
+    
+    // Make phone number optional since we're removing auth requirement
+    const phone = authContext?.phone || null;
     
     const [withdrawalData, setWithdrawalData] = useState<WithdrawalData>({});
     const [error, setError] = useState('');

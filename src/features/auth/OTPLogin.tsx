@@ -485,24 +485,7 @@ const OTPLogin: React.FC = () => {
       
       console.log('User role detected:', userRole);
       
-      // Check if we have branch information from previous steps
-      const branchIdFromQR = location.state?.branchId;
-      const branchIdFromWelcome = localStorage.getItem('branchIdFromWelcome');
-      const branchIdFromLanguageSelection = localStorage.getItem('branchIdFromLanguageSelection');
-      const branchId = branchIdFromQR || branchIdFromWelcome || branchIdFromLanguageSelection;
-      
-      // Clean up the localStorage items as we've used them
-      if (branchIdFromWelcome) {
-        localStorage.removeItem('branchIdFromWelcome');
-      }
-      if (branchIdFromLanguageSelection) {
-        localStorage.removeItem('branchIdFromLanguageSelection');
-      }
-      
-      // If we have a branch ID, save it to localStorage for use in the application
-      if (branchId) {
-        localStorage.setItem('lastActiveBranchId', branchId);
-      }
+      // Branch ID logic removed - customers always go to dashboard
       
       // Role-based redirection
       switch (userRole.toLowerCase()) {

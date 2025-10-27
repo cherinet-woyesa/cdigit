@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import logo from '../assets/logo.jpg';
 import cbeImage from '../assets/cbe1.jpg';
@@ -16,7 +16,6 @@ const filteredLanguagesForDisplay = LANGUAGES.filter(lang => languagesToShow.inc
 const LanguageSelection: React.FC = () => {
   const { i18n, t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -43,20 +42,9 @@ const LanguageSelection: React.FC = () => {
     document.documentElement.dir = LANGUAGE_CONFIG[langCode].direction;
     document.documentElement.lang = langCode;
     
-    // Check if we have a branchId in the URL parameters
-    const params = new URLSearchParams(location.search);
-    const branchId = params.get('branchId');
-    
-    if (branchId) {
-      // Save branch ID to localStorage for use in OTP login
-      localStorage.setItem('branchIdFromLanguageSelection', branchId);
-      // Navigate directly to OTP login for users with a branchId (QR code or in-branch flow)
-      navigate('/otp-login');
-    } else {
-      // Navigate to branch selection for remote users
-      navigate('/select-branch');
-    }
-  }, [i18n, navigate, location.search, saveLastUsedLanguage]);
+    // Always navigate to dashboard after language selection
+    navigate('/dashboard');
+  }, [i18n, navigate, saveLastUsedLanguage]);
 
   // Keyboard navigation handler
   const handleKeyDown = useCallback((e: React.KeyboardEvent, langCode: LanguageCode) => {
