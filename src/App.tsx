@@ -239,11 +239,7 @@ function App() {
               <CashWithDrawalConfirmation />
             } />
             <Route path="/form/fund-transfer" element={<FundTransfer />} />
-            <Route path="/fund-transfer-confirmation" element={
-              <ProtectedRoute>
-                <FundTransferConfirmation />
-              </ProtectedRoute>
-            } />
+            <Route path="/form/fund-transfer/confirmation" element={<FundTransferConfirmation />} />
             <Route path="/customer/transaction-history" element={
               <ProtectedRoute>
                 <TransactionHistory />

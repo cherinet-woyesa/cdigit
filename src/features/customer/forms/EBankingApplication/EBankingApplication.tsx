@@ -1,4 +1,3 @@
-
 // features/customer/forms/EBankingApplication/EBankingApplication.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -6,7 +5,6 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useBranch } from '../../../../context/BranchContext';
 import { useToast } from '../../../../context/ToastContext';
 import { useFormSteps } from '../../hooks/useFormSteps';
-import { useAccountSelection } from '../../hooks/useAccountSelection';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { useOTPHandling } from '../../hooks/useOTPHandling';
 import { useAddressManagement } from '../../hooks/useAddressManagement';
@@ -15,31 +13,32 @@ import { applyEBankingApplication, getEBankingApplicationById, updateEBankingApp
 import authService from '../../../../services/authService';
 import { FormLayout } from '../../components/FormLayout';
 import { StepNavigation } from '../../components/StepNavigation';
-import AccountDetailsStep from '../../components/ebanking/AccountDetailsStep';
+import { AccountSelector } from '../../components/AccountSelector';
 import IDDetailsStep from '../../components/ebanking/IDDetailsStep';
 import AddressDetailsStep from '../../components/ebanking/AddressDetailsStep';
 import ServiceSelectionStep from '../../components/ebanking/ServiceSelectionStep';
 import TermsAndConditionsStep from '../../components/ebanking/TermsAndConditionsStep';
-// import ReviewStep from '../../components/ebanking/ReviewStep';
 import OTPStep from '../../components/stoppayment/OTPStep';
+import { Shield } from 'lucide-react';
 
 export default function EBankingApplication() {
     const navigate = useNavigate();
     const location = useLocation();
     const { phone, user } = useAuth();
     const { branch } = useBranch();
-    const { success: showSuccess, error: showError } = useToast();
-    const { accounts, loadingAccounts, errorAccounts, selectedAccount, selectAccount } = useAccountSelection('selectedEBankingAccount');
+    const { success: showSuccess, error: showError, info } = useToast();
     const { step, next, prev, isFirst, isLast } = useFormSteps(6);
     const { errors, validateForm } = useFormValidation(eBankingApplicationValidationSchema);
     const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [updateId, setUpdateId] = useState<string | null>(null);
+    const [accountValidated, setAccountValidated] = useState(false);
+    const [idCopy, setIdCopy] = useState<File | null>(null);
 
     const [formData, setFormData] = useState({
-        accountNumber: selectedAccount?.accountNumber || '',
-        customerName: selectedAccount?.accountHolderName || '',
-        mobileNumber: phone || '',
+        accountNumber: '',
+        customerName: '',
+        mobileNumber: '',
         idType: 'national_id',
         idNumber: '',
         issuingAuthority: 'NIRA',
@@ -51,17 +50,10 @@ export default function EBankingApplication() {
         houseNumber: '',
         ebankingChannels: [] as string[],
         termsAccepted: false,
-        idCopyAttached: false,
         otpCode: '',
     });
 
     const { regions, zones, woredas, regionLoading, zoneLoading, woredaLoading } = useAddressManagement(formData);
-
-    useEffect(() => {
-        if (selectedAccount) {
-            setFormData(prev => ({ ...prev, accountNumber: selectedAccount.accountNumber, customerName: selectedAccount.accountHolderName || '' }));
-        }
-    }, [selectedAccount]);
 
     useEffect(() => {
         const id = location.state?.updateId as string | undefined;
@@ -77,10 +69,33 @@ export default function EBankingApplication() {
                         mobileNumber: d.PhoneNumber || d.phoneNumber || prev.mobileNumber,
                         ebankingChannels: d.ServicesRequested ? String(d.ServicesRequested).split(',').map(s => s.trim()).filter(Boolean) : [],
                     }));
+                    setAccountValidated(true);
                 }
             });
         }
     }, [location.state]);
+
+    const handleAccountChange = (accountNumber: string, accountHolderName?: string) => {
+        setFormData(prev => ({
+            ...prev,
+            accountNumber,
+            customerName: accountHolderName || '',
+        }));
+        if (!accountNumber) {
+            setAccountValidated(false);
+        }
+    };
+
+    const handleAccountValidation = (account: any | null) => {
+        setAccountValidated(!!account);
+        if (account) {
+            setFormData(prev => ({
+                ...prev,
+                customerName: account.accountHolderName || '',
+                mobileNumber: account.phoneNumber || '',
+            }));
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -100,43 +115,69 @@ export default function EBankingApplication() {
         }
     };
 
+    const handleFileChange = (file: File | null) => {
+        setIdCopy(file);
+    };
+
     const handleRequestOTP = async () => {
-        if (!validateForm(formData)) return;
+        const fieldsToValidate = ['accountNumber', 'customerName', 'mobileNumber', 'idType', 'idNumber', 'issuingAuthority', 'idIssueDate', 'idExpiryDate', 'termsAccepted'];
+        if (!idCopy) {
+            fieldsToValidate.push('region', 'zone', 'wereda', 'houseNumber');
+        }
+        if (!validateForm(formData, fieldsToValidate)) return;
+
         try {
             await requestOTP(() => authService.requestOTP(formData.mobileNumber || phone!));
+            info('OTP sent to your phone');
             next();
         } catch (error: any) {
             showError(error.message || 'Failed to send OTP');
         }
     };
 
+    const handleResendOTP = async () => {
+        try {
+            await resendOTP(() => authService.requestOTP(formData.mobileNumber || phone!));
+            info('OTP resent successfully');
+        } catch (error: any) {
+            showError(error.message || 'Failed to resend OTP');
+        }
+    }
+
     const handleSubmit = async () => {
         if (!validateForm(formData) || !branch?.id) return;
 
         setIsSubmitting(true);
-        try {
-            const payload = {
-                PhoneNumber: formData.mobileNumber || phone!,
-                BranchId: branch.id,
-                AccountNumber: formData.accountNumber,
-                AccountHolderName: formData.customerName,
-                OtpCode: formData.otpCode,
-                NationalIdNumber: formData.idType === 'national_id' ? formData.idNumber : undefined,
-                AltIdNumber: formData.idType !== 'national_id' ? formData.idNumber : undefined,
-                AltIdIssuer: formData.idType !== 'national_id' ? formData.issuingAuthority : undefined,
-                ServicesSelected: formData.ebankingChannels,
-                Region: !formData.idCopyAttached ? formData.region : undefined,
-                City: !formData.idCopyAttached ? formData.zone : undefined,
-                SubCity: !formData.idCopyAttached ? formData.zone : undefined,
-                Wereda: !formData.idCopyAttached ? formData.wereda : undefined,
-                HouseNumber: !formData.idCopyAttached ? formData.houseNumber : undefined,
-                IdIssueDate: formData.idIssueDate ? new Date(formData.idIssueDate).toISOString() : undefined,
-                IdExpiryDate: formData.idExpiryDate ? new Date(formData.idExpiryDate).toISOString() : undefined,
-            };
+        const payload = new FormData();
+        payload.append('PhoneNumber', formData.mobileNumber || phone!);
+        payload.append('BranchId', branch.id);
+        payload.append('AccountNumber', formData.accountNumber);
+        payload.append('AccountHolderName', formData.customerName);
+        payload.append('OtpCode', formData.otpCode);
+        if (formData.idType === 'national_id') {
+            payload.append('NationalIdNumber', formData.idNumber);
+        } else {
+            payload.append('AltIdNumber', formData.idNumber);
+            payload.append('AltIdIssuer', formData.issuingAuthority);
+        }
+        formData.ebankingChannels.forEach(service => payload.append('ServicesSelected', service));
+        if (!idCopy) {
+            payload.append('Region', formData.region);
+            payload.append('City', formData.zone);
+            payload.append('SubCity', formData.zone);
+            payload.append('Wereda', formData.wereda);
+            payload.append('HouseNumber', formData.houseNumber);
+        }
+        if (formData.idIssueDate) payload.append('IdIssueDate', new Date(formData.idIssueDate).toISOString());
+        if (formData.idExpiryDate) payload.append('IdExpiryDate', new Date(formData.idExpiryDate).toISOString());
+        if (idCopy) {
+            payload.append('IdCopy', idCopy);
+        }
 
+        try {
             const response = updateId 
-                ? await updateEBankingApplication(updateId, { ...payload, Id: updateId })
-                : await applyEBankingApplication(payload as any);
+                ? await updateEBankingApplication(updateId, payload)
+                : await applyEBankingApplication(payload);
 
             if (response.success) {
                 showSuccess('Application submitted successfully!');
@@ -153,30 +194,71 @@ export default function EBankingApplication() {
 
     const renderStep = () => {
         switch (step) {
-            case 1: return <AccountDetailsStep formData={formData} onChange={handleChange} errors={errors} onAccountChange={selectAccount} accounts={accounts} />;
+            case 1: return <AccountSelector accounts={[]} selectedAccount={formData.accountNumber} onAccountChange={handleAccountChange} onAccountValidation={handleAccountValidation} error={errors.accountNumber} allowManualEntry={true} />;
             case 2: return <IDDetailsStep formData={formData} onChange={handleChange} errors={errors} />;
             case 3: return <AddressDetailsStep formData={formData} onChange={handleChange} errors={errors} addressProps={{ regions, zones, woredas, regionLoading, zoneLoading, woredaLoading }} />;
             case 4: return <ServiceSelectionStep formData={formData} onChange={handleChange} />;
-            case 5: return <TermsAndConditionsStep formData={formData} onChange={handleChange} errors={errors} />;
-            case 6: return <OTPStep otpCode={formData.otpCode} onOtpChange={handleChange} onResend={() => resendOTP(() => authService.requestOTP(formData.mobileNumber || phone!))} resendCooldown={resendCooldown} otpMessage={otpMessage} error={errors.otpCode} />;
+            case 5: return <TermsAndConditionsStep formData={formData} onChange={handleChange} errors={errors} onFileChange={handleFileChange} idCopy={idCopy} />;
+            case 6: return <OTPStep otpCode={formData.otpCode} onOtpChange={(e) => setFormData({...formData, otpCode: e.target.value})} onResend={handleResendOTP} resendCooldown={resendCooldown} otpMessage={otpMessage} error={errors.otpCode} />;
             default: return null;
         }
     };
 
+    const renderCustomNavigation = () => {
+        if (step === 5) {
+          return (
+            <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+              {!isFirst && (
+                <button
+                  type="button"
+                  onClick={prev}
+                  className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+                >
+                  Back
+                </button>
+              )}
+              
+              <button
+                type="button"
+                onClick={handleRequestOTP}
+                disabled={!formData.termsAccepted || otpLoading}
+                className="bg-fuchsia-600 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ml-auto"
+              >
+                {otpLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Sending OTP...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="h-4 w-4" />
+                    Request OTP
+                  </>
+                )}
+              </button>
+            </div>
+          );
+        }
+    
+        return (
+          <StepNavigation
+            currentStep={step}
+            totalSteps={6}
+            onNext={step === 6 ? handleSubmit : next}
+            onBack={prev}
+            nextLabel={step === 6 ? 'Submit' : 'Continue'}
+            nextDisabled={isSubmitting || otpLoading || (step === 1 && !accountValidated)}
+            nextLoading={isSubmitting || otpLoading}
+            hideBack={isFirst}
+          />
+        );
+      };
+
     return (
-        <FormLayout title="E-Banking Application" phone={phone} branchName={branch?.name} loading={loadingAccounts} error={errorAccounts}>
+        <FormLayout title="E-Banking Application" phone={phone} branchName={branch?.name}>
             <div className="space-y-6">
                 {renderStep()}
-                <StepNavigation 
-                    currentStep={step} 
-                    totalSteps={6} 
-                    onNext={isLast ? handleSubmit : (step === 5 ? handleRequestOTP : next)} 
-                    onBack={prev} 
-                    nextLabel={isLast ? 'Submit' : (step === 5 ? 'Request OTP' : 'Continue')} 
-                    nextDisabled={isSubmitting || otpLoading} 
-                    nextLoading={isSubmitting || otpLoading} 
-                    hideBack={isFirst}
-                />
+                {renderCustomNavigation()}
             </div>
         </FormLayout>
     );

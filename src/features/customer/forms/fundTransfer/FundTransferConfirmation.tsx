@@ -1,9 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../../context/AuthContext';
-import { ArrowRightLeft, CreditCard, DollarSign, Building } from 'lucide-react';
-import { cancelFundTransferByCustomer, getFundTransferById } from '../../../../services/fundTransferService';
+import { useBranch } from '../../../../context/BranchContext';
+import { Plane, User, CreditCard, DollarSign, Building } from 'lucide-react';
+import { getFundTransferById, cancelFundTransferByCustomer } from '../../../../services/fundTransferService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -17,127 +18,193 @@ import {
 } from '../../components/SharedConfirmationComponents';
 import { formatAmount, formatQueueToken, getEntityId, initializeData } from '../../utils/confirmationHelpers';
 
+interface TransferData {
+    id?: string;
+    debitAccountNumber?: string;
+    creditAccountNumber?: string;
+    accountHolderName?: string;
+    amount?: number;
+    tokenNumber?: string;
+    queueNumber?: number;
+    status?: string;
+}
+
 export default function FundTransferConfirmation() {
     const { t } = useTranslation();
-    const { phone } = useAuth();
+    const authContext = useAuth();
     const { state } = useLocation() as { state?: any };
     const navigate = useNavigate();
+    const { branch } = useBranch();
     
-    const [serverData, setServerData] = useState<any>(null);
+    const phone = authContext?.phone || null;
+    
+    const [transferData, setTransferData] = useState<TransferData>({});
     const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
-    const [submitting, setSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     const componentToPrintRef = useRef<HTMLDivElement>(null);
-    const handlePrint = usePrint(componentToPrintRef, t('fundTransferConfirmation', 'Fund Transfer Confirmation'));
+    const handlePrint = usePrint(componentToPrintRef as React.RefObject<HTMLDivElement>, t('transferConfirmation', 'Transfer Confirmation'));
 
-    // Memoized data processing
-    const { data, entityId, branchName, debitAccount, creditAccount, amount, token, queueNumber } = useMemo(() => {
-        const rawData = serverData?.data || state?.serverData?.data || {};
-        const processedData = initializeData(state, rawData);
-        
-        return {
-            data: processedData,
-            entityId: getEntityId(processedData),
-            branchName: state?.branchName || t('selectedBranch', 'Selected Branch'),
-            debitAccount: processedData.debitAccountNumber || 'N/A',
-            creditAccount: processedData.creditAccountNumber || 'N/A',
-            amount: formatAmount(processedData.amount),
-            token: formatQueueToken(processedData.tokenNumber),
-            queueNumber: formatQueueToken(processedData.queueNumber)
-        };
-    }, [serverData, state, t]);
+    const branchName = branch?.name || t('selectedBranch', 'Selected Branch');
+    const entityId = getEntityId(transferData);
+    const canUpdateCancel = entityId && transferData.status?.toLowerCase() === 'pending';
 
-    // Data fetching
     useEffect(() => {
-        const fetchFundTransfer = async () => {
-            if (data.id || error) return;
-            
-            const refId = data.formReferenceId || data.referenceId || data.ReferenceId;
-            if (!refId) return;
-            
-            setSubmitting(true);
-            setError('');
+        const initializeData = async () => {
             try {
-                const res = await getFundTransferById(refId);
-                setServerData(res);
-            } catch (e: any) {
-                setError(e?.message || t('fetchTransferError', 'Failed to fetch fund transfer confirmation.'));
+                setIsLoading(true);
+                setError('');
+                
+                if (state?.serverData?.data) {
+                    setTransferData(state.serverData.data);
+                } else if (state?.updateId) {
+                    const response = await getFundTransferById(state.updateId);
+                    if (response.success && response.data) {
+                        setTransferData(response.data);
+                    } else {
+                        setError(response.message || t('loadFailed', 'Failed to load transfer details'));
+                    }
+                } else {
+                    setError(t('invalidState', 'Invalid request state. Please start over.'));
+                }
+            } catch (err: any) {
+                setError(err?.message || t('loadFailed', 'Failed to load transfer details'));
             } finally {
-                setSubmitting(false);
+                setIsLoading(false);
             }
         };
 
-        if (state?.serverData?.data) {
-            setServerData(state.serverData);
-        } else if (state?.pending || !serverData) {
-            fetchFundTransfer();
+        initializeData();
+    }, [state, t]);
+
+    const handleCancel = async () => {
+        if (!entityId) {
+            setError(t('noTransferId', 'No transfer ID available'));
+            return;
         }
-    }, [state, serverData, error, data.id, t]);
-
-    // Handlers
-    const handleNewTransfer = () => navigate('/form/fund-transfer', { state: { showSuccess: false } });
-    const handleUpdateTransfer = () => entityId && navigate('/form/fund-transfer', { state: { updateId: entityId } });
-
-    const handleCancelTransfer = async () => {
-        if (!entityId) return;
         
         try {
-            setSubmitting(true);
+            setIsSubmitting(true);
             setError('');
             const response = await cancelFundTransferByCustomer(entityId);
             if (response.success) {
-                setSuccessMessage(response.message || t('transferCancelled', 'Fund transfer cancelled successfully'));
+                setSuccessMessage(response.message || t('transferCancelled', 'Transfer request cancelled successfully'));
                 setShowCancelModal(false);
                 setTimeout(() => {
                     navigate('/form/fund-transfer', {
                         state: {
                             showSuccess: true,
-                            successMessage: response.message || t('transferCancelled', 'Fund transfer cancelled successfully')
+                            successMessage: response.message || t('transferCancelled', 'Transfer request cancelled successfully')
                         }
                     });
                 }, 1500);
             } else {
-                throw new Error(response.message || t('cancelTransferFailed', 'Failed to cancel fund transfer'));
+                setError(response.message || t('cancelFailed', 'Failed to cancel transfer'));
             }
-        } catch (e: any) {
-            setError(e?.message || t('cancelTransferFailed', 'Failed to cancel fund transfer.'));
+        } catch (err: any) {
+            setError(err?.message || t('cancelFailed', 'Failed to cancel transfer'));
         } finally {
-            setSubmitting(false);
+            setIsSubmitting(false);
         }
     };
 
-    // Loading and error states
-    if (submitting && !data.id) return <LoadingState message={t('loading', 'Loading transfer details...')} />;
-    if (error && !data.id) return (
+    const handleUpdate = async () => {
+        if (!entityId) {
+            setError(t('noTransferId', 'No transfer ID available'));
+            return;
+        }
+        
+        setIsSubmitting(true);
+        setError('');
+        try {
+            const response = await getFundTransferById(entityId);
+            if (response.success && response.data) {
+                navigate('/form/fund-transfer', {
+                    state: {
+                        updateId: entityId,
+                        formData: {
+                            debitAccountNumber: response.data.debitAccountNumber,
+                            creditAccountNumber: response.data.creditAccountNumber,
+                            amount: response.data.amount,
+                        },
+                        tokenNumber: response.data.tokenNumber,
+                        queueNumber: response.data.queueNumber
+                    }
+                });
+            } else {
+                setError(response.message || t('updateFailed', 'Failed to prepare transfer update.'));
+            }
+        } catch (err: any) {
+            setError(err?.message || t('updateFailed', 'Failed to prepare transfer update.'));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleNewTransfer = () => navigate('/form/fund-transfer');
+    const handleBackToDashboard = () => navigate('/dashboard');
+
+    useEffect(() => {
+        if (error && !entityId && error === t('invalidState', 'Invalid request state. Please start over.')) {
+            const timer = setTimeout(() => navigate('/form/fund-transfer'), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, entityId, navigate, t]);
+
+    if (isLoading) return <LoadingState message={t('loading', 'Loading transfer details...')} />;
+    
+    if (error && !entityId) return (
         <ErrorState
             error={error}
             onPrimaryAction={() => navigate('/form/fund-transfer')}
-            onSecondaryAction={() => navigate('/dashboard')}
+            onSecondaryAction={handleBackToDashboard}
             primaryLabel={t('goToTransfer', 'Go to Transfer')}
             secondaryLabel={t('backToDashboard', 'Back to Dashboard')}
         />
     );
+
+    if (successMessage) {
+        return (
+            <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
+                <div className="max-w-2xl w-full">
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <SuccessIcon title={t('success', 'Success!')} message={successMessage} />
+                        <button
+                            onClick={handleBackToDashboard}
+                            className="mt-4 bg-fuchsia-700 text-white px-6 py-2 rounded-lg hover:bg-fuchsia-800 transition-colors"
+                        >
+                            {t('backToDashboard', 'Back to Dashboard')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-amber-50 flex items-center justify-center p-4">
             <div className="max-w-2xl w-full">
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden">
                     <SuccessHeader
-                        icon={ArrowRightLeft}
-                        title={t('fundTransferConfirmation', 'Fund Transfer Confirmation')}
+                        icon={Plane}
+                        title={t('transferConfirmation', 'Transfer Confirmation')}
                         branchName={branchName}
-                        phone={phone}
+                        phone={phone || ''}
                     />
 
                     <div ref={componentToPrintRef} className="p-4">
                         <SuccessIcon
                             title={t('success', 'Success!')}
-                            message={t('transferSubmitted', 'Your fund transfer has been submitted.')}
+                            message={t('transferSubmitted', 'Your transfer request has been submitted.')}
                         />
 
-                        <QueueTokenCards queueNumber={queueNumber} tokenNumber={token} />
+                        <QueueTokenCards 
+                            queueNumber={formatQueueToken(transferData.queueNumber)} 
+                            tokenNumber={formatQueueToken(transferData.tokenNumber)} 
+                        />
 
                         <div className="mb-4">
                             <div className="bg-amber-25 rounded-lg p-4 border border-amber-200 shadow-sm">
@@ -146,10 +213,10 @@ export default function FundTransferConfirmation() {
                                     {t('transactionSummary', 'Transaction Summary')}
                                 </h3>
                                 <div className="space-y-2 text-sm">
-                                    <SummaryRow icon={CreditCard} label={t('debitAccount', 'Debit Account')} value={debitAccount} isMono />
-                                    <SummaryRow icon={CreditCard} label={t('creditAccount', 'Credit Account')} value={creditAccount} isMono />
+                                    <SummaryRow icon={User} label={t('fromAccount', 'From Account')} value={transferData.debitAccountNumber || 'N/A'} isMono />
+                                    <SummaryRow icon={User} label={t('toAccount', 'To Account')} value={transferData.creditAccountNumber || 'N/A'} isMono />
                                     <SummaryRow icon={Building} label={t('branch', 'Branch')} value={branchName} />
-                                    <SummaryRow icon={DollarSign} label={t('amount', 'Amount')} value={amount} isBold />
+                                    <SummaryRow icon={DollarSign} label={t('amount', 'Amount')} value={formatAmount(transferData.amount)} isBold />
                                 </div>
                             </div>
                         </div>
@@ -162,10 +229,10 @@ export default function FundTransferConfirmation() {
                     <ActionButtons
                         onNew={handleNewTransfer}
                         onPrint={handlePrint}
-                        onUpdate={handleUpdateTransfer}
-                        onCancel={() => setShowCancelModal(true)}
-                        showUpdateCancel={!!entityId}
-                        isSubmitting={submitting}
+                        onUpdate={canUpdateCancel ? handleUpdate : undefined}
+                        onCancel={canUpdateCancel ? () => setShowCancelModal(true) : undefined}
+                        showUpdateCancel={!!canUpdateCancel}
+                        isSubmitting={isSubmitting}
                     />
 
                     {error && <StatusMessage type="error" message={error} />}
@@ -175,17 +242,16 @@ export default function FundTransferConfirmation() {
                 <CancelModal
                     isOpen={showCancelModal}
                     onClose={() => setShowCancelModal(false)}
-                    onConfirm={handleCancelTransfer}
-                    isSubmitting={submitting}
+                    onConfirm={handleCancel}
+                    isSubmitting={isSubmitting}
                     title={t('confirmCancellation', 'Confirm Cancellation')}
-                    message={t('cancelTransferConfirmation', 'Are you sure you want to cancel this fund transfer? This action cannot be undone.')}
+                    message={t('cancelTransferConfirmation', 'Are you sure you want to cancel this transfer? This action cannot be undone.')}
                 />
             </div>
         </div>
     );
 }
 
-// Helper component for summary rows
 function SummaryRow({ icon: Icon, label, value, isMono = false, isBold = false }: {
     icon: React.ComponentType<any>;
     label: string;

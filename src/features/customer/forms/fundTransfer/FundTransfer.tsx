@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useBranch } from '../../../../context/BranchContext';
 import { useToast } from '../../../../context/ToastContext';
 import { useFormSteps } from '../../hooks/useFormSteps';
-import { useCurrencyConversion } from '../../hooks/useCurrencyConversion';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { useOTPHandling } from '../../hooks/useOTPHandling';
 import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
@@ -16,6 +15,7 @@ import { StepNavigation } from '../../components/StepNavigation';
 import { SignatureStep } from '../../components/SignatureStep';
 import { transferValidationSchema } from '../../utils/validationSchemas';
 import fundTransferService from '../../../../services/fundTransferService';
+import authService from '../../../../services/authService';
 import { CheckCircle2, Shield } from 'lucide-react';
 
 interface FormData {
@@ -24,7 +24,6 @@ interface FormData {
   creditAccountNumber: string;
   creditAccountName: string;
   amount: string;
-  currency: string;
   otp: string;
   isCreditAccountVerified: boolean;
   signature: string;
@@ -37,8 +36,7 @@ export default function FundTransferForm() {
   const { createWorkflow } = useApprovalWorkflow();
   const navigate = useNavigate();
 
-  const { step, next, prev, isFirst, isLast } = useFormSteps(6);
-  const { convertAmount, getCurrencyOptions } = useCurrencyConversion();
+  const { step, next, prev, isFirst } = useFormSteps(4);
   const { errors, validateForm, clearFieldError } = useFormValidation(transferValidationSchema);
   const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
 
@@ -48,7 +46,6 @@ export default function FundTransferForm() {
     creditAccountNumber: '',
     creditAccountName: '',
     amount: '',
-    currency: 'ETB',
     otp: '',
     isCreditAccountVerified: false,
     signature: '',
@@ -75,7 +72,7 @@ export default function FundTransferForm() {
       setFormData(prev => ({
         ...prev,
         debitAccountName: account.accountHolderName || '',
-        currency: account.isDiaspora ? 'USD' : 'ETB',
+        phoneNumber: account.phoneNumber || '',
       }));
     }
   };
@@ -95,10 +92,6 @@ export default function FundTransferForm() {
     if (amount) clearFieldError('amount');
   };
 
-  const handleCurrencyChange = (currency: string) => {
-    setFormData(prev => ({ ...prev, currency }));
-  };
-
   const handleOtpChange = (otp: string) => {
     setFormData(prev => ({ ...prev, otp }));
     if (otp.length === 6) clearFieldError('otp');
@@ -112,10 +105,6 @@ export default function FundTransferForm() {
   const handleSignatureClear = () => {
     setFormData(prev => ({ ...prev, signature: '' }));
   };
-
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({...prev, phoneNumber: e.target.value}));
-  }
 
   const verifyCreditAccount = async () => {
     if (!formData.creditAccountNumber) return;
@@ -158,34 +147,26 @@ export default function FundTransferForm() {
             showError('Please verify the credit account.');
             return;
         }
+        if (formData.debitAccountNumber === formData.creditAccountNumber) {
+            showError('Debit and credit accounts cannot be the same.');
+            return;
+        }
         if (!formData.amount || parseFloat(formData.amount) <= 0) {
             showError('Please enter a valid amount.');
             return;
         }
-        if (validateForm(formData)) {
-            next();
-        }
-    } else if (step === 3) {
-        if (!formData.signature) {
-            showError('Signature is required.');
-            return;
-        }
-        next();
-    } else if (step === 4) {
-        if (!formData.phoneNumber) {
-            showError('Phone number is required.');
-            return;
-        }
-        next();
-    } else {
-        next();
     }
+    next();
   };
 
   const handleRequestOTP = async () => {
+    if (!formData.phoneNumber) {
+      showError('Phone number not found for this account. Please contact support.');
+      return;
+    }
     try {
       await requestOTP(
-        () => fundTransferService.sendFundTransferOTP(formData.phoneNumber),
+        () => authService.requestWithdrawalOTP(formData.phoneNumber),
         'OTP sent to your phone'
       );
       info('OTP sent to your phone');
@@ -196,9 +177,13 @@ export default function FundTransferForm() {
   };
 
   const handleResendOTP = async () => {
+    if (!formData.phoneNumber) {
+      showError('Phone number not found for this account. Please contact support.');
+      return;
+    }
     try {
       await resendOTP(
-        () => fundTransferService.sendFundTransferOTP(formData.phoneNumber),
+        () => authService.requestWithdrawalOTP(formData.phoneNumber),
         'OTP resent successfully'
       );
       info('OTP resent successfully');
@@ -212,14 +197,12 @@ export default function FundTransferForm() {
 
     setIsSubmitting(true);
     try {
-      const amountInETB = convertAmount(formData.amount, formData.currency);
-      
       const transferData = {
         phoneNumber: formData.phoneNumber,
         branchId: branch.id,
         debitAccountNumber: formData.debitAccountNumber,
         creditAccountNumber: formData.creditAccountNumber,
-        amount: parseFloat(amountInETB),
+        amount: parseFloat(formData.amount),
         otp: formData.otp,
         signature: formData.signature,
       };
@@ -230,7 +213,7 @@ export default function FundTransferForm() {
         voucherId: response.data?.id || '',
         voucherType: 'transfer',
         transactionType: 'transfer',
-        amount: parseFloat(amountInETB),
+        amount: parseFloat(formData.amount),
         currency: 'ETB',
         customerSegment: 'normal',
         reason: 'Customer fund transfer request',
@@ -239,7 +222,7 @@ export default function FundTransferForm() {
 
       showSuccess('Transfer submitted successfully!');
       
-      navigate('/fund-transfer-confirmation', {
+      navigate('/form/fund-transfer/confirmation', {
         state: {
           serverData: response,
           branchName: branch.name,
@@ -260,6 +243,7 @@ export default function FundTransferForm() {
         selectedAccount={formData.debitAccountNumber}
         onAccountChange={handleDebitAccountChange}
         onAccountValidation={handleDebitAccountValidation}
+        onPhoneNumberFetched={(phone) => setFormData(prev => ({...prev, phoneNumber: phone}))}
         label="Debit Account"
         error={errors.debitAccountNumber}
         allowManualEntry={true}
@@ -304,12 +288,7 @@ export default function FundTransferForm() {
       <AmountInput
         value={formData.amount}
         onChange={handleAmountChange}
-        currency={formData.currency}
-        onCurrencyChange={debitAccountValidated ? handleCurrencyChange : undefined}
-        currencies={getCurrencyOptions()}
         error={errors.amount}
-        showConversion={debitAccountValidated && formData.currency !== 'ETB'}
-        convertedAmount={convertAmount(formData.amount, formData.currency)}
       />
     </div>
   );
@@ -334,12 +313,7 @@ export default function FundTransferForm() {
         <div className="flex justify-between items-center py-2">
           <span className="font-medium text-fuchsia-800">Amount:</span>
           <span className="text-lg font-bold text-fuchsia-700">
-            {Number(formData.amount).toLocaleString()} {formData.currency}
-            {debitAccountValidated && formData.currency !== 'ETB' && (
-              <div className="text-sm font-normal">
-                ({convertAmount(formData.amount, formData.currency)} ETB)
-              </div>
-            )}
+            {Number(formData.amount).toLocaleString()} ETB
           </span>
         </div>
       </div>
@@ -357,46 +331,6 @@ export default function FundTransferForm() {
   );
 
   const renderStep4 = () => (
-    <div className="space-y-6">
-        <div className="border border-fuchsia-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Enter Phone Number</h2>
-            <p className="text-gray-600 mb-4">
-                Please enter the phone number associated with the account for OTP verification.
-            </p>
-            <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={handlePhoneNumberChange}
-                    placeholder="Enter your phone number..."
-                    className="w-full p-3 rounded-lg border border-gray-300 focus:border-fuchsia-500 focus:ring-1 focus:ring-fuchsia-500"
-                />
-                {errors.phoneNumber && (
-                    <p className="mt-1 text-sm text-red-600">{errors.phoneNumber}</p>
-                )}
-            </div>
-        </div>
-    </div>
-  );
-
-  const renderStep5 = () => (
-    <div className="space-y-6">
-      <div className="border border-fuchsia-200 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Shield className="h-5 w-5 text-fuchsia-700" />
-          Request OTP
-        </h2>
-        <p className="text-gray-600 mb-4">
-          Click the button below to receive an OTP on the number you provided: <strong>{formData.phoneNumber}</strong>.
-        </p>
-      </div>
-    </div>
-  );
-
-  const renderStep6 = () => (
     <OTPVerification
       phone={formData.phoneNumber}
       otp={formData.otp}
@@ -415,50 +349,73 @@ export default function FundTransferForm() {
       case 2: return renderStep2();
       case 3: return renderStep3();
       case 4: return renderStep4();
-      case 5: return renderStep5();
-      case 6: return renderStep6();
       default: return null;
     }
   };
 
-  const getNextHandler = () => {
-    switch (step) {
-      case 1: return handleNext;
-      case 2: return handleNext;
-      case 3: return handleNext;
-      case 4: return handleNext;
-      case 5: return handleRequestOTP;
-      case 6: return handleSubmit;
-      default: return handleNext;
+  const renderCustomNavigation = () => {
+    if (step === 3) {
+      return (
+        <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+          {!isFirst && (
+            <button
+              type="button"
+              onClick={prev}
+              className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+            >
+              Back
+            </button>
+          )}
+          
+          <button
+            type="button"
+            onClick={handleRequestOTP}
+            disabled={!formData.signature || !formData.phoneNumber || otpLoading}
+            className="bg-fuchsia-600 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ml-auto"
+          >
+            {otpLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Sending OTP...
+              </>
+            ) : (
+              <>
+                <Shield className="h-4 w-4" />
+                Request OTP
+              </>
+            )}
+          </button>
+        </div>
+      );
     }
-  };
 
-  const getNextLabel = () => {
-    switch (step) {
-      case 5: return 'Request OTP';
-      case 6: return 'Verify & Submit';
-      default: return 'Continue';
-    }
+    return (
+      <StepNavigation
+        currentStep={step}
+        totalSteps={4}
+        onNext={step === 4 ? handleSubmit : handleNext}
+        onBack={prev}
+        nextLabel={step === 4 ? 'Verify & Submit' : 'Continue'}
+        nextDisabled={
+          (step === 1 && (!debitAccountValidated || !formData.isCreditAccountVerified)) || 
+          (step === 4 && formData.otp.length !== 6) || 
+          isSubmitting
+        }
+        nextLoading={isSubmitting}
+        hideBack={isFirst}
+      />
+    );
   };
 
   return (
     <FormLayout
       title="Fund Transfer"
       branchName={branch?.name}
+      phone={formData.phoneNumber || null}
     >
       <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
         {getStepContent()}
-
-        <StepNavigation
-          currentStep={step}
-          totalSteps={6}
-          onNext={getNextHandler()}
-          onBack={prev}
-          nextLabel={getNextLabel()}
-          nextDisabled={(step === 6 && formData.otp.length !== 6) || isSubmitting}
-          nextLoading={(step === 5 && otpLoading) || (step === 6 && isSubmitting)}
-          hideBack={isFirst}
-        />
+        {renderCustomNavigation()}
       </form>
     </FormLayout>
   );
