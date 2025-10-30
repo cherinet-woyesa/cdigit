@@ -118,7 +118,11 @@
     "posRequest": "POS Request",
     "statementRequest": "Statement Request",
     "stopPayment": "Stop Payment",
-    "cbeBirrLink": "CBE Birr Link"
+    "cbeBirrLink": "CBE Birr Link",
+    "lostPassbookReplacement": "Lost Passbook Replacement",
+    "merchantAccountOpening": "Merchant Account Opening",
+    "fixedTimeDeposit": "Fixed-Time Deposit",
+    "agentAccountOpening": "Agent Account Opening"
   },
   "select": "Select",
   "account": {

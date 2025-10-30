@@ -49,6 +49,10 @@ import LanguageSelection from './components/LanguageSelection';
 import StaffRouteGuard from './components/StaffRouteGuard';
 import DocumentManagement from './features/documents/DocumentManagement';
 import KioskMode from './features/customer/KioskMode';
+import LostPassbookReplacementForm from './features/customer/forms/lostPassbookReplacement/LostPassbookReplacementForm';
+import MerchantAccountOpeningApplicationForm from './features/customer/forms/merchantAccountOpening/MerchantAccountOpeningApplicationForm';
+import FixedTimeDepositAccountRequestForm from './features/customer/forms/fixedTimeDepositAccountRequest/FixedTimeDepositAccountRequestForm';
+import AgentAccountOpeningForm from './features/customer/forms/agentAccountOpening/AgentAccountOpeningForm';
 
 // Import the new providers
 import { NotificationProvider } from './context/NotificationContext';
@@ -321,6 +325,12 @@ function App() {
             
             {/* Kiosk mode */}
             <Route path="/kiosk" element={<KioskMode />} />
+
+            {/* Newly added forms */}
+            <Route path="/form/lost-passbook-replacement" element={<LostPassbookReplacementForm />} />
+            <Route path="/form/merchant-account-opening" element={<MerchantAccountOpeningApplicationForm />} />
+            <Route path="/form/fixed-time-deposit" element={<FixedTimeDepositAccountRequestForm />} />
+            <Route path="/form/agent-account-opening" element={<AgentAccountOpeningForm />} />
             
             {/* Catch-all route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -44,7 +44,11 @@ type FormName =
   | 'posRequest'
   | 'statementRequest'
   | 'stopPayment'
-  | 'cbeBirrLink';
+  | 'cbeBirrLink'
+  | 'lostPassbookReplacement'
+  | 'merchantAccountOpening'
+  | 'fixedTimeDeposit'
+  | 'agentAccountOpening';
 
 interface Form {
   name: FormName;
@@ -66,6 +70,10 @@ const forms: Form[] = [
   { name: 'stopPayment', route: '/form/stop-payment', icon: NoSymbolIcon, category: 'requests' },
   { name: 'cbeBirrLink', route: '/form/cbe-birr-link', icon: LinkIcon, category: 'services' },
   { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, category: 'history' },
+  { name: 'lostPassbookReplacement', route: '/form/lost-passbook-replacement', icon: DocumentChartBarIcon, category: 'requests' },
+  { name: 'merchantAccountOpening', route: '/form/merchant-account-opening', icon: BuildingStorefrontIcon, category: 'services' },
+  { name: 'fixedTimeDeposit', route: '/form/fixed-time-deposit', icon: BanknotesIcon, category: 'transactions' },
+  { name: 'agentAccountOpening', route: '/form/agent-account-opening', icon: UserPlusIcon, category: 'services' },
 ];
 
 // Categories for filtering
