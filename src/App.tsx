@@ -53,6 +53,8 @@ import LostPassbookReplacementForm from './features/customer/forms/lostPassbookR
 import MerchantAccountOpeningApplicationForm from './features/customer/forms/merchantAccountOpening/MerchantAccountOpeningApplicationForm';
 import FixedTimeDepositAccountRequestForm from './features/customer/forms/fixedTimeDepositAccountRequest/FixedTimeDepositAccountRequestForm';
 import AgentAccountOpeningForm from './features/customer/forms/agentAccountOpening/AgentAccountOpeningForm';
+import AdditionalPOSRequestForm from './features/customer/forms/additionalPosRequest/AdditionalPosRequest';
+import ChequeReturnSlipForm from './features/customer/forms/chequeReturnSlip/ChequeReturnSlip';
 
 // Import the new providers
 import { NotificationProvider } from './context/NotificationContext';
@@ -331,6 +333,8 @@ function App() {
             <Route path="/form/merchant-account-opening" element={<MerchantAccountOpeningApplicationForm />} />
             <Route path="/form/fixed-time-deposit" element={<FixedTimeDepositAccountRequestForm />} />
             <Route path="/form/agent-account-opening" element={<AgentAccountOpeningForm />} />
+            <Route path="/form/additional-pos-request" element={<AdditionalPOSRequestForm />} />
+            <Route path="/form/cheque-return-slip" element={<ChequeReturnSlipForm />} />
             
             {/* Catch-all route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

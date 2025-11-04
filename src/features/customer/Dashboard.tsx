@@ -74,6 +74,8 @@ const forms: Form[] = [
   { name: 'merchantAccountOpening', route: '/form/merchant-account-opening', icon: BuildingStorefrontIcon, category: 'services' },
   { name: 'fixedTimeDeposit', route: '/form/fixed-time-deposit', icon: BanknotesIcon, category: 'transactions' },
   { name: 'agentAccountOpening', route: '/form/agent-account-opening', icon: UserPlusIcon, category: 'services' },
+  { name: 'additionalPOSRequest', route: '/form/additional-pos-request', icon: BuildingStorefrontIcon, category: 'requests' },
+  { name: 'chequeReturnSlip', route: '/form/cheque-return-slip', icon: DocumentChartBarIcon, category: 'requests' },
 ];
 
 // Categories for filtering

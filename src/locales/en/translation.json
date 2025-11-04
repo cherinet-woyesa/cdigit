@@ -122,7 +122,9 @@
     "lostPassbookReplacement": "Lost Passbook Replacement",
     "merchantAccountOpening": "Merchant Account Opening",
     "fixedTimeDeposit": "Fixed-Time Deposit",
-    "agentAccountOpening": "Agent Account Opening"
+    "agentAccountOpening": "Agent Account Opening",
+    "additionalPOSRequest": "Additional POS Request",
+    "chequeReturnSlip": "Cheque Return Slip"
   },
   "select": "Select",
   "account": {
