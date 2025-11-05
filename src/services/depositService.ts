@@ -6,7 +6,7 @@ export interface DepositData {
   accountHolderName: string;
   accountNumber: string;
   amount: number;
-  telephoneNumber: string;
+  telephoneNumber?: string;
   transactionType?: string;
   status?: string;
   formReferenceId?: string;
@@ -21,7 +21,7 @@ export interface DepositResponse {
   accountHolderName: string;
   accountNumber: string;
   amount: number;
-  telephoneNumber: string;
+  telephoneNumber?: string;
   tokenNumber: string;
   transactionType: string;
   status: string;

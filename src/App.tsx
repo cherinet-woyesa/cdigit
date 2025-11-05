@@ -55,6 +55,28 @@ import FixedTimeDepositAccountRequestForm from './features/customer/forms/fixedT
 import AgentAccountOpeningForm from './features/customer/forms/agentAccountOpening/AgentAccountOpeningForm';
 import AdditionalPOSRequestForm from './features/customer/forms/additionalPosRequest/AdditionalPosRequest';
 import ChequeReturnSlipForm from './features/customer/forms/chequeReturnSlip/ChequeReturnSlip';
+import BalanceConfirmation from './features/customer/forms/balanceConfirmation/BalanceConfirmation';
+import BalanceConfirmationConfirmation from './features/customer/forms/balanceConfirmation/BalanceConfirmationConfirmation';
+import CheckDeposit from './features/customer/forms/checkDeposit/CheckDeposit';
+import CheckDepositConfirmation from './features/customer/forms/checkDeposit/CheckDepositConfirmation';
+import ChequeBookRequest from './features/customer/forms/chequeBookRequest/ChequeBookRequest';
+import ChequeBookRequestConfirmation from './features/customer/forms/chequeBookRequest/ChequeBookRequestConfirmation';
+import CheckWithdrawal from './features/customer/forms/checkWithdrawal/CheckWithdrawal';
+import CheckWithdrawalConfirmation from './features/customer/forms/checkWithdrawal/CheckWithdrawalConfirmation';
+import CashDiscrepancyReport from './features/customer/forms/cashDiscrepancyReport/CashDiscrepancyReport';
+import CashDiscrepancyReportConfirmation from './features/customer/forms/cashDiscrepancyReport/CashDiscrepancyReportConfirmation';
+import CorporateCustomer from './features/customer/forms/corporateCustomer/CorporateCustomer';
+import CorporateCustomerConfirmation from './features/customer/forms/corporateCustomer/CorporateCustomerConfirmation';
+import CustomerIdMerge from './features/customer/forms/customerIdMerge/CustomerIdMerge';
+import CustomerIdMergeConfirmation from './features/customer/forms/customerIdMerge/CustomerIdMergeConfirmation';
+import CustomerProfileChange from './features/customer/forms/customerProfileChange/CustomerProfileChange';
+import CustomerProfileChangeConfirmation from './features/customer/forms/customerProfileChange/CustomerProfileChangeConfirmation';
+import POSDeliveryForm from './features/customer/forms/posDeliveryForm/POSDeliveryForm';
+import POSDeliveryFormConfirmation from './features/customer/forms/posDeliveryForm/POSDeliveryFormConfirmation';
+import SpecialChequeClearance from './features/customer/forms/specialChequeClearance/SpecialChequeClearance';
+import SpecialChequeClearanceConfirmation from './features/customer/forms/specialChequeClearance/SpecialChequeClearanceConfirmation';
+import TicketMandateRequest from './features/customer/forms/ticketMandateRequest/TicketMandateRequest';
+import TicketMandateRequestConfirmation from './features/customer/forms/ticketMandateRequest/TicketMandateRequestConfirmation';
 
 // Import the new providers
 import { NotificationProvider } from './context/NotificationContext';
@@ -170,32 +192,12 @@ function App() {
             <Route path="/staff-login" element={<StaffLogin />} />
             
             {/* Direct dashboard routes for staff roles */}
-            <Route path="/maker-dashboard" element={
-              <ProtectedRoute role="Maker">
-                <MakerDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin-dashboard" element={
-              <ProtectedRoute role="Admin">
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/manager-dashboard" element={
-              <ProtectedRoute role="Manager">
-                <ManagerDashboard />
-              </ProtectedRoute>
-            } />
+            <Route path="/maker-dashboard" element={<MakerDashboard />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/manager-dashboard" element={<ManagerDashboard />} />
             {/* New routes for Auditor and Authorizer roles */}
-            <Route path="/auditor-dashboard" element={
-              <ProtectedRoute role="Auditor">
-                <AuditorDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/authorizer-dashboard" element={
-              <ProtectedRoute role="Authorizer">
-                <AuthorizerDashboard />
-              </ProtectedRoute>
-            } />
+            <Route path="/auditor-dashboard" element={<AuditorDashboard />} />
+            <Route path="/authorizer-dashboard" element={<AuthorizerDashboard />} />
             {/* New route for Greeter role */}
             {/* <Route path="/greeter-dashboard" element={
               <ProtectedRoute role="Greeter">
@@ -210,95 +212,39 @@ function App() {
             <Route path="/form/cbe-birr" element={<CbeBirrRegistration />} />
 
             {/* Protected forms */}
-            <Route path="/form/cbe-birr/confirmation" element={
-              <ProtectedRoute>
-                <CbeBirrRegistrationConfirmation />
-              </ProtectedRoute>
-            } />
-            <Route path="/form/rtgs-transfer/confirmation" element={
-              <ProtectedRoute>
-                <RTGSTransferConfirmation />
-              </ProtectedRoute>
-            } />
-            <Route path="/form/ebanking/confirmation" element={
-              <ProtectedRoute>
-                <EBankingConfirmation />
-              </ProtectedRoute>
-            } />
+            <Route path="/form/cbe-birr/confirmation" element={<CbeBirrRegistrationConfirmation />} />
+            <Route path="/form/rtgs-transfer/confirmation" element={<RTGSTransferConfirmation />} />
+            <Route path="/form/ebanking/confirmation" element={<EBankingConfirmation />} />
 
             {/* Main dashboard route */}
             <Route path="/dashboard" element={<DashboardRouter />} />
 
             {/* Customer forms */}
-            <Route path="/form/cash-deposit" element={
-              <ProtectedRoute>
-                <CashDeposit />
-              </ProtectedRoute>
-            } />
-            <Route path="/form/cash-deposit/cashdepositconfirmation" element={
-              <ProtectedRoute>
-                <CashDepositConfirmation />
-              </ProtectedRoute>
-            } />
+            <Route path="/form/cash-deposit" element={<CashDeposit />} />
+            <Route path="/form/cash-deposit/cashdepositconfirmation" element={<CashDepositConfirmation />} />
             <Route path="/form/cash-withdrawal" element={<CashWithdrawal />} />
             <Route path="/form/cash-withdrawal/cashwithdrawalconfirmation" element={
               <CashWithDrawalConfirmation />
             } />
             <Route path="/form/fund-transfer" element={<FundTransfer />} />
             <Route path="/form/fund-transfer/confirmation" element={<FundTransferConfirmation />} />
-            <Route path="/customer/transaction-history" element={
-              <ProtectedRoute>
-                <TransactionHistory />
-              </ProtectedRoute>
-            } />
+            <Route path="/customer/transaction-history" element={<TransactionHistory />} />
 
             {/* Direct customer dashboard route */}
-            <Route path="/customer/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
+            <Route path="/customer/dashboard" element={<Dashboard />} />
 
             {/* Manager routes */}
-            <Route path="/manager/create-user" element={
-              <ProtectedRoute role="Manager">
-                <CreateUserManagerRoute />
-              </ProtectedRoute>
-            } />
-            <Route path="/manager/assign-maker" element={
-              <ProtectedRoute role="Manager">
-                <AssignMakerRoute />
-              </ProtectedRoute>
-            } />
+            <Route path="/manager/create-user" element={<CreateUserManagerRoute />} />
+            <Route path="/manager/assign-maker" element={<AssignMakerRoute />} />
 
             {/* Role-specific dashboard routes (alternative paths) */}
-            <Route path="/dashboard/admin" element={
-              <ProtectedRoute role="Admin">
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/manager" element={
-              <ProtectedRoute role="Manager">
-                <ManagerDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/maker" element={
-              <ProtectedRoute role="Maker">
-                <MakerDashboard />
-              </ProtectedRoute>
-            } />
+            <Route path="/dashboard/admin" element={<AdminDashboard />} />
+            <Route path="/dashboard/manager" element={<ManagerDashboard />} />
+            <Route path="/dashboard/maker" element={<MakerDashboard />} />
             
             {/* New routes for Auditor and Authorizer roles */}
-            <Route path="/dashboard/auditor" element={
-              <ProtectedRoute role="Auditor">
-                <AuditorDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/authorizer" element={
-              <ProtectedRoute role="Authorizer">
-                <AuthorizerDashboard />
-              </ProtectedRoute>
-            } />
+            <Route path="/dashboard/auditor" element={<AuditorDashboard />} />
+            <Route path="/dashboard/authorizer" element={<AuthorizerDashboard />} />
             {/* New route for Greeter role */}
             {/* <Route path="/dashboard/greeter" element={
               <ProtectedRoute role="Greeter">
@@ -307,23 +253,11 @@ function App() {
             } /> */}
             
             {/* Additional forms */}
-            <Route path="/form/pos-request" element={
-              <ProtectedRoute>
-                <POSRequest />
-              </ProtectedRoute>
-            } />
-            <Route path="/form/pos-request/confirmation" element={
-              <ProtectedRoute>
-                <POSRequestConfirmation />
-              </ProtectedRoute>
-            } />
+            <Route path="/form/pos-request" element={<POSRequest />} />
+            <Route path="/form/pos-request/confirmation" element={<POSRequestConfirmation />} />
             
             {/* Staff dashboard routes */}
-            <Route path="/staff-dashboard" element={
-              <ProtectedRoute role="Maker">
-                <MakerDashboard />
-              </ProtectedRoute>
-            } />
+            <Route path="/staff-dashboard" element={<MakerDashboard />} />
             
             {/* Kiosk mode */}
             <Route path="/kiosk" element={<KioskMode />} />
@@ -335,6 +269,34 @@ function App() {
             <Route path="/form/agent-account-opening" element={<AgentAccountOpeningForm />} />
             <Route path="/form/additional-pos-request" element={<AdditionalPOSRequestForm />} />
             <Route path="/form/cheque-return-slip" element={<ChequeReturnSlipForm />} />
+            
+            {/* Missing frontend forms - placeholders for future implementation */}
+            <Route path="/form/balance-confirmation" element={<BalanceConfirmation />} />
+            <Route path="/form/balance-confirmation/confirmation" element={<BalanceConfirmationConfirmation />} />
+            <Route path="/form/check-deposit" element={<CheckDeposit />} />
+            <Route path="/form/check-deposit/confirmation" element={<CheckDepositConfirmation />} />
+            <Route path="/form/check-withdrawal" element={<CheckWithdrawal />} />
+            <Route path="/form/check-withdrawal/confirmation" element={<CheckWithdrawalConfirmation />} />
+            <Route path="/form/cheque-book-request" element={<ChequeBookRequest />} />
+            <Route path="/form/cheque-book-request/confirmation" element={<ChequeBookRequestConfirmation />} />
+            <Route path="/form/cash-discrepancy-report" element={<CashDiscrepancyReport />} />
+            <Route path="/form/cash-discrepancy-report/confirmation" element={<CashDiscrepancyReportConfirmation />} />
+            <Route path="/form/corporate-customer" element={<CorporateCustomer />} />
+            <Route path="/form/corporate-customer/confirmation" element={<CorporateCustomerConfirmation />} />
+            <Route path="/form/customer-id-merge" element={<CustomerIdMerge />} />
+            <Route path="/form/customer-id-merge/confirmation" element={<CustomerIdMergeConfirmation />} />
+            <Route path="/form/customer-profile-change" element={<CustomerProfileChange />} />
+            <Route path="/form/customer-profile-change/confirmation" element={<CustomerProfileChangeConfirmation />} />
+            <Route path="/form/petty-cash" element={<div>Petty Cash Form - Coming Soon</div>} />
+            <Route path="/form/petty-cash/confirmation" element={<div>Petty Cash Form Success - Coming Soon</div>} />
+            <Route path="/form/phone-block" element={<div>Phone Block - Coming Soon</div>} />
+            <Route path="/form/phone-block/confirmation" element={<div>Phone Block Success - Coming Soon</div>} />
+            <Route path="/form/pos-delivery" element={<POSDeliveryForm />} />
+            <Route path="/form/pos-delivery/confirmation" element={<POSDeliveryFormConfirmation />} />
+            <Route path="/form/special-cheque-clearance" element={<SpecialChequeClearance />} />
+            <Route path="/form/special-cheque-clearance/confirmation" element={<SpecialChequeClearanceConfirmation />} />
+            <Route path="/form/ticket-mandate-request" element={<TicketMandateRequest />} />
+            <Route path="/form/ticket-mandate-request/confirmation" element={<TicketMandateRequestConfirmation />} />
             
             {/* Catch-all route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

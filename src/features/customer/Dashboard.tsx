@@ -48,7 +48,22 @@ type FormName =
   | 'lostPassbookReplacement'
   | 'merchantAccountOpening'
   | 'fixedTimeDeposit'
-  | 'agentAccountOpening';
+  | 'agentAccountOpening'
+  | 'additionalPOSRequest'
+  | 'chequeReturnSlip'
+  | 'balanceConfirmation'
+  | 'checkDeposit'
+  | 'checkWithdrawal'
+  | 'chequeBookRequest'
+  | 'cashDiscrepancyReport'
+  | 'corporateCustomer'
+  | 'customerIdMerge'
+  | 'customerProfileChange'
+  | 'pettyCashForm'
+  | 'phoneBlock'
+  | 'posDeliveryForm'
+  | 'specialChequeClearance'
+  | 'ticketMandateRequest';
 
 interface Form {
   name: FormName;
@@ -76,6 +91,19 @@ const forms: Form[] = [
   { name: 'agentAccountOpening', route: '/form/agent-account-opening', icon: UserPlusIcon, category: 'services' },
   { name: 'additionalPOSRequest', route: '/form/additional-pos-request', icon: BuildingStorefrontIcon, category: 'requests' },
   { name: 'chequeReturnSlip', route: '/form/cheque-return-slip', icon: DocumentChartBarIcon, category: 'requests' },
+  // New missing forms
+  { name: 'balanceConfirmation', route: '/form/balance-confirmation', icon: DocumentChartBarIcon, category: 'requests' },
+  { name: 'checkDeposit', route: '/form/check-deposit', icon: ArrowDownTrayIcon, category: 'transactions' },
+  { name: 'checkWithdrawal', route: '/form/check-withdrawal', icon: ArrowUpTrayIcon, category: 'transactions' },
+  { name: 'chequeBookRequest', route: '/form/cheque-book-request', icon: DocumentChartBarIcon, category: 'requests' },
+  { name: 'cashDiscrepancyReport', route: '/form/cash-discrepancy-report', icon: DocumentChartBarIcon, category: 'requests' },
+  { name: 'corporateCustomer', route: '/form/corporate-customer', icon: BuildingStorefrontIcon, category: 'services' },
+  { name: 'customerIdMerge', route: '/form/customer-id-merge', icon: ArrowsRightLeftIcon, category: 'services' },
+  { name: 'customerProfileChange', route: '/form/customer-profile-change', icon: UserPlusIcon, category: 'services' },
+  
+  { name: 'posDeliveryForm', route: '/form/pos-delivery', icon: BuildingStorefrontIcon, category: 'requests' },
+  { name: 'specialChequeClearance', route: '/form/special-cheque-clearance', icon: DocumentChartBarIcon, category: 'requests' },
+  { name: 'ticketMandateRequest', route: '/form/ticket-mandate-request', icon: DocumentChartBarIcon, category: 'requests' },
 ];
 
 // Categories for filtering

@@ -241,10 +241,7 @@ export default function CashDepositForm() {
 
   const handleSubmit = async () => {
     // Check if phone and branch are available
-    if (!phone) {
-      showError('Phone number is missing. Please refresh the page and try again.');
-      return;
-    }
+
     
     if (!branch?.id) {
       showError('Branch information is missing. Please select a branch and try again.');
@@ -277,7 +274,7 @@ export default function CashDepositForm() {
           accountHolderName: formData.accountHolderName,
           accountNumber: formData.accountNumber,
           amount: Number(amountInETB),
-          telephoneNumber: phone,
+          telephoneNumber: phone || undefined,
           transactionType: `Cash Deposit (${formData.currency})`,
           status: 'Pending',
         };
@@ -326,7 +323,7 @@ export default function CashDepositForm() {
           accountHolderName: formData.accountHolderName,
           accountNumber: formData.accountNumber,
           amount: Number(amountInETB),
-          telephoneNumber: phone,
+          telephoneNumber: phone || undefined,
           transactionType: `Cash Deposit (${formData.currency})`,
           status: 'Pending',
           signature: signature, // Add signature to deposit data
