@@ -81,6 +81,9 @@ import TicketMandateRequestConfirmation from './features/customer/forms/ticketMa
 // Import the new providers
 import { NotificationProvider } from './context/NotificationContext';
 import { FeedbackProvider } from './context/FeedbackContext';
+import { MultiChannelBranchProvider } from './context/MultiChannelBranchContext';
+import { QRCodeScanFlow } from './components/QRCodeScanFlow';
+import { TabletConfigScreen } from './components/TabletConfigScreen';
 
 // Import test utilities for development
 import './utils/testApprovalWorkflows';
@@ -175,8 +178,9 @@ function App() {
   return (
     <NotificationProvider>
       <FeedbackProvider>
-        <StaffRouteGuard>
-          <Routes>
+        <MultiChannelBranchProvider>
+          <StaffRouteGuard>
+            <Routes>
             {/* Default entry point for ALL users */}
             <Route path="/" element={<Entrypoint />} />
             <Route path="/welcome" element={<Welcome />} />
@@ -185,7 +189,8 @@ function App() {
             <Route path="/select-branch" element={<BranchSelectionEnhanced />} />
             <Route path="/otp-login" element={<OTPLogin />} />
             <Route path="/qr-login" element={<QRLogin />} />
-            <Route path="/qr-login/:branchId/:token" element={<QrLoginPage />} />
+            <Route path="/qr-login/:branchId/:token" element={<QRCodeScanFlow />} />
+            <Route path="/tablet-config" element={<TabletConfigScreen />} />
             <Route path="/vip-booking" element={<VipBooking />} />
             
             {/* Staff login route (accessed via link on language selection) */}
@@ -300,8 +305,9 @@ function App() {
             
             {/* Catch-all route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </StaffRouteGuard>
+            </Routes>
+          </StaffRouteGuard>
+        </MultiChannelBranchProvider>
       </FeedbackProvider>
     </NotificationProvider>
   );

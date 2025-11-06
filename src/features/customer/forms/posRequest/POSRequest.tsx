@@ -1,15 +1,14 @@
 // features/customer/forms/posRequest/POSRequest.tsx
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../context/AuthContext';
 import { useBranch } from '../../../../context/BranchContext';
 import { useToast } from '../../../../context/ToastContext';
 import { useFormSteps } from '../../hooks/useFormSteps';
-import { useAccountSelection } from '../../hooks/useAccountSelection';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { useOTPHandling } from '../../hooks/useOTPHandling';
 import { useAddressManagement } from '../../hooks/useAddressManagement';
 import { FormLayout } from '../../components/FormLayout';
+import { AccountSelector } from '../../components/AccountSelector';
 import { StepNavigation } from '../../components/StepNavigation';
 import { posRequestValidationSchema } from '../../utils/posRequestValidationSchema';
 import { submitPosRequest } from '../../../../services/posRequestService';
@@ -46,24 +45,30 @@ interface FormData {
     otpCode: string;
 }
 
+// Add interface for validated account
+interface ValidatedAccount {
+    accountNumber: string;
+    accountHolderName: string;
+    isDiaspora?: boolean;
+    accountType?: string;
+}
+
 export default function POSRequestForm() {
-    const { phone } = useAuth();
     const { branch } = useBranch();
     const navigate = useNavigate();
     const { success: showSuccess, error: showError, info } = useToast();
 
-    const { accounts, loadingAccounts, errorAccounts, selectedAccount, selectAccount } = useAccountSelection('selectedPOSAccount');
-    const { step, next, prev, goTo, isFirst, isLast } = useFormSteps(4);
-    const { errors, validateForm, clearFieldError } = useFormValidation(posRequestValidationSchema);
+    const { step, next, prev, isFirst, isLast } = useFormSteps(4);
+    const { errors, validateField, clearFieldError } = useFormValidation(posRequestValidationSchema);
     const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
 
     const [formData, setFormData] = useState<FormData>({
-        accountNumber: selectedAccount?.accountNumber || '',
-        customerName: selectedAccount?.accountHolderName || '',
+        accountNumber: '',
+        customerName: '',
         businessName: '',
         businessType: '',
         contactPerson: '',
-        phoneNumber: phone || '',
+        phoneNumber: '',
         email: '',
         region: '',
         zone: '',
@@ -78,16 +83,7 @@ export default function POSRequestForm() {
 
     const { regions, zones, woredas, regionLoading, zoneLoading, woredaLoading } = useAddressManagement(formData);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    useEffect(() => {
-        if (selectedAccount) {
-            setFormData(prev => ({
-                ...prev,
-                accountNumber: selectedAccount.accountNumber,
-                customerName: selectedAccount.accountHolderName || '',
-            }));
-        }
-    }, [selectedAccount]);
+    const [accountPhoneNumber, setAccountPhoneNumber] = useState<string | null>(null);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -101,24 +97,83 @@ export default function POSRequestForm() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleAccountChange = (accountNumber: string) => {
-        selectAccount(accountNumber);
+    const handleAccountValidation = (account: ValidatedAccount | null) => {
+        if (account) {
+            setFormData(prev => ({
+                ...prev,
+                customerName: account.accountHolderName,
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                customerName: '',
+            }));
+            setAccountPhoneNumber(null); // Clear phone number if validation fails
+        }
+    };
+
+    const handlePhoneNumberFetched = (phoneNumber: string) => {
+        console.log('Phone number fetched from account:', phoneNumber);
+        setAccountPhoneNumber(phoneNumber);
+    };
+
+    const handleAccountChange = (accountNumber: string, accountHolderName?: string) => {
+        setFormData(prev => ({
+            ...prev,
+            accountNumber,
+            customerName: accountHolderName || '',
+        }));
+        
+        if (accountHolderName) {
+            clearFieldError('accountNumber');
+        }
+    };
+
+    const validateCurrentStep = () => {
+        const stepFields: Record<number, (keyof FormData)[]> = {
+            1: ['accountNumber', 'businessName', 'businessType', 'contactPerson', 'phoneNumber', 'email'],
+            2: ['region', 'zone', 'wereda', 'houseNumber'],
+            3: ['termsAccepted'],
+            4: ['otpCode'],
+        };
+
+        const fieldsToValidate = stepFields[step] || [];
+        let isValid = true;
+        
+        fieldsToValidate.forEach(field => {
+            const fieldValue = formData[field];
+            const fieldIsValid = validateField(field, fieldValue, formData);
+            if (!fieldIsValid) {
+                isValid = false;
+            }
+        });
+        
+        return isValid;
     };
 
     const handleNext = () => {
-        if (validateForm(formData)) {
+        if (validateCurrentStep()) {
             next();
         }
     };
 
     const handleRequestOTP = async () => {
-        if (!validateForm(formData)) return;
+        if (!validateCurrentStep()) return;
+        
+        // Use phone number from account validation, fallback to manually entered phone
+        const phoneToUse = accountPhoneNumber || formData.phoneNumber;
+        
+        if (!phoneToUse) {
+            showError('Phone number is required. Please ensure the account has a valid phone number.');
+            return;
+        }
+        
         try {
             await requestOTP(
-                () => authService.requestOTP(formData.phoneNumber || phone!),
+                () => authService.requestOTP(phoneToUse),
                 'OTP sent to your phone'
             );
-            info('OTP sent to your phone');
+            info(`OTP sent to ${phoneToUse}`);
             next();
         } catch (error: any) {
             showError(error?.message || 'Failed to send OTP');
@@ -126,8 +181,16 @@ export default function POSRequestForm() {
     };
 
     const handleSubmit = async () => {
-        if (!validateForm(formData) || !branch?.id) {
+        if (!validateCurrentStep() || !branch?.id) {
             showError('Please ensure all fields are filled correctly.');
+            return;
+        }
+
+        // Use phone number from account validation, fallback to manually entered phone
+        const phoneToUse = accountPhoneNumber || formData.phoneNumber;
+        
+        if (!phoneToUse) {
+            showError('Phone number is required. Please ensure the account has a valid phone number.');
             return;
         }
 
@@ -145,9 +208,9 @@ export default function POSRequestForm() {
                 OtpCode: formData.otpCode,
                 AccountNumber: formData.accountNumber,
                 CustomerName: formData.customerName,
-                PhoneNumber: formData.phoneNumber,
+                PhoneNumber: phoneToUse, // Use the phone number that OTP was sent to
                 BusinessName: formData.businessName,
-                ContactNumber: formData.phoneNumber,
+                ContactNumber: phoneToUse, // Use the same phone number
                 SecondaryContactNumber: null,
                 Address: addressObject,
                 NatureOfBusiness: formData.businessName,
@@ -181,25 +244,17 @@ export default function POSRequestForm() {
     const renderStep1 = () => (
         <div className="border border-amber-200 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><Building className="h-5 w-5 text-fuchsia-700" />Business Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label="Account Number" required error={errors.accountNumber}>
-                    <select 
-                        name="accountNumber" 
-                        value={formData.accountNumber} 
-                        onChange={e => handleAccountChange(e.target.value)} 
-                        className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50"
-                    >
-                        <option value="">Select account</option>
-                        {accounts.map(acc => (
-                            <option key={acc.accountNumber} value={acc.accountNumber}>
-                                {acc.accountNumber} - {acc.accountType}
-                            </option>
-                        ))}
-                    </select>
-                </Field>
-                <Field label="Customer Name">
-                    <input type="text" name="customerName" value={formData.customerName} readOnly className="w-full p-3 rounded-lg border border-amber-200 bg-amber-50" />
-                </Field>
+            <div className="space-y-6">
+                <AccountSelector
+                    accounts={[]} // Pass empty array to disable dropdown
+                    selectedAccount={formData.accountNumber}
+                    onAccountChange={handleAccountChange}
+                    onAccountValidation={handleAccountValidation}
+                    onPhoneNumberFetched={handlePhoneNumberFetched}
+                    error={errors.accountNumber}
+                    allowManualEntry={true}
+                />
+                
                 <div className="md:col-span-2">
                     <Field label="Business Name" required error={errors.businessName}>
                         <input type="text" name="businessName" value={formData.businessName} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" />
@@ -293,28 +348,32 @@ export default function POSRequestForm() {
         </div>
     );
 
-    const renderStep4 = () => (
-        <div className="border border-amber-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><Shield className="h-5 w-5 text-fuchsia-700" />OTP Verification</h2>
-            <div className="space-y-4">
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <p className="text-sm text-amber-700">An OTP has been sent to: <strong className="text-amber-900">{formData.phoneNumber}</strong></p>
-                    {otpMessage && <p className="text-sm text-green-600 mt-1"><CheckCircle2 className="inline h-3 w-3 mr-1" />{otpMessage}</p>}
-                </div>
-                <div className="max-w-md">
-                    <Field label="Enter OTP" required error={errors.otpCode}>
-                        <input type="text" name="otpCode" value={formData.otpCode} onChange={handleChange} maxLength={6} className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-amber-200 font-mono bg-amber-50" placeholder="000000" />
-                    </Field>
-                    <div className="mt-2 flex justify-between items-center">
-                        <button type="button" onClick={() => resendOTP(() => authService.requestOTP(formData.phoneNumber || phone!))} disabled={resendCooldown > 0 || otpLoading} className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400">
-                            {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
-                        </button>
-                        <span className="text-sm text-gray-500">{formData.otpCode.length}/6</span>
+    const renderStep4 = () => {
+        const phoneToDisplay = accountPhoneNumber || formData.phoneNumber;
+        
+        return (
+            <div className="border border-amber-200 rounded-lg p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><Shield className="h-5 w-5 text-fuchsia-700" />OTP Verification</h2>
+                <div className="space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <p className="text-sm text-amber-700">An OTP has been sent to: <strong className="text-amber-900">{phoneToDisplay}</strong></p>
+                        {otpMessage && <p className="text-sm text-green-600 mt-1"><CheckCircle2 className="inline h-3 w-3 mr-1" />{otpMessage}</p>}
+                    </div>
+                    <div className="max-w-md">
+                        <Field label="Enter OTP" required error={errors.otpCode}>
+                            <input type="text" name="otpCode" value={formData.otpCode} onChange={handleChange} maxLength={6} className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-amber-200 font-mono bg-amber-50" placeholder="000000" />
+                        </Field>
+                        <div className="mt-2 flex justify-between items-center">
+                            <button type="button" onClick={() => resendOTP(() => authService.requestOTP(phoneToDisplay))} disabled={resendCooldown > 0 || otpLoading} className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400">
+                                {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
+                            </button>
+                            <span className="text-sm text-gray-500">{formData.otpCode.length}/6</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const getStepContent = () => {
         switch (step) {
@@ -327,7 +386,7 @@ export default function POSRequestForm() {
     };
 
     return (
-        <FormLayout title="POS Request" phone={phone!} branchName={branch?.name} loading={loadingAccounts} error={errorAccounts}>
+        <FormLayout title="POS Request" branchName={branch?.name}>
             <form onSubmit={e => e.preventDefault()} className="space-y-6">
                 {getStepContent()}
                 <StepNavigation 

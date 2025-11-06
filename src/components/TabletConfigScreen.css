@@ -1,0 +1,480 @@
+/**
+ * Tablet Configuration Screen Styles
+ */
+
+.tablet-config-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  padding: 20px;
+}
+
+.config-container {
+  width: 100%;
+  max-width: 600px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 40px;
+}
+
+/* Header */
+.config-header {
+  text-align: center;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.config-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.config-header p {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.logout-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 8px 16px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-button:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+/* Loading State */
+.config-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 20px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.config-loading p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Forms */
+.auth-form,
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-group input,
+.form-group select {
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #1f2937;
+  transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.submit-button,
+.cancel-button,
+.remove-button {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-button {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.submit-button:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.cancel-button {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.cancel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remove-button {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.remove-button:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.remove-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Messages */
+.error-message,
+.success-message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.error-message {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.success-message {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+/* Device Info */
+.device-info {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.device-info p {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 8px 0;
+}
+
+.device-id {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+.config-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Device Info Card */
+.device-info-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.device-info-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 16px 0;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #1f2937;
+  font-family: 'Courier New', monospace;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.unconfigured {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.configured {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.locked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.loading {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .config-container {
+    padding: 32px 24px;
+  }
+
+  .config-header h1 {
+    font-size: 24px;
+  }
+
+  .logout-button {
+    position: static;
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .submit-button,
+  .cancel-button,
+  .remove-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .tablet-config-screen {
+    padding: 16px;
+  }
+
+  .config-container {
+    padding: 24px 20px;
+  }
+
+  .config-header h1 {
+    font-size: 20px;
+  }
+
+  .form-group input,
+  .form-group select {
+    font-size: 14px;
+  }
+
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .config-container {
+    background: #1f2937;
+  }
+
+  .config-header h1 {
+    color: #f9fafb;
+  }
+
+  .config-header p {
+    color: #d1d5db;
+  }
+
+  .logout-button {
+    background: #374151;
+    color: #f9fafb;
+    border-color: #4b5563;
+  }
+
+  .logout-button:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+  }
+
+  .form-group label {
+    color: #f9fafb;
+  }
+
+  .form-group input,
+  .form-group select {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    border-color: #10b981;
+  }
+
+  .form-group input:disabled,
+  .form-group select:disabled {
+    background: #4b5563;
+    color: #9ca3af;
+  }
+
+  .cancel-button {
+    background: #374151;
+    color: #f9fafb;
+    border-color: #4b5563;
+  }
+
+  .cancel-button:hover:not(:disabled) {
+    background: #4b5563;
+    border-color: #6b7280;
+  }
+
+  .device-info {
+    border-top-color: #374151;
+  }
+
+  .device-info p {
+    color: #d1d5db;
+  }
+
+  .device-info-card {
+    background: #374151;
+    border-color: #4b5563;
+  }
+
+  .device-info-card h3 {
+    color: #f9fafb;
+  }
+
+  .info-row {
+    border-bottom-color: #4b5563;
+  }
+
+  .info-label {
+    color: #d1d5db;
+  }
+
+  .info-value {
+    color: #f9fafb;
+  }
+
+  .error-message {
+    background: #7f1d1d;
+    color: #fecaca;
+    border-color: #991b1b;
+  }
+
+  .success-message {
+    background: #064e3b;
+    color: #a7f3d0;
+    border-color: #065f46;
+  }
+}

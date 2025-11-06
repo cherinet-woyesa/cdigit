@@ -6,7 +6,7 @@ import { Loader2, AlertCircle, MapPin, User, Home } from 'lucide-react';
 interface FormLayoutProps {
   title: string;
   children: ReactNode;
-  phone: string | null; // Allow null
+  phone?: string | null; // Make optional and allow null
   branchName?: string;
   loading?: boolean;
   error?: string | null; // Allow null

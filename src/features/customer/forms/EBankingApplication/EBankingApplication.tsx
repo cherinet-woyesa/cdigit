@@ -34,6 +34,7 @@ export default function EBankingApplication() {
     const [updateId, setUpdateId] = useState<string | null>(null);
     const [accountValidated, setAccountValidated] = useState(false);
     const [idCopy, setIdCopy] = useState<File | null>(null);
+    const [accountPhoneNumber, setAccountPhoneNumber] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         accountNumber: '',
@@ -94,7 +95,23 @@ export default function EBankingApplication() {
                 customerName: account.accountHolderName || '',
                 mobileNumber: account.phoneNumber || '',
             }));
+            // Store the phone number from the account
+            if (account.phoneNumber) {
+                setAccountPhoneNumber(account.phoneNumber);
+            }
+        } else {
+            setAccountPhoneNumber(null);
         }
+    };
+
+    // Handler for phone number from account validation
+    const handlePhoneNumberFetched = (phoneNumber: string) => {
+        console.log('Phone number fetched from account:', phoneNumber);
+        setAccountPhoneNumber(phoneNumber);
+        setFormData(prev => ({
+            ...prev,
+            mobileNumber: phoneNumber,
+        }));
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -120,15 +137,67 @@ export default function EBankingApplication() {
     };
 
     const handleRequestOTP = async () => {
-        const fieldsToValidate = ['accountNumber', 'customerName', 'mobileNumber', 'idType', 'idNumber', 'issuingAuthority', 'idIssueDate', 'idExpiryDate', 'termsAccepted'];
-        if (!idCopy) {
-            fieldsToValidate.push('region', 'zone', 'wereda', 'houseNumber');
+        // Check required fields manually before requesting OTP
+        if (!formData.accountNumber) {
+            showError('Account number is required');
+            return;
         }
-        if (!validateForm(formData, fieldsToValidate)) return;
+        if (!formData.customerName) {
+            showError('Customer name is required');
+            return;
+        }
+        if (!formData.mobileNumber && !accountPhoneNumber) {
+            showError('Mobile number is required');
+            return;
+        }
+        if (!formData.idNumber) {
+            showError('ID number is required');
+            return;
+        }
+        if (!formData.idIssueDate) {
+            showError('ID issue date is required');
+            return;
+        }
+        if (!formData.idExpiryDate) {
+            showError('ID expiry date is required');
+            return;
+        }
+        if (!formData.termsAccepted) {
+            showError('You must accept the terms and conditions');
+            return;
+        }
+        
+        // If no ID copy is attached, check address fields
+        if (!idCopy) {
+            if (!formData.region) {
+                showError('Region is required');
+                return;
+            }
+            if (!formData.zone) {
+                showError('Zone is required');
+                return;
+            }
+            if (!formData.wereda) {
+                showError('Wereda is required');
+                return;
+            }
+            if (!formData.houseNumber) {
+                showError('House number is required');
+                return;
+            }
+        }
+
+        // Use phone number from validated account, fallback to form data or auth phone
+        const phoneToUse = accountPhoneNumber || formData.mobileNumber || phone;
+        
+        if (!phoneToUse) {
+            showError('Phone number is required. Please ensure the account has a valid phone number.');
+            return;
+        }
 
         try {
-            await requestOTP(() => authService.requestOTP(formData.mobileNumber || phone!));
-            info('OTP sent to your phone');
+            await requestOTP(() => authService.requestOTP(phoneToUse));
+            info(`OTP sent to ${phoneToUse}`);
             next();
         } catch (error: any) {
             showError(error.message || 'Failed to send OTP');
@@ -136,8 +205,16 @@ export default function EBankingApplication() {
     };
 
     const handleResendOTP = async () => {
+        // Use phone number from validated account, fallback to form data or auth phone
+        const phoneToUse = accountPhoneNumber || formData.mobileNumber || phone;
+        
+        if (!phoneToUse) {
+            showError('Phone number is required. Please ensure the account has a valid phone number.');
+            return;
+        }
+
         try {
-            await resendOTP(() => authService.requestOTP(formData.mobileNumber || phone!));
+            await resendOTP(() => authService.requestOTP(phoneToUse));
             info('OTP resent successfully');
         } catch (error: any) {
             showError(error.message || 'Failed to resend OTP');
@@ -145,33 +222,66 @@ export default function EBankingApplication() {
     }
 
     const handleSubmit = async () => {
-        if (!validateForm(formData) || !branch?.id) return;
+        // Validate OTP code
+        if (!formData.otpCode || formData.otpCode.length !== 6) {
+            showError('Please enter the 6-digit OTP code');
+            return;
+        }
+
+        if (!branch?.id) {
+            showError('Branch information is missing');
+            return;
+        }
+
+        // Use phone number from validated account, fallback to form data or auth phone
+        const phoneToUse = accountPhoneNumber || formData.mobileNumber || phone;
+        
+        if (!phoneToUse) {
+            showError('Phone number is required. Please ensure the account has a valid phone number.');
+            return;
+        }
 
         setIsSubmitting(true);
-        const payload = new FormData();
-        payload.append('PhoneNumber', formData.mobileNumber || phone!);
-        payload.append('BranchId', branch.id);
-        payload.append('AccountNumber', formData.accountNumber);
-        payload.append('AccountHolderName', formData.customerName);
-        payload.append('OtpCode', formData.otpCode);
+        
+        // Build payload as object (not FormData) as per service definition
+        const payload: any = {
+            PhoneNumber: phoneToUse,
+            BranchId: branch.id,
+            AccountNumber: formData.accountNumber,
+            AccountHolderName: formData.customerName,
+            OtpCode: formData.otpCode,
+            ServicesSelected: formData.ebankingChannels,
+        };
+
+        // Add ID information
         if (formData.idType === 'national_id') {
-            payload.append('NationalIdNumber', formData.idNumber);
+            payload.NationalIdNumber = formData.idNumber;
         } else {
-            payload.append('AltIdNumber', formData.idNumber);
-            payload.append('AltIdIssuer', formData.issuingAuthority);
+            payload.AltIdNumber = formData.idNumber;
+            payload.AltIdIssuer = formData.issuingAuthority;
         }
-        formData.ebankingChannels.forEach(service => payload.append('ServicesSelected', service));
+
+        // Add address if no ID copy
         if (!idCopy) {
-            payload.append('Region', formData.region);
-            payload.append('City', formData.zone);
-            payload.append('SubCity', formData.zone);
-            payload.append('Wereda', formData.wereda);
-            payload.append('HouseNumber', formData.houseNumber);
+            payload.Region = formData.region;
+            payload.City = formData.zone;
+            payload.SubCity = formData.zone;
+            payload.Wereda = formData.wereda;
+            payload.HouseNumber = formData.houseNumber;
         }
-        if (formData.idIssueDate) payload.append('IdIssueDate', new Date(formData.idIssueDate).toISOString());
-        if (formData.idExpiryDate) payload.append('IdExpiryDate', new Date(formData.idExpiryDate).toISOString());
+
+        // Add dates
+        if (formData.idIssueDate) {
+            payload.IdIssueDate = new Date(formData.idIssueDate).toISOString();
+        }
+        if (formData.idExpiryDate) {
+            payload.IdExpiryDate = new Date(formData.idExpiryDate).toISOString();
+        }
+
+        // Note: ID copy upload would need a separate endpoint or multipart handling
+        // For now, we're sending the data without the file
         if (idCopy) {
-            payload.append('IdCopy', idCopy);
+            console.warn('ID copy file upload not yet implemented in this payload format');
         }
 
         try {
@@ -179,9 +289,24 @@ export default function EBankingApplication() {
                 ? await updateEBankingApplication(updateId, payload)
                 : await applyEBankingApplication(payload);
 
-            if (response.success) {
+            if (response.success && response.data) {
                 showSuccess('Application submitted successfully!');
-                navigate('/form/ebanking/confirmation', { state: { serverData: response.data } });
+                // Pass data in the format the confirmation page expects
+                navigate('/form/ebanking/confirmation', { 
+                    state: { 
+                        serverData: response.data,
+                        formReferenceId: response.data.FormReferenceId || response.data.formReferenceId,
+                        accountNumber: formData.accountNumber,
+                        customerName: formData.customerName,
+                        mobileNumber: phoneToUse,
+                        ebankingChannels: formData.ebankingChannels,
+                        queueNumber: response.data.QueueNumber || response.data.queueNumber,
+                        tokenNumber: response.data.TokenNumber || response.data.tokenNumber,
+                        status: response.data.Status || response.data.status || 'OnQueue',
+                        message: response.data.Message || response.data.message,
+                        branchName: branch?.name
+                    } 
+                });
             } else {
                 showError(response.message || 'Submission failed');
             }
@@ -194,12 +319,12 @@ export default function EBankingApplication() {
 
     const renderStep = () => {
         switch (step) {
-            case 1: return <AccountSelector accounts={[]} selectedAccount={formData.accountNumber} onAccountChange={handleAccountChange} onAccountValidation={handleAccountValidation} error={errors.accountNumber} allowManualEntry={true} />;
+            case 1: return <AccountSelector accounts={[]} selectedAccount={formData.accountNumber} onAccountChange={handleAccountChange} onAccountValidation={handleAccountValidation} onPhoneNumberFetched={handlePhoneNumberFetched} error={errors.accountNumber} allowManualEntry={true} />;
             case 2: return <IDDetailsStep formData={formData} onChange={handleChange} errors={errors} />;
             case 3: return <AddressDetailsStep formData={formData} onChange={handleChange} errors={errors} addressProps={{ regions, zones, woredas, regionLoading, zoneLoading, woredaLoading }} />;
             case 4: return <ServiceSelectionStep formData={formData} onChange={handleChange} />;
             case 5: return <TermsAndConditionsStep formData={formData} onChange={handleChange} errors={errors} onFileChange={handleFileChange} idCopy={idCopy} />;
-            case 6: return <OTPStep otpCode={formData.otpCode} onOtpChange={(e) => setFormData({...formData, otpCode: e.target.value})} onResend={handleResendOTP} resendCooldown={resendCooldown} otpMessage={otpMessage} error={errors.otpCode} />;
+            case 6: return <OTPStep otpCode={formData.otpCode} onOtpChange={(value) => setFormData({...formData, otpCode: value})} onResend={handleResendOTP} resendCooldown={resendCooldown} otpMessage={otpMessage} error={errors.otpCode} />;
             default: return null;
         }
     };

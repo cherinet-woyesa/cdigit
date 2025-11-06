@@ -24,6 +24,8 @@ import clsx from 'clsx';
 import { DashboardErrorBoundary } from '../../components/dashboard/ErrorBoundary';
 import { fetchBranches } from '../../services/branchService';
 import { getQueueCount } from '../../services/queueService';
+import { AccessMethodIndicatorWithContext } from '../../components/AccessMethodIndicator';
+import { BranchWatermarkWithContext } from '../../components/BranchWatermark';
 // Import the logo
 import logo from '../../assets/logo.jpg';
 
@@ -400,6 +402,9 @@ const CustomerDashboardContent: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Access Method Indicator */}
+              <AccessMethodIndicatorWithContext />
+              
               {/* Nearby Branches Button with brand colors */}
               <button
                 onClick={() => {
@@ -543,6 +548,9 @@ const CustomerDashboardContent: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Branch Watermark */}
+      <BranchWatermarkWithContext />
     </div>
   );
 };

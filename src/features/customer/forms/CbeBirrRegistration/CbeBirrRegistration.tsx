@@ -6,16 +6,15 @@ import { useBranch } from '../../../../context/BranchContext';
 import { useToast } from '../../../../context/ToastContext';
 import { useFormSteps } from '../../hooks/useFormSteps';
 import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
 import { FormLayout } from '../../components/FormLayout';
 import { StepNavigation } from '../../components/StepNavigation';
-import { OTPVerification } from '../../components/OTPVerification';
 import { cbeBirrRegistrationValidationSchema } from '../../utils/validationSchemas';
 import { cbeBirrRegistrationService } from '../../../../services/cbeBirrRegistrationService';
-import { authService } from '../../../../services/authService';
-import { CheckCircle2, Shield, MapPin, IdCard, Users, Heart, Mail, Home } from 'lucide-react';
+import { MapPin, IdCard, Users, Heart, Mail, Home } from 'lucide-react';
 
 interface FormData {
+  accountNumber: string;
+  accountHolderName: string;
   phoneNumber: string;
   fullName: string;
   fatherName: string;
@@ -34,7 +33,6 @@ interface FormData {
   motherName: string;
   motherFatherName: string;
   motherGrandfatherName: string;
-  otpCode: string;
 }
 
 const educationLevels = [
@@ -53,16 +51,17 @@ const ABIY_BRANCH_ID = 'a3d3e1b5-8c9a-4c7c-a1e3-6b3d8f4a2b2c';
 export default function CbeBirrRegistrationForm() {
   const { phone } = useAuth();
   const { branch } = useBranch();
-  const { success: showSuccess, error: showError, info } = useToast();
+  const { success: showSuccess, error: showError } = useToast();
   const navigate = useNavigate();
 
   // Custom Hooks
-  const { step, next, prev, isFirst, isLast } = useFormSteps(6);
-  const { errors, validateForm, clearFieldError } = useFormValidation(cbeBirrRegistrationValidationSchema);
-  const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
+  const { step, next, prev, isFirst } = useFormSteps(6); // 6 steps without OTP
+  const { errors, validateField, clearFieldError } = useFormValidation(cbeBirrRegistrationValidationSchema);
 
   // State
   const [formData, setFormData] = useState<FormData>({
+    accountNumber: '',
+    accountHolderName: '',
     phoneNumber: phone || '',
     fullName: '',
     fatherName: '',
@@ -81,31 +80,8 @@ export default function CbeBirrRegistrationForm() {
     motherName: '',
     motherFatherName: '',
     motherGrandfatherName: '',
-    otpCode: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Handle missing phone number
-  if (!phone) {
-    return (
-      <FormLayout
-        title="CBE Birr Registration"
-        phone={null}
-        branchName={branch?.name}
-        error="Phone number not available. Please log in again."
-      >
-        <div className="text-center p-8">
-          <p className="text-red-600 mb-4">Authentication required. Please log in again.</p>
-          <button
-            onClick={() => navigate('/login')}
-            className="bg-fuchsia-700 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-800"
-          >
-            Go to Login
-          </button>
-        </div>
-      </FormLayout>
-    );
-  }
 
   // Handlers
   const handleChange = (field: keyof FormData, value: string) => {
@@ -113,39 +89,63 @@ export default function CbeBirrRegistrationForm() {
     clearFieldError(field);
   };
 
+  const validateCurrentStep = () => {
+    const stepFields: Record<number, (keyof FormData)[]> = {
+      1: ['phoneNumber'],
+      2: ['fullName', 'fatherName', 'grandfatherName', 'placeOfBirth', 'dateOfBirth', 'gender'],
+      3: ['city', 'wereda', 'kebele', 'email'],
+      4: ['idNumber', 'issuedBy', 'maritalStatus', 'educationLevel'],
+      5: ['motherName', 'motherFatherName', 'motherGrandfatherName'],
+      6: [], // Review step - no validation needed
+    };
+
+    const fieldsToValidate = stepFields[step] || [];
+    let isValid = true;
+    
+    fieldsToValidate.forEach(field => {
+      const fieldValue = formData[field];
+      const fieldIsValid = validateField(field, fieldValue, formData);
+      if (!fieldIsValid) {
+        isValid = false;
+      }
+    });
+    
+    return isValid;
+  };
+
   const handleNext = () => {
-    if (validateForm(formData)) {
+    if (validateCurrentStep()) {
       next();
-    }
-  };
-
-  const handleRequestOTP = async () => {
-    try {
-      await requestOTP(
-        () => authService.requestCbeBirrOTP(formData.phoneNumber),
-        'OTP sent to your phone'
-      );
-      info('OTP sent to your phone');
-      next();
-    } catch (error: any) {
-      showError(error?.message || 'Failed to send OTP');
-    }
-  };
-
-  const handleResendOTP = async () => {
-    try {
-      await resendOTP(
-        () => authService.requestCbeBirrOTP(formData.phoneNumber),
-        'OTP resent successfully'
-      );
-      info('OTP resent successfully');
-    } catch (error: any) {
-      showError(error?.message || 'Failed to resend OTP');
     }
   };
 
   const handleSubmit = async () => {
-    if (!validateForm(formData)) return;
+    if (!formData.phoneNumber) {
+      showError('Phone number is required');
+      return;
+    }
+
+    // Validate all required fields before submission
+    const allRequiredFields: (keyof FormData)[] = [
+      'phoneNumber', 'fullName', 'fatherName', 'grandfatherName', 
+      'placeOfBirth', 'dateOfBirth', 'gender', 'city', 'wereda', 
+      'kebele', 'idNumber', 'issuedBy', 'maritalStatus', 
+      'educationLevel', 'motherName', 'motherFatherName', 'motherGrandfatherName'
+    ];
+
+    let isValid = true;
+    allRequiredFields.forEach(field => {
+      const fieldValue = formData[field];
+      const fieldIsValid = validateField(field, fieldValue, formData);
+      if (!fieldIsValid) {
+        isValid = false;
+      }
+    });
+
+    if (!isValid) {
+      showError('Please fill in all required fields correctly');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -168,7 +168,6 @@ export default function CbeBirrRegistrationForm() {
         maritalStatus: formData.maritalStatus,
         educationLevel: formData.educationLevel,
         mothersFullName: mothersFullName,
-        otpCode: formData.otpCode,
       };
 
       const response = await cbeBirrRegistrationService.createRegistration(registrationData);
@@ -180,17 +179,37 @@ export default function CbeBirrRegistrationForm() {
       });
     } catch (error: any) {
       const errorMessage = error?.message || 'Failed to submit the form. Please try again.';
-      if (errorMessage.toLowerCase().includes('otp') || errorMessage.toLowerCase().includes('invalid')) {
-        showError('Invalid OTP. Please try again.');
-      } else {
-        showError(errorMessage);
-      }
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // Render Steps
+  const renderStep0 = () => (
+    <div className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Phone Number <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="tel"
+          name="phoneNumber"
+          value={formData.phoneNumber}
+          onChange={(e) => handleChange('phoneNumber', e.target.value)}
+          placeholder="Enter your phone number"
+          className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-white transition-colors duration-200"
+        />
+        {errors.phoneNumber && (
+          <p className="mt-1 text-sm text-red-600">{errors.phoneNumber}</p>
+        )}
+        <p className="mt-1 text-sm text-gray-500">
+          This phone number will be used for your CBE Birr account
+        </p>
+      </div>
+    </div>
+  );
+
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -524,47 +543,26 @@ export default function CbeBirrRegistrationForm() {
     </div>
   );
 
-  const renderStep6 = () => (
-    <OTPVerification
-      phone={formData.phoneNumber}
-      otp={formData.otpCode}
-      onOtpChange={(otp) => handleChange('otpCode', otp)}
-      onResendOtp={handleResendOTP}
-      resendCooldown={resendCooldown}
-      loading={otpLoading}
-      error={errors.otp}
-      message={otpMessage}
-    />
-  );
-
   const getStepContent = () => {
     switch (step) {
-      case 1: return renderStep1();
-      case 2: return renderStep2();
-      case 3: return renderStep3();
-      case 4: return renderStep4();
-      case 5: return renderStep5();
-      case 6: return renderStep6();
+      case 1: return renderStep0(); // Phone number
+      case 2: return renderStep1(); // Personal info
+      case 3: return renderStep2(); // Address
+      case 4: return renderStep3(); // ID & Education
+      case 5: return renderStep4(); // Mother's info
+      case 6: return renderStep5(); // Review
       default: return null;
     }
   };
 
   const getNextHandler = () => {
-    switch (step) {
-      case 1: case 2: case 3: case 4: return handleNext;
-      case 5: return handleRequestOTP;
-      case 6: return handleSubmit;
-      default: return handleNext;
-    }
+    if (step === 6) return handleSubmit;
+    return handleNext;
   };
 
   const getNextLabel = () => {
-    switch (step) {
-      case 1: case 2: case 3: case 4: return 'Continue';
-      case 5: return 'Request OTP';
-      case 6: return 'Verify & Submit';
-      default: return 'Continue';
-    }
+    if (step === 6) return 'Submit Registration';
+    return 'Continue';
   };
 
   return (
@@ -582,8 +580,8 @@ export default function CbeBirrRegistrationForm() {
           onNext={getNextHandler()}
           onBack={prev}
           nextLabel={getNextLabel()}
-          nextDisabled={(step === 6 && formData.otpCode.length !== 6) || isSubmitting}
-          nextLoading={(step === 5 && otpLoading) || (step === 6 && isSubmitting)}
+          nextDisabled={isSubmitting}
+          nextLoading={isSubmitting}
           hideBack={isFirst}
         />
       </form>

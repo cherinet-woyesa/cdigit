@@ -68,6 +68,7 @@ export default function CashDepositForm() {
   const [amountInWords, setAmountInWords] = useState('');
   const [accountValidated, setAccountValidated] = useState(false); // Track if account has been validated
   const [updateId, setUpdateId] = useState<string | null>(null); // Track if this is an update
+  const [accountPhoneNumber, setAccountPhoneNumber] = useState<string | null>(null); // Store phone number from validated account
 
   // Handle update state
   useEffect(() => {
@@ -124,7 +125,14 @@ export default function CashDepositForm() {
         ...prev,
         accountHolderName: '',
       }));
+      setAccountPhoneNumber(null); // Clear phone number
     }
+  };
+
+  // Handler for phone number from account validation
+  const handlePhoneNumberFetched = (phoneNumber: string) => {
+    console.log('Phone number fetched from account:', phoneNumber);
+    setAccountPhoneNumber(phoneNumber);
   };
 
   const handleAccountChange = (accountNumber: string, accountHolderName?: string) => {
@@ -240,8 +248,13 @@ export default function CashDepositForm() {
   };
 
   const handleSubmit = async () => {
-    // Check if phone and branch are available
-
+    // Use phone number from validated account, fallback to auth phone
+    const phoneToUse = accountPhoneNumber || phone;
+    
+    if (!phoneToUse) {
+      showError('Phone number is required. Please ensure the account has a valid phone number.');
+      return;
+    }
     
     if (!branch?.id) {
       showError('Branch information is missing. Please select a branch and try again.');
@@ -274,7 +287,7 @@ export default function CashDepositForm() {
           accountHolderName: formData.accountHolderName,
           accountNumber: formData.accountNumber,
           amount: Number(amountInETB),
-          telephoneNumber: phone || undefined,
+          telephoneNumber: phoneToUse,
           transactionType: `Cash Deposit (${formData.currency})`,
           status: 'Pending',
         };
@@ -323,7 +336,7 @@ export default function CashDepositForm() {
           accountHolderName: formData.accountHolderName,
           accountNumber: formData.accountNumber,
           amount: Number(amountInETB),
-          telephoneNumber: phone || undefined,
+          telephoneNumber: phoneToUse,
           transactionType: `Cash Deposit (${formData.currency})`,
           status: 'Pending',
           signature: signature, // Add signature to deposit data
@@ -381,6 +394,7 @@ export default function CashDepositForm() {
         selectedAccount={formData.accountNumber}
         onAccountChange={handleAccountChange}
         onAccountValidation={handleAccountValidation}
+        onPhoneNumberFetched={handlePhoneNumberFetched}
         error={errors.accountNumber}
         allowManualEntry={true}
       />

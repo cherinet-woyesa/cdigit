@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import type { AccessMethod } from '../types/multiChannelAccess';
+import { accessMethodDetector } from '../services/accessMethodDetector';
 
 interface User {
     id: string;
@@ -28,6 +30,8 @@ interface AuthContextType {
     updateUserBranch: (branchId: string) => void;
     phone: string | null;
     setPhone: (newPhone: string | null) => void;
+    accessMethod: AccessMethod | null;
+    requiresAuthentication: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,6 +41,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [phone, setPhoneState] = useState<string | null>(null);
+    const [accessMethod, setAccessMethod] = useState<AccessMethod | null>(null);
+
+    // Detect access method on mount
+    useEffect(() => {
+        try {
+            const method = accessMethodDetector.detectAccessMethod();
+            setAccessMethod(method);
+            console.log('AuthContext: Access method detected:', method);
+        } catch (error) {
+            console.error('AuthContext: Failed to detect access method:', error);
+        }
+    }, []);
+
+    // Determine if authentication is required based on access method
+    const requiresAuthentication = accessMethod === 'mobile_app';
 
     const setPhone = (newPhone: string | null) => {
         if (newPhone) {
@@ -227,14 +246,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         <AuthContext.Provider value={{
             user,
             token,
-            isAuthenticated: !!user,
+            isAuthenticated: !!user || !requiresAuthentication, // Auto-authenticate for tablet/QR
             login,
             logout,
             loading,
             updateAssignedWindow,
             updateUserBranch,
             phone,
-            setPhone
+            setPhone,
+            accessMethod,
+            requiresAuthentication
         }}>
             {children}
         </AuthContext.Provider>

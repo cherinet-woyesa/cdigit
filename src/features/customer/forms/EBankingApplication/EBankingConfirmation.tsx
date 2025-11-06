@@ -47,40 +47,39 @@ export default function EBankingConfirmation() {
 
     // Data initialization
     useEffect(() => {
-        const initializeData = () => {
+        const loadData = () => {
             try {
                 if (!state) {
-                    setError(t('noDataAvailable', 'No confirmation data available'));
+                    setError('No confirmation data available');
                     setIsLoading(false);
                     return;
                 }
 
-                const processedData = initializeData(state);
-                const services = processedData?.ServicesRequested 
-                    ? String(processedData.ServicesRequested).split(',').map((s: string) => s.trim()).filter(Boolean)
-                    : (processedData.ebankingChannels || []);
+                // Use the state data directly (already formatted from EBankingApplication)
+                const services = state.ebankingChannels || [];
 
                 setData({
-                    formReferenceId: processedData.formReferenceId || 'N/A',
-                    branchName: processedData.branchName || branchName,
-                    accountNumber: processedData.accountNumber || 'N/A',
-                    customerName: processedData.customerName || 'N/A',
-                    mobileNumber: processedData.mobileNumber || phone || 'N/A',
+                    formReferenceId: state.formReferenceId || 'N/A',
+                    branchName: state.branchName || branchName,
+                    accountNumber: state.accountNumber || 'N/A',
+                    customerName: state.customerName || 'N/A',
+                    mobileNumber: state.mobileNumber || phone || 'N/A',
                     ebankingChannels: services,
-                    queueNumber: processedData.queueNumber || 'N/A',
-                    tokenNumber: processedData.tokenNumber || 'N/A',
-                    status: processedData.status || 'OnQueue',
-                    message: processedData.message || t('defaultSuccessMessage', 'Your application has been submitted successfully.'),
+                    queueNumber: state.queueNumber || 'N/A',
+                    tokenNumber: state.tokenNumber || 'N/A',
+                    status: state.status || 'OnQueue',
+                    message: state.message || 'Your application has been submitted successfully.',
                 });
+                setIsLoading(false);
             } catch (err) {
-                setError(t('dataLoadError', 'Failed to load confirmation data'));
-            } finally {
+                console.error('Error loading confirmation data:', err);
+                setError('Failed to load confirmation data');
                 setIsLoading(false);
             }
         };
 
-        initializeData();
-    }, [state, branch, phone, t]);
+        loadData();
+    }, [state, branchName, phone]);
 
     // Handlers
     const handleCancel = async () => {

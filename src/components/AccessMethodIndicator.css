@@ -1,0 +1,183 @@
+/**
+ * Access Method Indicator Styles
+ */
+
+/* Main Indicator */
+.access-method-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border-radius: 8px;
+  border-left: 4px solid;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.access-method-indicator:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.indicator-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.indicator-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.indicator-label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.indicator-branch {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Badge Variant */
+.access-method-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.badge-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.badge-label {
+  line-height: 1;
+}
+
+/* Icon Only Variant */
+.access-method-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.access-method-icon.icon-small {
+  font-size: 16px;
+}
+
+.access-method-icon.icon-medium {
+  font-size: 24px;
+}
+
+.access-method-icon.icon-large {
+  font-size: 32px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .access-method-indicator {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+
+  .indicator-icon {
+    font-size: 20px;
+  }
+
+  .indicator-label {
+    font-size: 11px;
+  }
+
+  .indicator-branch {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .access-method-indicator {
+    padding: 4px 10px;
+    gap: 6px;
+  }
+
+  .indicator-icon {
+    font-size: 18px;
+  }
+
+  .indicator-label {
+    font-size: 10px;
+  }
+
+  .indicator-branch {
+    display: none; /* Hide branch name on very small screens */
+  }
+
+  .access-method-badge {
+    padding: 3px 10px;
+    font-size: 11px;
+  }
+
+  .badge-icon {
+    font-size: 12px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .access-method-indicator {
+    background: #1f2937;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .access-method-indicator:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .indicator-branch {
+    color: #d1d5db;
+  }
+}
+
+/* Animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.access-method-indicator {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Print Styles */
+@media print {
+  .access-method-indicator,
+  .access-method-badge,
+  .access-method-icon {
+    display: none;
+  }
+}

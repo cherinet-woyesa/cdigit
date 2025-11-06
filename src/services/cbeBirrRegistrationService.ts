@@ -19,7 +19,7 @@ export interface CbeBirrRegistrationData {
   educationLevel: string;
   mothersFullName: string;
   digitalSignature?: string;
-  otpCode: string;
+  otpCode?: string;
 }
 
 export interface CbeBirrRegistrationResponse {
@@ -66,7 +66,7 @@ class CbeBirrRegistrationService {
       EducationLevel: data.educationLevel,
       MothersFullName: data.mothersFullName,
       DigitalSignature: data.digitalSignature,
-      OtpCode: data.otpCode,
+      ...(data.otpCode && { OtpCode: data.otpCode }),
     };
 
     return apiClient.post<CbeBirrRegistrationResponse>('/CbeBirrRegistrations', payload);

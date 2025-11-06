@@ -1,0 +1,143 @@
+/**
+ * Branch Watermark Styles
+ */
+
+.branch-watermark {
+  position: fixed;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.branch-watermark:hover {
+  opacity: 1;
+}
+
+/* Position variants */
+.watermark-bottom-right {
+  bottom: 16px;
+  right: 16px;
+}
+
+.watermark-bottom-left {
+  bottom: 16px;
+  left: 16px;
+}
+
+.watermark-top-right {
+  top: 16px;
+  right: 16px;
+}
+
+.watermark-top-left {
+  top: 16px;
+  left: 16px;
+}
+
+/* Content layout */
+.watermark-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.watermark-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.watermark-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.watermark-branch {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.watermark-method {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  opacity: 0.8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .branch-watermark {
+    padding: 6px 10px;
+    bottom: 12px;
+    right: 12px;
+  }
+
+  .watermark-icon {
+    font-size: 18px;
+  }
+
+  .watermark-branch {
+    font-size: 12px;
+    max-width: 150px;
+  }
+
+  .watermark-method {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .branch-watermark {
+    padding: 4px 8px;
+    bottom: 8px;
+    right: 8px;
+  }
+
+  .watermark-icon {
+    font-size: 16px;
+  }
+
+  .watermark-branch {
+    font-size: 11px;
+    max-width: 120px;
+  }
+
+  .watermark-method {
+    font-size: 9px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .branch-watermark {
+    background: rgba(31, 41, 55, 0.85);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .watermark-branch {
+    color: #f9fafb;
+  }
+}
+
+/* Print styles - hide watermark when printing */
+@media print {
+  .branch-watermark {
+    display: none;
+  }
+}
