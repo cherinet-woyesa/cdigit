@@ -1,4 +1,3 @@
-
 // features/customer/forms/statementRequest/StatementRequestForm.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,8 +15,8 @@ import { statementService } from '../../../../services/statementService';
 import { FormLayout } from '../../components/FormLayout';
 import { StepNavigation } from '../../components/StepNavigation';
 import RequestDetailsStep from '../../components/statementrequest/RequestDetailsStep';
-import SignatureStep from '../../components/stoppayment/SignatureStep';
-import OTPStep from '../../components/stoppayment/OTPStep';
+import SignatureStep from '../../components/statementrequest/SignatureStep';
+import OTPStep from '../../components/statementrequest/OTPStep';
 
 export default function StatementRequestForm() {
     const navigate = useNavigate();

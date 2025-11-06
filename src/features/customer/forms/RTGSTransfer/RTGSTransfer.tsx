@@ -6,19 +6,18 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useBranch } from '../../../../context/BranchContext';
 import { useToast } from '../../../../context/ToastContext';
 import { useFormSteps } from '../../hooks/useFormSteps';
-import { useAccountSelection } from '../../hooks/useAccountSelection';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { useSignaturePad } from '../../hooks/useSignaturePad';
 import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
 import { FormLayout } from '../../components/FormLayout';
 import { StepNavigation } from '../../components/StepNavigation';
-import { SignaturePad } from '../../components/SignaturePad';
+import { AccountSelector } from '../../components/AccountSelector';
+import { SignatureStep } from '../../components/SignatureStep';
 import { OTPVerification } from '../../components/OTPVerification';
 import { rtgsTransferValidationSchema } from '../../utils/rtgsTransferValidationSchema';
 import { submitRtgsTransfer, requestRtgsTransferOtp } from '../../../../services/rtgsTransferService';
+import authService from '../../../../services/authService';
 import { requiresTransactionApproval } from '../../../../config/rbacMatrix';
-import Field from '../../../../components/Field';
 import { 
     Loader2, 
     CheckCircle2, 
@@ -39,6 +38,7 @@ interface FormData {
     paymentNarrative: string;
     digitalSignature: string;
     otpCode: string;
+    phoneNumber: string;
 }
 
 export default function RTGSTransferForm() {
@@ -49,15 +49,13 @@ export default function RTGSTransferForm() {
     const { success: showSuccess, error: showError, info } = useToast();
     const { createWorkflow } = useApprovalWorkflow();
 
-    const { accounts, loadingAccounts, errorAccounts, selectedAccount, selectAccount } = useAccountSelection('selectedRtgsAccount');
     const { step, next, prev, isFirst, isLast } = useFormSteps(5);
     const { errors, validateForm, clearFieldError } = useFormValidation(rtgsTransferValidationSchema);
     const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
-    const { signaturePadRef, isSignatureEmpty, handleSignatureEnd, handleSignatureClear, getSignatureData } = useSignaturePad();
 
     const [formData, setFormData] = useState<FormData>({
-        orderingAccountNumber: selectedAccount?.accountNumber || '',
-        orderingCustomerName: selectedAccount?.accountHolderName || '',
+        orderingAccountNumber: '',
+        orderingCustomerName: '',
         beneficiaryBank: '',
         beneficiaryBranch: '',
         beneficiaryAccountNumber: '',
@@ -66,18 +64,36 @@ export default function RTGSTransferForm() {
         paymentNarrative: '',
         digitalSignature: '',
         otpCode: '',
+        phoneNumber: '',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [accountValidated, setAccountValidated] = useState(false);
 
-    useEffect(() => {
-        if (selectedAccount) {
+    const handleAccountChange = (accountNumber: string, accountHolderName?: string) => {
+        setFormData(prev => ({
+            ...prev,
+            orderingAccountNumber: accountNumber,
+            orderingCustomerName: accountHolderName || '',
+        }));
+        if (!accountNumber) {
+            setAccountValidated(false);
+        }
+    };
+
+    const handleAccountValidation = (account: any | null) => {
+        setAccountValidated(!!account);
+        if (account) {
             setFormData(prev => ({
                 ...prev,
-                orderingAccountNumber: selectedAccount.accountNumber,
-                orderingCustomerName: selectedAccount.accountHolderName || '',
+                orderingCustomerName: account.accountHolderName || '',
+                phoneNumber: account.phoneNumber || '',
             }));
         }
-    }, [selectedAccount]);
+    };
+
+    const handlePhoneNumberFetched = (phoneNumber: string) => {
+        setFormData(prev => ({ ...prev, phoneNumber }));
+    };
 
     const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -85,28 +101,36 @@ export default function RTGSTransferForm() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleAccountChange = (accountNumber: string) => {
-        selectAccount(accountNumber);
+    const handleSignatureComplete = (signatureData: string) => {
+        setFormData(prev => ({ ...prev, digitalSignature: signatureData }));
+        clearFieldError('digitalSignature');
+    };
+
+    const handleSignatureClear = () => {
+        setFormData(prev => ({ ...prev, digitalSignature: '' }));
     };
 
     const handleNext = () => {
-        if (validateForm(formData)) {
-            next();
+        if (step === 1) {
+            if (!accountValidated) {
+                showError('Please validate the account by entering the account number and clicking "Search"');
+                return;
+            }
         }
+        next();
     };
 
     const handleRequestOTP = async () => {
-        const signatureData = getSignatureData();
-        if (!signatureData) {
-            showError('Signature is required.');
+        if (!formData.phoneNumber) {
+            showError('Phone number not found for this account. Please contact support.');
             return;
         }
-        setFormData(prev => ({ ...prev, digitalSignature: signatureData }));
-
-        if (!validateForm(formData)) return;
 
         try {
-            await requestOTP(() => requestRtgsTransferOtp(phone!));
+            await requestOTP(
+                () => authService.requestWithdrawalOTP(formData.phoneNumber),
+                'OTP sent to your phone'
+            );
             info('OTP sent to your phone');
             next();
         } catch (error: any) {
@@ -115,8 +139,16 @@ export default function RTGSTransferForm() {
     };
 
     const handleResend = () => {
-        resendOTP(() => requestRtgsTransferOtp(phone!));
-    }
+        if (!formData.phoneNumber) {
+            showError('Phone number not found for this account. Please contact support.');
+            return;
+        }
+
+        resendOTP(
+            () => authService.requestWithdrawalOTP(formData.phoneNumber),
+            'OTP resent successfully'
+        );
+    };
 
     const handleSubmit = async () => {
         if (!validateForm(formData) || !branch?.id) return;
@@ -133,8 +165,8 @@ export default function RTGSTransferForm() {
                 BeneficiaryName: formData.beneficiaryName,
                 TransferAmount: parseFloat(formData.transferAmount),
                 PaymentNarrative: formData.paymentNarrative,
-                CustomerTelephone: phone!,
-                PhoneNumber: phone!,
+                CustomerTelephone: formData.phoneNumber,
+                PhoneNumber: formData.phoneNumber,
                 DigitalSignature: formData.digitalSignature,
                 OtpCode: formData.otpCode,
             };
@@ -183,68 +215,193 @@ export default function RTGSTransferForm() {
 
     const renderStep1 = () => (
         <div className="space-y-6">
-            <Field label="Account Number" required error={errors.orderingAccountNumber}>
-                <select name="orderingAccountNumber" value={formData.orderingAccountNumber} onChange={e => handleAccountChange(e.target.value)} className="w-full p-3 rounded-lg border border-gray-300">
-                    <option value="">Choose your account</option>
-                    {accounts.map(acc => <option key={acc.accountNumber} value={acc.accountNumber}>{acc.accountNumber} - {acc.accountHolderName}</option>)}
-                </select>
-            </Field>
-            <Field label="Customer Name" required error={errors.orderingCustomerName}>
-                <input type="text" name="orderingCustomerName" value={formData.orderingCustomerName} readOnly className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50" />
-            </Field>
+            <AccountSelector
+                accounts={[]}
+                selectedAccount={formData.orderingAccountNumber}
+                onAccountChange={handleAccountChange}
+                onAccountValidation={handleAccountValidation}
+                onPhoneNumberFetched={handlePhoneNumberFetched}
+                label="Account Number"
+                error={errors.orderingAccountNumber}
+                allowManualEntry={true}
+            />
+            {!accountValidated && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="text-sm font-medium text-amber-800">
+                        Please validate the account by entering the account number and clicking "Search"
+                    </div>
+                </div>
+            )}
+            {accountValidated && (
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Customer Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        name="orderingCustomerName"
+                        value={formData.orderingCustomerName}
+                        readOnly
+                        className="w-full p-3 rounded-lg border border-fuchsia-300 bg-gradient-to-r from-amber-50 to-fuchsia-50"
+                    />
+                    {errors.orderingCustomerName && (
+                        <p className="mt-1 text-sm text-red-600">{errors.orderingCustomerName}</p>
+                    )}
+                </div>
+            )}
         </div>
     );
 
     const renderStep2 = () => (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Beneficiary Bank" required error={errors.beneficiaryBank}>
-                    <select name="beneficiaryBank" value={formData.beneficiaryBank} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Beneficiary Bank <span className="text-red-500">*</span>
+                    </label>
+                    <select 
+                        name="beneficiaryBank" 
+                        value={formData.beneficiaryBank} 
+                        onChange={handleChange} 
+                        className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+                    >
                         <option value="">Select a bank</option>
                         {BANKS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
                     </select>
-                </Field>
-                <Field label="Beneficiary Branch" required error={errors.beneficiaryBranch}>
-                    <input type="text" name="beneficiaryBranch" value={formData.beneficiaryBranch} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300" />
-                </Field>
+                    {errors.beneficiaryBank && (
+                        <p className="mt-1 text-sm text-red-600">{errors.beneficiaryBank}</p>
+                    )}
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Beneficiary Branch <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="beneficiaryBranch" 
+                        value={formData.beneficiaryBranch} 
+                        onChange={handleChange} 
+                        className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200" 
+                    />
+                    {errors.beneficiaryBranch && (
+                        <p className="mt-1 text-sm text-red-600">{errors.beneficiaryBranch}</p>
+                    )}
+                </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Beneficiary Account" required error={errors.beneficiaryAccountNumber}>
-                    <input type="text" name="beneficiaryAccountNumber" value={formData.beneficiaryAccountNumber} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300" />
-                </Field>
-                <Field label="Beneficiary Name" required error={errors.beneficiaryName}>
-                    <input type="text" name="beneficiaryName" value={formData.beneficiaryName} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300" />
-                </Field>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Beneficiary Account <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="beneficiaryAccountNumber" 
+                        value={formData.beneficiaryAccountNumber} 
+                        onChange={handleChange} 
+                        className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200" 
+                    />
+                    {errors.beneficiaryAccountNumber && (
+                        <p className="mt-1 text-sm text-red-600">{errors.beneficiaryAccountNumber}</p>
+                    )}
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Beneficiary Name <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="beneficiaryName" 
+                        value={formData.beneficiaryName} 
+                        onChange={handleChange} 
+                        className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200" 
+                    />
+                    {errors.beneficiaryName && (
+                        <p className="mt-1 text-sm text-red-600">{errors.beneficiaryName}</p>
+                    )}
+                </div>
             </div>
-            <Field label="Transfer Amount (ETB)" required error={errors.transferAmount}>
-                <input type="text" name="transferAmount" value={formData.transferAmount} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300" placeholder="0.00" />
-            </Field>
-            <Field label="Payment Narrative" required error={errors.paymentNarrative}>
-                <textarea name="paymentNarrative" rows={3} value={formData.paymentNarrative} onChange={handleChange} className="w-full p-3 rounded-lg border border-gray-300" maxLength={200} />
-            </Field>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Transfer Amount (ETB) <span className="text-red-500">*</span>
+                </label>
+                <input 
+                    type="text" 
+                    name="transferAmount" 
+                    value={formData.transferAmount} 
+                    onChange={handleChange} 
+                    className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200" 
+                    placeholder="0.00" 
+                />
+                {errors.transferAmount && (
+                    <p className="mt-1 text-sm text-red-600">{errors.transferAmount}</p>
+                )}
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Narrative <span className="text-red-500">*</span>
+                </label>
+                <textarea 
+                    name="paymentNarrative" 
+                    rows={3} 
+                    value={formData.paymentNarrative} 
+                    onChange={handleChange} 
+                    className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200" 
+                    maxLength={200} 
+                />
+                {errors.paymentNarrative && (
+                    <p className="mt-1 text-sm text-red-600">{errors.paymentNarrative}</p>
+                )}
+            </div>
         </div>
     );
 
     const renderStep3 = () => (
         <div className="space-y-4">
             {checkApprovalStatus()}
-            {/* Review details here */}
+            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+                <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                    <span className="font-medium text-fuchsia-800">From Account:</span>
+                    <span className="font-mono font-semibold text-fuchsia-900">{formData.orderingAccountNumber}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                    <span className="font-medium text-fuchsia-800">Beneficiary Bank:</span>
+                    <span className="font-semibold text-fuchsia-900">{formData.beneficiaryBank}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                    <span className="font-medium text-fuchsia-800">Beneficiary Branch:</span>
+                    <span className="font-semibold text-fuchsia-900">{formData.beneficiaryBranch}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                    <span className="font-medium text-fuchsia-800">Beneficiary Account:</span>
+                    <span className="font-mono font-semibold text-fuchsia-900">{formData.beneficiaryAccountNumber}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                    <span className="font-medium text-fuchsia-800">Beneficiary Name:</span>
+                    <span className="font-semibold text-fuchsia-900">{formData.beneficiaryName}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                    <span className="font-medium text-fuchsia-800">Amount:</span>
+                    <span className="text-lg font-bold text-fuchsia-700">
+                        {Number(formData.transferAmount).toLocaleString()} ETB
+                    </span>
+                </div>
+            </div>
         </div>
     );
 
     const renderStep4 = () => (
-        <SignaturePad 
-            ref={signaturePadRef} 
-            onEnd={handleSignatureEnd} 
-            onClear={handleSignatureClear} 
-            isSignatureEmpty={isSignatureEmpty} 
-            error={errors.digitalSignature} 
-        />
+        <div className="space-y-6">
+            <SignatureStep 
+                onSignatureComplete={handleSignatureComplete}
+                onSignatureClear={handleSignatureClear}
+                error={errors.digitalSignature}
+            />
+        </div>
     );
 
     const renderStep5 = () => (
         <OTPVerification
-            phone={phone!}
+            phone={formData.phoneNumber}
             otp={formData.otpCode}
             onOtpChange={(otp) => setFormData(prev => ({...prev, otpCode: otp}))}
             onResendOtp={handleResend}
@@ -266,20 +423,66 @@ export default function RTGSTransferForm() {
         }
     };
 
+    const renderCustomNavigation = () => {
+        if (step === 4) {
+            return (
+                <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                    {!isFirst && (
+                        <button
+                            type="button"
+                            onClick={prev}
+                            className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+                        >
+                            Back
+                        </button>
+                    )}
+                    
+                    <button
+                        type="button"
+                        onClick={handleRequestOTP}
+                        disabled={!formData.digitalSignature || !formData.phoneNumber || otpLoading}
+                        className="bg-fuchsia-600 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ml-auto"
+                    >
+                        {otpLoading ? (
+                            <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Sending OTP...
+                            </>
+                        ) : (
+                            <>
+                                <Shield className="h-4 w-4" />
+                                Request OTP
+                            </>
+                        )}
+                    </button>
+                </div>
+            );
+        }
+
+        return (
+            <StepNavigation 
+                currentStep={step} 
+                totalSteps={5} 
+                onNext={isLast ? handleSubmit : handleNext} 
+                onBack={prev} 
+                nextLabel={isLast ? 'Submit' : 'Continue'} 
+                nextDisabled={
+                    (step === 1 && !accountValidated) || 
+                    (step === 5 && formData.otpCode.length !== 6) || 
+                    isSubmitting || 
+                    otpLoading
+                } 
+                nextLoading={isSubmitting || otpLoading} 
+                hideBack={isFirst} 
+            />
+        );
+    };
+
     return (
-        <FormLayout title="RTGS Transfer" phone={phone!} branchName={branch?.name} loading={loadingAccounts} error={errorAccounts}>
+        <FormLayout title="RTGS Transfer" phone={formData.phoneNumber || phone || null} branchName={branch?.name}>
             <form onSubmit={e => e.preventDefault()} className="space-y-6">
                 {getStepContent()}
-                <StepNavigation 
-                    currentStep={step} 
-                    totalSteps={5} 
-                    onNext={isLast ? handleSubmit : (step === 4 ? handleRequestOTP : handleNext)} 
-                    onBack={prev} 
-                    nextLabel={isLast ? 'Submit' : (step === 4 ? 'Request OTP' : 'Continue')} 
-                    nextDisabled={isSubmitting || otpLoading || (step === 4 && isSignatureEmpty)} 
-                    nextLoading={isSubmitting || otpLoading} 
-                    hideBack={isFirst} 
-                />
+                {renderCustomNavigation()}
             </form>
         </FormLayout>
     );

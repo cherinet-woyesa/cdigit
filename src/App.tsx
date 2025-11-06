@@ -208,7 +208,7 @@ function App() {
               <ProtectedRoute role="Greeter">
                 <GreeterDashboard />
               </ProtectedRoute>
-            } /> */}
+            } /> */
 
             {/* Public forms */}
             <Route path="/form/account-opening" element={<AccountOpeningForm />} />
@@ -260,6 +260,11 @@ function App() {
             {/* Additional forms */}
             <Route path="/form/pos-request" element={<POSRequest />} />
             <Route path="/form/pos-request/confirmation" element={<POSRequestConfirmation />} />
+            
+            {/* Statement Request routes */}
+            <Route path="/form/statement-request" element={<StatementRequestForm />} />
+            <Route path="/form/statement-request/confirmation" element={<StatementRequestConfirmation />} />
+            <Route path="/form/statement-request/list" element={<StatementRequestList />} />
             
             {/* Staff dashboard routes */}
             <Route path="/staff-dashboard" element={<MakerDashboard />} />

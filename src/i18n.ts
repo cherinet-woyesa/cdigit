@@ -7,12 +7,8 @@ import translationEN from './locales/en/translation.json';
 import translationAM from './locales/am/translation.json';
 import translationOM from './locales/om/translation.json';
 import translationTI from './locales/ti/translation.json';
-import translationSID from './locales/sid/translation.json';
-import translationWAL from './locales/wal/translation.json';
 import translationAA from './locales/aa/translation.json';
 import translationSGW from './locales/sgw/translation.json';
-import translationHDY from './locales/hdy/translation.json';
-import translationSO from './locales/so/translation.json';
 
 const resources = {
   en: {
@@ -27,23 +23,11 @@ const resources = {
   ti: {
     translation: translationTI
   },
-  sid: {
-    translation: translationSID
-  },
-  wal: {
-    translation: translationWAL
-  },
   aa: {
     translation: translationAA
   },
   sgw: {
     translation: translationSGW
-  },
-  hdy: {
-    translation: translationHDY
-  },
-  so: {
-    translation: translationSO
   }
 };
 
@@ -61,7 +45,7 @@ i18n
       order: ['localStorage', 'navigator', 'htmlTag'],
       caches: ['localStorage'],
     },
-    supportedLngs: ['en', 'am', 'om', 'ti', 'sid', 'aa', 'wal', 'sgw', 'hdy', 'so'],
+    supportedLngs: ['en', 'am', 'om', 'ti', 'aa', 'sgw'],
   });
 
 export default i18n;
