@@ -1,19 +1,19 @@
 // features/customer/forms/posRequest/POSRequest.tsx
 import { useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { useAddressManagement } from '../../hooks/useAddressManagement';
-import { FormLayout } from '../../components/FormLayout';
-import { AccountSelector } from '../../components/AccountSelector';
-import { StepNavigation } from '../../components/StepNavigation';
-import { posRequestValidationSchema } from '../../utils/posRequestValidationSchema';
-import { submitPosRequest } from '../../../../services/posRequestService';
-import authService from '../../../../services/authService';
-import Field from '../../../../components/Field';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { useAddressManagement } from '@features/customer/hooks/useAddressManagement';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { posRequestValidationSchema } from '@features/customer/utils/posRequestValidationSchema';
+import { submitPosRequest } from '@services/forms/posRequestService';
+import authService from '@services/auth/authService';
+import Field from '@components/form/Field';
 import { 
     Loader2, 
     CheckCircle2, 

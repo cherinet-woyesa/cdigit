@@ -1,5 +1,5 @@
 // Base service class for consistent API integration across all forms
-import { apiClient } from './apiClient';
+import { apiClient } from '@services/http';
 
 export interface BaseFormData {
   branchId?: string;

@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import { useTransactions } from '../../../hooks/useTransactions';
-import { ActionMessage } from '../../common';
-import QueueStats from './QueueStats';
-import ActionButtons from './ActionButtons';
-import QueueList from './QueueList';
-import CurrentCustomerModal from '../../modals/CurrentCustomerModal';
-import FormReferenceSearchModal from '../../modals/FormReferenceSearchModal';
-import CancelConfirmationModal from '../../../../../modals/CancelConfirmationModal';
-import DenominationModal from '../../../../../modals/DenominationModal';
-import type { WindowDto } from '../../../../../services/makerService';
+import { useTransactions } from '@features/maker/hooks/useTransactions';
+import { ActionMessage } from '@features/maker/components/common';
+import QueueStats from '@features/maker/components/sections/Transactions/QueueStats';
+import ActionButtons from '@features/maker/components/sections/Transactions/ActionButtons';
+import QueueList from '@features/maker/components/sections/Transactions/QueueList';
+import CurrentCustomerModal from '@features/maker/modals/CurrentCustomerModal';
+import FormReferenceSearchModal from '@features/maker/modals/FormReferenceSearchModal';
+import CancelConfirmationModal from '@components/modals/CancelConfirmationModal';
+import DenominationModal from '@components/modals/DenominationModal';
+import type { WindowDto } from '@services/makerService';
 
 interface TransactionsProps {
   activeSection?: string;

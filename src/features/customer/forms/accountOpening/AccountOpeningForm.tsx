@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useBranch } from "../../../../context/BranchContext";
-import { useAuth } from "../../../../context/AuthContext";
-import * as accountOpeningService from "../../../../services/accountOpeningService";
-import { checkAccountExistsByPhone } from "../../../../services/accountsService";
-import ProgressBar from '../../../../components/ProgressBar';
-import Field from '../../../../components/Field';
-import type { FormData, FormErrors, FormSummary } from "./types/formTypes";
-import { INITIAL_DATA, INITIAL_FORM_ERRORS } from "./types/formTypes";
-import { StepPersonal } from "./components/StepPersonal";
-import { StepAddress } from "./components/StepAddress";
-import { StepFinancial } from "./components/StepFinancial";
-import { StepOther } from "./components/StepOther";
-import { StepDocument } from "./components/StepDocument";
-import { StepEPayment } from "./components/StepEPayment";
-import { StepPassbook } from "./components/StepPassbook";
-import { StepSignature } from "./components/StepSignature";
-import { StepReview } from "./components/StepReview";
-import { useMultiStepForm } from '../../../../hooks/useMultiStepForm';
+import { useBranch } from "@context/BranchContext";
+import { useAuth } from "@context/AuthContext";
+import * as accountOpeningService from "@services/forms/accountOpeningService";
+import { checkAccountExistsByPhone } from "@services/accountsService";
+import ProgressBar from '@components/feedback/ProgressBar';
+import Field from '@components/form/Field';
+import type { FormData, FormErrors, FormSummary } from "@features/customer/forms/accountOpening/types/formTypes";
+import { INITIAL_DATA, INITIAL_FORM_ERRORS } from "@features/customer/forms/accountOpening/types/formTypes";
+import { StepPersonal } from "@features/customer/forms/accountOpening/components/StepPersonal";
+import { StepAddress } from "@features/customer/forms/accountOpening/components/StepAddress";
+import { StepFinancial } from "@features/customer/forms/accountOpening/components/StepFinancial";
+import { StepOther } from "@features/customer/forms/accountOpening/components/StepOther";
+import { StepDocument } from "@features/customer/forms/accountOpening/components/StepDocument";
+import { StepEPayment } from "@features/customer/forms/accountOpening/components/StepEPayment";
+import { StepPassbook } from "@features/customer/forms/accountOpening/components/StepPassbook";
+import { StepSignature } from "@features/customer/forms/accountOpening/components/StepSignature";
+import { StepReview } from "@features/customer/forms/accountOpening/components/StepReview";
+import { useMultiStepForm } from '@shared/hooks/useMultiStepForm';
 import { 
     Loader2, 
     AlertCircle, 
@@ -37,7 +37,7 @@ import {
 
 // Import translation hooks and components
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../../../../components/LanguageSwitcher';
+import LanguageSwitcher from '@components/language/LanguageSwitcher';
 
 // Enhanced error message component with translation
 function ErrorMessage({ message }: { message: string }) {

@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import managerService from "../../services/managerService";
+import managerService from "@services/managerService";
 import DataTable from "react-data-table-component";
-import { Button } from "../../components/ui/button";
+import { Button } from "@components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
-import { TransactionDetailModal } from "./TransactionDetailModal";
-import feedbackService from "../../services/feedbackService";
+} from "@components/ui/select";
+import { TransactionDetailModal } from "@features/manager/TransactionDetailModal";
+import feedbackService from "@services/feedbackService";
 
 
 interface Transaction {

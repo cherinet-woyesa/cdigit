@@ -2,22 +2,22 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
-import { FormLayout } from '../../components/FormLayout';
-import { StepNavigation } from '../../components/StepNavigation';
-import { AccountSelector } from '../../components/AccountSelector';
-import { SignatureStep } from '../../components/SignatureStep';
-import { OTPVerification } from '../../components/OTPVerification';
-import { rtgsTransferValidationSchema } from '../../utils/rtgsTransferValidationSchema';
-import { submitRtgsTransfer, requestRtgsTransferOtp } from '../../../../services/rtgsTransferService';
-import authService from '../../../../services/authService';
-import { requiresTransactionApproval } from '../../../../config/rbacMatrix';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { useApprovalWorkflow } from '@hooks/useApprovalWorkflow';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { SignatureStep } from '@features/customer/components/SignatureStep';
+import { OTPVerification } from '@features/customer/components/OTPVerification';
+import { rtgsTransferValidationSchema } from '@features/customer/utils/rtgsTransferValidationSchema';
+import { submitRtgsTransfer, requestRtgsTransferOtp } from '@services/transactions/rtgsTransferService';
+import authService from '@services/auth/authService';
+import { requiresTransactionApproval } from '@config/rbacMatrix';
 import { 
     Loader2, 
     CheckCircle2, 

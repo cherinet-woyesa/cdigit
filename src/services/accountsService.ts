@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { ApiResponse } from "../types/ApiResponse";
+import type { ApiResponse } from "@types";
 
 const API_BASE_URL = "http://localhost:5268/api";
 

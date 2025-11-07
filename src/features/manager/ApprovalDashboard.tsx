@@ -4,13 +4,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { usePermissions } from '../../hooks/usePermissions';
-import approvalWorkflowService, { type ApprovalWorkflow } from '../../services/approvalWorkflowService';
+import { usePermissions } from '@shared/hooks/usePermissions';
+import approvalWorkflowService, { type ApprovalWorkflow } from '@services/approvalWorkflowService';
 import { CheckCircle, XCircle, Clock, AlertCircle, Filter, Search, ChevronRight, FileText } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
-import signatureCryptoService, { type SignatureData, type VoucherData } from '../../services/signatureCryptoService';
-import { useAuth } from '../../context/AuthContext';
-import type { VoucherStatus } from '../../config/rbacMatrix';
+import signatureCryptoService, { type SignatureData, type VoucherData } from '@services/signatureCryptoService';
+import { useAuth } from '@context/AuthContext';
+import type { VoucherStatus } from '@config/rbacMatrix';
 
 const ApprovalDashboard: React.FC = () => {
   const { canApprove, role, can } = usePermissions();

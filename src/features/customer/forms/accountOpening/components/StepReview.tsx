@@ -1,5 +1,5 @@
 import React from 'react';
-import type { FormData } from '../types/formTypes';
+import type { FormData } from '@features/customer/forms/accountOpening/types/formTypes';
 import { Loader2, ChevronRight, CheckCircle2, Edit, User, MapPin, CreditCard, FileText, Shield, PenTool } from 'lucide-react';
 
 const formatLabel = (key: string) => {

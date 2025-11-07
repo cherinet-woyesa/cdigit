@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { useBranch } from '../../context/BranchContext';
+import { useBranch } from '@context/BranchContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { fetchBranches } from '../../services/branchService';
-import type { Branch } from '../../services/branchService';
+import { fetchBranches } from '@services/branch/branchService';
+import type { Branch } from '@services/branch/branchService';
 
 interface QRCodeScannerProps {
   onClose: () => void;

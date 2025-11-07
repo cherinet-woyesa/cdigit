@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { WindowDto } from '../../../services/makerService';
-import type { ActionMessage } from '../../../types/ActionMessage';
+import type { WindowDto } from '@services/makerService';
+import type { ActionMessage } from '@types';
 
 export interface Metric {
   label: string;

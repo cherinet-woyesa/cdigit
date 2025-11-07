@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { type TFunction } from 'i18next';
-import speechService from '../../services/speechService';
-import logo from '../../assets/logo.jpg';
+import speechService from '@services/speechService';
+import logo from '@assets/logo.jpg';
 import React from 'react';
-import authService from '../../services/authService';
+import authService from '@services/auth/authService';
 import { 
     Loader2, 
     AlertCircle, 

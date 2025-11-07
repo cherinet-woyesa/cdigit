@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Eraser, CheckCircle2, Shield, AlertCircle } from 'lucide-react';
-import { useSignature } from '../hooks/useSignature';
-import signatureCryptoService from '../../../services/signatureCryptoService';
+import { useSignature } from '@features/customer/hooks/useSignature';
+import signatureCryptoService from '@services/signatureCryptoService';
 
 interface SecureSignatureStepProps {
   onSignatureBound: (boundSignature: any) => void;

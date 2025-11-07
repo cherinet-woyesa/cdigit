@@ -1,19 +1,19 @@
 // features/customer/forms/cbeBirrLink/CbeBirrLinkForm.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../context/AuthContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useCustomerSearch } from '../../hooks/useCustomerSearch';
-import { useMultiAccountSelection } from '../../hooks/useMultiAccountSelection';
-import { cbeBirrLinkValidationSchema } from '../../utils/cbeBirrLinkValidationSchema';
-import { cbeBirrService } from '../../../../services/cbeBirrService';
-import { FormLayout } from '../../components/FormLayout';
-import { StepNavigation } from '../../components/StepNavigation';
-import Field from '../../components/Field';
-import CustomerInfoSection from '../../components/CustomerInfoSection';
-import AccountSelection from '../../components/AccountSelection';
+import { useAuth } from '@context/AuthContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useCustomerSearch } from '@features/customer/hooks/useCustomerSearch';
+import { useMultiAccountSelection } from '@features/customer/hooks/useMultiAccountSelection';
+import { cbeBirrLinkValidationSchema } from '@features/customer/utils/cbeBirrLinkValidationSchema';
+import { cbeBirrService } from '@services/cbeBirrService';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import Field from '@components/form/Field';
+import CustomerInfoSection from '@features/customer/components/CustomerInfoSection';
+import AccountSelection from '@features/customer/components/AccountSelection';
 import { Loader2 } from 'lucide-react';
 
 const ACTION_TYPES = [

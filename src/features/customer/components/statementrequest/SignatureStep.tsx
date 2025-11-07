@@ -1,6 +1,6 @@
 // features/customer/components/statementrequest/SignatureStep.tsx
 import React from 'react';
-import { SignatureStep as BaseSignatureStep } from '../../components/SignatureStep';
+import { SignatureStep as BaseSignatureStep } from '@features/customer/components/SignatureStep';
 
 interface SignatureStepProps {
   signaturePadRef: React.RefObject<any>;

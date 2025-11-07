@@ -1,8 +1,8 @@
 
 // features/customer/hooks/useMultiAccountSelection.ts
 import { useState } from 'react';
-import { type CustomerAccount } from '../../../services/cbeBirrService';
-import { useToast } from '../../../context/ToastContext';
+import { type CustomerAccount } from '@services/cbeBirrService';
+import { useToast } from '@context/ToastContext';
 
 export function useMultiAccountSelection(accounts: CustomerAccount[]) {
     const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);

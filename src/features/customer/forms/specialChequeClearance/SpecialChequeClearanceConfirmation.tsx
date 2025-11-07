@@ -2,9 +2,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useBranch } from '../../../../context/BranchContext';
+import { useBranch } from '@context/BranchContext';
 import { FileText, AlertTriangle, Info, File } from 'lucide-react';
-import { getSpecialChequeClearanceById } from '../../../../services/specialChequeClearanceService';
+import { getSpecialChequeClearanceById } from '@services/transactions/specialChequeClearanceService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -13,8 +13,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { formatAmount, getEntityId } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { formatAmount, getEntityId } from '@features/customer/utils/confirmationHelpers';
 
 interface SpecialChequeClearanceData {
     id?: string;

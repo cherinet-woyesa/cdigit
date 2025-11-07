@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { accessMethodDetector } from './services/accessMethodDetector';
-import { useMultiChannelBranch } from './context/MultiChannelBranchContext';
-import type { AccessMethod } from './types/multiChannelAccess';
+import { accessMethodDetector } from '@services/multiChannel/accessMethodDetector';
+import { useMultiChannelBranch } from '@context/MultiChannelBranchContext';
+import type { AccessMethod } from '@types';
 
 const Entrypoint = () => {
   const navigate = useNavigate();

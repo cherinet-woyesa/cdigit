@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useBranch } from '../../context/BranchContext';
-import { fetchBranches } from '../../services/branchService';
-import type { Branch } from '../../services/branchService';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useBranch } from '@context/BranchContext';
+import { fetchBranches } from '@services/branch/branchService';
+import type { Branch } from '@services/branch/branchService';
+import { useAuth } from '@context/AuthContext';
+import { useToast } from '@context/ToastContext';
 // Commented out QRCodeScanner import as requested
-// import QRCodeScanner from './QRCodeScanner';
+// import QRCodeScanner from '@features/branch/QRCodeScanner';
 import { 
   ChevronDownIcon, 
   MapPinIcon, 
@@ -20,8 +20,8 @@ import {
   XMarkIcon,
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
-import logo from '../../assets/logo.jpg';
-import cbeImage from '../../assets/cbe1.jpg';
+import logo from '@assets/logo.jpg';
+import cbeImage from '@assets/cbe1.jpg';
 
 // Extend the Branch interface to include translations
 interface BranchWithDistance extends Branch {

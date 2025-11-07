@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import makerService from "../../../../../services/makerService";
-import { useAuth } from "../../../../../context/AuthContext";
-import type{ PerformanceData } from '../../../types';
+import makerService from "@services/makerService";
+import { useAuth } from "@context/AuthContext";
+import type{ PerformanceData } from '@features/maker/types';
 
 interface MakerPerformanceProps {
   makerId: string;

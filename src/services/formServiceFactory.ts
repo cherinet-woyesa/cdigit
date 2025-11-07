@@ -1,5 +1,5 @@
 // Factory for creating form-specific services
-import { BaseFormService, type BaseFormData, type BaseFormResponse } from './baseFormService';
+import { BaseFormService, type BaseFormData, type BaseFormResponse } from '@services/baseFormService';
 
 /**
  * Creates a simple form service for forms that don't need custom logic

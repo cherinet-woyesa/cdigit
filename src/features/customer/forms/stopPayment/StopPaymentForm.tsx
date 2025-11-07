@@ -1,23 +1,23 @@
 // features/customer/forms/stopPayment/StopPaymentForm.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { useSignaturePad } from '../../hooks/useSignaturePad';
-import { useStopPaymentForm } from '../../hooks/useStopPaymentForm';
-import { stopPaymentValidationSchema } from '../../utils/stopPaymentValidationSchema';
-import stopPaymentService from '../../../../services/stopPaymentService';
-import { FormLayout } from '../../components/FormLayout';
-import { StepNavigation } from '../../components/StepNavigation';
-import SPOForm from '../../components/stoppayment/SPOForm';
-import RSPOForm from '../../components/stoppayment/RSPOForm';
-import ReviewStep from '../../components/stoppayment/ReviewStep';
-import SignatureStep from '../../components/stoppayment/SignatureStep';
-import OTPStep from '../../components/stoppayment/OTPStep';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { useSignaturePad } from '@features/customer/hooks/useSignaturePad';
+import { useStopPaymentForm } from '@features/customer/hooks/useStopPaymentForm';
+import { stopPaymentValidationSchema } from '@features/customer/utils/stopPaymentValidationSchema';
+import stopPaymentService from '@services/transactions/stopPaymentService';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import SPOForm from '@features/customer/components/stoppayment/SPOForm';
+import RSPOForm from '@features/customer/components/stoppayment/RSPOForm';
+import ReviewStep from '@features/customer/components/stoppayment/ReviewStep';
+import SignatureStep from '@features/customer/components/stoppayment/SignatureStep';
+import OTPStep from '@features/customer/components/stoppayment/OTPStep';
 
 export default function StopPaymentForm() {
     const navigate = useNavigate();

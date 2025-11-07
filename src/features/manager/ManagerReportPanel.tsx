@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
-import reportService from "../../services/reportService.ts";
+import reportService from "@services/reportService.ts";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { PieChart, Pie, Cell, Legend } from 'recharts';
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import { saveAs } from "file-saver";
 import axios from "axios";
 import { Download, FileImage, FileSpreadsheet, FileText, PlayCircle } from "lucide-react";
-import TrafficTabs from "../admin/TrafficTabs.tsx";
+import TrafficTabs from "@features/admin/components/TrafficTabs.tsx";
 
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import logo from "../../assets/logo.jpg"; // adjust to your logo path
-import { Card, CardContent } from "../../components/ui/card.tsx";
+import logo from "@assets/logo.jpg"; // adjust to your logo path
+import { Card, CardContent } from "@components/ui/card.tsx";
 
 
 
@@ -613,7 +613,7 @@ export default function ManagerReportPanel({ defaultBranchId }: { defaultBranchI
 
             {activeTab === "Branch Performance Overview" && (
                 <div className="p-6 space-y-6">
-                    <h2 className="text-2xl font-semibold mb-4">🏦 Branch Performance Overview</h2>
+                    <h2 className="text-2xl font-semibold mb-4">뱅 Branch Performance Overview</h2>
                     <p className="text-gray-600 mb-6">
                         A summary of average wait, service, and total time (in minutes) for each branch.
                         Lower times indicate higher efficiency.

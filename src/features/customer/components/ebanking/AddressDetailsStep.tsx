@@ -1,6 +1,6 @@
 // features/customer/components/ebanking/AddressDetailsStep.tsx
 import React from 'react';
-import Field from '../Field';
+import Field from '@features/customer/components/Field';
 import { Loader2 } from 'lucide-react';
 
 export default function AddressDetailsStep({ formData, onChange, errors, addressProps }) {

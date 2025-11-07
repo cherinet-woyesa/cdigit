@@ -4,7 +4,7 @@ import { MagnifyingGlassIcon, ArrowRightIcon } from '@heroicons/react/24/outline
 import clsx from 'clsx';
 
 // Assuming Form type is defined elsewhere and imported
-import type { Form } from '../../features/customer/Dashboard'; 
+import type { Form } from '@features/customer/Dashboard'; 
 
 const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
   form: Form;

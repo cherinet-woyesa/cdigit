@@ -1,17 +1,17 @@
 // features/customer/forms/customerIdMerge/CustomerIdMerge.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { FormLayout } from '../../components/FormLayout';
-import { StepNavigation } from '../../components/StepNavigation';
-import { customerIdMergeValidationSchema } from '../../utils/extendedValidationSchemas';
-import { customerIdMergeService } from '../../../../services/customerIdMergeService';
-import { OTPVerification } from '../../components/OTPVerification';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import authService from '../../../../services/authService';
-import { useFormSteps } from '../../hooks/useFormSteps';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { customerIdMergeValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
+import { customerIdMergeService } from '@services/forms/customerIdMergeService';
+import { OTPVerification } from '@features/customer/components/OTPVerification';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import authService from '@services/auth/authService';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
 
 interface FormData {
   sourceCustomerId: string;

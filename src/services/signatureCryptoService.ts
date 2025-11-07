@@ -3,7 +3,7 @@
  * Cryptographically binds digital signatures to vouchers using Web Crypto API
  */
 
-import authorizationAuditService from './authorizationAuditService';
+import authorizationAuditService from '@services/audit/authorizationAuditService';
 
 export interface SignatureData {
   signatureDataUrl: string; // Base64 data URL from canvas

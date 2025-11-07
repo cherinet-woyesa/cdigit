@@ -1,8 +1,8 @@
 
 // features/customer/components/stoppayment/SPOForm.tsx
 import React from 'react';
-import Field from '../Field';
-import { useUserAccounts } from '../../hooks/useUserAccounts';
+import Field from '@features/customer/components/Field';
+import { useUserAccounts } from '@features/customer/hooks/useUserAccounts';
 
 export default function SPOForm({ formData, onChange, errors }) {
     const { accounts } = useUserAccounts();

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
 import { RefreshCw, FileText, Calendar, Clock, MapPin, ChevronRight, CreditCard, AlertCircle, Loader2 } from 'lucide-react';
-import { statementService, type StatementRequestData } from '../../../../services/statementService';
-import { useUserAccounts } from '../../../../hooks/useUserAccounts';
+import { statementService, type StatementRequestData } from '@services/statementService';
+import { useUserAccounts } from '../../../../../../hooks/useUserAccounts';
 
 const StatementRequestList: React.FC = () => {
   const { t } = useTranslation();

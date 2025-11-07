@@ -5,7 +5,7 @@
  * with various statuses, amounts, and scenarios.
  */
 
-import type { Voucher, VoucherStatus } from '../features/maker/VoucherDashboard';
+import type { Voucher, VoucherStatus } from '@features/maker/pages/VoucherDashboard';
 
 export const sampleVouchers: Voucher[] = [
   // High-value withdrawal - requires approval

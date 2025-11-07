@@ -1,5 +1,5 @@
 // Extended validation schemas for new form types
-import { accountValidation, amountValidation, otpValidation, personalInfoValidation } from './validationSchemas';
+import { accountValidation, amountValidation, otpValidation, personalInfoValidation } from '@features/customer/utils/validationSchemas';
 
 // Date validation utilities
 export const dateValidation = {
@@ -286,13 +286,9 @@ export const customerIdMergeValidationSchema = {
 };
 
 export const customerProfileChangeValidationSchema = {
-  changeType: (value: string | undefined) => {
-    if (!value) return 'Change type is required';
-    const validTypes = ['Profile Update', 'Account Termination'];
-    if (!validTypes.includes(value)) return 'Please select a valid change type';
-    return undefined;
-  },
-  reason: businessValidation.reason,
+  // Account Information is validated through AccountSelector component
+  dateRequested: dateValidation.pastOrPresentDate,
+  phoneNumber: personalInfoValidation.phoneNumber,
   ...otpValidation
 };
 

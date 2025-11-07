@@ -1,6 +1,6 @@
 import React from "react";
-import Field from '../../../../../components/Field';
-import type { EPaymentService, Errors } from "../types/formTypes";
+import Field from '@components/form/Field';
+import type { EPaymentService, Errors } from "@features/customer/forms/accountOpening/types/formTypes";
 import { Loader2, ChevronRight, CreditCard, Smartphone, Laptop, MessageSquare } from 'lucide-react';
 
 export const validate = (data: EPaymentService): Errors<EPaymentService> => {

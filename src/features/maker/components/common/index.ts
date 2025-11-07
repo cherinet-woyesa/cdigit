@@ -1,4 +1,4 @@
-export { default as DashboardSkeleton } from './DashboardSkeleton';
-export { default as EmptyState } from './EmptyState';
-export { default as InfoTile } from './InfoTile';
-export { default as ActionMessage } from './ActionMessage';
+export { default as DashboardSkeleton } from '@features/maker/components/common/DashboardSkeleton';
+export { default as EmptyState } from '@features/maker/components/common/EmptyState';
+export { default as InfoTile } from '@features/maker/components/common/InfoTile';
+export { default as ActionMessage } from '@features/maker/components/common/ActionMessage';

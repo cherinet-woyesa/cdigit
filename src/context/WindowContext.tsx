@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { useAuth } from './AuthContext';
-import makerService, { type WindowDto } from '../services/makerService';
-import type { DecodedToken } from "../types/DecodedToken";
+import { useAuth } from '@context/AuthContext';
+import makerService, { type WindowDto } from '@services/makerService';
+import type { DecodedToken } from "@types";
 import { jwtDecode } from 'jwt-decode';
 
 interface WindowContextType {

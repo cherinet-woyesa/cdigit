@@ -1,7 +1,7 @@
 
 // features/customer/hooks/useStopPaymentForm.ts
 import { useState } from 'react';
-import { type StopPaymentOrderResponseDto } from '../../../services/stopPaymentService';
+import { type StopPaymentOrderResponseDto } from '@services/transactions/stopPaymentService';
 
 export type SPOFormMode = 'spo' | 'rspo';
 

@@ -1,7 +1,7 @@
 // hooks/useAccountSelection.ts
 
 import { useState, useEffect } from 'react';
-import { useUserAccounts } from './useUserAccounts';
+import { useUserAccounts } from '@features/customer/hooks/useUserAccounts';
 
 export function useAccountSelection(storageKey: string = 'selectedAccount') {
   const { accounts, loadingAccounts, errorAccounts, refreshAccounts } = useUserAccounts();

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PettyCashFormResponseDto } from '../../../types';
+import type { PettyCashFormResponseDto } from '@features/maker/types';
 
 interface PettyCashActionsProps {
   data: PettyCashFormResponseDto | null;

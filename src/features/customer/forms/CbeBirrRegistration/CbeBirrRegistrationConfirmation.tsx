@@ -1,8 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
 import { Heart, User, Phone, IdCard, Building, BookOpen, Users, MapPin } from 'lucide-react';
 import {
     SuccessHeader,
@@ -13,8 +13,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { formatQueueToken, getEntityId } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { formatQueueToken, getEntityId } from '@features/customer/utils/confirmationHelpers';
 
 interface RegistrationData {
     id?: string;

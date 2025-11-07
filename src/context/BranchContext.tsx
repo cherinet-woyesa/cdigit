@@ -1,9 +1,9 @@
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getBranchById, fetchBranches } from '../services/branchService';
-import type { Branch } from '../services/branchService';
-import { useAuth } from './AuthContext';
+import { getBranchById, fetchBranches } from "@services/branch/branchService";
+import type { Branch } from "@services/branch/branchService";
+import { useAuth } from '@context/AuthContext';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useAuth } from '../../../context/AuthContext';
-import signatureCryptoService, { type SignatureData, type VoucherData } from '../../../services/signatureCryptoService';
+import { useAuth } from '@context/AuthContext';
+import signatureCryptoService, { type SignatureData, type VoucherData } from '@services/signatureCryptoService';
 
 export function useSignature() {
   const { user } = useAuth();

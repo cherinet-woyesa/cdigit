@@ -2,9 +2,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useBranch } from '../../../../context/BranchContext';
+import { useBranch } from '@context/BranchContext';
 import { FileText, User, Users } from 'lucide-react';
-import { getCustomerIdMergeById } from '../../../../services/customerIdMergeService';
+import { getCustomerIdMergeById } from '@services/forms/customerIdMergeService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -13,8 +13,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { getEntityId } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { getEntityId } from '@features/customer/utils/confirmationHelpers';
 
 interface CustomerIdMergeData {
     id?: string;

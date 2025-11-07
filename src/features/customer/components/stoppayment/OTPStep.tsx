@@ -1,6 +1,6 @@
 
 // features/customer/components/stoppayment/OTPStep.tsx
-import OTPVerification from '../OTPVerification';
+import OTPVerification from '@features/customer/components/OTPVerification';
 
 interface OTPStepProps {
     otpCode: string;

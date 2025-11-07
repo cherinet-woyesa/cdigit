@@ -2,11 +2,11 @@
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
 import toast from "react-hot-toast";
-import { Button } from "../../components/ui/button";
-import managerPettyCashService from "../../services/managerPettyCashService";
-import PettyCashDetailModal from "./PettyCashDetailModal";
-import { useAuth } from "../../context/AuthContext";
-import type { PettyCashFormResponseDto } from "../../types/PettyCash/PettyCashFormResponseDto";
+import { Button } from "@components/ui/button";
+import managerPettyCashService from "@services/transactions/managerPettyCashService";
+import PettyCashDetailModal from "@features/manager/PettyCashDetailModal";
+import { useAuth } from "@context/AuthContext";
+import type { PettyCashFormResponseDto } from "@types";
 
 export default function PettyCash({ branchId, voultManagerId }: { branchId: string; voultManagerId: string, }) {
   const { token } = useAuth();

@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { speechService } from '../services/speechService';
-import { LANGUAGES, LANGUAGE_CONFIG } from '../constants/languageConfig';
-import type { LanguageCode } from '../constants/languageConfig';
-import { useAuth } from '../context/AuthContext';
+import { speechService } from '@services/speechService';
+import { LANGUAGES, LANGUAGE_CONFIG } from '@constants/languageConfig';
+import type { LanguageCode } from '@constants/languageConfig';
+import { useAuth } from '@context/AuthContext';
 
 // Define the languages to show outside component for better performance
 const languagesToShow = ['en', 'am', 'om', 'ti', 'so'];

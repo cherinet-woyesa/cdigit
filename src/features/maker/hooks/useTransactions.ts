@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { jwtDecode } from "jwt-decode";
 import { HubConnectionBuilder } from '@microsoft/signalr';
-import { useAuth } from "../../../context/AuthContext";
-import { useNotification } from "../../../context/NotificationContext";
-import makerService, { type CustomerQueueItem, type NextCustomerResponse, type TransactionType } from "../../../services/makerService";
-import { speechService } from "../../../services/speechService";
-import type { DecodedToken } from "../types";
-import type { WindowDto } from "../../../services/makerService";
-import type { ActionMessage } from "../../../types/ActionMessage";
+import { useAuth } from "@context/AuthContext";
+import { useNotification } from "@context/NotificationContext";
+import makerService, { type CustomerQueueItem, type NextCustomerResponse, type TransactionType } from "@services/makerService";
+import { speechService } from "@services/speechService";
+import type { DecodedToken } from "@features/maker/types";
+import type { WindowDto } from "@services/makerService";
+import type { ActionMessage } from "@types";
 
 export const useTransactions = (assignedWindow?: WindowDto | null) => {
   const { token, logout } = useAuth();

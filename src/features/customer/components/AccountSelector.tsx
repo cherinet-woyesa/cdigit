@@ -1,7 +1,7 @@
 // components/AccountSelector.tsx
 import { useState } from 'react';
 import { Search, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import accountService from '../../../services/accountsService';
+import accountService from '@services/accountsService';
 
 interface Account {
   accountNumber: string;

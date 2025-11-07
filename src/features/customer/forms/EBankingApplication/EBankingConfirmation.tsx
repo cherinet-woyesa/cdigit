@@ -1,10 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
 import { Wifi, User, CreditCard, Phone, Building } from 'lucide-react';
-import { cancelEBankingApplicationByCustomer } from '../../../../services/eBankingApplicationService';
+import { cancelEBankingApplicationByCustomer } from '@services/forms/eBankingApplicationService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -15,8 +15,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { formatQueueToken, getEntityId, initializeData } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { formatQueueToken, getEntityId, initializeData } from '@features/customer/utils/confirmationHelpers';
 
 const E_BANKING_OPTIONS = [
     { id: 'mobile_banking', label: 'Mobile Banking', icon: '📱' },

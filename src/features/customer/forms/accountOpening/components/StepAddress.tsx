@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { getRegions, getZones, getWoredas } from "../../../../../services/addressService";
-import Field from '../../../../../components/Field';
-import type { AddressDetail, Errors } from "../types/formTypes";
+import { getRegions, getZones, getWoredas } from "@services/addressService";
+import Field from '@components/form/Field';
+import type { AddressDetail, Errors } from "@features/customer/forms/accountOpening/types/formTypes";
 import { Loader2, ChevronRight, MapPin, Phone, Mail } from 'lucide-react';
 
 function getStartedPhoneNumber() {

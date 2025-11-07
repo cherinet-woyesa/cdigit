@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type DocumentRecord, type DocumentSearchDto, searchDocuments, uploadDocument, getDocumentById, deleteDocument } from '../../services/documentService';
-import { useToast } from '../../context/ToastContext';
+import { type DocumentRecord, type DocumentSearchDto, searchDocuments, uploadDocument, getDocumentById, deleteDocument } from '@services/documentService';
+import { useToast } from '@context/ToastContext';
 
 const DocumentManagement: React.FC = () => {
   const { t } = useTranslation();

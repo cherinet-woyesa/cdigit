@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import WindowsWithMaker from "./WindowsWithMaker";
+import WindowsWithMaker from "@features/manager/WindowsWithMaker";
 
 export default function AssignMakerRoute() {
   const [branchId, setBranchId] = useState<string>("");

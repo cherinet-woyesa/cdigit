@@ -16,7 +16,7 @@ import {
   QrCodeIcon
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import LanguageSwitcher from '@components/language/LanguageSwitcher';
 
 // Service categories for kiosk
 const serviceCategories = [

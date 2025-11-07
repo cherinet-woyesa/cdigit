@@ -6,11 +6,11 @@
  */
 
 import { createContext, useState, useContext, useEffect, useCallback, type ReactNode } from 'react';
-import type { BranchContext as BranchContextType, AccessMethod } from '../types/multiChannelAccess';
-import { useBranch } from './BranchContext';
-import { accessMethodDetector } from '../services/accessMethodDetector';
-import { STORAGE_KEYS } from '../constants/multiChannelAccess';
-import { BranchContextError } from '../types/multiChannelAccess';
+import type { BranchContext as BranchContextType, AccessMethod } from '@types';
+import { useBranch } from '@context/BranchContext';
+import { accessMethodDetector } from "@services/multiChannel/accessMethodDetector";
+import { STORAGE_KEYS } from '@constants/multiChannelAccess';
+import { BranchContextError } from '@types';
 
 /**
  * Multi-channel branch context interface

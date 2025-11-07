@@ -10,9 +10,9 @@ import {
   VALIDATION_MESSAGES,
   getTransactionLimits,
   requiresApproval,
-} from '../config/businessRules';
-import { validationAuditService } from '../services/validationAuditService';
-import type { ValidationResult as AuditValidationResult } from '../services/validationAuditService';
+} from '@config/businessRules';
+import { validationAuditService } from '@services/validationAuditService';
+import type { ValidationResult as AuditValidationResult } from '@services/validationAuditService';
 
 export interface ValidationResult {
   isValid: boolean;

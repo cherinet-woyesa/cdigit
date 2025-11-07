@@ -1,9 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../context/AuthContext';
+import { useAuth } from '@context/AuthContext';
 import { Plane, User, CreditCard, DollarSign, Building, PenTool } from 'lucide-react';
-import depositService from '../../../../services/depositService';
+import depositService from '@services/transactions/depositService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -14,8 +14,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { formatAmount, formatQueueToken, getEntityId, initializeData } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { formatAmount, formatQueueToken, getEntityId, initializeData } from '@features/customer/utils/confirmationHelpers';
 
 type DepositData = {
     id?: string;

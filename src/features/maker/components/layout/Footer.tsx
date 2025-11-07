@@ -1,15 +1,12 @@
-import React from "react";
+// Simple Footer component
+import React from 'react';
 
 const Footer: React.FC = () => {
-  const year = new Date().getFullYear();
   return (
-    <footer className="bg-white border-t border-gray-200 text-center py-3">
-      <p className="text-xs text-gray-600">
-        &copy; {year} Commercial Bank of Ethiopia. All Rights Reserved.
-      </p>
-      <p className="text-xs text-gray-500 italic mt-0.5">
-        "Committed to Your Progress"
-      </p>
+    <footer className="bg-white border-t border-gray-200 py-4 px-6">
+      <div className="text-center text-sm text-gray-600">
+        © {new Date().getFullYear()} CBE Forms. All rights reserved.
+      </div>
     </footer>
   );
 };

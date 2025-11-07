@@ -1,22 +1,22 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import toast from "react-hot-toast";
-import { safeJWTDecode, isTokenExpired } from "../../utils/jwt";
-import managerService from "../../services/managerService";
+import { safeJWTDecode, isTokenExpired } from "@utils/jwt";
+import managerService from "@services/managerService";
 
-import BranchAdUsers from "./BranchAdUsers";
-import Windows from "./Windows";
-import AssignMaker from "./AssignMaker";
-import Transactions from "./Transactions";
-import VipCustomers from "./VipCustomer";
-import PettyCash from "./PettyCash";
-import ApprovalDashboard from "./ApprovalDashboard";
-import ScreenDisplay from "../screen/ScreenDisplay";
-import ManagerReportPanel from "./ManagerReportPanel";
-import CreateManagerBranchModal from "./CreateManagerBranchModal";
-import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
-import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
-import MainLayout from "./ManagerLayout";
-import type { Branch } from "../../types/Branch";
+import BranchAdUsers from "@features/manager/BranchAdUsers";
+import Windows from "@features/manager/Windows";
+import AssignMaker from "@features/manager/AssignMaker";
+import Transactions from "@features/manager/Transactions";
+import VipCustomers from "@features/manager/VipCustomer";
+import PettyCash from "@features/manager/PettyCash";
+import ApprovalDashboard from "@features/manager/ApprovalDashboard";
+import ScreenDisplay from "@features/screen/ScreenDisplay";
+import ManagerReportPanel from "@features/manager/ManagerReportPanel";
+import CreateManagerBranchModal from "@features/manager/CreateManagerBranchModal";
+import DashboardMetrics, { type Metric } from "@components/dashboard/DashboardMetrics";
+import { DashboardErrorBoundary } from "@components/dashboard/ErrorBoundary";
+import MainLayout from "@features/manager/ManagerLayout";
+import type { Branch } from "@types";
 
 
 interface DashboardStats {

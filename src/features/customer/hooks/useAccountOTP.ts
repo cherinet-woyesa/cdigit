@@ -1,7 +1,7 @@
 // hooks/useAccountOTP.ts
 import { useState, useCallback } from 'react';
-import accountService from '../../../services/accountsService';
-import authService from '../../../services/authService';
+import accountService from '@services/accountsService';
+import authService from '@services/auth/authService';
 
 export function useAccountOTP() {
   const [otpLoading, setOtpLoading] = useState(false);

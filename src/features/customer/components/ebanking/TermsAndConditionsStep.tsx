@@ -1,7 +1,7 @@
 // features/customer/components/ebanking/TermsAndConditionsStep.tsx
 import React from 'react';
-import Field from '../Field';
-import FileUpload from '../FileUpload';
+import Field from '@features/customer/components/Field';
+import FileUpload from '@features/customer/components/FileUpload';
 
 export default function TermsAndConditionsStep({ formData, onChange, errors, onFileChange, idCopy }) {
     return (

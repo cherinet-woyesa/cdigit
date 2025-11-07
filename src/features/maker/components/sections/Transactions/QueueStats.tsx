@@ -1,5 +1,5 @@
 import React from 'react';
-import type { TransactionType } from '../../../../../services/makerService';
+import type { TransactionType } from '@services/makerService';
 
 interface QueueStatsProps {
   stats: {

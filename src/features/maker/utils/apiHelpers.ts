@@ -1,4 +1,4 @@
-import type { ActionMessage } from '../../../types/ActionMessage';
+import type { ActionMessage } from '@types';
 
 /**
  * Handle API errors consistently

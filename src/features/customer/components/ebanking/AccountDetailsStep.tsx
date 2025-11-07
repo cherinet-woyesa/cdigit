@@ -1,7 +1,7 @@
 
 // features/customer/components/ebanking/AccountDetailsStep.tsx
 import React from 'react';
-import Field from '../Field';
+import Field from '@features/customer/components/Field';
 
 export default function AccountDetailsStep({ formData, onChange, errors, onAccountChange, accounts }) {
     return (

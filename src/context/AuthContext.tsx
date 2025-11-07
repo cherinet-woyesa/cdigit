@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import type { AccessMethod } from '../types/multiChannelAccess';
-import { accessMethodDetector } from '../services/accessMethodDetector';
+import type { AccessMethod } from '@types';
+import { accessMethodDetector } from "@services/multiChannel/accessMethodDetector";
 
 interface User {
     id: string;

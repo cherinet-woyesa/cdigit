@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import managerService from "../../services/managerService";
-import CreateStaff from "./CreateStaff";
+import managerService from "@services/managerService";
+import CreateStaff from "@features/manager/CreateStaff";
 import DataTable from "react-data-table-component";
-import { Button } from "../../components/ui/button";
+import { Button } from "@components/ui/button";
 
 interface AdUser {
   id: string;

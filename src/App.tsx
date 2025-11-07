@@ -1,96 +1,95 @@
 import Entrypoint from './Entrypoint';
-import Welcome from './components/Welcome';
-import ReceptionistDashboard from './features/receptionist/ReceptionistDashboard';
-import QRLogin from './features/auth/QRLogin';
-import VipBooking from './features/vip/VipBooking';
+import Welcome from '@components/Welcome';
+import ReceptionistDashboard from '@features/receptionist/ReceptionistDashboard';
+import QRLogin from '@features/auth/QRLogin';
+import VipBooking from '@features/vip/VipBooking';
 import { useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
-import { useTokenRefresh } from './hooks/useTokenRefresh';
-import ProtectedRoute from './components/ProtectedRoute';
-import OTPLogin from './features/auth/OTPLogin';
-import QRTestPage from './features/branch/QRTestPage';
-import QRCodeGenerator from './features/branch/QRCodeGenerator';
-import BranchSelectionEnhanced from './features/branch/BranchSelectionEnhanced';
-import StaffLogin from './features/auth/StaffLogin';
-import CashDeposit from './features/customer/forms/cashDeposit/CashDeposit';
-import CashDepositConfirmation from './features/customer/forms/cashDeposit/CashDepositConfirmation';
-import CashWithdrawal from './features/customer/forms/cashWithdrawal/CashWithDrawal';
-import CashWithDrawalConfirmation from './features/customer/forms/cashWithdrawal/CashWithDrawalConfirmation';
-import FundTransfer from './features/customer/forms/fundTransfer/FundTransfer';
-import FundTransferConfirmation from './features/customer/forms/fundTransfer/FundTransferConfirmation';
-import AccountOpeningForm from './features/customer/forms/accountOpening/AccountOpeningForm';
-import RTGSTransfer from './features/customer/forms/RTGSTransfer/RTGSTransfer';
-import EBankingApplication from './features/customer/forms/EBankingApplication/EBankingApplication';
-import CbeBirrRegistration from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistration';
-import LanguageSwitcher from './components/LanguageSwitcher';
+import { useAuth } from '@context/AuthContext';
+import { useTokenRefresh } from '@hooks/useTokenRefresh';
+import ProtectedRoute from "@shared/components/ProtectedRoute";
+import OTPLogin from '@features/auth/OTPLogin';
+import QRTestPage from '@features/branch/QRTestPage';
+import QRCodeGenerator from '@features/branch/QRCodeGenerator';
+import BranchSelectionEnhanced from '@features/branch/BranchSelectionEnhanced';
+import StaffLogin from '@features/auth/StaffLogin';
+import CashDeposit from '@features/customer/forms/cashDeposit/CashDeposit';
+import CashDepositConfirmation from '@features/customer/forms/cashDeposit/CashDepositConfirmation';
+import CashWithdrawal from '@features/customer/forms/cashWithdrawal/CashWithDrawal';
+import CashWithDrawalConfirmation from '@features/customer/forms/cashWithdrawal/CashWithDrawalConfirmation';
+import FundTransfer from '@features/customer/forms/fundTransfer/FundTransfer';
+import FundTransferConfirmation from '@features/customer/forms/fundTransfer/FundTransferConfirmation';
+import AccountOpeningForm from '@features/customer/forms/accountOpening/AccountOpeningForm';
+import RTGSTransfer from '@features/customer/forms/RTGSTransfer/RTGSTransfer';
+import EBankingApplication from '@features/customer/forms/EBankingApplication/EBankingApplication';
+import CbeBirrRegistration from '@features/customer/forms/CbeBirrRegistration/CbeBirrRegistration';
+import LanguageSwitcher from "@components/language/LanguageSwitcher";
 import './i18n';
-import AssignMakerRoute from './features/manager/AssignMakerRoute';
-import CreateUserManagerRoute from './features/manager/CreateStaffRoute';
-import AdminDashboard from './features/admin/AdminDashboard';
-import ManagerDashboard from './features/manager/ManagerDashboard';
-import MakerDashboard from './features/maker/MakerDashboard'; // CHANGED: Import MakerDashboard instead of MakerLayout
-import Dashboard from './features/customer/Dashboard';
-import TransactionHistory from './features/customer/TransactionHistory';
-import CbeBirrRegistrationConfirmation from './features/customer/forms/CbeBirrRegistration/CbeBirrRegistrationConfirmation';
-import RTGSTransferConfirmation from './features/customer/forms/RTGSTransfer/RTGSTransferConfirmation';
-import EBankingConfirmation from './features/customer/forms/EBankingApplication/EBankingConfirmation';
-import POSRequest from './features/customer/forms/posRequest/POSRequest';
-import POSRequestConfirmation from './features/customer/forms/posRequest/POSRequestConfirmation';
-import StatementRequestForm from './features/customer/forms/statementRequest/StatementRequestForm';
-import StatementRequestConfirmation from './features/customer/forms/statementRequest/StatementRequestConfirmation';
-import CbeBirrLinkForm from './features/customer/forms/cbeBirrLink/CbeBirrLinkForm';
-import CbeBirrLinkConfirmation from './features/customer/forms/cbeBirrLink/CbeBirrLinkConfirmation';
-import StopPaymentForm from './features/customer/forms/stopPayment/StopPaymentForm';
-import StopPaymentConfirmation from './features/customer/forms/stopPayment/StopPaymentConfirmation';
-import PettyCashForm from './features/internal/forms/pettyCash/PettyCashForm';
-import PettyCashConfirmation from './features/internal/forms/pettyCash/PettyCashConfirmation';
-import LanguageSelection from './components/LanguageSelection';
-import StaffRouteGuard from './components/StaffRouteGuard';
-import DocumentManagement from './features/documents/DocumentManagement';
-import KioskMode from './features/customer/KioskMode';
-import LostPassbookReplacementForm from './features/customer/forms/lostPassbookReplacement/LostPassbookReplacementForm';
-import MerchantAccountOpeningApplicationForm from './features/customer/forms/merchantAccountOpening/MerchantAccountOpeningApplicationForm';
-import FixedTimeDepositAccountRequestForm from './features/customer/forms/fixedTimeDepositAccountRequest/FixedTimeDepositAccountRequestForm';
-import AgentAccountOpeningForm from './features/customer/forms/agentAccountOpening/AgentAccountOpeningForm';
-import AdditionalPOSRequestForm from './features/customer/forms/additionalPosRequest/AdditionalPosRequest';
-import ChequeReturnSlipForm from './features/customer/forms/chequeReturnSlip/ChequeReturnSlip';
-import BalanceConfirmation from './features/customer/forms/balanceConfirmation/BalanceConfirmation';
-import BalanceConfirmationConfirmation from './features/customer/forms/balanceConfirmation/BalanceConfirmationConfirmation';
-import CheckDeposit from './features/customer/forms/checkDeposit/CheckDeposit';
-import CheckDepositConfirmation from './features/customer/forms/checkDeposit/CheckDepositConfirmation';
-import ChequeBookRequest from './features/customer/forms/chequeBookRequest/ChequeBookRequest';
-import ChequeBookRequestConfirmation from './features/customer/forms/chequeBookRequest/ChequeBookRequestConfirmation';
-import CheckWithdrawal from './features/customer/forms/checkWithdrawal/CheckWithdrawal';
-import CheckWithdrawalConfirmation from './features/customer/forms/checkWithdrawal/CheckWithdrawalConfirmation';
-import CashDiscrepancyReport from './features/customer/forms/cashDiscrepancyReport/CashDiscrepancyReport';
-import CashDiscrepancyReportConfirmation from './features/customer/forms/cashDiscrepancyReport/CashDiscrepancyReportConfirmation';
-import CorporateCustomer from './features/customer/forms/corporateCustomer/CorporateCustomer';
-import CorporateCustomerConfirmation from './features/customer/forms/corporateCustomer/CorporateCustomerConfirmation';
-import CustomerIdMerge from './features/customer/forms/customerIdMerge/CustomerIdMerge';
-import CustomerIdMergeConfirmation from './features/customer/forms/customerIdMerge/CustomerIdMergeConfirmation';
-import CustomerProfileChange from './features/customer/forms/customerProfileChange/CustomerProfileChange';
-import CustomerProfileChangeConfirmation from './features/customer/forms/customerProfileChange/CustomerProfileChangeConfirmation';
-import POSDeliveryForm from './features/customer/forms/posDeliveryForm/POSDeliveryForm';
-import POSDeliveryFormConfirmation from './features/customer/forms/posDeliveryForm/POSDeliveryFormConfirmation';
-import SpecialChequeClearance from './features/customer/forms/specialChequeClearance/SpecialChequeClearance';
-import SpecialChequeClearanceConfirmation from './features/customer/forms/specialChequeClearance/SpecialChequeClearanceConfirmation';
-import TicketMandateRequest from './features/customer/forms/ticketMandateRequest/TicketMandateRequest';
-import TicketMandateRequestConfirmation from './features/customer/forms/ticketMandateRequest/TicketMandateRequestConfirmation';
+import AssignMakerRoute from '@features/manager/AssignMakerRoute';
+import CreateUserManagerRoute from '@features/manager/CreateStaffRoute';
+import AdminDashboard from '@features/admin/AdminDashboard';
+import ManagerDashboard from '@features/manager/ManagerDashboard';
+import MakerDashboard from "@features/maker/pages/MakerDashboard"; // CHANGED: Import MakerDashboard instead of MakerLayout
+import Dashboard from '@features/customer/Dashboard';
+import TransactionHistory from '@features/customer/TransactionHistory';
+import CbeBirrRegistrationConfirmation from '@features/customer/forms/CbeBirrRegistration/CbeBirrRegistrationConfirmation';
+import RTGSTransferConfirmation from '@features/customer/forms/RTGSTransfer/RTGSTransferConfirmation';
+import EBankingConfirmation from '@features/customer/forms/EBankingApplication/EBankingConfirmation';
+import POSRequest from '@features/customer/forms/posRequest/POSRequest';
+import POSRequestConfirmation from '@features/customer/forms/posRequest/POSRequestConfirmation';
+import StatementRequestForm from '@features/customer/forms/statementRequest/StatementRequestForm';
+import StatementRequestConfirmation from '@features/customer/forms/statementRequest/StatementRequestConfirmation';
+import CbeBirrLinkForm from '@features/customer/forms/cbeBirrLink/CbeBirrLinkForm';
+import CbeBirrLinkConfirmation from '@features/customer/forms/cbeBirrLink/CbeBirrLinkConfirmation';
+import StopPaymentForm from '@features/customer/forms/stopPayment/StopPaymentForm';
+import StopPaymentConfirmation from '@features/customer/forms/stopPayment/StopPaymentConfirmation';
+
+import LanguageSelection from "@components/language/LanguageSelection";
+import StaffRouteGuard from "@shared/components/StaffRouteGuard";
+import DocumentManagement from '@features/documents/DocumentManagement';
+import KioskMode from '@features/customer/KioskMode';
+import LostPassbookReplacementForm from '@features/customer/forms/lostPassbookReplacement/LostPassbookReplacementForm';
+import MerchantAccountOpeningApplicationForm from '@features/customer/forms/merchantAccountOpening/MerchantAccountOpeningApplicationForm';
+import FixedTimeDepositAccountRequestForm from '@features/customer/forms/fixedTimeDepositAccountRequest/FixedTimeDepositAccountRequestForm';
+import AgentAccountOpeningForm from '@features/customer/forms/agentAccountOpening/AgentAccountOpeningForm';
+import AdditionalPOSRequestForm from '@features/customer/forms/additionalPosRequest/AdditionalPosRequest';
+import ChequeReturnSlipForm from '@features/customer/forms/chequeReturnSlip/ChequeReturnSlip';
+import BalanceConfirmation from '@features/customer/forms/balanceConfirmation/BalanceConfirmation';
+import BalanceConfirmationConfirmation from '@features/customer/forms/balanceConfirmation/BalanceConfirmationConfirmation';
+import CheckDeposit from '@features/customer/forms/checkDeposit/CheckDeposit';
+import CheckDepositConfirmation from '@features/customer/forms/checkDeposit/CheckDepositConfirmation';
+import ChequeBookRequest from '@features/customer/forms/chequeBookRequest/ChequeBookRequest';
+import ChequeBookRequestConfirmation from '@features/customer/forms/chequeBookRequest/ChequeBookRequestConfirmation';
+import CheckWithdrawal from '@features/customer/forms/checkWithdrawal/CheckWithdrawal';
+import CheckWithdrawalConfirmation from '@features/customer/forms/checkWithdrawal/CheckWithdrawalConfirmation';
+import CashDiscrepancyReport from '@features/customer/forms/cashDiscrepancyReport/CashDiscrepancyReport';
+import CashDiscrepancyReportConfirmation from '@features/customer/forms/cashDiscrepancyReport/CashDiscrepancyReportConfirmation';
+import CorporateCustomer from '@features/customer/forms/corporateCustomer/CorporateCustomer';
+import CorporateCustomerConfirmation from '@features/customer/forms/corporateCustomer/CorporateCustomerConfirmation';
+import CustomerIdMerge from '@features/customer/forms/customerIdMerge/CustomerIdMerge';
+import CustomerIdMergeConfirmation from '@features/customer/forms/customerIdMerge/CustomerIdMergeConfirmation';
+import CustomerProfileChange from '@features/customer/forms/customerProfileChange/CustomerProfileChange';
+import CustomerProfileChangeConfirmation from '@features/customer/forms/customerProfileChange/CustomerProfileChangeConfirmation';
+import POSDeliveryForm from '@features/customer/forms/posDeliveryForm/POSDeliveryForm';
+import POSDeliveryFormConfirmation from '@features/customer/forms/posDeliveryForm/POSDeliveryFormConfirmation';
+import SpecialChequeClearance from '@features/customer/forms/specialChequeClearance/SpecialChequeClearance';
+import SpecialChequeClearanceConfirmation from '@features/customer/forms/specialChequeClearance/SpecialChequeClearanceConfirmation';
+import TicketMandateRequest from '@features/customer/forms/ticketMandateRequest/TicketMandateRequest';
+import TicketMandateRequestConfirmation from '@features/customer/forms/ticketMandateRequest/TicketMandateRequestConfirmation';
 
 // Import the new providers
-import { NotificationProvider } from './context/NotificationContext';
-import { FeedbackProvider } from './context/FeedbackContext';
-import { MultiChannelBranchProvider } from './context/MultiChannelBranchContext';
-import { QRCodeScanFlow } from './components/QRCodeScanFlow';
-import { TabletConfigScreen } from './components/TabletConfigScreen';
+import { NotificationProvider } from '@context/NotificationContext';
+import { FeedbackProvider } from '@context/FeedbackContext';
+import { MultiChannelBranchProvider } from '@context/MultiChannelBranchContext';
+import { QRCodeScanFlow } from "@components/multiChannel/QRCodeScanFlow";
+import { TabletConfigScreen } from "@components/multiChannel/TabletConfigScreen";
 
 // Import test utilities for development
 import './utils/testApprovalWorkflows';
-import QrLoginPage from './features/auth/QrLoginPage';
-import AuditorDashboard from './features/auditor/AuditorDashboard';
-import AuthorizerDashboard from './features/authorizer/AuthorizerDashboard';
-// import GreeterDashboard from './features/greeter/GreeterDashboard';
+import QrLoginPage from '@features/auth/QrLoginPage';
+import AuditorDashboard from '@features/auditor/AuditorDashboard';
+import AuthorizerDashboard from '@features/authorizer/AuthorizerDashboard';
+// import GreeterDashboard from '@features/greeter/GreeterDashboard';
 
 // FIXED: DashboardRouter with better role handling
 const DashboardRouter: React.FC = () => {
@@ -203,12 +202,12 @@ function App() {
             {/* New routes for Auditor and Authorizer roles */}
             <Route path="/auditor-dashboard" element={<AuditorDashboard />} />
             <Route path="/authorizer-dashboard" element={<AuthorizerDashboard />} />
-            {/* New route for Greeter role */}
-            {/* <Route path="/greeter-dashboard" element={
+            {/* New route for Greeter role
+            /* <Route path="/greeter-dashboard" element={
               <ProtectedRoute role="Greeter">
                 <GreeterDashboard />
               </ProtectedRoute>
-            } /> */
+            } /> */ }
 
             {/* Public forms */}
             <Route path="/form/account-opening" element={<AccountOpeningForm />} />
@@ -264,7 +263,7 @@ function App() {
             {/* Statement Request routes */}
             <Route path="/form/statement-request" element={<StatementRequestForm />} />
             <Route path="/form/statement-request/confirmation" element={<StatementRequestConfirmation />} />
-            <Route path="/form/statement-request/list" element={<StatementRequestList />} />
+            
             
             {/* Staff dashboard routes */}
             <Route path="/staff-dashboard" element={<MakerDashboard />} />

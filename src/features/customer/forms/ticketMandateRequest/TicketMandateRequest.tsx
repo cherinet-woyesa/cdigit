@@ -1,14 +1,14 @@
 // features/customer/forms/ticketMandateRequest/TicketMandateRequest.tsx
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { FormLayout } from '../../components/FormLayout';
-import { AccountSelector } from '../../components/AccountSelector';
-import { StepNavigation } from '../../components/StepNavigation';
-import { ticketMandateRequestValidationSchema } from '../../utils/extendedValidationSchemas';
-import { ticketMandateRequestService } from '../../../../services/ticketMandateRequestService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { ticketMandateRequestValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
+import { ticketMandateRequestService } from '@services/forms/ticketMandateRequestService';
 import SignatureCanvas from 'react-signature-canvas';
 
 interface FormData {
@@ -174,7 +174,7 @@ export default function TicketMandateRequest() {
                             canvasProps={{ className: 'w-full h-40 rounded-lg border border-fuchsia-300 bg-gray-50' }}
                             onEnd={() => {
                                 if (signatureRef.current) {
-                                    setFormData(prev => ({ ...prev, signature: signatureRef.current.toDataURL() }));
+                                    setFormData(prev => ({ ...prev, signature: signatureRef.current!.toDataURL() }));
                                 }
                             }}
                         />
@@ -193,7 +193,10 @@ export default function TicketMandateRequest() {
             </>
         )}
         <StepNavigation
+            currentStep={1}
+            totalSteps={1}
             onNext={handleSubmit}
+            onBack={() => {}}
             nextLabel="Submit"
             nextDisabled={isSubmitting || !accountValidated}
             nextLoading={isSubmitting}

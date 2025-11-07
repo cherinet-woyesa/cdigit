@@ -1,10 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
 import { Plane, User, CreditCard, DollarSign, Building } from 'lucide-react';
-import { getWithdrawalById, cancelWithdrawalByCustomer } from '../../../../services/withdrawalService';
+import { getWithdrawalById, cancelWithdrawalByCustomer } from '@services/transactions/withdrawalService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -15,8 +15,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { formatAmount, formatQueueToken, getEntityId, initializeData } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { formatAmount, formatQueueToken, getEntityId, initializeData } from '@features/customer/utils/confirmationHelpers';
 
 interface WithdrawalData {
     id?: string;

@@ -1,13 +1,13 @@
 // features/customer/forms/corporateCustomer/CorporateCustomer.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { FormLayout } from '../../components/FormLayout';
-import { StepNavigation } from '../../components/StepNavigation';
-import { corporateCustomerValidationSchema } from '../../utils/extendedValidationSchemas';
-import { corporateCustomerService } from '../../../../services/corporateCustomerService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { corporateCustomerValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
+import { corporateCustomerService } from '@services/corporateCustomerService';
 
 interface FormData {
   businessName: string;

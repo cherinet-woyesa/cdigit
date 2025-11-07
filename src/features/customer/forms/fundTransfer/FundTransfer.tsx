@@ -1,21 +1,21 @@
 // features/customer/forms/fundTransfer/FundTransferForm.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
-import { FormLayout } from '../../components/FormLayout';
-import { AccountSelector } from '../../components/AccountSelector';
-import { AmountInput } from '../../components/AmountInput';
-import { OTPVerification } from '../../components/OTPVerification';
-import { StepNavigation } from '../../components/StepNavigation';
-import { SignatureStep } from '../../components/SignatureStep';
-import { transferValidationSchema } from '../../utils/validationSchemas';
-import fundTransferService from '../../../../services/fundTransferService';
-import authService from '../../../../services/authService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { useApprovalWorkflow } from '@hooks/useApprovalWorkflow';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { AmountInput } from '@features/customer/components/AmountInput';
+import { OTPVerification } from '@features/customer/components/OTPVerification';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { SignatureStep } from '@features/customer/components/SignatureStep';
+import { transferValidationSchema } from '@features/customer/utils/validationSchemas';
+import fundTransferService from '@services/transactions/fundTransferService';
+import authService from '@services/auth/authService';
 import { CheckCircle2, Shield } from 'lucide-react';
 
 interface FormData {
@@ -238,17 +238,6 @@ export default function FundTransferForm() {
 
   const renderStep1 = () => (
     <div className="space-y-6">
-      <AccountSelector
-        accounts={[]}
-        selectedAccount={formData.debitAccountNumber}
-        onAccountChange={handleDebitAccountChange}
-        onAccountValidation={handleDebitAccountValidation}
-        onPhoneNumberFetched={(phone) => setFormData(prev => ({...prev, phoneNumber: phone}))}
-        label="Debit Account"
-        error={errors.debitAccountNumber}
-        allowManualEntry={true}
-      />
-      
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Credit Account <span className="text-red-500">*</span>
@@ -285,11 +274,29 @@ export default function FundTransferForm() {
         )}
       </div>
 
-      <AmountInput
-        value={formData.amount}
-        onChange={handleAmountChange}
-        error={errors.amount}
-      />
+      {formData.isCreditAccountVerified && (
+        <>
+          <AccountSelector
+            accounts={[]}
+            selectedAccount={formData.debitAccountNumber}
+            onAccountChange={handleDebitAccountChange}
+            onAccountValidation={handleDebitAccountValidation}
+            onPhoneNumberFetched={(phone) => setFormData(prev => ({...prev, phoneNumber: phone}))}
+            label="Debit Account"
+            error={errors.debitAccountNumber}
+            allowManualEntry={true}
+          />
+          
+          {debitAccountValidated && (
+            <AmountInput
+              value={formData.amount}
+              onChange={handleAmountChange}
+              error={errors.amount}
+              currency="ETB"
+            />
+          )}
+        </>
+      )}
     </div>
   );
 

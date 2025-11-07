@@ -1,5 +1,5 @@
 // src/services/formDetailService.ts
-import { apiClient } from './apiClient';
+import { apiClient } from '@services/http';
 
 export interface FormDetail {
   id: string;

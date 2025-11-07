@@ -2,9 +2,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useBranch } from '../../../../context/BranchContext';
+import { useBranch } from '@context/BranchContext';
 import { FileText, User, CreditCard, DollarSign, Building } from 'lucide-react';
-import { getCheckDepositById } from '../../../../services/checkDepositService';
+import { getCheckDepositById } from '@services/transactions/checkDepositService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -14,8 +14,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { formatAmount, getEntityId } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { formatAmount, getEntityId } from '@features/customer/utils/confirmationHelpers';
 
 interface CheckDepositData {
     id?: string;

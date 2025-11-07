@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Service } from '../../../types';
+import type { Service } from '@features/maker/types';
 
 interface ServiceCardProps {
   service: Service;

@@ -3,12 +3,12 @@ import { useEffect, useState, useRef, Fragment } from 'react';
 import { 
     getStopPaymentOrderById,
     cancelStopPaymentOrder 
-} from '../../../../services/stopPaymentService';
+} from '@services/transactions/stopPaymentService';
 import { useTranslation } from 'react-i18next';
 import { useReactToPrint } from 'react-to-print';
 import { Dialog, Transition } from '@headlessui/react';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
 import { 
     CheckCircle2, 
     Printer, 
@@ -27,7 +27,7 @@ import {
     Shield,
     Ban
 } from 'lucide-react';
-import LanguageSwitcher from '../../../../components/LanguageSwitcher';
+import LanguageSwitcher from '@components/language/LanguageSwitcher';
 
 // Success message component
 function SuccessMessage({ message }: { message: string }) {

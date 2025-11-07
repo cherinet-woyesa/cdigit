@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
-import managerService from "../../services/managerService";
-import CreateVipCustomerModal from "./CreateVipCustomerModal";
+import managerService from "@services/managerService";
+import CreateVipCustomerModal from "@features/manager/CreateVipCustomerModal";
 
 
 interface VipCustomer {

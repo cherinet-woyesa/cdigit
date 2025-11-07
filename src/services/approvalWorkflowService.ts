@@ -3,10 +3,10 @@
  * Manages role-based approval workflows for high-value and sensitive transactions
  */
 
-import type { UserRole, VoucherStatus } from '../config/rbacMatrix';
-import { requiresTransactionApproval, isValidTransition } from '../config/rbacMatrix';
-import authorizationAuditService from './authorizationAuditService';
-import api from './http';
+import type { UserRole, VoucherStatus } from '@config/rbacMatrix';
+import { requiresTransactionApproval, isValidTransition } from '@config/rbacMatrix';
+import authorizationAuditService from '@services/audit/authorizationAuditService';
+
 
 export interface ApprovalRequest {
   voucherId: string;

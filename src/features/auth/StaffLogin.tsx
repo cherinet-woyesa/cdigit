@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import authService from '../../services/authService';
-import { useAuth } from '../../context/AuthContext';
-import logo from '../../assets/logo.jpg';
+import authService from '@services/auth/authService';
+import { useAuth } from '@context/AuthContext';
+import logo from '@assets/logo.jpg';
 
 const StaffLogin: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -19,7 +19,7 @@ const StaffLogin: React.FC = () => {
 
     try {
       const response = await authService.staffLogin({ email, password });
-      if (response.data.token) {
+      if (response.data?.token) {
         // Use the AuthContext login method which properly decodes and handles the token
         login(response.data.token);
         

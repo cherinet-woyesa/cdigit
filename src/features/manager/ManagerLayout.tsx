@@ -1,10 +1,10 @@
 import React from "react";
-import { useAuth } from "../../context/AuthContext";
-import Footer from "../maker/Footer";
-import type { DecodedToken } from "types/DecodedToken";
-import type { ActionMessage } from "types/ActionMessage";
-import ManagerHeader from "./ManagerHeader";
-import ManagerSidebar from "./ManagerSidebar";
+import { useAuth } from "@context/AuthContext";
+import Footer from "@features/maker/components/layout/Footer";
+import type { DecodedToken } from "@types";
+import type { ActionMessage } from "@types";
+import ManagerHeader from "@features/manager/ManagerHeader";
+import ManagerSidebar from "@features/manager/ManagerSidebar";
 
 interface MainLayoutProps {
   children: React.ReactNode;

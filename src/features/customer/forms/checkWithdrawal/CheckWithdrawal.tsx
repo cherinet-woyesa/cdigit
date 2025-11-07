@@ -1,19 +1,20 @@
 // features/customer/forms/checkWithdrawal/CheckWithdrawal.tsx
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { FormLayout } from '../../components/FormLayout';
-import { AccountSelector } from '../../components/AccountSelector';
-import { AmountInput } from '../../components/AmountInput';
-import { OTPVerification } from '../../components/OTPVerification';
-import { StepNavigation } from '../../components/StepNavigation';
-import { checkWithdrawalValidationSchema } from '../../utils/extendedValidationSchemas';
-import { checkWithdrawalService } from '../../../../services/checkWithdrawalService';
-import authService from '../../../../services/authService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { AmountInput } from '@features/customer/components/AmountInput';
+import { OTPVerification } from '@features/customer/components/OTPVerification';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { SignatureStep } from '@features/customer/components/SignatureStep';
+import { checkWithdrawalValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
+import { checkWithdrawalService } from '@services';
+import { authService } from '@services';
 import { Shield } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 
@@ -34,7 +35,7 @@ export default function CheckWithdrawal() {
   const navigate = useNavigate();
   const signatureRef = useRef<SignatureCanvas>(null);
 
-  const { step, next, prev, isFirst } = useFormSteps(3);
+  const { step, next, prev, isFirst } = useFormSteps(5);
   const { errors, validateForm, clearFieldError } = useFormValidation(checkWithdrawalValidationSchema);
   const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
 
@@ -87,12 +88,45 @@ export default function CheckWithdrawal() {
     if (otp.length === 6) clearFieldError('otp');
   };
 
+  const handleSignatureComplete = (signatureData: string) => {
+    setFormData(prev => ({ ...prev, signature: signatureData }));
+    clearFieldError('signature');
+  };
+
+  const handleSignatureClear = () => {
+    setFormData(prev => ({ ...prev, signature: '' }));
+  };
+
   const handleNext = () => {
     if (step === 1) {
-        if (!validateForm(formData, ['accountNumber', 'amount', 'chequeNumber', 'checkType', 'signature'])) {
-            return;
-        }
+      if (!accountValidated) {
+        showError('Please validate the account by entering the account number and clicking "Search"');
+        return;
+      }
+      if (!formData.amount || parseFloat(formData.amount) <= 0) {
+        showError('Please enter a valid amount');
+        return;
+      }
+      if (!formData.chequeNumber.trim()) {
+        showError('Please enter a cheque number');
+        return;
+      }
     }
+    
+    if (step === 2) {
+      if (!formData.checkType) {
+        showError('Please select a check type');
+        return;
+      }
+    }
+    
+    if (step === 3) {
+      if (!formData.signature) {
+        showError('Please provide a signature');
+        return;
+      }
+    }
+    
     next();
   };
 
@@ -102,15 +136,44 @@ export default function CheckWithdrawal() {
       return;
     }
 
+    const phoneNumber = formData.phoneNumber.trim();
+    if (!phoneNumber) {
+      showError('Phone number not found for this account. Please contact support.');
+      return;
+    }
+
     try {
       await requestOTP(
-        () => authService.requestWithdrawalOTP(formData.phoneNumber),
+        () => authService.requestWithdrawalOTP(phoneNumber),
         'OTP sent to your phone'
       );
       info('OTP sent to your phone');
       next(); // Move to OTP verification step
     } catch (error: any) {
       showError(error?.message || 'Failed to send OTP');
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!formData.phoneNumber) {
+      showError('Phone number not found for this account. Please contact support.');
+      return;
+    }
+
+    const phoneNumber = formData.phoneNumber.trim();
+    if (!phoneNumber) {
+      showError('Phone number not found for this account. Please contact support.');
+      return;
+    }
+
+    try {
+      await resendOTP(
+        () => authService.requestWithdrawalOTP(phoneNumber),
+        'OTP resent successfully'
+      );
+      info('OTP resent successfully');
+    } catch (error: any) {
+      showError(error?.message || 'Failed to resend OTP');
     }
   };
 
@@ -162,80 +225,68 @@ export default function CheckWithdrawal() {
         allowManualEntry={true}
       />
       {accountValidated && (
-        <>
-            <AmountInput
-                value={formData.amount}
-                onChange={handleInputChange('amount')}
-                currency="ETB"
-                error={errors.amount}
-                label="Amount"
+        <div className="space-y-6">
+          <AmountInput
+            value={formData.amount}
+            onChange={handleInputChange('amount')}
+            currency="ETB"
+            error={errors.amount}
+            label="Amount"
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cheque Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.chequeNumber}
+              onChange={(e) => handleInputChange('chequeNumber')(e.target.value)}
+              className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+              placeholder="Enter cheque number"
             />
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cheque Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                type="text"
-                value={formData.chequeNumber}
-                onChange={(e) => handleInputChange('chequeNumber')(e.target.value)}
-                className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
-                placeholder="Enter cheque number"
-                />
-                {errors.chequeNumber && (
-                <p className="mt-1 text-sm text-red-600">{errors.chequeNumber}</p>
-                )}
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                Check Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                    value={formData.checkType}
-                    onChange={(e) => handleInputChange('checkType')(e.target.value)}
-                    className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
-                >
-                    <option value="">Select Check Type</option>
-                    <option value="EG">EG</option>
-                    <option value="Foreign">Foreign</option>
-                    <option value="Traveler">Traveler</option>
-                </select>
-                {errors.checkType && (
-                <p className="mt-1 text-sm text-red-600">{errors.checkType}</p>
-                )}
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Digital Signature <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                    <SignatureCanvas
-                        ref={signatureRef}
-                        penColor="black"
-                        canvasProps={{ className: 'w-full h-40 rounded-lg border border-fuchsia-300 bg-gray-50' }}
-                        onEnd={() => {
-                            if (signatureRef.current) {
-                                setFormData(prev => ({ ...prev, signature: signatureRef.current.toDataURL() }));
-                            }
-                        }}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => signatureRef.current?.clear()}
-                        className="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700"
-                    >
-                        Clear
-                    </button>
-                </div>
-                {errors.signature && (
-                    <p className="mt-1 text-sm text-red-600">{errors.signature}</p>
-                )}
-            </div>
-        </>
+            {errors.chequeNumber && (
+              <p className="mt-1 text-sm text-red-600">{errors.chequeNumber}</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
 
   const renderStep2 = () => (
+    <div className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Check Type <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={formData.checkType}
+          onChange={(e) => handleInputChange('checkType')(e.target.value)}
+          className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+        >
+          <option value="">Select Check Type</option>
+          <option value="EG">EG</option>
+          <option value="Foreign">Foreign</option>
+          <option value="Traveler">Traveler</option>
+        </select>
+        {errors.checkType && (
+          <p className="mt-1 text-sm text-red-600">{errors.checkType}</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      <SignatureStep 
+        onSignatureComplete={handleSignatureComplete}
+        onSignatureClear={handleSignatureClear}
+        error={errors.signature}
+      />
+    </div>
+  );
+
+  const renderStep4 = () => (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
         <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
@@ -257,19 +308,19 @@ export default function CheckWithdrawal() {
           <span className="font-semibold text-fuchsia-900">{formData.chequeNumber}</span>
         </div>
         <div className="flex justify-between items-center py-2">
-          <span className="font-medium text-fuchsia-800">Phone Number:</span>
-          <span className="font-semibold text-fuchsia-900">{formData.phoneNumber || 'Not found'}</span>
+          <span className="font-medium text-fuchsia-800">Check Type:</span>
+          <span className="font-semibold text-fuchsia-900">{formData.checkType}</span>
         </div>
       </div>
     </div>
   );
 
-  const renderStep3 = () => (
+  const renderStep5 = () => (
     <OTPVerification
       phone={formData.phoneNumber}
       otp={formData.otp}
       onOtpChange={handleOtpChange}
-      onResendOtp={handleRequestOTP}
+      onResendOtp={handleResendOTP}
       resendCooldown={resendCooldown}
       loading={otpLoading}
       error={errors.otp}
@@ -282,12 +333,14 @@ export default function CheckWithdrawal() {
       case 1: return renderStep1();
       case 2: return renderStep2();
       case 3: return renderStep3();
+      case 4: return renderStep4();
+      case 5: return renderStep5();
       default: return null;
     }
   };
 
   const renderCustomNavigation = () => {
-    if (step === 2) {
+    if (step === 4) {
       return (
         <div className="flex justify-between items-center pt-6 border-t border-gray-200">
           {!isFirst && (
@@ -321,18 +374,47 @@ export default function CheckWithdrawal() {
         </div>
       );
     }
+    
+    // For step 5, we need custom navigation with Verify & Submit button
+    if (step === 5) {
+      return (
+        <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={prev}
+            className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+          >
+            Back
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={formData.otp.length !== 6 || isSubmitting}
+            className="bg-fuchsia-600 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ml-auto"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Submitting...
+              </>
+            ) : (
+              'Verify & Submit'
+            )}
+          </button>
+        </div>
+      );
+    }
 
-    // Default navigation for other steps
     return (
       <StepNavigation
         currentStep={step}
-        totalSteps={3}
-        onNext={step === 3 ? handleSubmit : handleNext}
+        totalSteps={5}
+        onNext={handleNext}
         onBack={prev}
-        nextLabel={step === 3 ? 'Verify & Submit' : 'Continue'}
+        nextLabel="Continue"
         nextDisabled={
           (step === 1 && !accountValidated) || 
-          (step === 3 && formData.otp.length !== 6) || 
           isSubmitting
         }
         nextLoading={isSubmitting}

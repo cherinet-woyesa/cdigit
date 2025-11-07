@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
-import Field from '../../../../../components/Field';
-import type { DigitalSignature, Errors } from "../types/formTypes";
+import Field from "@components/form/Field";
+import type { DigitalSignature, Errors } from "@features/customer/forms/accountOpening/types/formTypes";
 import { Loader2, ChevronRight, PenTool, CheckCircle2, Shield, Eraser } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 

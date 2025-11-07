@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { FormLayout } from '../../components/FormLayout';
-import { StepNavigation } from '../../components/StepNavigation';
-import { SignatureStep } from '../../components/SignatureStep';
-import chequeReturnSlipService from '../../../../services/chequeReturnSlipService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { SignatureStep } from '@features/customer/components/SignatureStep';
+import chequeReturnSlipService from '@services/transactions/chequeReturnSlipService';
 import { Checkbox } from '@headlessui/react';
 
 interface FormData {

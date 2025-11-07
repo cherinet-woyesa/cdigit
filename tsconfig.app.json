@@ -6,16 +6,12 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
-
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-
-    /* Linting */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -23,11 +19,27 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "baseUrl": "src",
+    "outDir": "./dist",
     "paths": {
-  "@components/*": ["components/*"],
-  "@hooks/*": ["hooks/*"]
-    }
+      "@/*": ["./*"],
+      "@components/*": ["components/*"],
+      "@components/dashboard/*": ["components/dashboard/*"],
+      "@hooks/*": ["hooks/*"],
+      "@services/*": ["services/*"],
+      "@context/*": ["context/*"],
+      "@features/*": ["features/*"],
+      "@features/maker/pages/*": ["features/maker/pages/*"],
+      "@features/maker/components/*": ["features/maker/components/*"],
+      "@features/maker/types": ["features/maker/types"],
+      "@utils/*": ["utils/*"],
+      "@types/*": ["types/*"],
+      "@config/*": ["config/*"],
+      "@constants/*": ["constants/*"],
+      "@shared/*": ["shared/*"],
+      "@lib/*": ["lib/*"],
+      "@assets/*": ["assets/*"]
+    },
+    "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["src", "src/@types", "src/types"],
-  "typeRoots": ["./node_modules/@types", "./src/types"]
+  "include": ["src", "src/@types", "src/types"]
 }

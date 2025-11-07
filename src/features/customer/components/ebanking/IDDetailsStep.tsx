@@ -1,6 +1,6 @@
 // features/customer/components/ebanking/IDDetailsStep.tsx
 import React from 'react';
-import Field from '../Field';
+import Field from '@features/customer/components/Field';
 
 export default function IDDetailsStep({ formData, onChange, errors }) {
     return (

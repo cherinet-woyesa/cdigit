@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Service } from '../../../types';
-import ServiceCard from './ServiceCard';
+import type { Service } from '@features/maker/types';
+import ServiceCard from '@features/maker/components/sections/OtherServices/ServiceCard';
 
 interface ServicesGridProps {
   services: Service[];

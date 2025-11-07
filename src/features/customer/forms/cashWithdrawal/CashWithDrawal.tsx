@@ -1,22 +1,22 @@
 // features/customer/forms/cashWithdrawal/CashWithdrawalForm.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useCurrencyConversion } from '../../hooks/useCurrencyConversion';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
-import { FormLayout } from '../../components/FormLayout';
-import { AccountSelector } from '../../components/AccountSelector';
-import { AmountInput } from '../../components/AmountInput';
-import { OTPVerification } from '../../components/OTPVerification';
-import { StepNavigation } from '../../components/StepNavigation';
-import { SignatureStep } from '../../components/SignatureStep';
-import { withdrawalValidationSchema, accountValidation, amountValidation } from '../../utils/validationSchemas';
-import withdrawalService from '../../../../services/withdrawalService';
-import authService from '../../../../services/authService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useCurrencyConversion } from '@features/customer/hooks/useCurrencyConversion';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { useApprovalWorkflow } from '@hooks/useApprovalWorkflow';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { AmountInput } from '@features/customer/components/AmountInput';
+import { OTPVerification } from '@features/customer/components/OTPVerification';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { SignatureStep } from '@features/customer/components/SignatureStep';
+import { withdrawalValidationSchema, accountValidation, amountValidation } from '@features/customer/utils/validationSchemas';
+import withdrawalService from '@services/transactions/withdrawalService';
+import authService from '@services/auth/authService';
 import { Shield } from 'lucide-react';
 
 interface FormData {

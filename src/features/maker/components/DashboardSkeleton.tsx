@@ -1,0 +1,1 @@
+export { default } from '@features/maker/components/common/DashboardSkeleton';

@@ -1,14 +1,14 @@
 // features/customer/forms/cashDiscrepancyReport/CashDiscrepancyReport.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { FormLayout } from '../../components/FormLayout';
-import { AmountInput } from '../../components/AmountInput';
-import { StepNavigation } from '../../components/StepNavigation';
-import { cashDiscrepancyReportValidationSchema } from '../../utils/extendedValidationSchemas';
-import { cashDiscrepancyReportService } from '../../../../services/cashDiscrepancyReportService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AmountInput } from '@features/customer/components/AmountInput';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { cashDiscrepancyReportValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
+import { cashDiscrepancyReportService } from '@services/transactions/cashDiscrepancyReportService';
 
 interface FormData {
   discrepancyAmount: string;
@@ -130,7 +130,10 @@ export default function CashDiscrepancyReport() {
             )}
         </div>
         <StepNavigation
+            currentStep={1}
+            totalSteps={1}
             onNext={handleSubmit}
+            onBack={() => {}}
             nextLabel="Submit"
             nextDisabled={isSubmitting}
             nextLoading={isSubmitting}

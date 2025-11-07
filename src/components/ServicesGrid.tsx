@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import type { Service } from 'types/Service';
+import type { Service } from '@types';
 
 interface ServicesGridProps {
   services: Service[];

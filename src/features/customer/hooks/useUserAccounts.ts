@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@context/AuthContext';
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5268/api';

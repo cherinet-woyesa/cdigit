@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import CreateBranchModal from "./CreateBranchModal";
-import EditBranchModal from "./EditBranchModal";
-import CreateUserModal from "./CreateUserModal";
-import ManageAccountTypesModal from "./ManageAccountTypesModal";
-import adminService from "../../services/adminService";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
+import CreateBranchModal from "@features/admin/modals/CreateBranchModal";
+import EditBranchModal from "@features/admin/modals/EditBranchModal";
+import CreateUserModal from "@features/admin/modals/CreateUserModal";
+import ManageAccountTypesModal from "@features/admin/modals/ManageAccountTypesModal";
+import adminService from "@services/adminService";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
-import { Button } from "../../components/ui/button";
-import { DashboardErrorBoundary } from "../../components/dashboard/ErrorBoundary";
-import DashboardMetrics, { type Metric } from "../../components/dashboard/DashboardMetrics";
-import { BRAND_COLORS } from "../../config/env";
-import AdminReportPanel from "./AdminReportPanel";
+import { Button } from "@components/ui/button";
+import { DashboardErrorBoundary } from "@components/dashboard/ErrorBoundary";
+import DashboardMetrics, { type Metric } from "@components/dashboard/DashboardMetrics";
+import { BRAND_COLORS } from "@config/env";
+import AdminReportPanel from "@features/admin/components/AdminReportPanel";
 
 interface Branch {
   id: string;

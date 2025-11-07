@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../../../../components/LanguageSwitcher';
-import { useAuth } from '../../../../context/AuthContext';
+import LanguageSwitcher from '@components/language/LanguageSwitcher';
+import { useAuth } from '@context/AuthContext';
 import { 
   CheckCircle2, 
   Clock, 

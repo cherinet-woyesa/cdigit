@@ -19,15 +19,15 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
-import NearbyBranchesModal from '../../modals/NearbyBranchesModal';
+import NearbyBranchesModal from '@components/modals/NearbyBranchesModal';
 import clsx from 'clsx';
-import { DashboardErrorBoundary } from '../../components/dashboard/ErrorBoundary';
-import { fetchBranches } from '../../services/branchService';
-import { getQueueCount } from '../../services/queueService';
-import { AccessMethodIndicatorWithContext } from '../../components/AccessMethodIndicator';
-import { BranchWatermarkWithContext } from '../../components/BranchWatermark';
+import { DashboardErrorBoundary } from '@components/dashboard/ErrorBoundary';
+import { fetchBranches } from '@services/branch/branchService';
+import { getQueueCount } from '@services/branch/queueService';
+import { AccessMethodIndicatorWithContext } from '@components/multiChannel/AccessMethodIndicator';
+import { BranchWatermarkWithContext } from '@components/multiChannel/BranchWatermark';
 // Import the logo
-import logo from '../../assets/logo.jpg';
+import logo from '@assets/logo.jpg';
 
 type FormName =
   | 'accountOpening'
@@ -67,54 +67,101 @@ type FormName =
   | 'specialChequeClearance'
   | 'ticketMandateRequest';
 
+type FormCategory = 
+  | 'personal-banking'
+  | 'business-banking'
+  | 'specialized-services'
+  | 'account-services'
+  | 'transactions'
+  | 'cards-digital'
+  | 'requests-enquiries'
+  | 'merchant-services'
+  | 'cbe-birr'
+  | 'pos-services';
+
 interface Form {
   name: FormName;
   route: string;
   icon: React.ElementType;
-  category: 'transactions' | 'services' | 'requests' | 'history';
+  category: FormCategory;
+  subcategory?: string; // New field for hierarchical organization
 }
 
 const forms: Form[] = [
-  { name: 'accountOpening', route: '/form/account-opening', icon: UserPlusIcon, category: 'services' },
-  { name: 'cashDeposit', route: '/form/cash-deposit', icon: ArrowDownTrayIcon, category: 'transactions' },
-  { name: 'cashWithdrawal', route: '/form/cash-withdrawal', icon: ArrowUpTrayIcon, category: 'transactions' },
-  { name: 'fundTransfer', route: '/form/fund-transfer', icon: ArrowsRightLeftIcon, category: 'transactions' },
-  { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, category: 'services' },
-  { name: 'cbeBirrRegistration', route: '/form/cbe-birr', icon: CurrencyDollarIcon, category: 'services' },
-  { name: 'posRequest', route: '/form/pos-request', icon: BuildingStorefrontIcon, category: 'requests' },
-  { name: 'rtgsTransfer', route: '/form/rtgs-transfer', icon: BanknotesIcon, category: 'transactions' },
-  { name: 'statementRequest', route: '/form/statement-request', icon: DocumentChartBarIcon, category: 'requests' },
-  { name: 'stopPayment', route: '/form/stop-payment', icon: NoSymbolIcon, category: 'requests' },
-  { name: 'cbeBirrLink', route: '/form/cbe-birr-link', icon: LinkIcon, category: 'services' },
-  { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, category: 'history' },
-  { name: 'lostPassbookReplacement', route: '/form/lost-passbook-replacement', icon: DocumentChartBarIcon, category: 'requests' },
-  { name: 'merchantAccountOpening', route: '/form/merchant-account-opening', icon: BuildingStorefrontIcon, category: 'services' },
-  { name: 'fixedTimeDeposit', route: '/form/fixed-time-deposit', icon: BanknotesIcon, category: 'transactions' },
-  { name: 'agentAccountOpening', route: '/form/agent-account-opening', icon: UserPlusIcon, category: 'services' },
-  { name: 'additionalPOSRequest', route: '/form/additional-pos-request', icon: BuildingStorefrontIcon, category: 'requests' },
-  { name: 'chequeReturnSlip', route: '/form/cheque-return-slip', icon: DocumentChartBarIcon, category: 'requests' },
-  // New missing forms
-  { name: 'balanceConfirmation', route: '/form/balance-confirmation', icon: DocumentChartBarIcon, category: 'requests' },
-  { name: 'checkDeposit', route: '/form/check-deposit', icon: ArrowDownTrayIcon, category: 'transactions' },
-  { name: 'checkWithdrawal', route: '/form/check-withdrawal', icon: ArrowUpTrayIcon, category: 'transactions' },
-  { name: 'chequeBookRequest', route: '/form/cheque-book-request', icon: DocumentChartBarIcon, category: 'requests' },
-  { name: 'cashDiscrepancyReport', route: '/form/cash-discrepancy-report', icon: DocumentChartBarIcon, category: 'requests' },
-  { name: 'corporateCustomer', route: '/form/corporate-customer', icon: BuildingStorefrontIcon, category: 'services' },
-  { name: 'customerIdMerge', route: '/form/customer-id-merge', icon: ArrowsRightLeftIcon, category: 'services' },
-  { name: 'customerProfileChange', route: '/form/customer-profile-change', icon: UserPlusIcon, category: 'services' },
+  // Personal Banking - Account Services
+  { name: 'accountOpening', route: '/form/account-opening', icon: UserPlusIcon, category: 'account-services', subcategory: 'personal-banking' },
+  { name: 'customerProfileChange', route: '/form/customer-profile-change', icon: UserPlusIcon, category: 'account-services', subcategory: 'personal-banking' },
   
-  { name: 'posDeliveryForm', route: '/form/pos-delivery', icon: BuildingStorefrontIcon, category: 'requests' },
-  { name: 'specialChequeClearance', route: '/form/special-cheque-clearance', icon: DocumentChartBarIcon, category: 'requests' },
-  { name: 'ticketMandateRequest', route: '/form/ticket-mandate-request', icon: DocumentChartBarIcon, category: 'requests' },
+  // Personal Banking - Transactions
+  { name: 'cashDeposit', route: '/form/cash-deposit', icon: ArrowDownTrayIcon, category: 'transactions', subcategory: 'personal-banking' },
+  { name: 'cashWithdrawal', route: '/form/cash-withdrawal', icon: ArrowUpTrayIcon, category: 'transactions', subcategory: 'personal-banking' },
+  { name: 'fundTransfer', route: '/form/fund-transfer', icon: ArrowsRightLeftIcon, category: 'transactions', subcategory: 'personal-banking' },
+  { name: 'rtgsTransfer', route: '/form/rtgs-transfer', icon: BanknotesIcon, category: 'transactions', subcategory: 'personal-banking' },
+  { name: 'checkDeposit', route: '/form/check-deposit', icon: ArrowDownTrayIcon, category: 'transactions', subcategory: 'personal-banking' },
+  { name: 'checkWithdrawal', route: '/form/check-withdrawal', icon: ArrowUpTrayIcon, category: 'transactions', subcategory: 'personal-banking' },
+  
+  // Personal Banking - Cards & Digital
+  { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, category: 'cards-digital', subcategory: 'personal-banking' },
+  { name: 'atmCard', route: '/form/atm-card', icon: DevicePhoneMobileIcon, category: 'cards-digital', subcategory: 'personal-banking' },
+  
+  // Personal Banking - Requests & Enquiries
+  { name: 'statementRequest', route: '/form/statement-request', icon: DocumentChartBarIcon, category: 'requests-enquiries', subcategory: 'personal-banking' },
+  { name: 'balanceConfirmation', route: '/form/balance-confirmation', icon: DocumentChartBarIcon, category: 'requests-enquiries', subcategory: 'personal-banking' },
+  { name: 'chequeBookRequest', route: '/form/cheque-book-request', icon: DocumentChartBarIcon, category: 'requests-enquiries', subcategory: 'personal-banking' },
+  { name: 'chequeReturnSlip', route: '/form/cheque-return-slip', icon: DocumentChartBarIcon, category: 'requests-enquiries', subcategory: 'personal-banking' },
+  { name: 'stopPayment', route: '/form/stop-payment', icon: NoSymbolIcon, category: 'requests-enquiries', subcategory: 'personal-banking' },
+  { name: 'lostPassbookReplacement', route: '/form/lost-passbook-replacement', icon: DocumentChartBarIcon, category: 'requests-enquiries', subcategory: 'personal-banking' },
+  
+  // Business Banking - Merchant Services
+  { name: 'merchantAccountOpening', route: '/form/merchant-account-opening', icon: BuildingStorefrontIcon, category: 'merchant-services', subcategory: 'business-banking' },
+  { name: 'posRequest', route: '/form/pos-request', icon: BuildingStorefrontIcon, category: 'merchant-services', subcategory: 'business-banking' },
+  { name: 'additionalPOSRequest', route: '/form/additional-pos-request', icon: BuildingStorefrontIcon, category: 'merchant-services', subcategory: 'business-banking' },
+  { name: 'posDeliveryForm', route: '/form/pos-delivery', icon: BuildingStorefrontIcon, category: 'merchant-services', subcategory: 'business-banking' },
+  
+  // Business Banking - Agent Services
+  { name: 'agentAccountOpening', route: '/form/agent-account-opening', icon: UserPlusIcon, category: 'merchant-services', subcategory: 'business-banking' },
+  
+  // Specialized Services - CBE Birr
+  { name: 'cbeBirrRegistration', route: '/form/cbe-birr', icon: CurrencyDollarIcon, category: 'cbe-birr', subcategory: 'specialized-services' },
+  { name: 'cbeBirrLink', route: '/form/cbe-birr-link', icon: LinkIcon, category: 'cbe-birr', subcategory: 'specialized-services' },
+  
+  // Specialized Services - Other
+  { name: 'fixedTimeDeposit', route: '/form/fixed-time-deposit', icon: BanknotesIcon, category: 'specialized-services', subcategory: 'specialized-services' },
+  { name: 'corporateCustomer', route: '/form/corporate-customer', icon: BuildingStorefrontIcon, category: 'specialized-services', subcategory: 'specialized-services' },
+  { name: 'customerIdMerge', route: '/form/customer-id-merge', icon: ArrowsRightLeftIcon, category: 'specialized-services', subcategory: 'specialized-services' },
+  { name: 'phoneBlock', route: '/form/phone-block', icon: NoSymbolIcon, category: 'specialized-services', subcategory: 'specialized-services' },
+  { name: 'cashDiscrepancyReport', route: '/form/cash-discrepancy-report', icon: DocumentChartBarIcon, category: 'specialized-services', subcategory: 'specialized-services' },
+  { name: 'specialChequeClearance', route: '/form/special-cheque-clearance', icon: DocumentChartBarIcon, category: 'specialized-services', subcategory: 'specialized-services' },
+  { name: 'ticketMandateRequest', route: '/form/ticket-mandate-request', icon: DocumentChartBarIcon, category: 'specialized-services', subcategory: 'specialized-services' },
+  
+  // History (always accessible)
+  { name: 'history', route: '/customer/transaction-history', icon: ClockIcon, category: 'requests-enquiries', subcategory: 'personal-banking' },
 ];
 
-// Categories for filtering
-const categories = [
+// Updated categories for main navigation
+const mainCategories = [
   { id: 'all', label: 'All Services', count: forms.length },
-  { id: 'transactions', label: 'Transactions', count: forms.filter(f => f.category === 'transactions').length },
-  { id: 'services', label: 'Banking Services', count: forms.filter(f => f.category === 'services').length },
-  { id: 'requests', label: 'Requests', count: forms.filter(f => f.category === 'requests').length },
+  { id: 'personal-banking', label: 'Personal Banking', count: forms.filter(f => f.subcategory === 'personal-banking').length },
+  { id: 'business-banking', label: 'Business Banking', count: forms.filter(f => f.subcategory === 'business-banking').length },
+  { id: 'specialized-services', label: 'Specialized Services', count: forms.filter(f => f.subcategory === 'specialized-services').length },
 ];
+
+// Subcategories for secondary navigation when a main category is selected
+const subCategories: Record<string, { id: string; label: string; }[]> = {
+  'personal-banking': [
+    { id: 'account-services', label: 'Account Services' },
+    { id: 'transactions', label: 'Transactions' },
+    { id: 'cards-digital', label: 'Cards & Digital Banking' },
+    { id: 'requests-enquiries', label: 'Requests & Enquiries' },
+  ],
+  'business-banking': [
+    { id: 'merchant-services', label: 'Merchant & Agent Services' },
+  ],
+  'specialized-services': [
+    { id: 'cbe-birr', label: 'CBE Birr Services' },
+    { id: 'other', label: 'Other Specialized Services' },
+  ],
+};
 
 // Optimized FormCard with memoization
 const FormCard = React.memo(React.forwardRef<HTMLDivElement, {
@@ -205,13 +252,20 @@ const CustomerDashboardContent: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // Optimized form filtering with useMemo
+  // Updated category filtering with subcategories
   const filteredForms = useMemo(() => {
     let filtered = forms;
     
-    // Category filter
+    // Main category filter
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(form => form.category === selectedCategory);
+      // If it's a main category
+      if (['personal-banking', 'business-banking', 'specialized-services'].includes(selectedCategory)) {
+        filtered = filtered.filter(form => form.subcategory === selectedCategory);
+      } 
+      // If it's a subcategory
+      else {
+        filtered = filtered.filter(form => form.category === selectedCategory);
+      }
     }
     
     // Search filter
@@ -464,8 +518,9 @@ const CustomerDashboardContent: React.FC = () => {
               )}
             </div>
 
-            <div className="hidden md:flex flex-wrap gap-2">
-              {categories.map((category) => (
+            {/* Main Categories */}
+            <div className="hidden md:flex flex-wrap gap-2 mb-3">
+              {mainCategories.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
@@ -489,6 +544,27 @@ const CustomerDashboardContent: React.FC = () => {
                 </button>
               ))}
             </div>
+
+            {/* Subcategories when a main category is selected */}
+            {selectedCategory !== 'all' && ['personal-banking', 'business-banking', 'specialized-services'].includes(selectedCategory) && (
+              <div className="hidden md:flex flex-wrap gap-2 mb-4">
+                {subCategories[selectedCategory].map((subcategory) => (
+                  <button
+                    key={subcategory.id}
+                    onClick={() => setSelectedCategory(subcategory.id)}
+                    className={clsx(
+                      'px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+                      selectedCategory === subcategory.id
+                        ? 'bg-amber-500 text-white shadow-md'
+                        : 'bg-white text-fuchsia-700 hover:bg-amber-50 border border-fuchsia-200'
+                    )}
+                  >
+                    {subcategory.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
           </div>
 
           <div className="hidden md:flex justify-between items-center mb-3">

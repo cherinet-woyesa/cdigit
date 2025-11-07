@@ -1,6 +1,6 @@
 import React from "react";
-import Field from '../../../../../components/Field';
-import type { PassbookMudayRequest, Errors } from "../types/formTypes";
+import Field from "@components/form/Field";
+import type { PassbookMudayRequest, Errors } from "@features/customer/forms/accountOpening/types/formTypes";
 import { Loader2, ChevronRight, Book, PiggyBank, Package } from 'lucide-react';
 
 export const validate = (data: PassbookMudayRequest): Errors<PassbookMudayRequest> => {

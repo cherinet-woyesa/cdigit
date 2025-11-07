@@ -1,24 +1,24 @@
 // features/customer/forms/EBankingApplication/EBankingApplication.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { useAddressManagement } from '../../hooks/useAddressManagement';
-import { eBankingApplicationValidationSchema } from '../../utils/eBankingApplicationValidationSchema';
-import { applyEBankingApplication, getEBankingApplicationById, updateEBankingApplication } from '../../../../services/eBankingApplicationService';
-import authService from '../../../../services/authService';
-import { FormLayout } from '../../components/FormLayout';
-import { StepNavigation } from '../../components/StepNavigation';
-import { AccountSelector } from '../../components/AccountSelector';
-import IDDetailsStep from '../../components/ebanking/IDDetailsStep';
-import AddressDetailsStep from '../../components/ebanking/AddressDetailsStep';
-import ServiceSelectionStep from '../../components/ebanking/ServiceSelectionStep';
-import TermsAndConditionsStep from '../../components/ebanking/TermsAndConditionsStep';
-import OTPStep from '../../components/stoppayment/OTPStep';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { useAddressManagement } from '@features/customer/hooks/useAddressManagement';
+import { eBankingApplicationValidationSchema } from '@features/customer/utils/eBankingApplicationValidationSchema';
+import { applyEBankingApplication, getEBankingApplicationById, updateEBankingApplication } from '@services/forms/eBankingApplicationService';
+import authService from '@services/auth/authService';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import IDDetailsStep from '@features/customer/components/ebanking/IDDetailsStep';
+import AddressDetailsStep from '@features/customer/components/ebanking/AddressDetailsStep';
+import ServiceSelectionStep from '@features/customer/components/ebanking/ServiceSelectionStep';
+import TermsAndConditionsStep from '@features/customer/components/ebanking/TermsAndConditionsStep';
+import OTPStep from '@features/customer/components/stoppayment/OTPStep';
 import { Shield } from 'lucide-react';
 
 export default function EBankingApplication() {

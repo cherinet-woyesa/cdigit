@@ -1,18 +1,18 @@
 // features/customer/forms/chequeBookRequest/ChequeBookRequest.tsx
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { FormLayout } from '../../components/FormLayout';
-import { AccountSelector } from '../../components/AccountSelector';
-import { OTPVerification } from '../../components/OTPVerification';
-import { StepNavigation } from '../../components/StepNavigation';
-import { chequeBookRequestValidationSchema } from '../../utils/extendedValidationSchemas';
-import { chequeBookRequestService } from '../../../../services/chequeBookRequestService';
-import authService from '../../../../services/authService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { OTPVerification } from '@features/customer/components/OTPVerification';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { chequeBookRequestValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
+import { chequeBookRequestService } from '@services/forms/chequeBookRequestService';
+import authService from '@services/auth/authService';
 import { Shield } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 

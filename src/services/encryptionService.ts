@@ -5,7 +5,7 @@
  * sensitive data including session tokens, configuration data, and QR codes.
  */
 
-import { ENCRYPTION_ALGORITHM, TOKEN_LENGTH } from '../constants/multiChannelAccess';
+import { ENCRYPTION_ALGORITHM, TOKEN_LENGTH } from '@constants/multiChannelAccess';
 
 /**
  * Encrypted data structure

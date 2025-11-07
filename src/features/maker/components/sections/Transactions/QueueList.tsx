@@ -1,8 +1,8 @@
 import React from 'react';
 import { ClockIcon } from "@heroicons/react/24/outline";
-import type { CustomerQueueItem } from '../../../../../services/makerService';
-import { SkeletonCard } from '../../../../../components/Skeleton';
-import { EmptyState } from '../../common';
+import type { CustomerQueueItem } from '@services/makerService';
+import { SkeletonCard } from '@components/feedback/Skeleton';
+import { EmptyState } from '@features/maker/components/common';
 
 interface QueueListProps {
   queue: CustomerQueueItem[];

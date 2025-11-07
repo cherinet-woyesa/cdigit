@@ -1,6 +1,6 @@
 // Shared form utilities for consistent form behavior
 import { useState, useCallback } from 'react';
-import { validateFormData, type BaseFormData } from '../../../services/baseFormService';
+import { validateFormData, type BaseFormData } from '@services/baseFormService';
 
 export interface FormStep {
   id: string;

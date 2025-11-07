@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import Field from '../../../../../components/Field';
-import type { DocumentDetail, Errors } from "../types/formTypes";
+import Field from '@components/form/Field';
+import type { DocumentDetail, Errors } from "@features/customer/forms/accountOpening/types/formTypes";
 import { Loader2, ChevronRight, FileText, Calendar, Upload, CheckCircle2 } from 'lucide-react';
 
 export const validate = (data: DocumentDetail): Errors<DocumentDetail> => {

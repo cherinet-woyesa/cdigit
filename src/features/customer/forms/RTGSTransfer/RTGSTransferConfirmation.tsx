@@ -1,9 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useMemo, useRef, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../../../../components/LanguageSwitcher';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
+import LanguageSwitcher from '@components/language/LanguageSwitcher';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
 import { 
     CheckCircle2, 
     Printer, 

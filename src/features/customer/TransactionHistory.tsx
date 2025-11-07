@@ -1,9 +1,9 @@
 import { useState, useEffect, memo } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { getWithdrawalHistoryByPhone, getDepositHistoryByPhone, getFundTransferHistoryByPhone, type Transaction } from '../../services/historyService';
+import { useAuth } from '@context/AuthContext';
+import { getWithdrawalHistoryByPhone, getDepositHistoryByPhone, getFundTransferHistoryByPhone, type Transaction } from '@services/historyService';
 import { ArrowDownCircleIcon, ArrowUpCircleIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/solid';
-import { SkeletonTable } from '../../components/Skeleton';
-import { useToast } from '../../context/ToastContext';
+import { SkeletonTable } from '@components/feedback/Skeleton';
+import { useToast } from '@context/ToastContext';
 
 const TransactionIcon = memo(({ type }: { type: Transaction['type'] }) => {
     const baseClass = "h-8 w-8 text-white";

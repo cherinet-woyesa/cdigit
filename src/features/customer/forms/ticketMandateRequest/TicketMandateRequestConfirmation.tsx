@@ -2,9 +2,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useBranch } from '../../../../context/BranchContext';
+import { useBranch } from '@context/BranchContext';
 import { FileText, CheckSquare, Calendar } from 'lucide-react';
-import { getTicketMandateRequestById } from '../../../../services/ticketMandateRequestService';
+import { getTicketMandateRequestById } from '@services/forms/ticketMandateRequestService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -13,8 +13,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { getEntityId } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { getEntityId } from '@features/customer/utils/confirmationHelpers';
 
 interface TicketMandateRequestData {
     id?: string;

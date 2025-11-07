@@ -1,13 +1,13 @@
 import React from 'react';
-import { usePettyCash } from '../../../hooks/usePettyCash';
-import PettyCashSummary from './PettyCashSummary';
-import PettyCashActions from './PettyCashActions';
-import ActionMessage from './ActionMessage';
+import { usePettyCash } from '@features/maker/hooks/usePettyCash';
+import PettyCashSummary from '@features/maker/components/sections/PettyCash/PettyCashSummary';
+import PettyCashActions from '@features/maker/components/sections/PettyCash/PettyCashActions';
+import ActionMessage from '@features/maker/components/sections/PettyCash/ActionMessage';
 
 // Import modals (you'll need to adjust these imports based on your modal structure)
-import ForeignCurrencyModal from "../../../../../modals/ForeignCurrencyModal";
-import PettyDenominationModal from "../../../../../modals/PettyDenominationModal";
-import PettySurrenderModal from "../../../../../modals/PettySurrenderModal";
+import ForeignCurrencyModal from '@components/modals/ForeignCurrencyModal';
+import PettyDenominationModal from '@components/modals/PettyDenominationModal';
+import PettySurrenderModal from '@components/modals/PettySurrenderModal';
 
 const PettyCash: React.FC = () => {
   const {

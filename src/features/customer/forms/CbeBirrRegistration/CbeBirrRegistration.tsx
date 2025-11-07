@@ -1,15 +1,15 @@
 // features/customer/forms/CbeBirrRegistration/CbeBirrRegistrationForm.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { FormLayout } from '../../components/FormLayout';
-import { StepNavigation } from '../../components/StepNavigation';
-import { cbeBirrRegistrationValidationSchema } from '../../utils/validationSchemas';
-import { cbeBirrRegistrationService } from '../../../../services/cbeBirrRegistrationService';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { cbeBirrRegistrationValidationSchema } from '@features/customer/utils/validationSchemas';
+import { cbeBirrRegistrationService } from '@services/forms/cbeBirrRegistrationService';
 import { MapPin, IdCard, Users, Heart, Mail, Home } from 'lucide-react';
 
 interface FormData {

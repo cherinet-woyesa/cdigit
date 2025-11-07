@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import Field from '../../../../../components/Field';
-import { getAccountTypes } from "../../../../../services/accountTypeService";
-import type { PersonalDetail, Errors } from "../types/formTypes";
+import Field from "@components/form/Field";
+import { getAccountTypes } from "@services/accountTypeService";
+import type { PersonalDetail, Errors } from "@features/customer/forms/accountOpening/types/formTypes";
 import { Loader2, ChevronRight, User, Calendar, GraduationCap, Globe } from 'lucide-react';
 
 export const validate = (data: PersonalDetail): Errors<PersonalDetail> => {

@@ -1,7 +1,7 @@
 
 // features/customer/components/stoppayment/SignatureStep.tsx
 import React from 'react';
-import SignaturePad from '../SignaturePad';
+import SignaturePad from '@features/customer/components/SignaturePad';
 
 export default function SignatureStep({ signaturePadRef, onEnd, onClear, isSignatureEmpty, error }) {
     return (

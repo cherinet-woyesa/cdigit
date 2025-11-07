@@ -1,8 +1,8 @@
 import React from "react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@context/AuthContext";
 import { jwtDecode } from "jwt-decode";
-import type { DecodedToken } from "types/DecodedToken";
-import type { WindowDto } from "../../services/makerService";
+import type { DecodedToken } from "@types";
+import type { WindowDto } from "@services/makerService";
 import { CogIcon} from "@heroicons/react/24/outline";
 
 interface HeaderProps {

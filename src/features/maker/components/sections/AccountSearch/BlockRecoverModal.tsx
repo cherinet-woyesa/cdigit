@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AccountSearchResult } from '../../../types';
+import type { AccountSearchResult } from '@features/maker/types';
 
 interface BlockRecoverModalProps {
   isOpen: boolean;

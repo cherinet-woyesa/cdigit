@@ -1,10 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
 import { FileText, User, CreditCard, DollarSign, Building, Calendar, MapPin } from 'lucide-react';
-import { getBalanceConfirmationById, cancelBalanceConfirmationByCustomer } from '../../../../services/balanceConfirmationService';
+import { getBalanceConfirmationById, cancelBalanceConfirmationByCustomer } from '@services/forms/balanceConfirmationService';
 import {
     SuccessHeader,
     SuccessIcon,
@@ -14,8 +14,8 @@ import {
     usePrint,
     LoadingState,
     ErrorState
-} from '../../components/SharedConfirmationComponents';
-import { formatAmount, getEntityId } from '../../utils/confirmationHelpers';
+} from '@features/customer/components/SharedConfirmationComponents';
+import { formatAmount, getEntityId } from '@features/customer/utils/confirmationHelpers';
 
 interface BalanceConfirmationData {
     id?: string;

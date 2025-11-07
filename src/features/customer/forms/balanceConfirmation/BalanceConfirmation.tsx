@@ -1,19 +1,19 @@
 // features/customer/forms/balanceConfirmation/BalanceConfirmation.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useOTPHandling } from '../../hooks/useOTPHandling';
-import { FormLayout } from '../../components/FormLayout';
-import { AccountSelector } from '../../components/AccountSelector';
-import { AmountInput } from '../../components/AmountInput';
-import { OTPVerification } from '../../components/OTPVerification';
-import { StepNavigation } from '../../components/StepNavigation';
-import { balanceConfirmationValidationSchema } from '../../utils/extendedValidationSchemas';
-import { balanceConfirmationService } from '../../../../services/balanceConfirmationService';
-import authService from '../../../../services/authService';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { AmountInput } from '@features/customer/components/AmountInput';
+import { OTPVerification } from '@features/customer/components/OTPVerification';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { balanceConfirmationValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
+import { balanceConfirmationService } from '@services';
+import { authService } from '@services';
 import { Shield } from 'lucide-react';
 
 interface FormData {
@@ -35,7 +35,7 @@ export default function BalanceConfirmation() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { step, next, prev, isFirst } = useFormSteps(3);
+  const { step, next, prev, isFirst } = useFormSteps(5);
   const { errors, validateForm, clearFieldError } = useFormValidation(balanceConfirmationValidationSchema);
   const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
 
@@ -164,6 +164,8 @@ export default function BalanceConfirmation() {
         showError('Please validate the account by entering the account number and clicking "Search"');
         return;
       }
+      next();
+    } else if (step === 2) {
       if (!formData.customerName.trim()) {
         showError('Please enter the customer name');
         return;
@@ -172,6 +174,8 @@ export default function BalanceConfirmation() {
         showError('Please select the account opened date');
         return;
       }
+      next();
+    } else if (step === 3) {
       if (!formData.balanceAsOfDate) {
         showError('Please select the balance as of date');
         return;
@@ -261,124 +265,122 @@ export default function BalanceConfirmation() {
         </div>
       )}
       {accountValidated && (
-        <>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Account Holder Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.accountHolderName}
-              readOnly
-              className="w-full p-3 rounded-lg border border-fuchsia-300 bg-gradient-to-r from-amber-50 to-fuchsia-50"
-            />
-            {errors.accountHolderName && (
-              <p className="mt-1 text-sm text-red-600">{errors.accountHolderName}</p>
-            )}
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="text-sm font-medium text-green-800">
+            Account validated successfully: <strong>{formData.accountHolderName}</strong>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Customer Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.customerName}
-              onChange={(e) => handleInputChange('customerName')(e.target.value)}
-              className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
-              placeholder="Enter customer name"
-            />
-            {errors.customerName && (
-              <p className="mt-1 text-sm text-red-600">{errors.customerName}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Account Opened Date <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              value={formData.accountOpenedDate}
-              onChange={(e) => handleInputChange('accountOpenedDate')(e.target.value)}
-              className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
-            />
-            {errors.accountOpenedDate && (
-              <p className="mt-1 text-sm text-red-600">{errors.accountOpenedDate}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Balance As Of Date <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              value={formData.balanceAsOfDate}
-              onChange={(e) => handleInputChange('balanceAsOfDate')(e.target.value)}
-              className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
-            />
-            {errors.balanceAsOfDate && (
-              <p className="mt-1 text-sm text-red-600">{errors.balanceAsOfDate}</p>
-            )}
-          </div>
-
-          <AmountInput
-            value={formData.creditBalance}
-            onChange={handleInputChange('creditBalance')}
-            currency="ETB"
-            error={errors.creditBalance}
-            label="Credit Balance"
-          />
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Embassy/Concerned Organization (Optional)
-            </label>
-            <input
-              type="text"
-              value={formData.embassyOrConcernedOrgan}
-              onChange={(e) => handleInputChange('embassyOrConcernedOrgan')(e.target.value)}
-              className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
-              placeholder="Enter embassy or organization name"
-            />
-            {errors.embassyOrConcernedOrgan && (
-              <p className="mt-1 text-sm text-red-600">{errors.embassyOrConcernedOrgan}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Location (Optional)
-            </label>
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(e) => handleInputChange('location')(e.target.value)}
-              className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
-              placeholder="Enter location"
-            />
-            {errors.location && (
-              <p className="mt-1 text-sm text-red-600">{errors.location}</p>
-            )}
-          </div>
-
-          {formData.phoneNumber && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="text-sm font-medium text-green-800">
-                Phone number associated with this account: <strong>{formData.phoneNumber}</strong>
-              </div>
-              <div className="text-xs text-green-600 mt-1">
-                OTP will be sent to this number
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );
 
   const renderStep2 = () => (
+    <div className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Account Holder Name
+        </label>
+        <input
+          type="text"
+          value={formData.accountHolderName}
+          readOnly
+          className="w-full p-3 rounded-lg border border-fuchsia-300 bg-gradient-to-r from-amber-50 to-fuchsia-50"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Customer Name <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={formData.customerName}
+          onChange={(e) => handleInputChange('customerName')(e.target.value)}
+          className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+          placeholder="Enter customer name"
+        />
+        {errors.customerName && (
+          <p className="mt-1 text-sm text-red-600">{errors.customerName}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Account Opened Date <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="date"
+          value={formData.accountOpenedDate}
+          onChange={(e) => handleInputChange('accountOpenedDate')(e.target.value)}
+          className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+        />
+        {errors.accountOpenedDate && (
+          <p className="mt-1 text-sm text-red-600">{errors.accountOpenedDate}</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Balance As Of Date <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="date"
+          value={formData.balanceAsOfDate}
+          onChange={(e) => handleInputChange('balanceAsOfDate')(e.target.value)}
+          className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+        />
+        {errors.balanceAsOfDate && (
+          <p className="mt-1 text-sm text-red-600">{errors.balanceAsOfDate}</p>
+        )}
+      </div>
+
+      <AmountInput
+        value={formData.creditBalance}
+        onChange={handleInputChange('creditBalance')}
+        currency="ETB"
+        error={errors.creditBalance}
+        label="Credit Balance"
+      />
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Embassy/Concerned Organization (Optional)
+        </label>
+        <input
+          type="text"
+          value={formData.embassyOrConcernedOrgan}
+          onChange={(e) => handleInputChange('embassyOrConcernedOrgan')(e.target.value)}
+          className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+          placeholder="Enter embassy or organization name"
+        />
+        {errors.embassyOrConcernedOrgan && (
+          <p className="mt-1 text-sm text-red-600">{errors.embassyOrConcernedOrgan}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Location (Optional)
+        </label>
+        <input
+          type="text"
+          value={formData.location}
+          onChange={(e) => handleInputChange('location')(e.target.value)}
+          className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+          placeholder="Enter location"
+        />
+        {errors.location && (
+          <p className="mt-1 text-sm text-red-600">{errors.location}</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
         <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
@@ -424,10 +426,21 @@ export default function BalanceConfirmation() {
           <span className="font-semibold text-fuchsia-900">{formData.phoneNumber || 'Not found'}</span>
         </div>
       </div>
+      
+      {formData.phoneNumber && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="text-sm font-medium text-green-800">
+            Phone number associated with this account: <strong>{formData.phoneNumber}</strong>
+          </div>
+          <div className="text-xs text-green-600 mt-1">
+            OTP will be sent to this number
+          </div>
+        </div>
+      )}
     </div>
   );
 
-  const renderStep3 = () => (
+  const renderStep5 = () => (
     <OTPVerification
       phone={formData.phoneNumber}
       otp={formData.otp}
@@ -445,13 +458,14 @@ export default function BalanceConfirmation() {
       case 1: return renderStep1();
       case 2: return renderStep2();
       case 3: return renderStep3();
+      case 4: return renderStep4();
+      case 5: return renderStep5();
       default: return null;
     }
   };
 
-  // Custom navigation for step 2 - Replace Continue with Request OTP button
   const renderCustomNavigation = () => {
-    if (step === 2) {
+    if (step === 4) {
       return (
         <div className="flex justify-between items-center pt-6 border-t border-gray-200">
           {!isFirst && (
@@ -485,18 +499,47 @@ export default function BalanceConfirmation() {
         </div>
       );
     }
+    
+    // For step 5, we need custom navigation with Verify & Submit button
+    if (step === 5) {
+      return (
+        <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={prev}
+            className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+          >
+            Back
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={formData.otp.length !== 6 || isSubmitting}
+            className="bg-fuchsia-600 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ml-auto"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Submitting...
+              </>
+            ) : (
+              'Verify & Submit'
+            )}
+          </button>
+        </div>
+      );
+    }
 
-    // Default navigation for other steps
     return (
       <StepNavigation
         currentStep={step}
-        totalSteps={3}
-        onNext={step === 3 ? handleSubmit : handleNext}
+        totalSteps={5}
+        onNext={handleNext}
         onBack={prev}
-        nextLabel={step === 3 ? 'Verify & Submit' : 'Continue'}
+        nextLabel="Continue"
         nextDisabled={
           (step === 1 && !accountValidated) || 
-          (step === 3 && formData.otp.length !== 6) || 
           isSubmitting
         }
         nextLoading={isSubmitting}

@@ -1,4 +1,4 @@
-import { LANGUAGE_CONFIG } from '../constants/languageConfig';
+import { LANGUAGE_CONFIG } from '@constants/languageConfig';
 
 class SpeechService {
   private synth: SpeechSynthesis | null;

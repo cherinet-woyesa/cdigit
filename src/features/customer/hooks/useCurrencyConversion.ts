@@ -1,6 +1,6 @@
 // hooks/useCurrencyConversion.ts
 import { useState, useEffect } from 'react';
-import { exchangeRateService } from '../../../services/exchangeRateService';
+import { exchangeRateService } from '@services/exchangeRateService';
 
 interface Currency {
   code: string;

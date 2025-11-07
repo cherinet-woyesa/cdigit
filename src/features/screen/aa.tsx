@@ -3,14 +3,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import { motion } from "framer-motion";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@context/AuthContext";
 import { jwtDecode } from "jwt-decode";
-import type { QueueCustomer } from "../../types/QueueCustomer";
-import type { DecodedToken } from "../../types/DecodedToken";
-import makerService from "../../services/makerService";
-import type { WindowDto } from "../../services/makerService";
-import { speechService } from "../../services/speechService";
-import { BranchQrDisplay } from "./BranchQrDisplay";
+import type { QueueCustomer } from "@types";
+import type { DecodedToken } from "@types";
+import makerService from "@services/makerService";
+import type { WindowDto } from "@services/makerService";
+import { speechService } from "@services/speechService";
+import { BranchQrDisplay } from "@features/screen/BranchQrDisplay";
 
 // Dummy exchange rate data
 const DUMMY_EXCHANGE_RATES = [

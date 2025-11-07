@@ -1,8 +1,8 @@
 
 // features/customer/components/stoppayment/RSPOForm.tsx
 import React, { useState } from 'react';
-import Field from '../Field';
-import { useSPOSearch } from '../../hooks/useSPOSearch';
+import Field from '@features/customer/components/Field';
+import { useSPOSearch } from '@features/customer/hooks/useSPOSearch';
 import { Loader2 } from 'lucide-react';
 
 export default function RSPOForm({ onSelect, selectedSpo }) {

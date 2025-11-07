@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../../../context/AuthContext'; // Add for phone number
-import { useBranch } from '../../../../context/BranchContext'; // Add for branch info
+import { useAuth } from '@context/AuthContext'; // Add for phone number
+import { useBranch } from '@context/BranchContext'; // Add for branch info
 import { CheckCircle2, Printer, RefreshCw, ChevronRight, MapPin, User, Hash, Calendar, Clock, FileText, Mail, CreditCard } from 'lucide-react';
-import { type StatementRequestData } from '../../../../services/statementService';
+import { type StatementRequestData } from '@services/statementService';
 
 const StatementRequestConfirmation: React.FC = () => {
   const { t } = useTranslation();

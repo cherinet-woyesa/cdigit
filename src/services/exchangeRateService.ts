@@ -1,5 +1,5 @@
 // services/exchangeRateService.ts
-import { apiClient } from './apiClient';
+import { apiClient } from '@services/http';
 
 export interface ExchangeRate {
   id: string;

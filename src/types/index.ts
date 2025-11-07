@@ -14,3 +14,10 @@ export * from './ExchangeRate';
 export * from './formTypes';
 export * from './QueueCustomer';
 export * from './BranchAnalytics';
+
+// PettyCash Types
+export * from './PettyCash/InitialRequestDto';
+export * from './PettyCash/PettyCashFormResponseDto';
+
+// Re-export commonly used types from features
+export type { Service } from '../features/maker/types/maker.types';

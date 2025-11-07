@@ -1,8 +1,8 @@
 import React from 'react';
-import { useAccountSearch } from '../../../hooks/useAccountSearch';
-import SearchBar from './SearchBar';
-import ResultsTable from './ResultsTable';
-import BlockRecoverModal from './BlockRecoverModal';
+import { useAccountSearch } from '@features/maker/hooks/useAccountSearch';
+import SearchBar from '@features/maker/components/sections/AccountSearch/SearchBar';
+import ResultsTable from '@features/maker/components/sections/AccountSearch/ResultsTable';
+import BlockRecoverModal from '@features/maker/components/sections/AccountSearch/BlockRecoverModal';
 
 const AccountSearch: React.FC = () => {
   const {

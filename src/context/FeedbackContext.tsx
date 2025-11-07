@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import TransactionFeedbackModal from '../modals/TransactionFeedbackModal';
+import TransactionFeedbackModal from '@components/modals/TransactionFeedbackModal';
 
 interface FeedbackContextType {
   showFeedback: (params: {

@@ -1,7 +1,7 @@
 
 // features/customer/hooks/useAddressManagement.ts
 import { useState, useEffect } from 'react';
-import { getRegions, getZones, getWoredas } from '../../../services/addressService';
+import { getRegions, getZones, getWoredas } from '@services/addressService';
 
 export interface AddressData {
     regions: { id: number; name: string }[];

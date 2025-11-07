@@ -1,8 +1,8 @@
 // components/QRCodeGenerator.tsx
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
-import { fetchBranches } from '../../services/branchService';
-import type { Branch } from '../../services/branchService';
+import { fetchBranches } from '@services/branch/branchService';
+import type { Branch } from '@services/branch/branchService';
 import { 
   ArrowDownTrayIcon, 
   QrCodeIcon, 

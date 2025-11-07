@@ -1,9 +1,9 @@
 import React from 'react';
-import { useOtherServices } from '../../../hooks/useOtherServices';
-import ServicesHeader from './ServicesHeader';
-import ServicesGrid from './ServicesGrid';
-import LoadingState from './LoadingState';
-import ErrorState from './ErrorState';
+import { useOtherServices } from '@features/maker/hooks/useOtherServices';
+import ServicesHeader from '@features/maker/components/sections/OtherServices/ServicesHeader';
+import ServicesGrid from '@features/maker/components/sections/OtherServices/ServicesGrid';
+import LoadingState from '@features/maker/components/sections/OtherServices/LoadingState';
+import ErrorState from '@features/maker/components/sections/OtherServices/ErrorState';
 
 interface OtherServicesProps {
   onServiceClick?: (serviceType: string, endpoint: string) => void;

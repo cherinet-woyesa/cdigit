@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
-import CreateWindowModal from "./CreateWindowModal";
-import { Button } from "../../components/ui/button";
-import managerService from "../../services/managerService";
+import CreateWindowModal from "@features/manager/CreateWindowModal";
+import { Button } from "@components/ui/button";
+import managerService from "@services/managerService";
 import toast from "react-hot-toast";
 
 // ✅ New modal for status change

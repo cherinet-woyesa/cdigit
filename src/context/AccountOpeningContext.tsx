@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
-import { type FormData, INITIAL_DATA } from '../types/formTypes';
+import { type FormData, INITIAL_DATA } from '@types';
 
 // Define the shape of our context
 type AccountOpeningContextType = {

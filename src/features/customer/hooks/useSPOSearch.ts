@@ -1,8 +1,8 @@
 
 // features/customer/hooks/useSPOSearch.ts
 import { useState } from 'react';
-import stopPaymentService, { type StopPaymentOrderResponseDto } from '../../../services/stopPaymentService';
-import { useToast } from '../../../context/ToastContext';
+import stopPaymentService, { type StopPaymentOrderResponseDto } from '@services/transactions/stopPaymentService';
+import { useToast } from '@context/ToastContext';
 
 export function useSPOSearch() {
     const [searchResults, setSearchResults] = useState<StopPaymentOrderResponseDto[]>([]);

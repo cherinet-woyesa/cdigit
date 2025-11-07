@@ -1,6 +1,6 @@
 // features/customer/components/statementrequest/OTPStep.tsx
 import React from 'react';
-import OTPVerification from '../../components/OTPVerification';
+import OTPVerification from '@features/customer/components/OTPVerification';
 
 interface OTPStepProps {
     otpCode: string;

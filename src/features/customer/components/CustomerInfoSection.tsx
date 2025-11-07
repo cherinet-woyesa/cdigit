@@ -1,7 +1,7 @@
 
 // features/customer/components/CustomerInfoSection.tsx
 import React from 'react';
-import { type CustomerInfo } from '../../../services/cbeBirrService';
+import { type CustomerInfo } from '@services/cbeBirrService';
 
 export const CustomerInfoSection: React.FC<{ customerInfo: CustomerInfo }> = ({ customerInfo }) => (
     <div className="bg-white p-6 rounded-lg shadow border border-fuchsia-200">

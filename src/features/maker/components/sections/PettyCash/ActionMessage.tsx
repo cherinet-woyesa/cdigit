@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ActionMessage as ActionMessageType } from '../../../types';
+import type { ActionMessage as ActionMessageType } from '@features/maker/types';
 
 interface ActionMessageProps {
   message: ActionMessageType | null;

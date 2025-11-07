@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useAuth } from "../../../context/AuthContext";
-import accountService from "../../../services/accountsService";
-import phoneBlockService from "../../../services/phoneBlockService";
-import type { AccountSearchResult, BlockRequestData, RecoverRequestData } from "../types";
+import { useAuth } from "@context/AuthContext";
+import accountService from "@services/accountsService";
+import phoneBlockService from "@services/forms/phoneBlockService";
+import type { AccountSearchResult, BlockRequestData, RecoverRequestData } from "@features/maker/types";
 
 export const useAccountSearch = () => {
   const { token, user } = useAuth();

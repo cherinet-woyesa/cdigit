@@ -5,16 +5,16 @@
 import React, { useEffect, useState, useRef } from "react";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import { motion } from "framer-motion";
-import { exchangeRateService } from "../../services/exchangeRateService";
-import type { ExchangeRate } from "../../types/ExchangeRate";
-import { useAuth } from "../../context/AuthContext";
+import { exchangeRateService } from "@services/exchangeRateService";
+import type { ExchangeRate } from "@types";
+import { useAuth } from "@context/AuthContext";
 import { jwtDecode } from "jwt-decode";
-import type { QueueCustomer } from "../../types/QueueCustomer";
-import type { DecodedToken } from "../../types/DecodedToken";
-import makerService from "../../services/makerService";
-import type { WindowDto } from "../../services/makerService";
-import { speechService } from "../../services/speechService";
-import { BranchQrDisplay } from "./BranchQrDisplay";
+import type { QueueCustomer } from "@types";
+import type { DecodedToken } from "@types";
+import makerService from "@services/makerService";
+import type { WindowDto } from "@services/makerService";
+import { speechService } from "@services/speechService";
+import { BranchQrDisplay } from "@features/screen/BranchQrDisplay";
 
 export default function ScreenDisplay() {
   const [currentCustomer, setCurrentCustomer] = useState<QueueCustomer | null>(null);

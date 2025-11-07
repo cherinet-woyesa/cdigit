@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import managerService from "../../services/managerService";
+import managerService from "@services/managerService";
 import toast from "react-hot-toast";
-import type { Branch } from "types/Branch";
+import type { Branch } from "@types";
 
 
 

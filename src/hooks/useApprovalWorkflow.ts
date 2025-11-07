@@ -8,9 +8,9 @@ import approvalWorkflowService, {
   type ApprovalRequest,
   type ApprovalAction,
   type ApprovalWorkflow,
-} from '../services/approvalWorkflowService';
-import { useAuth } from '../context/AuthContext';
-import type { UserRole } from '../config/rbacMatrix';
+} from '@services/approvalWorkflowService';
+import { useAuth } from '@context/AuthContext';
+import type { UserRole } from '@config/rbacMatrix';
 
 interface UseApprovalWorkflowReturn {
   /** Create approval workflow for a transaction */

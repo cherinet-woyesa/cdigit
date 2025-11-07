@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { QrReader } from "react-qr-reader";
-import { qrService } from "../../services/qrService";
-import { Button } from "../../components/ui/button";
+import { qrService } from "@services/multiChannel/qrService";
+import { Button } from "@components/ui/button";
 
 interface Props {
   branchId: string;

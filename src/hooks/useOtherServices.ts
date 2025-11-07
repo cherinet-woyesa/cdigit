@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import otherServicesService from '../services/otherServicesService';
-import type { OtherServicesData } from '../services/otherServicesService';
+import otherServicesService from '@services/otherServicesService';
+import type { OtherServicesData } from '@services/otherServicesService';
 import { jwtDecode } from 'jwt-decode';
 
 interface JWTPayload {

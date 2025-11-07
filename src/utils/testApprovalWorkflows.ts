@@ -3,8 +3,8 @@
  * Creates sample high-value transactions to test the Manager Approval Dashboard
  */
 
-import approvalWorkflowService from '../services/approvalWorkflowService';
-import type { UserRole } from '../config/rbacMatrix';
+import approvalWorkflowService from '@services/approvalWorkflowService';
+import type { UserRole } from '@config/rbacMatrix';
 
 export interface SampleTransaction {
   id: string;

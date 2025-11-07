@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
-import { qrService } from "../../services/qrService";
-import { Button } from "../../components/ui/button";
+import { qrService } from "@services/multiChannel/qrService";
+import { Button } from "@components/ui/button";
 
 interface Props {
   branchId: string;

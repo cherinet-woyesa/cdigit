@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, DocumentTextIcon, EyeIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../../../../../context/AuthContext';
-import makerServices from '../../../../../services/makerServices';
-import { EmptyState, ActionMessage } from '../../common';
-import { formatCurrency, formatDate, capitalizeWords } from '../../../utils';
-import type { ServiceRequest, ActionMessage as ActionMessageType } from '../../../types';
+import { useAuth } from '@context/AuthContext';
+import makerServices from '@services/makerServices';
+import { EmptyState, ActionMessage } from '@features/maker/components/common';
+import { formatCurrency, formatDate, capitalizeWords } from '@features/maker/utils';
+import type { ServiceRequest, ActionMessage as ActionMessageType } from '@features/maker/types';
 
 interface ServiceDetailPanelProps {
   onBack?: () => void;

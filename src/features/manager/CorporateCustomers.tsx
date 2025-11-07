@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
-import managerService from "../../services/managerService";
-import CreateCorporateCustomerModal from "./CreateCorporateCustomerModal";
+import managerService from "@services/managerService";
+import CreateCorporateCustomerModal from "@features/manager/CreateCorporateCustomerModal";
 
 
 interface CorporateCustomer {

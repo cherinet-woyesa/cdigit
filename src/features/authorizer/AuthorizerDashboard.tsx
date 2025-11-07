@@ -1,21 +1,11 @@
 import { useEffect, useState } from "react";
-import { safeJWTDecode, isTokenExpired } from "../../utils/jwt";
-import depositService from "../../services/depositService";
+import { safeJWTDecode, isTokenExpired } from "@utils/jwt";
+import authorizerService, { type AuthorizableItem } from '@services/authorizer';
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
-import { Button } from "../../components/ui/button";
+import { Button } from "@components/ui/button";
 
-interface Deposit {
-  id: string;
-  accountHolderName: string;
-  accountNumber: string;
-  amount: number;
-  isAuthorized: boolean;
-  isAudited: boolean;
-  submittedAt: string;
-  authorizerId?: string;
-  auditerId?: string;
-}
+type Deposit = AuthorizableItem;
 
 export default function AuthorizerDashboard() {
   const [branchId, setBranchId] = useState<string>("");
@@ -44,7 +34,7 @@ export default function AuthorizerDashboard() {
       if (!branchId) return;
       setLoading(true);
       try {
-        const res = await depositService.getByBranch(branchId);
+        const res = await authorizerService.getDepositsByBranch(branchId);
         if (res.data && res.data.success) {
           setDeposits(res.data.data);
         }
@@ -60,16 +50,16 @@ export default function AuthorizerDashboard() {
 
   const handleAuthorize = async (depositId: string) => {
     try {
-      const res = await depositService.authorize(depositId, userId);
-      if (res.data.success) {
+      const res = await authorizerService.authorizeDeposit(depositId, userId);
+      if (res.data && res.data.success) {
         toast.success("Deposit authorized successfully!");
         setDeposits((prev) =>
           prev.map((d) =>
-            d.id === depositId ? { ...d, isAuthorized: true } : d
+            d.id === depositId ? { ...d, isAuthorized: true, authorizerId: userId } : d
           )
         );
       } else {
-        toast.error(res.data.message || "Authorization failed.");
+        toast.error(res.data?.message || "Authorization failed.");
       }
     } catch (err) {
       console.error(err);

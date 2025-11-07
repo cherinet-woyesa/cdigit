@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import CreateStaff from "./CreateStaff";
+import CreateStaff from "@features/manager/CreateStaff";
 
 export default function CreateStaffRoute() {
   const [branchId, setBranchId] = useState<string>("");

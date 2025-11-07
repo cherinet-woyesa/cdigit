@@ -5,7 +5,7 @@
  * and configuration defaults for the multi-channel access system.
  */
 
-import type { AccessMethod, SessionPolicy, MultiChannelConfig } from '../types/multiChannelAccess';
+import type { AccessMethod, SessionPolicy, MultiChannelConfig } from '@types';
 
 // ============================================================================
 // ACCESS METHOD CONSTANTS

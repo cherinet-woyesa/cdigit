@@ -1,8 +1,8 @@
 // c:/Users/chereto/Desktop/cbe/CBEDIGITAL/src/components/modals/WindowChangeModal.tsx
 import React, { useState, useEffect } from 'react';
-import type { WindowDto } from '../../services/makerService';
+import type { WindowDto } from '@services/makerService';
 import { XMarkIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline';
-import makerService from '../../services/makerService';
+import makerService from '@services/makerService';
 
 interface WindowChangeModalProps {
   isOpen: boolean;

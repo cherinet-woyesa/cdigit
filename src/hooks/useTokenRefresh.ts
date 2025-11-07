@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 

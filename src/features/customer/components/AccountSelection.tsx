@@ -1,7 +1,7 @@
 
 // features/customer/components/AccountSelection.tsx
 import React, { useState } from 'react';
-import { type CustomerAccount } from '../../../services/cbeBirrService';
+import { type CustomerAccount } from '@services/cbeBirrService';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface AccountSelectionProps {

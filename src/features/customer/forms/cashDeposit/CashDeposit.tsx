@@ -1,22 +1,22 @@
 // features/customer/forms/cashDeposit/CashDepositForm.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../../../context/AuthContext';
-import { useBranch } from '../../../../context/BranchContext';
-import { useToast } from '../../../../context/ToastContext';
-import { useFormSteps } from '../../hooks/useFormSteps';
-import { useAccountSelection } from '../../hooks/useAccountSelection';
-import { useCurrencyConversion } from '../../hooks/useCurrencyConversion';
-import { useFormValidation } from '../../hooks/useFormValidation';
-import { useApprovalWorkflow } from '../../../../hooks/useApprovalWorkflow';
-import { FormLayout } from '../../components/FormLayout';
-import { AccountSelector } from '../../components/AccountSelector';
-import { AmountInput } from '../../components/AmountInput';
-import { StepNavigation } from '../../components/StepNavigation';
-import { SignatureStep } from '../../components/SignatureStep'; // Add this import
-import { depositValidationSchema } from '../../utils/validationSchemas';
-import depositService from '../../../../services/depositService';
-import { convertAmountToWords } from '../../../../utils/amountInWords';
+import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
+import { useToast } from '@context/ToastContext';
+import { useFormSteps } from '@features/customer/hooks/useFormSteps';
+import { useAccountSelection } from '@features/customer/hooks/useAccountSelection';
+import { useCurrencyConversion } from '@features/customer/hooks/useCurrencyConversion';
+import { useFormValidation } from '@features/customer/hooks/useFormValidation';
+import { useApprovalWorkflow } from '@hooks/useApprovalWorkflow';
+import { FormLayout } from '@features/customer/components/FormLayout';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
+import { AmountInput } from '@features/customer/components/AmountInput';
+import { StepNavigation } from '@features/customer/components/StepNavigation';
+import { SignatureStep } from '@features/customer/components/SignatureStep'; // Add this import
+import { depositValidationSchema } from '@features/customer/utils/validationSchemas';
+import depositService from '@services/transactions/depositService';
+import { convertAmountToWords } from '@utils/amountInWords';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
 
 interface Account {

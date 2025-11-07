@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Button } from "../../components/ui/button";
+import { Button } from "@components/ui/button";
 import toast from "react-hot-toast";
-import managerPettyCashService from "../../services/managerPettyCashService";
+import managerPettyCashService from "@services/transactions/managerPettyCashService";
 
 interface Props {
   token: string | null;

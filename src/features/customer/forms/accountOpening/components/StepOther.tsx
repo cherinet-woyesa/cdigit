@@ -1,6 +1,6 @@
 import React from "react";
-import Field from '../../../../../components/Field';
-import type { OtherDetail, Errors } from "../types/formTypes";
+import Field from "@components/form/Field";
+import type { OtherDetail, Errors } from "@features/customer/forms/accountOpening/types/formTypes";
 import { Loader2, ChevronRight, Shield, AlertTriangle, Gift } from 'lucide-react';
 
 export const validate = (data: OtherDetail): Errors<OtherDetail> => {

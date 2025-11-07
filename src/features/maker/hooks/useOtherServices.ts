@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import otherServicesService from '../../../services/otherServicesService';
-import type { OtherServicesData, Service } from '../types';
+import otherServicesService from '@services/otherServicesService';
+import type { OtherServicesData, Service } from '@features/maker/types';
 
 interface JWTPayload {
   nameid: string;

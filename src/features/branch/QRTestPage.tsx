@@ -1,6 +1,6 @@
 // components/QRTestPage.tsx
 import React from 'react';
-import QRCodeGenerator from './QRCodeGenerator';
+import QRCodeGenerator from '@features/branch/QRCodeGenerator';
 
 export default function QRTestPage() {
   return (

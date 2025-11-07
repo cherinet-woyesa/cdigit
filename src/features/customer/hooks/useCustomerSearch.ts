@@ -1,8 +1,8 @@
 
 // features/customer/hooks/useCustomerSearch.ts
 import { useState } from 'react';
-import { cbeBirrService, type CustomerInfo } from '../../../services/cbeBirrService';
-import { useToast } from '../../../context/ToastContext';
+import { cbeBirrService, type CustomerInfo } from '@services/cbeBirrService';
+import { useToast } from '@context/ToastContext';
 
 export function useCustomerSearch() {
     const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);

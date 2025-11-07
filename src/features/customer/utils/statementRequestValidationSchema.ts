@@ -1,4 +1,3 @@
-
 // features/customer/utils/statementRequestValidationSchema.ts
 
 const validateEmail = (email: string): boolean => {
@@ -8,7 +7,7 @@ const validateEmail = (email: string): boolean => {
 
 export const statementRequestValidationSchema = {
     accountNumber: (value: string) => {
-        if (!value.trim()) return 'Please select an account';
+        if (!value.trim()) return 'Please enter an account number';
     },
     accountHolderName: (value: string) => {
         if (!value.trim()) return 'Account holder name is required';

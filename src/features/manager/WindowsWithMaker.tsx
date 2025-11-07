@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
-import managerService from "../../services/managerService";
+import managerService from "@services/managerService";
 import toast from "react-hot-toast";
-import { Button } from "../../components/ui/button";
-import AssignMakerModal from "./AssignMakerModal";
+import { Button } from "@components/ui/button";
+import AssignMakerModal from "@features/manager/AssignMakerModal";
 
 
 

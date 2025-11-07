@@ -1,14 +1,14 @@
 import React from 'react';
-import PettyCash from '../../PettyCash';
-import OtherServices from '../../OtherServices';
-import ServiceDetailPanel from '../../ServiceDetailPanel';
-import ServiceRequestDetailPanel from '../../ServiceRequestDetailPanel';
-import VoucherDashboard from '../../VoucherDashboard';
-import DashboardMetrics from '../../../../components/dashboard/DashboardMetrics';
-import MakerPerformance from '../../MakerPerformance';
-import AccountSearch from '../../AccountSearch';
-import { Transactions } from '../..';
-import { type DashboardState } from '../../types';
+
+import OtherServices from '@features/maker/components/sections/OtherServices';
+import ServiceDetailPanel from '@features/maker/components/ServiceDetailPanel';
+import ServiceRequestDetailPanel from '@features/maker/components/ServiceRequestDetailPanel';
+import VoucherDashboard from '@features/maker/pages/VoucherDashboard';
+import DashboardMetrics from '@components/dashboard/DashboardMetrics';
+import MakerPerformance from '@features/maker/pages/MakerPerformance';
+import AccountSearch from '@features/maker/components/AccountSearch';
+import { Transactions } from '@features/maker';
+import { type DashboardState } from '@features/maker/types';
 
 interface DashboardContentProps {
   state: DashboardState;
@@ -47,8 +47,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           />
         );
 
-      case "petty":
-        return <PettyCash />;
+    
 
       case "other":
         return <OtherServices onServiceClick={onServiceClick} />;
