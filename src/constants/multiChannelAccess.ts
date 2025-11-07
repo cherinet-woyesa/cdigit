@@ -1,19 +1,6 @@
-/**
- * Multi-Channel Access System Constants
- * 
- * This file contains constant values for access methods, session policies,
- * and configuration defaults for the multi-channel access system.
- */
 
-import type { AccessMethod, SessionPolicy, MultiChannelConfig } from '@types';
+import type { AccessMethod, SessionPolicy, MultiChannelConfig } from '../types/multiChannelAccess';
 
-// ============================================================================
-// ACCESS METHOD CONSTANTS
-// ============================================================================
-
-/**
- * Access method constant values
- */
 export const ACCESS_METHODS = {
   MOBILE_APP: 'mobile_app' as AccessMethod,
   BRANCH_TABLET: 'branch_tablet' as AccessMethod,

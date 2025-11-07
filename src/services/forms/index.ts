@@ -13,5 +13,5 @@ export * from '@services/forms/lostPassbookReplacementService';
 export * from '@services/forms/merchantAccountOpeningApplicationService';
 export * from '@services/forms/phoneBlockService';
 export * from '@services/forms/posDeliveryFormService';
-export * from '@services/forms/posRequestService';
+
 export * from '@services/forms/ticketMandateRequestService';

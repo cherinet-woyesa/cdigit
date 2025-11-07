@@ -7,12 +7,7 @@ import type {
     DocumentDetail,
     IdResponse,
     FormSummary,
-} from "@types";
-
-// Base URL for your backend API
-const API_URL = "http://localhost:5268/api/AccountOpening"; // Adjust port if needed
-
-api.defaults.baseURL = API_URL;
+} from "@/types";
 
 /**
  * Retrieves a saved form summary by mobile phone number.
@@ -22,7 +17,7 @@ api.defaults.baseURL = API_URL;
  */
 export const getSavedForm = async (phoneNumber: string): Promise<FormSummary | null> => {
     try {
-        const response = await api.get<FormSummary>(`/form-summary/${encodeURIComponent(phoneNumber)}`);
+        const response = await api.get<FormSummary>(`/AccountOpening/form-summary/${encodeURIComponent(phoneNumber)}`);
         // Backend may wrap in { success, message, data }
         const payload: any = response.data as any;
         return (payload && 'data' in payload) ? payload.data as FormSummary : (response.data as any);
@@ -46,7 +41,7 @@ export const getSavedForm = async (phoneNumber: string): Promise<FormSummary | n
  * @returns A promise that resolves to the saved details with the generated ID.
  */
 export const savePersonalDetails = async (data: PersonalDetail, phoneNumber: string): Promise<IdResponse> => {
-    const response = await api.post<IdResponse>(`/personal-details/${encodeURIComponent(phoneNumber)}`, data);
+    const response = await api.post<IdResponse>(`/AccountOpening/personal-details/${encodeURIComponent(phoneNumber)}`, data);
     const payload: any = response.data as any;
     return (payload && 'data' in payload) ? payload.data as IdResponse : (response.data as any);
 };
@@ -64,7 +59,7 @@ export const saveAddressDetails = async (data: any): Promise<IdResponse> => {
         CustomerId: data?.CustomerId ?? data?.customerId,
     };
     console.log("Address payload CustomerId:", payload.CustomerId);
-    const response = await api.post<IdResponse>(`/address-details`, payload);
+    const response = await api.post<IdResponse>(`/AccountOpening/address-details`, payload);
     const body: any = response.data as any;
     return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
@@ -75,7 +70,7 @@ export const saveAddressDetails = async (data: any): Promise<IdResponse> => {
  * @returns A promise that resolves to the saved details with the generated ID.
  */
 export const saveFinancialDetails = async (data: FinancialDetail): Promise<IdResponse> => {
-    const response = await api.post<IdResponse>(`/financial-details`, data);
+    const response = await api.post<IdResponse>(`/AccountOpening/financial-details`, data);
     const body: any = response.data as any;
     return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
@@ -86,7 +81,7 @@ export const saveFinancialDetails = async (data: FinancialDetail): Promise<IdRes
  * @returns A promise that resolves to the saved details with the generated ID.
  */
 export const saveOtherDetails = async (data: OtherDetail): Promise<IdResponse> => {
-    const response = await api.post<IdResponse>(`/other-details`, data);
+    const response = await api.post<IdResponse>(`/AccountOpening/other-details`, data);
     const body: any = response.data as any;
     return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
@@ -99,7 +94,7 @@ export const saveOtherDetails = async (data: OtherDetail): Promise<IdResponse> =
 export const uploadDocumentPhoto = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await api.post<any>(`/upload-file`, formData, {
+    const response = await api.post<any>(`/AccountOpening/upload-file`, formData, {
         headers: {
             "Content-Type": "multipart/form-data",
         },
@@ -114,7 +109,7 @@ export const uploadDocumentPhoto = async (file: File): Promise<string> => {
  * @returns A promise that resolves to the saved details with the generated ID.
  */
 export const saveDocumentDetails = async (data: DocumentDetail): Promise<IdResponse> => {
-    const response = await api.post<IdResponse>(`/document-details`, data);
+    const response = await api.post<IdResponse>(`/AccountOpening/document-details`, data);
     const body: any = response.data as any;
     return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
@@ -129,7 +124,7 @@ export const saveEPaymentService = async (data: any): Promise<IdResponse> => {
         ...data,
         CustomerId: data?.CustomerId ?? data?.customerId,
     };
-    const response = await api.post<IdResponse>(`/epayment-service`, payload);
+    const response = await api.post<IdResponse>(`/AccountOpening/epayment-service`, payload);
     const body: any = response.data as any;
     return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
@@ -144,7 +139,7 @@ export const savePassbookMudayRequest = async (data: any): Promise<IdResponse> =
         ...data,
         CustomerId: data?.CustomerId ?? data?.customerId,
     };
-    const response = await api.post<IdResponse>(`/passbook-muday`, payload);
+    const response = await api.post<IdResponse>(`/AccountOpening/passbook-muday`, payload);
     const body: any = response.data as any;
     return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
@@ -157,7 +152,7 @@ export const savePassbookMudayRequest = async (data: any): Promise<IdResponse> =
 export const uploadDigitalSignature = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await api.post<any>(`/upload-file`, formData, {
+    const response = await api.post<any>(`/AccountOpening/upload-file`, formData, {
         headers: {
             "Content-Type": "multipart/form-data",
         },
@@ -176,7 +171,7 @@ export const saveDigitalSignature = async (data: any): Promise<IdResponse> => {
         ...data,
         CustomerId: data?.CustomerId ?? data?.customerId,
     };
-    const response = await api.post<IdResponse>(`/digital-signature`, payload);
+    const response = await api.post<IdResponse>(`/AccountOpening/digital-signature`, payload);
     const body: any = response.data as any;
     return (body && 'data' in body) ? body.data as IdResponse : (response.data as any);
 };
@@ -190,7 +185,7 @@ export const saveDigitalSignature = async (data: any): Promise<IdResponse> => {
 export const submitApplication = async (customerId: number): Promise<any> => {
     try {
         console.log(`Submitting application for customer ID: ${customerId}`);
-        const response = await api.post(`/submit/${customerId}`);
+        const response = await api.post(`/AccountOpening/submit/${customerId}`);
         
         // Log the full response for debugging
         console.log('Submit application response:', response);
