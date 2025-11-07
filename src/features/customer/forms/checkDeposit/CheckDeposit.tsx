@@ -1,12 +1,11 @@
 // features/customer/forms/checkDeposit/CheckDepositForm.tsx
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBranch } from '@context/BranchContext';
 import { useToast } from '@context/ToastContext';
 import { useFormSteps } from '@features/customer/hooks/useFormSteps';
 import { useFormValidation } from '@features/customer/hooks/useFormValidation';
 import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
-import { useApprovalWorkflow } from '@hooks/useApprovalWorkflow';
 import { FormLayout } from '@features/customer/components/FormLayout';
 import { AccountSelector } from '@features/customer/components/AccountSelector';
 import { AmountInput } from '@features/customer/components/AmountInput';
@@ -14,10 +13,9 @@ import { OTPVerification } from '@features/customer/components/OTPVerification';
 import { StepNavigation } from '@features/customer/components/StepNavigation';
 import { SignatureStep } from '@features/customer/components/SignatureStep';
 import { checkDepositValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
-import { checkDepositService } from '@services';
-import { authService } from '@services';
-import { CheckCircle2, Shield } from 'lucide-react';
-import SignatureCanvas from 'react-signature-canvas';
+import checkDepositService from '@services/transactions/checkDepositService';
+import authService from '@services/auth/authService';
+import { Shield } from 'lucide-react';
 
 interface FormData {
   accountNumber: string;
@@ -35,9 +33,7 @@ interface FormData {
 export default function CheckDeposit() {
   const { branch } = useBranch();
   const { success: showSuccess, error: showError, info } = useToast();
-  const { createWorkflow } = useApprovalWorkflow();
   const navigate = useNavigate();
-  const signatureRef = useRef<SignatureCanvas>(null);
 
   const { step, next, prev, isFirst } = useFormSteps(5);
   const { errors, validateForm, clearFieldError } = useFormValidation(checkDepositValidationSchema);
@@ -133,7 +129,9 @@ export default function CheckDeposit() {
       }
     }
     
-    if (step === 3) {
+    // Step 3 is now review, no validation needed
+    // Step 4 is signature
+    if (step === 4) {
       if (!formData.signature) {
         showError('Please provide a signature');
         return;
@@ -320,19 +318,11 @@ export default function CheckDeposit() {
     </div>
   );
 
+  // Step 3: Review (moved before signature)
   const renderStep3 = () => (
     <div className="space-y-6">
-      <SignatureStep 
-        onSignatureComplete={handleSignatureComplete}
-        onSignatureClear={handleSignatureClear}
-        error={errors.signature}
-      />
-    </div>
-  );
-
-  const renderStep4 = () => (
-    <div className="space-y-6">
       <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+        <h3 className="text-lg font-bold text-fuchsia-700 mb-4">Review Your Check Deposit</h3>
         <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
           <span className="font-medium text-fuchsia-800">Account Holder:</span>
           <span className="font-semibold text-fuchsia-900">{formData.accountHolderName}</span>
@@ -367,6 +357,17 @@ export default function CheckDeposit() {
     </div>
   );
 
+  // Step 4: Signature (moved after review)
+  const renderStep4 = () => (
+    <div className="space-y-6">
+      <SignatureStep 
+        onSignatureComplete={handleSignatureComplete}
+        onSignatureClear={handleSignatureClear}
+        error={errors.signature}
+      />
+    </div>
+  );
+
   const renderStep5 = () => (
     <OTPVerification
       phone={formData.phoneNumber}
@@ -392,6 +393,7 @@ export default function CheckDeposit() {
   };
 
   const renderCustomNavigation = () => {
+    // Step 4 is now signature, after signature we request OTP
     if (step === 4) {
       return (
         <div className="flex justify-between items-center pt-6 border-t border-gray-200">
@@ -408,7 +410,7 @@ export default function CheckDeposit() {
           <button
             type="button"
             onClick={handleRequestOTP}
-            disabled={!formData.phoneNumber || otpLoading}
+            disabled={!formData.phoneNumber || !formData.signature || otpLoading}
             className="bg-fuchsia-600 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ml-auto"
           >
             {otpLoading ? (
@@ -434,7 +436,8 @@ export default function CheckDeposit() {
           <button
             type="button"
             onClick={prev}
-            className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+            disabled={isSubmitting}
+            className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 disabled:opacity-50"
           >
             Back
           </button>

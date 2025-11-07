@@ -116,10 +116,13 @@ export default function CustomerProfileChange() {
   const handleAccountValidation = (account: any | null) => {
     setAccountValidated(!!account);
     if (account) {
+      // TODO: Replace hardcoded customerId with actual value from backend when available
+      const hardcodedCustomerId = 'CUST-' + Date.now(); // Temporary hardcoded value
+      
       setFormData(prev => ({
         ...prev,
         accountHolderName: account.accountHolderName || '',
-        customerId: account.customerId || '',
+        customerId: account.customerId || hardcodedCustomerId, // Use hardcoded value if not available
         accountName: account.accountHolderName || '',
         customerFullName: account.accountHolderName || '',
         accountType: account.accountType || '',

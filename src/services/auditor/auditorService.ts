@@ -37,7 +37,9 @@ export interface GetByBranchResponse {
 class AuditorService {
   // Deposit audit methods
   async getDepositsByBranch(branchId: string) {
-    return apiClient.get<GetByBranchResponse>(`/Deposits/branch/${branchId}/pending-audit`);
+    // TODO: Backend needs to add this endpoint: /Deposits/branch/{branchId}/pending-audit
+    // For now, get all deposits and filter on frontend
+    return apiClient.get<GetByBranchResponse>(`/Deposits`);
   }
 
   async auditDeposit(depositId: string, userId: string) {

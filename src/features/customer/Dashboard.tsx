@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
 import NearbyBranchesModal from '@components/modals/NearbyBranchesModal';
+import TransactionSearchModal from '@components/modals/TransactionSearchModal';
 import clsx from 'clsx';
 import { DashboardErrorBoundary } from '@components/dashboard/ErrorBoundary';
 import { fetchBranches } from '@services/branch/branchService';
@@ -36,7 +37,7 @@ type FormName =
   | 'fundTransfer'
   | 'history'
   | 'mobileBanking'
-  | 'atmCard'
+
   | 'cbeBirr'
   | 'rtgsTransfer'
   | 'ebankingApplication'
@@ -102,7 +103,7 @@ const forms: Form[] = [
   
   // Personal Banking - Cards & Digital
   { name: 'ebankingApplication', route: '/form/ebanking', icon: DevicePhoneMobileIcon, category: 'cards-digital', subcategory: 'personal-banking' },
-  { name: 'atmCard', route: '/form/atm-card', icon: DevicePhoneMobileIcon, category: 'cards-digital', subcategory: 'personal-banking' },
+
   
   // Personal Banking - Requests & Enquiries
   { name: 'statementRequest', route: '/form/statement-request', icon: DocumentChartBarIcon, category: 'requests-enquiries', subcategory: 'personal-banking' },
@@ -242,6 +243,7 @@ const CustomerDashboardContent: React.FC = () => {
   const [queueCounts, setQueueCounts] = useState<Record<string, number>>({});
   const [loadingNearbyBranches, setLoadingNearbyBranches] = useState(false);
   const [isNearbyBranchesModalOpen, setIsNearbyBranchesModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Debounced search with useCallback for stability
   useEffect(() => {
@@ -440,6 +442,12 @@ const CustomerDashboardContent: React.FC = () => {
         fetchNearbyBranches={fetchNearbyBranches}
       />
 
+      {/* Transaction Search Modal */}
+      <TransactionSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+      />
+
       {/* Header with brand gradient */}
       <header className="bg-fuchsia-700 text-white shadow-lg z-50 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
@@ -459,6 +467,15 @@ const CustomerDashboardContent: React.FC = () => {
               {/* Access Method Indicator */}
               <AccessMethodIndicatorWithContext />
               
+              {/* Search Transaction Button */}
+              <button
+                onClick={() => setIsSearchModalOpen(true)}
+                className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm"
+              >
+                <MagnifyingGlassIcon className="h-5 w-5" />
+                <span className="hidden sm:inline">{t('searchTransaction', 'Search')}</span>
+              </button>
+              
               {/* Nearby Branches Button with brand colors */}
               <button
                 onClick={() => {
@@ -470,7 +487,7 @@ const CustomerDashboardContent: React.FC = () => {
                 className="bg-gradient-to-r from-amber-600 to-fuchsia-700 hover:from-amber-700 hover:to-fuchsia-800 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm shadow-md"
               >
                 <BuildingStorefrontIcon className="h-5 w-5" />
-                <span>{t('nearbyBranches', 'Nearby Branches')}</span>
+                <span className="hidden sm:inline">{t('nearbyBranches', 'Nearby Branches')}</span>
                 {nearbyBranches.length > 0 && (
                   <span className="bg-white text-fuchsia-700 rounded-full px-2 py-0.5 text-xs font-bold">
                     {nearbyBranches.reduce((total, branch) => total + (queueCounts[branch.id] || 0), 0)}
@@ -483,7 +500,7 @@ const CustomerDashboardContent: React.FC = () => {
                 className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 group text-sm"
               >
                 <ClockIcon className="h-5 w-5" />
-                <span>{t('transactionHistory', 'History')}</span>
+                <span className="hidden sm:inline">{t('transactionHistory', 'History')}</span>
               </button>
               
             </div>
