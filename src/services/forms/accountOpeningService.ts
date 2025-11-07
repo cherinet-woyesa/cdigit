@@ -1,5 +1,5 @@
 import axios from "axios";
-import api from '@services/http';
+import { api } from '@services/http';
 import type {
     PersonalDetail,
     FinancialDetail,
