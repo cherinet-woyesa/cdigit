@@ -165,6 +165,7 @@ const Transactions: React.FC<TransactionsProps> = ({ activeSection, assignedWind
         if (!token || !decoded?.BranchId || !decoded?.nameid) return;
         try {
             const res = await makerService.getPriorityCount(decoded.BranchId, decoded.nameid, token);
+            console.log("countPriority: ", res);
             if (typeof res === "number") setPriorityCount(res);
         } catch (err) {
             console.error("Error fetching priority count:", err);
