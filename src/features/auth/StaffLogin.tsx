@@ -28,12 +28,13 @@ const StaffLogin: React.FC = () => {
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const decodedPayload = JSON.parse(window.atob(base64));
         
-        // Enhanced role extraction
+        // Enhanced role extraction - FIXED to properly handle role claims
         const roles = decodedPayload.role || 
                      decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
                      decodedPayload.roles ||
                      decodedPayload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role'];
-        
+      
+        // Handle both string and array roles
         const userRole = Array.isArray(roles) ? roles[0] : roles;
 
         if (!userRole) {
@@ -41,24 +42,31 @@ const StaffLogin: React.FC = () => {
           console.error('No role found in token payload:', decodedPayload);
           return;
         }
-        
+      
         console.log('User role detected for redirection:', userRole);
         console.log('Full token payload:', decodedPayload);
-        
-        // Role-based redirection - FIXED with proper case handling
-        const normalizedRole = userRole.toLowerCase();
-        switch (normalizedRole) {
-          case 'maker':
+      
+        // Role-based redirection - Use exact case matching
+        switch (userRole) {
+          case 'Maker':
             console.log('Redirecting to maker dashboard');
             navigate('/maker-dashboard', { replace: true });
             break;
-          case 'admin':
+          case 'Admin':
             console.log('Redirecting to admin dashboard');
             navigate('/admin-dashboard', { replace: true });
             break;
-          case 'manager':
+          case 'Manager':
             console.log('Redirecting to manager dashboard');
             navigate('/manager-dashboard', { replace: true });
+            break;
+          case 'Auditor':
+            console.log('Redirecting to auditor dashboard');
+            navigate('/auditor-dashboard', { replace: true });
+            break;
+          case 'Authorizer':
+            console.log('Redirecting to authorizer dashboard');
+            navigate('/authorizer-dashboard', { replace: true });
             break;
           default:
             console.warn('Unknown role, redirecting to generic dashboard:', userRole);

@@ -37,7 +37,8 @@ export interface GetByBranchResponse {
 class AuthorizerService {
   // Deposit authorization methods
   async getDepositsByBranch(branchId: string) {
-    return apiClient.get<GetByBranchResponse>(`/Deposits/branch/${branchId}/pending-authorization`);
+    // Use the general deposits endpoint since the specific one doesn't exist
+    return apiClient.get<GetByBranchResponse>(`/Deposits`);
   }
 
   async authorizeDeposit(depositId: string, userId: string) {

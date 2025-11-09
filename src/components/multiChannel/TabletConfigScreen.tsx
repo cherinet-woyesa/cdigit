@@ -1,16 +1,11 @@
-/**
- * Tablet Configuration Screen
- * 
- * Admin interface for configuring tablets with branch assignment.
- * Requires Manager or Admin authentication.
- */
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { TabletConfig, AdminCredentials } from '@types';
+import type { TabletConfig, AdminCredentials } from '@types/multiChannelAccess';
 import { accessMethodDetector } from '@services/multiChannel/accessMethodDetector';
 import { fetchBranches } from '@services/branch/branchService';
 import type { Branch } from '@services/branch/branchService';
+import authService from '@services/auth/authService';
+import logo from '@assets/logo.jpg';
 import './TabletConfigScreen.css';
 
 /**
@@ -109,15 +104,42 @@ export const TabletConfigScreen: React.FC = () => {
         throw new Error('Please enter both username and password');
       }
 
-      // TODO: Call backend authentication API
-      // For now, simulate authentication
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call backend authentication API
+      const response = await authService.staffLogin({
+        email: adminCredentials.username,
+        password: adminCredentials.password
+      });
 
-      // Simulate successful authentication
-      setIsAuthenticated(true);
-      console.log('Admin authenticated:', adminCredentials.username);
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Authentication failed');
+      if (response.data?.token) {
+        // Check if user has appropriate role (Manager or Admin)
+        const base64Url = response.data.token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const decodedPayload = JSON.parse(window.atob(base64));
+        
+        const roles = decodedPayload.role || 
+                     decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+                     decodedPayload.roles ||
+                     decodedPayload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role'];
+      
+        const userRole = Array.isArray(roles) ? roles[0] : roles;
+
+        if (userRole !== 'Manager' && userRole !== 'Admin') {
+          throw new Error('Only Manager or Admin roles can configure tablets');
+        }
+
+        // Authentication successful
+        setIsAuthenticated(true);
+        console.log('Admin authenticated:', adminCredentials.username);
+      } else {
+        throw new Error('Authentication failed. Please check your credentials.');
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.Message || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Authentication failed';
+      setAuthError(errorMessage);
+      console.error('Authentication error:', error);
     } finally {
       setIsAuthenticating(false);
     }
@@ -205,6 +227,13 @@ export const TabletConfigScreen: React.FC = () => {
     return (
       <div className="tablet-config-screen">
         <div className="config-container">
+          <div className="config-header">
+            <div className="logo-container">
+              <img src={logo} alt="CBE Logo" className="header-logo" />
+            </div>
+            <h1>Welcome to CBE</h1>
+            <p>Commercial Bank of Ethiopia</p>
+          </div>
           <div className="config-loading">
             <div className="loading-spinner"></div>
             <p>Loading configuration...</p>
@@ -220,21 +249,25 @@ export const TabletConfigScreen: React.FC = () => {
       <div className="tablet-config-screen">
         <div className="config-container">
           <div className="config-header">
-            <h1>Tablet Configuration</h1>
-            <p>Admin authentication required</p>
+            <div className="logo-container">
+              <img src={logo} alt="CBE Logo" className="header-logo" />
+            </div>
+            <h1>Welcome to CBE</h1>
+            <p>Commercial Bank of Ethiopia</p>
           </div>
 
           <form onSubmit={handleAuthenticate} className="auth-form">
             <div className="form-group">
-              <label htmlFor="username">Username</label>
+              <label htmlFor="username">Email</label>
               <input
-                type="text"
+                type="email"
                 id="username"
                 value={adminCredentials.username}
                 onChange={(e) => setAdminCredentials({ ...adminCredentials, username: e.target.value })}
-                placeholder="Enter admin username"
+                placeholder="Enter admin email"
                 disabled={isAuthenticating}
                 autoFocus
+                required
               />
             </div>
 
@@ -247,6 +280,7 @@ export const TabletConfigScreen: React.FC = () => {
                 onChange={(e) => setAdminCredentials({ ...adminCredentials, password: e.target.value })}
                 placeholder="Enter admin password"
                 disabled={isAuthenticating}
+                required
               />
             </div>
 
@@ -304,8 +338,11 @@ export const TabletConfigScreen: React.FC = () => {
     <div className="tablet-config-screen">
       <div className="config-container">
         <div className="config-header">
-          <h1>Tablet Configuration</h1>
-          <p>Configure this tablet for branch access</p>
+          <div className="logo-container">
+            <img src={logo} alt="CBE Logo" className="header-logo" />
+          </div>
+          <h1>Welcome to CBE</h1>
+          <p>Commercial Bank of Ethiopia</p>
           <button onClick={handleLogout} className="logout-button">
             Logout
           </button>

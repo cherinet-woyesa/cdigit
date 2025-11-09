@@ -10,7 +10,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { qrCodeValidator } from '@services/multiChannel/qrCodeValidator';
 import { useMultiChannelBranch } from '@context/MultiChannelBranchContext';
 import { accessMethodDetector } from '@services/multiChannel/accessMethodDetector';
-import type { QRValidationResult } from '@types';
+import type { QRValidationResult } from '@types/multiChannelAccess';
+import logo from '@assets/logo.jpg';
 import './QRCodeScanFlow.css';
 
 /**
@@ -100,10 +101,15 @@ export const QRCodeScanFlow: React.FC = () => {
     return (
       <div className="qr-scan-flow">
         <div className="qr-scan-container">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+              <img src={logo} alt="CBE Logo" className="h-8 w-8 object-contain rounded-full" />
+            </div>
+          </div>
           <div className="qr-scan-loading">
             <div className="loading-spinner"></div>
-            <h2>Validating QR Code</h2>
-            <p>Please wait while we verify your access...</p>
+            <h2>Welcome to CBE</h2>
+            <p>Validating your QR code access...</p>
           </div>
         </div>
       </div>
@@ -115,6 +121,11 @@ export const QRCodeScanFlow: React.FC = () => {
     return (
       <div className="qr-scan-flow">
         <div className="qr-scan-container">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+              <img src={logo} alt="CBE Logo" className="h-8 w-8 object-contain rounded-full" />
+            </div>
+          </div>
           <div className="qr-scan-error">
             <div className="error-icon">❌</div>
             <h2>QR Code Invalid</h2>
@@ -150,10 +161,15 @@ export const QRCodeScanFlow: React.FC = () => {
   return (
     <div className="qr-scan-flow">
       <div className="qr-scan-container">
+        <div className="flex justify-center mb-4">
+          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+            <img src={logo} alt="CBE Logo" className="h-8 w-8 object-contain rounded-full" />
+          </div>
+        </div>
         <div className="qr-scan-success">
           <div className="success-icon">✓</div>
           <h2>QR Code Verified</h2>
-          <p>Redirecting to language selection...</p>
+          <p>Welcome to CBE! Redirecting to language selection...</p>
           {validationResult.branchContext && (
             <div className="branch-info">
               <p className="branch-name">{validationResult.branchContext.branchName}</p>

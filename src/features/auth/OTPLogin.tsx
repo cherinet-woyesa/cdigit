@@ -42,7 +42,7 @@ const FormInput: React.FC<FormInputProps> = React.memo((props) => {
   return (
     <input
       {...props}
-      className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+      className="w-full p-3 rounded-lg border-2 border-amber-400 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 bg-amber-50"
     />
   );
 });
@@ -191,14 +191,15 @@ const RequestOtpForm: React.FC<RequestOtpFormProps> = React.memo(({ phoneNumber,
   <>
     <form onSubmit={handleRequestOtp} className="space-y-6">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-4 bg-gradient-to-r from-amber-400 to-fuchsia-600 rounded-lg flex items-center justify-center">
-          <Phone className="w-6 h-6 text-white" />
+        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-amber-400 to-fuchsia-600 rounded-full flex items-center justify-center">
+          <Phone className="w-8 h-8 text-white" />
         </div>
+        <h2 className="text-2xl font-bold text-fuchsia-700 mb-2">{t('welcomeToCBE')}</h2>
         <p className="text-gray-600">{t('enterPhonePrompt')}</p>
       </div>
 
       <div>
-        <label htmlFor="phone-input" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="phone-input" className="block text-sm font-medium text-fuchsia-700 mb-2">
           {t('phoneNumber')}
         </label>
         <FormInput
@@ -233,7 +234,7 @@ const RequestOtpForm: React.FC<RequestOtpFormProps> = React.memo(({ phoneNumber,
       </FormButton>
     </form>
     
-    <div className="text-center pt-4 border-t border-gray-200 mt-6">
+    <div className="text-center pt-4 border-t border-amber-200 mt-6">
       <span className="text-gray-600 text-sm">{t('noAccount')}</span>
       <Link to="/form/account-opening" className="ml-2 text-fuchsia-700 font-semibold hover:text-fuchsia-800 transition-colors text-sm">
         {t('createAccount')}
@@ -260,12 +261,13 @@ const VerifyOtpForm: React.FC<VerifyOtpFormProps> = React.memo(({ submitOtp, loa
   return (
     <form onSubmit={(e) => { e.preventDefault(); submitOtp(); }} className="space-y-6">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-4 bg-gradient-to-r from-amber-400 to-fuchsia-600 rounded-lg flex items-center justify-center">
-          <Shield className="w-6 h-6 text-white" />
+        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-amber-400 to-fuchsia-600 rounded-full flex items-center justify-center">
+          <Shield className="w-8 h-8 text-white" />
         </div>
+        <h2 className="text-2xl font-bold text-fuchsia-700 mb-2">{t('welcomeToCBE')}</h2>
         <p className="text-gray-600">{t('enterOtp')}</p>
         <p className="text-xs text-gray-500 mt-1">
-          {t('codeSentTo')} <span className="font-medium text-gray-700">{maskPhone(effectivePhone) || '—'}</span>
+          {t('codeSentTo')} <span className="font-medium text-fuchsia-700">{maskPhone(effectivePhone) || '—'}</span>
         </p>
       </div>
 
@@ -279,7 +281,7 @@ const VerifyOtpForm: React.FC<VerifyOtpFormProps> = React.memo(({ submitOtp, loa
               type="tel"
               inputMode="numeric"
               maxLength={1}
-              className={`w-full text-center text-lg p-3 border-2 rounded-lg transition-all ${d ? 'border-fuchsia-500 bg-fuchsia-50' : 'border-gray-300 hover:border-gray-400'} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`w-full text-center text-lg p-3 border-2 rounded-lg transition-all ${d ? 'border-fuchsia-500 bg-fuchsia-50' : 'border-amber-400 hover:border-amber-500'} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
               value={d}
               onChange={(e) => handleOtpChangeAt(idx, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(idx, e)}
@@ -308,7 +310,7 @@ const VerifyOtpForm: React.FC<VerifyOtpFormProps> = React.memo(({ submitOtp, loa
         )}
       </FormButton>
       
-      <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-6">
+      <div className="flex justify-between items-center pt-4 border-t border-amber-200 mt-6">
         <button 
           type="button" 
           onClick={handleBack} 
@@ -528,19 +530,20 @@ const OTPLogin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-amber-100 to-fuchsia-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           {/* Header */}
-          <header className="bg-fuchsia-700 text-white">
+          <header className="bg-gradient-to-r from-fuchsia-700 to-amber-500 text-white">
             <div className="px-6 py-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                    <img src={logo} alt={t('logoAlt')} className="h-6 w-6 object-contain rounded-full" />
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                    <img src={logo} alt={t('logoAlt')} className="h-8 w-8 object-contain rounded-full" />
                   </div>
                   <div>
-                    <h1 className="text-lg font-bold">{t('bankName')}</h1>
+                    <h1 className="text-xl font-bold">{t('bankName')}</h1>
+                    <p className="text-xs text-white/80">{t('welcomeToCBE')}</p>
                   </div>
                 </div>
                 
@@ -558,9 +561,9 @@ const OTPLogin: React.FC = () => {
           </header>
 
           {/* Progress Indicator */}
-          <div className="flex justify-center space-x-2 py-4 bg-gray-50">
-            <div className={`w-3 h-3 rounded-full transition-all ${step === 'request' ? 'bg-fuchsia-600' : 'bg-gray-300'}`}></div>
-            <div className={`w-3 h-3 rounded-full transition-all ${step === 'verify' ? 'bg-fuchsia-600' : 'bg-gray-300'}`}></div>
+          <div className="flex justify-center space-x-2 py-4 bg-amber-50">
+            <div className={`w-3 h-3 rounded-full transition-all ${step === 'request' ? 'bg-fuchsia-600' : 'bg-amber-300'}`}></div>
+            <div className={`w-3 h-3 rounded-full transition-all ${step === 'verify' ? 'bg-fuchsia-600' : 'bg-amber-300'}`}></div>
           </div>
 
           {/* Main Content */}

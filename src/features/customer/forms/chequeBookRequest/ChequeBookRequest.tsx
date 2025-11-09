@@ -23,7 +23,7 @@ interface FormData {
   leavesPerChequeBook: string;
   otp: string;
   phoneNumber: string;
-  signature: string;
+  digitalSignature: string;
 }
 
 export default function ChequeBookRequest() {

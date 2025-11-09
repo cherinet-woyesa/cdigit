@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+   background: #ffffff;
   padding: 20px;
 }
 
@@ -20,6 +20,21 @@
   padding: 40px;
 }
 
+/* Logo Container */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.header-logo {
+  height: 80px;
+  width: 80px;
+  border-radius: 50%;
+  object-fit: contain;
+  border: 3px solid #f59e0b;
+}
+
 /* Header */
 .config-header {
   text-align: center;
@@ -30,13 +45,13 @@
 .config-header h1 {
   font-size: 28px;
   font-weight: 700;
-  color: #1f2937;
+  color: #701a75;
   margin: 0 0 8px 0;
 }
 
 .config-header p {
   font-size: 16px;
-  color: #6b7280;
+  color: #f59e0b;
   margin: 0;
 }
 
@@ -45,9 +60,9 @@
   top: 0;
   right: 0;
   padding: 8px 16px;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: #f59e0b;
+  color: #ffffff;
+  border: 1px solid #f59e0b;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
@@ -56,8 +71,8 @@
 }
 
 .logout-button:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  background: #701a75;
+  border-color: #701a75;
 }
 
 /* Loading State */
@@ -72,8 +87,8 @@
 .loading-spinner {
   width: 48px;
   height: 48px;
-  border: 4px solid #e5e7eb;
-  border-top-color: #10b981;
+  border: 4px solid #f59e0b;
+  border-top-color: #701a75;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -107,24 +122,25 @@
 .form-group label {
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #701a75;
 }
 
 .form-group input,
 .form-group select {
   padding: 12px 16px;
-  border: 1px solid #d1d5db;
+  border: 2px solid #f59e0b;
   border-radius: 8px;
   font-size: 16px;
   color: #1f2937;
   transition: all 0.2s;
+  background-color: #fff8f0;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  border-color: #701a75;
+  box-shadow: 0 0 0 3px rgba(112, 26, 117, 0.2);
 }
 
 .form-group input:disabled,
@@ -159,32 +175,32 @@
 }
 
 .submit-button {
-  background: #10b981;
+  background: #701a75;
   color: #ffffff;
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #059669;
+  background: #8b5cf6;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 12px rgba(112, 26, 117, 0.3);
 }
 
 .submit-button:disabled {
   background: #d1d5db;
-  color: #9ca3af;
+  color: #ffffff;
   cursor: not-allowed;
   transform: none;
 }
 
 .cancel-button {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: #f59e0b;
+  color: #ffffff;
+  border: 1px solid #f59e0b;
 }
 
 .cancel-button:hover:not(:disabled) {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  background: #701a75;
+  border-color: #701a75;
 }
 
 .cancel-button:disabled {
@@ -219,15 +235,17 @@
 }
 
 .error-message {
-  background: #fef2f2;
-  color: #991b1b;
+  background: #fff0f0;
+  color: #ffffff;
   border: 1px solid #fecaca;
+  background-color: #701a75;
 }
 
 .success-message {
   background: #f0fdf4;
-  color: #166534;
+  color: #ffffff;
   border: 1px solid #bbf7d0;
+  background-color: #16a34a;
 }
 
 /* Device Info */
@@ -247,6 +265,7 @@
 .device-id {
   font-family: 'Courier New', monospace;
   font-weight: 600;
+  color: #701a75;
 }
 
 .config-status {
@@ -258,8 +277,8 @@
 
 /* Device Info Card */
 .device-info-card {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: #fff8f0;
+  border: 1px solid #f59e0b;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 24px;
@@ -268,7 +287,7 @@
 .device-info-card h3 {
   font-size: 16px;
   font-weight: 700;
-  color: #1f2937;
+  color: #701a75;
   margin: 0 0 16px 0;
 }
 
@@ -277,7 +296,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #f59e0b;
 }
 
 .info-row:last-child {
@@ -287,7 +306,7 @@
 .info-label {
   font-size: 14px;
   font-weight: 600;
-  color: #6b7280;
+  color: #701a75;
 }
 
 .info-value {
@@ -308,23 +327,27 @@
 }
 
 .status-badge.unconfigured {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fff8f0;
+  color: #f59e0b;
+  border: 1px solid #f59e0b;
 }
 
 .status-badge.configured {
-  background: #d1fae5;
-  color: #065f46;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #16a34a;
 }
 
 .status-badge.locked {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #fff0f0;
+  color: #dc2626;
+  border: 1px solid #dc2626;
 }
 
 .status-badge.loading {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: #f0f4ff;
+  color: #4f46e5;
+  border: 1px solid #4f46e5;
 }
 
 /* Responsive Design */
@@ -386,38 +409,40 @@
   }
 
   .config-header h1 {
-    color: #f9fafb;
+    color: #f59e0b;
   }
 
   .config-header p {
-    color: #d1d5db;
+    color: #c4b5fd;
   }
 
   .logout-button {
-    background: #374151;
-    color: #f9fafb;
-    border-color: #4b5563;
+    background: #f59e0b;
+    color: #1f2937;
+    border-color: #f59e0b;
   }
 
   .logout-button:hover {
-    background: #4b5563;
-    border-color: #6b7280;
+    background: #701a75;
+    color: #ffffff;
+    border-color: #701a75;
   }
 
   .form-group label {
-    color: #f9fafb;
+    color: #f59e0b;
   }
 
   .form-group input,
   .form-group select {
     background: #374151;
-    border-color: #4b5563;
+    border-color: #f59e0b;
     color: #f9fafb;
   }
 
   .form-group input:focus,
   .form-group select:focus {
-    border-color: #10b981;
+    border-color: #701a75;
+    box-shadow: 0 0 0 3px rgba(112, 26, 117, 0.3);
   }
 
   .form-group input:disabled,
@@ -427,14 +452,15 @@
   }
 
   .cancel-button {
-    background: #374151;
-    color: #f9fafb;
-    border-color: #4b5563;
+    background: #f59e0b;
+    color: #1f2937;
+    border-color: #f59e0b;
   }
 
   .cancel-button:hover:not(:disabled) {
-    background: #4b5563;
-    border-color: #6b7280;
+    background: #701a75;
+    color: #ffffff;
+    border-color: #701a75;
   }
 
   .device-info {
@@ -447,19 +473,19 @@
 
   .device-info-card {
     background: #374151;
-    border-color: #4b5563;
+    border-color: #f59e0b;
   }
 
   .device-info-card h3 {
-    color: #f9fafb;
+    color: #f59e0b;
   }
 
   .info-row {
-    border-bottom-color: #4b5563;
+    border-bottom-color: #f59e0b;
   }
 
   .info-label {
-    color: #d1d5db;
+    color: #f59e0b;
   }
 
   .info-value {
@@ -467,14 +493,26 @@
   }
 
   .error-message {
-    background: #7f1d1d;
-    color: #fecaca;
+    background: #701a75;
+    color: #ffffff;
     border-color: #991b1b;
   }
 
   .success-message {
-    background: #064e3b;
-    color: #a7f3d0;
+    background: #16a34a;
+    color: #ffffff;
     border-color: #065f46;
+  }
+  
+  .status-badge.unconfigured {
+    background: #374151;
+    color: #f59e0b;
+    border: 1px solid #f59e0b;
+  }
+  
+  .status-badge.configured {
+    background: #374151;
+    color: #16a34a;
+    border: 1px solid #16a34a;
   }
 }

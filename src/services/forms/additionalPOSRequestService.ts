@@ -1,4 +1,3 @@
-
 import { apiClient } from '@services/http';
 
 export interface AdditionalPOSRequestData {
@@ -34,9 +33,10 @@ export interface AdditionalPOSRequestData {
 }
 
 class AdditionalPOSRequestService {
-  requestOTP(phoneNumber: string): Promise<any> {
-    throw new Error('Method not implemented.');
+  async requestOTP(phoneNumber: string) {
+    return apiClient.post('/AdditionalPOSRequest/request-otp', { phoneNumber });
   }
+  
   async submitRequest(data: AdditionalPOSRequestData) {
     return apiClient.post('/AdditionalPOSRequest/submit', data);
   }

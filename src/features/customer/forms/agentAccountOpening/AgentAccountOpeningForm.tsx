@@ -11,6 +11,17 @@ import { SignatureStep } from '@features/customer/components/SignatureStep';
 import OTPStep from '@features/customer/components/stoppayment/OTPStep';
 import { agentAccountOpeningService } from '@services/forms/agentAccountOpeningService';
 import authService from '@services/auth/authService';
+import { 
+  Building, 
+  FileText, 
+  MapPin, 
+  Phone, 
+  User, 
+  IdCard, 
+  Shield,
+  Calendar,
+  Mail
+} from 'lucide-react';
 
 interface FormData {
   companyName: string;
@@ -22,11 +33,17 @@ interface FormData {
   officeAddress: string;
   city: string;
   phoneNumber: string;
+  faxNumber: string;
+  postalNumber: string;
   emailAddress: string;
   representativeName: string;
   fatherName: string;
   grandfatherName: string;
   idNumber: string;
+  idIssuedBy: string;
+  representativeCity: string;
+  representativeEmail: string;
+  representativeTelNumber: string;
   agentBankAccountNumber: string;
   otpCode: string;
   signature: string;
@@ -51,18 +68,24 @@ export default function AgentAccountOpeningForm() {
     officeAddress: '',
     city: '',
     phoneNumber: '',
+    faxNumber: '',
+    postalNumber: '',
     emailAddress: '',
     representativeName: '',
     fatherName: '',
     grandfatherName: '',
     idNumber: '',
+    idIssuedBy: '',
+    representativeCity: '',
+    representativeEmail: '',
+    representativeTelNumber: '',
     agentBankAccountNumber: '',
     otpCode: '',
     signature: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -115,13 +138,6 @@ export default function AgentAccountOpeningForm() {
         issueDate: formData.issueDate ? new Date(formData.issueDate) : undefined,
         expireDate: formData.expireDate ? new Date(formData.expireDate) : undefined,
         signatures: [{ signature: formData.signature }],
-        // dummy values for required fields not in form
-        faxNumber: '',
-        postalNumber: '',
-        idIssuedBy: '',
-        representativeCity: '',
-        representativeEmail: '',
-        representativeTelNumber: '',
       });
       showSuccess('Application submitted successfully!');
       navigate('/dashboard');
@@ -137,68 +153,95 @@ export default function AgentAccountOpeningForm() {
       case 1:
         // Company & business details step
         return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Company & Business Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Building className="h-5 w-5 text-fuchsia-700" />
+              Company & Business Details
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
                 <input 
                   name="companyName" 
                   value={formData.companyName} 
                   onChange={handleChange} 
-                  placeholder="Company Name" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter company name" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Business Type</label>
-                <input 
-                  name="businessType" 
-                  value={formData.businessType} 
-                  onChange={handleChange} 
-                  placeholder="Business Type" 
-                  className="w-full p-3 border rounded-lg" 
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Business Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="businessType"
+                  value={formData.businessType}
+                  onChange={handleChange}
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                >
+                  <option value="">Select Business Type</option>
+                  <option value="Sole Proprietorship">Sole Proprietorship</option>
+                  <option value="Partnership">Partnership</option>
+                  <option value="Corporation">Corporation</option>
+                  <option value="LLC">LLC</option>
+                  <option value="Cooperative">Cooperative</option>
+                </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Trade License Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trade License Number
+                </label>
                 <input 
                   name="tradeLicenseNumber" 
                   value={formData.tradeLicenseNumber} 
                   onChange={handleChange} 
-                  placeholder="Trade License Number" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter trade license number" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tax Payer ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tax Payer ID
+                </label>
                 <input 
                   name="taxPayerIdNumber" 
                   value={formData.taxPayerIdNumber} 
                   onChange={handleChange} 
-                  placeholder="Tax Payer ID" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter tax payer ID" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">License Issue Date</label>
-                <input 
-                  type="date" 
-                  name="issueDate" 
-                  value={formData.issueDate} 
-                  onChange={handleChange} 
-                  className="w-full p-3 border rounded-lg" 
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  License Issue Date
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="date" 
+                    name="issueDate" 
+                    value={formData.issueDate} 
+                    onChange={handleChange} 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">License Expire Date</label>
-                <input 
-                  type="date" 
-                  name="expireDate" 
-                  value={formData.expireDate} 
-                  onChange={handleChange} 
-                  className="w-full p-3 border rounded-lg" 
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  License Expire Date
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="date" 
+                    name="expireDate" 
+                    value={formData.expireDate} 
+                    onChange={handleChange} 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -206,8 +249,12 @@ export default function AgentAccountOpeningForm() {
       case 2:
         // Address & contact details step
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-fuchsia-700" />
+              Address & Contact Information
+            </h2>
+            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200 mb-6">
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Company:</span>
                 <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
@@ -218,47 +265,84 @@ export default function AgentAccountOpeningForm() {
               </div>
             </div>
             
-            <h3 className="text-lg font-medium text-gray-900">Address & Contact</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Office Address</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Office Address <span className="text-red-500">*</span>
+                </label>
                 <input 
                   name="officeAddress" 
                   value={formData.officeAddress} 
                   onChange={handleChange} 
-                  placeholder="Office Address" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter office address" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  City <span className="text-red-500">*</span>
+                </label>
                 <input 
                   name="city" 
                   value={formData.city} 
                   onChange={handleChange} 
-                  placeholder="City" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter city" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number for OTP</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Postal Number
+                </label>
                 <input 
-                  name="phoneNumber" 
-                  value={formData.phoneNumber} 
+                  name="postalNumber" 
+                  value={formData.postalNumber} 
                   onChange={handleChange} 
-                  placeholder="Phone Number for OTP" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter postal number" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number for OTP <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    name="phoneNumber" 
+                    value={formData.phoneNumber} 
+                    onChange={handleChange} 
+                    placeholder="Enter phone number" 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fax Number
+                </label>
                 <input 
-                  name="emailAddress" 
-                  value={formData.emailAddress} 
+                  name="faxNumber" 
+                  value={formData.faxNumber} 
                   onChange={handleChange} 
-                  placeholder="Email Address" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter fax number" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    name="emailAddress" 
+                    value={formData.emailAddress} 
+                    onChange={handleChange} 
+                    placeholder="Enter email address" 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -266,8 +350,12 @@ export default function AgentAccountOpeningForm() {
       case 3:
         // Representative details step
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <User className="h-5 w-5 text-fuchsia-700" />
+              Representative Details
+            </h2>
+            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200 mb-6">
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Company:</span>
                 <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
@@ -278,47 +366,111 @@ export default function AgentAccountOpeningForm() {
               </div>
             </div>
             
-            <h3 className="text-lg font-medium text-gray-900">Representative Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Representative Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Representative Name <span className="text-red-500">*</span>
+                </label>
                 <input 
                   name="representativeName" 
                   value={formData.representativeName} 
                   onChange={handleChange} 
-                  placeholder="Representative Name" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter representative name" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Father's Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Father's Name <span className="text-red-500">*</span>
+                </label>
                 <input 
                   name="fatherName" 
                   value={formData.fatherName} 
                   onChange={handleChange} 
-                  placeholder="Father's Name" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter father's name" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Grandfather's Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Grandfather's Name <span className="text-red-500">*</span>
+                </label>
                 <input 
                   name="grandfatherName" 
                   value={formData.grandfatherName} 
                   onChange={handleChange} 
-                  placeholder="Grandfather's Name" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter grandfather's name" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ID Number <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    name="idNumber" 
+                    value={formData.idNumber} 
+                    onChange={handleChange} 
+                    placeholder="Enter ID number" 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ID Issued By
+                </label>
                 <input 
-                  name="idNumber" 
-                  value={formData.idNumber} 
+                  name="idIssuedBy" 
+                  value={formData.idIssuedBy} 
                   onChange={handleChange} 
-                  placeholder="ID Number" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter issuing authority" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Representative City
+                </label>
+                <input 
+                  name="representativeCity" 
+                  value={formData.representativeCity} 
+                  onChange={handleChange} 
+                  placeholder="Enter representative city" 
+                  className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Representative Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    name="representativeEmail" 
+                    value={formData.representativeEmail} 
+                    onChange={handleChange} 
+                    placeholder="Enter representative email" 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Representative Phone
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    name="representativeTelNumber" 
+                    value={formData.representativeTelNumber} 
+                    onChange={handleChange} 
+                    placeholder="Enter representative phone" 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -326,8 +478,12 @@ export default function AgentAccountOpeningForm() {
       case 4:
         // Account details step
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-fuchsia-700" />
+              Account Information
+            </h2>
+            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200 mb-6">
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Company:</span>
                 <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
@@ -342,29 +498,43 @@ export default function AgentAccountOpeningForm() {
               </div>
             </div>
             
-            <h3 className="text-lg font-medium text-gray-900">Account</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Agent Bank Account Number</label>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Agent Bank Account Number <span className="text-red-500">*</span>
+              </label>
               <input 
                 name="agentBankAccountNumber" 
                 value={formData.agentBankAccountNumber} 
                 onChange={handleChange} 
-                placeholder="Agent Bank Account Number" 
-                className="w-full p-3 border rounded-lg" 
+                placeholder="Enter bank account number" 
+                className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
               />
             </div>
             
-            <SignatureStep 
-              onSignatureComplete={handleSignatureComplete}
-              onSignatureClear={handleSignatureClear}
-            />
+            <div className="border border-fuchsia-200 rounded-lg p-4">
+              <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-fuchsia-700" />
+                Digital Signature
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Please sign below to confirm your application. This signature is legally binding.
+              </p>
+              <SignatureStep 
+                onSignatureComplete={handleSignatureComplete}
+                onSignatureClear={handleSignatureClear}
+              />
+            </div>
           </div>
         );
       case 5:
         // OTP step
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-fuchsia-700" />
+              OTP Verification
+            </h2>
+            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200 mb-6">
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Company:</span>
                 <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
@@ -421,6 +591,7 @@ export default function AgentAccountOpeningForm() {
               </>
             ) : (
               <>
+                <Shield className="h-4 w-4" />
                 Request OTP
               </>
             )}
@@ -436,12 +607,12 @@ export default function AgentAccountOpeningForm() {
         totalSteps={5}
         onNext={isLast ? handleSubmit : next}
         onBack={prev}
-        nextLabel={isLast ? 'Submit' : 'Continue'}
+        nextLabel={isLast ? 'Submit Application' : 'Continue'}
         nextDisabled={
-          (step === 1 && !formData.companyName) || 
-          (step === 2 && (!formData.officeAddress || !formData.phoneNumber)) ||
-          (step === 3 && !formData.representativeName) ||
-          (step === 4 && !formData.agentBankAccountNumber) ||
+          (step === 1 && (!formData.companyName || !formData.businessType)) || 
+          (step === 2 && (!formData.officeAddress || !formData.city || !formData.phoneNumber)) ||
+          (step === 3 && (!formData.representativeName || !formData.fatherName || !formData.grandfatherName || !formData.idNumber)) ||
+          (step === 4 && (!formData.agentBankAccountNumber || isSignatureEmpty)) ||
           (step === 5 && formData.otpCode.length !== 6) || 
           isSubmitting
         }

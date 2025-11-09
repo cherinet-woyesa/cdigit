@@ -33,7 +33,7 @@ export default function MerchantAccountOpeningApplicationForm() {
   const { branch } = useBranch();
   const { success: showSuccess, error: showError } = useToast();
   const navigate = useNavigate();
-  const { step, next, prev, isFirst, isLast } = useFormSteps(4); // 4 steps
+  const { step, next, prev, isFirst, isLast } = useFormSteps(5); // 5 steps
   const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
   const signaturePadRef = useRef<any>(null);
   const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
@@ -213,17 +213,6 @@ export default function MerchantAccountOpeningApplicationForm() {
         // Representative and contact details step
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Company:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Business Type:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.businessType || 'Not provided'}</span>
-              </div>
-            </div>
-            
             <h3 className="text-lg font-medium text-gray-900">Representative Details</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Representative Name</label>
@@ -275,21 +264,6 @@ export default function MerchantAccountOpeningApplicationForm() {
         // Signature step
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Company:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Representative:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.representativeName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Phone:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.phoneNumber || 'Not provided'}</span>
-              </div>
-            </div>
-            
             <SignatureStep 
               onSignatureComplete={handleSignatureComplete}
               onSignatureClear={handleSignatureClear}
@@ -297,7 +271,7 @@ export default function MerchantAccountOpeningApplicationForm() {
           </div>
         );
       case 4:
-        // OTP step
+        // Review step
         return (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
@@ -306,15 +280,44 @@ export default function MerchantAccountOpeningApplicationForm() {
                 <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Business Type:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.businessType || 'Not provided'}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Representative:</span>
                 <span className="font-semibold text-fuchsia-900">{formData.representativeName || 'Not provided'}</span>
               </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Licence Number:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.licenceNumber || 'Not provided'}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Tax Payer ID:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.taxPayerIdNumber || 'Not provided'}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Office Address:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.officeAddress || 'Not provided'}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">City:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.city || 'Not provided'}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Issue Date:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.issueDate || 'Not provided'}</span>
+              </div>
               <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Phone:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.phoneNumber || 'Not provided'}</span>
+                <span className="font-medium text-fuchsia-800">Expire Date:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.expireDate || 'Not provided'}</span>
               </div>
             </div>
-            
+          </div>
+        );
+      case 5:
+        // OTP step
+        return (
+          <div className="space-y-6">
             <OTPStep 
               otpCode={formData.otpCode} 
               onOtpChange={handleOtpChange} 
@@ -329,9 +332,9 @@ export default function MerchantAccountOpeningApplicationForm() {
     }
   };
 
-  // Custom navigation for step 3 - Replace Continue with Request OTP button
+  // Custom navigation for step 4 - Replace Continue with Request OTP button
   const renderCustomNavigation = () => {
-    if (step === 3) {
+    if (step === 4) {
       return (
         <div className="flex justify-between items-center pt-6 border-t border-gray-200">
           {!isFirst && (
@@ -369,14 +372,14 @@ export default function MerchantAccountOpeningApplicationForm() {
     return (
       <StepNavigation
         currentStep={step}
-        totalSteps={4}
+        totalSteps={5}
         onNext={isLast ? handleSubmit : next}
         onBack={prev}
         nextLabel={isLast ? 'Submit' : 'Continue'}
         nextDisabled={
           (step === 1 && !formData.companyName) || 
           (step === 2 && !formData.representativeName) ||
-          (step === 4 && formData.otpCode.length !== 6) || 
+          (step === 5 && formData.otpCode.length !== 6) || 
           isSubmitting
         }
         nextLoading={isSubmitting}

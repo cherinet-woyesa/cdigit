@@ -1,8 +1,22 @@
-
 // features/customer/components/stoppayment/ReviewStep.tsx
 import React from 'react';
+import { type StopPaymentOrderResponseDto } from '@services/transactions/stopPaymentService';
 
-export default function ReviewStep({ formData, selectedSpo }) {
+interface SPOFormData {
+    mode: string;
+    accountNumber: string;
+    chequeNumber: string;
+    amount: string;
+    chequeDate: string;
+    reason: string;
+}
+
+interface ReviewStepProps {
+    formData: SPOFormData;
+    selectedSpo: StopPaymentOrderResponseDto | null;
+}
+
+export default function ReviewStep({ formData, selectedSpo }: ReviewStepProps) {
     return (
         <div className="space-y-4">
             <h2 className="text-lg font-semibold">Review Details</h2>

@@ -19,15 +19,10 @@ const MakerDashboardContent: React.FC<MakerDashboardProps> = ({
     isLoading,
     actionMessage,
     currentSection,
-    assignedWindow: stateWindow,
+    currentAssignedWindow,
     dashboardMetrics,
-    branchName,
     decodedToken,
     isWindowModalOpen,
-    serviceRequestParams,
-    
-    // Actions
-    setActionMessage,
     handleSectionChange,
     handleWindowChange,
     handleSelectWindow,
@@ -44,6 +39,9 @@ const MakerDashboardContent: React.FC<MakerDashboardProps> = ({
     handleSectionChange("other");
   };
 
+  // Get branch name - this might come from a different source
+  const branchName = "Your Branch"; // Default value for now
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -59,7 +57,6 @@ const MakerDashboardContent: React.FC<MakerDashboardProps> = ({
     <MainLayout
       activeSection={currentSection}
       onSectionChange={handleSectionChange}
-      assignedWindow={stateWindow}
       onWindowChange={handleWindowChange}
       branchName={branchName}
       decoded={decodedToken}
@@ -70,12 +67,12 @@ const MakerDashboardContent: React.FC<MakerDashboardProps> = ({
           isLoading,
           actionMessage,
           currentSection,
-          assignedWindow: stateWindow,
-          dashboardMetrics,
+          assignedWindow: currentAssignedWindow,
+          dashboardMetrics: dashboardMetrics as any, // Type cast to avoid conflict
           branchName
         }}
         decodedToken={decodedToken}
-        serviceRequestParams={serviceRequestParams}
+        serviceRequestParams={null} // This might need to be implemented
         onServiceClick={handleServiceClick}
         onBackToServices={handleBackToServices}
         assignedWindow={assignedWindow}

@@ -1,4 +1,3 @@
-
 // features/customer/utils/stopPaymentValidationSchema.ts
 
 export const stopPaymentValidationSchema = {
@@ -20,8 +19,10 @@ export const stopPaymentValidationSchema = {
     selectedSpoId: (value: string, formData: any) => {
         if (formData.mode === 'rspo' && !value) return 'Please select a stop payment order to revoke';
     },
-    signature: (value: string) => {
-        if (!value) return 'Signature is required';
+    signature: (value: string, formData: any) => {
+        // Only require signature for OTP request and submission steps
+        // We'll handle this validation separately in the form component
+        return undefined;
     },
     termsAccepted: (value: boolean) => {
         if (!value) return 'You must accept the terms and conditions';

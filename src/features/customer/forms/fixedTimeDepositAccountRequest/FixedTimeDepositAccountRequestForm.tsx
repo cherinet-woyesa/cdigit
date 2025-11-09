@@ -1,5 +1,5 @@
 // features/customer/forms/fixedTimeDepositAccountRequest/FixedTimeDepositAccountRequestForm.tsx
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBranch } from '@context/BranchContext';
 import { useToast } from '@context/ToastContext';
@@ -12,6 +12,13 @@ import { SignatureStep } from '@features/customer/components/SignatureStep';
 import OTPStep from '@features/customer/components/stoppayment/OTPStep';
 import { fixedTimeDepositAccountRequestService } from '@services/forms/fixedTimeDepositAccountRequestService';
 import authService from '@services/auth/authService';
+import { 
+  User, 
+  Calendar, 
+  FileText, 
+  Shield,
+  DollarSign
+} from 'lucide-react';
 
 interface FormData {
   customerId: string;
@@ -29,9 +36,9 @@ interface FormData {
 
 export default function FixedTimeDepositAccountRequestForm() {
   const { branch } = useBranch();
-  const { success: showSuccess, error: showError } = useToast();
+  const { success: showSuccess, error: showError, info } = useToast();
   const navigate = useNavigate();
-  const { step, next, prev, isFirst, isLast } = useFormSteps(4); // 4 steps
+  const { step, next, prev, isFirst, isLast } = useFormSteps(5); // 5 steps now
   const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
   const signaturePadRef = useRef<any>(null);
   const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
@@ -121,10 +128,37 @@ export default function FixedTimeDepositAccountRequestForm() {
     }
 
     try {
-      await requestOTP(() => authService.requestOTP(formData.phoneNumber));
+      await requestOTP(
+        () => authService.requestOTP(formData.phoneNumber),
+        'OTP sent to your phone'
+      );
+      info('OTP sent to your phone');
       next();
     } catch (error: any) {
       showError(error?.message || 'Failed to send OTP.');
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!formData.phoneNumber) {
+      showError('Phone number not found for this account. Please contact support.');
+      return;
+    }
+
+    const phoneNumber = formData.phoneNumber.trim();
+    if (!phoneNumber) {
+      showError('Phone number not found for this account. Please contact support.');
+      return;
+    }
+
+    try {
+      await resendOTP(
+        () => authService.requestOTP(phoneNumber),
+        'OTP resent successfully'
+      );
+      info('OTP resent successfully');
+    } catch (error: any) {
+      showError(error?.message || 'Failed to resend OTP.');
     }
   };
 
@@ -162,34 +196,48 @@ export default function FixedTimeDepositAccountRequestForm() {
       case 1:
         // Account validation step
         return (
-          <div className="space-y-6">
-            <AccountSelector
-              accounts={[]}
-              selectedAccount={formData.accountNumber}
-              onAccountChange={handleAccountChange}
-              onAccountValidation={handleAccountValidation}
-              onPhoneNumberFetched={handlePhoneNumberFetched}
-              allowManualEntry={true}
-            />
-            {accountValidated && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
-                <input
-                  name="customerFullName"
-                  value={formData.customerFullName}
-                  readOnly
-                  placeholder="Customer Name"
-                  className="w-full p-3 border rounded-lg bg-gray-100"
-                />
-              </div>
-            )}
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <User className="h-5 w-5 text-fuchsia-700" />
+              Account Validation
+            </h2>
+            <div className="space-y-4">
+              <AccountSelector
+                accounts={[]}
+                selectedAccount={formData.accountNumber}
+                onAccountChange={handleAccountChange}
+                onAccountValidation={handleAccountValidation}
+                onPhoneNumberFetched={handlePhoneNumberFetched}
+                allowManualEntry={true}
+              />
+              
+              {!formData.accountNumber && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="text-sm font-medium text-amber-800">
+                    Please validate your account by entering the account number and clicking "Search"
+                  </div>
+                </div>
+              )}
+              
+              {formData.accountNumber && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="text-sm font-medium text-green-800">
+                    Account validated successfully
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         );
       case 2:
         // Deposit details step
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-fuchsia-700" />
+              Deposit Details
+            </h2>
+            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200 mb-6">
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Account Holder:</span>
                 <span className="font-semibold text-fuchsia-900">{formData.customerFullName}</span>
@@ -200,37 +248,52 @@ export default function FixedTimeDepositAccountRequestForm() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deposit Amount</label>
-                <input 
-                  name="depositAmount" 
-                  value={formData.depositAmount} 
-                  onChange={handleChange} 
-                  placeholder="Deposit Amount" 
-                  type="number" 
-                  className="w-full p-3 border rounded-lg" 
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Deposit Amount <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    name="depositAmount" 
+                    value={formData.depositAmount} 
+                    onChange={handleChange} 
+                    placeholder="Enter deposit amount" 
+                    type="number" 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contract Date</label>
-                <input 
-                  type="date" 
-                  name="contractDate" 
-                  value={formData.contractDate} 
-                  onChange={handleChange} 
-                  className="w-full p-3 border rounded-lg" 
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Contract Date <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="date" 
+                    name="contractDate" 
+                    value={formData.contractDate} 
+                    onChange={handleChange} 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Maturity Date</label>
-                <input 
-                  type="date" 
-                  name="maturityDate" 
-                  value={formData.maturityDate} 
-                  onChange={handleChange} 
-                  className="w-full p-3 border rounded-lg" 
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Maturity Date <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="date" 
+                    name="maturityDate" 
+                    value={formData.maturityDate} 
+                    onChange={handleChange} 
+                    className="w-full pl-10 p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+                  />
+                </div>
               </div>
               <div className="flex items-center pt-6">
                 <input 
@@ -238,9 +301,11 @@ export default function FixedTimeDepositAccountRequestForm() {
                   name="isRolloverAgreed" 
                   checked={formData.isRolloverAgreed} 
                   onChange={handleChange} 
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded" 
+                  className="h-4 w-4 text-fuchsia-600 border-fuchsia-300 rounded focus:ring-fuchsia-500" 
                 />
-                <label htmlFor="isRolloverAgreed" className="ml-2 block text-sm text-gray-900">Agree to Rollover</label>
+                <label htmlFor="isRolloverAgreed" className="ml-2 block text-sm text-gray-900">
+                  Agree to Rollover
+                </label>
               </div>
             </div>
           </div>
@@ -248,8 +313,12 @@ export default function FixedTimeDepositAccountRequestForm() {
       case 3:
         // Signature step
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-fuchsia-700" />
+              Digital Signature
+            </h2>
+            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200 mb-6">
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Account Holder:</span>
                 <span className="font-semibold text-fuchsia-900">{formData.customerFullName}</span>
@@ -260,7 +329,7 @@ export default function FixedTimeDepositAccountRequestForm() {
               </div>
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Deposit Amount:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.depositAmount} ETB</span>
+                <span className="font-semibold text-fuchsia-900">{Number(formData.depositAmount).toLocaleString()} ETB</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="font-medium text-fuchsia-800">Maturity Date:</span>
@@ -268,16 +337,29 @@ export default function FixedTimeDepositAccountRequestForm() {
               </div>
             </div>
             
-            <SignatureStep 
-              onSignatureComplete={handleSignatureComplete}
-              onSignatureClear={handleSignatureClear}
-            />
+            <div className="border border-fuchsia-200 rounded-lg p-4">
+              <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-fuchsia-700" />
+                Signature
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Please sign below to confirm your deposit request. This signature is legally binding.
+              </p>
+              <SignatureStep 
+                onSignatureComplete={handleSignatureComplete}
+                onSignatureClear={handleSignatureClear}
+              />
+            </div>
           </div>
         );
       case 4:
-        // OTP step
+        // Review step
         return (
-          <div className="space-y-6">
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-fuchsia-700" />
+              Review Your Request
+            </h2>
             <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Account Holder:</span>
@@ -289,7 +371,49 @@ export default function FixedTimeDepositAccountRequestForm() {
               </div>
               <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Deposit Amount:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.depositAmount} ETB</span>
+                <span className="font-semibold text-fuchsia-900">{Number(formData.depositAmount).toLocaleString()} ETB</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Contract Date:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.contractDate}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Maturity Date:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.maturityDate}</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="font-medium text-fuchsia-800">Rollover Agreed:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.isRolloverAgreed ? 'Yes' : 'No'}</span>
+              </div>
+            </div>
+            
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-700">
+                Please review all information carefully before proceeding. You will need to verify with an OTP sent to your registered phone number.
+              </p>
+            </div>
+          </div>
+        );
+      case 5:
+        // OTP step
+        return (
+          <div className="border border-fuchsia-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-fuchsia-700" />
+              OTP Verification
+            </h2>
+            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200 mb-6">
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Account Holder:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.customerFullName}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Account Number:</span>
+                <span className="font-mono font-semibold text-fuchsia-900">{formData.accountNumber}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
+                <span className="font-medium text-fuchsia-800">Deposit Amount:</span>
+                <span className="font-semibold text-fuchsia-900">{Number(formData.depositAmount).toLocaleString()} ETB</span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="font-medium text-fuchsia-800">Maturity Date:</span>
@@ -300,7 +424,7 @@ export default function FixedTimeDepositAccountRequestForm() {
             <OTPStep 
               otpCode={formData.otpCode} 
               onOtpChange={handleOtpChange} 
-              onResend={() => resendOTP(() => authService.requestOTP(formData.phoneNumber))} 
+              onResend={handleResendOTP} 
               resendCooldown={resendCooldown} 
               otpMessage={otpMessage} 
             />
@@ -311,9 +435,9 @@ export default function FixedTimeDepositAccountRequestForm() {
     }
   };
 
-  // Custom navigation for step 3 - Replace Continue with Request OTP button
+  // Custom navigation for step 4 - Replace Continue with Request OTP button
   const renderCustomNavigation = () => {
-    if (step === 3) {
+    if (step === 4) {
       return (
         <div className="flex justify-between items-center pt-6 border-t border-gray-200">
           {!isFirst && (
@@ -339,6 +463,7 @@ export default function FixedTimeDepositAccountRequestForm() {
               </>
             ) : (
               <>
+                <Shield className="h-4 w-4" />
                 Request OTP
               </>
             )}
@@ -351,14 +476,15 @@ export default function FixedTimeDepositAccountRequestForm() {
     return (
       <StepNavigation
         currentStep={step}
-        totalSteps={4}
+        totalSteps={5}
         onNext={isLast ? handleSubmit : next}
         onBack={prev}
-        nextLabel={isLast ? 'Submit' : 'Continue'}
+        nextLabel={isLast ? 'Submit Request' : 'Continue'}
         nextDisabled={
           (step === 1 && !accountValidated) || 
           (step === 2 && (!formData.depositAmount || !formData.maturityDate)) ||
-          (step === 4 && formData.otpCode.length !== 6) || 
+          (step === 3 && isSignatureEmpty) ||
+          (step === 5 && formData.otpCode.length !== 6) || 
           isSubmitting
         }
         nextLoading={isSubmitting}

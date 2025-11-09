@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import type { ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBranch } from '@context/BranchContext';
 import { useToast } from '@context/ToastContext';
@@ -7,8 +8,19 @@ import { useOTPHandling } from '@features/customer/hooks/useOTPHandling';
 import { FormLayout } from '@features/customer/components/FormLayout';
 import { StepNavigation } from '@features/customer/components/StepNavigation';
 import { SignatureStep } from '@features/customer/components/SignatureStep';
-import OTPStep from '@features/customer/components/stoppayment/OTPStep';
+import { AccountSelector } from '@features/customer/components/AccountSelector';
 import additionalPOSRequestService from '@services/forms/additionalPOSRequestService';
+import { 
+  Building, 
+  MapPin, 
+  User, 
+  Phone, 
+  Mail, 
+  FileText, 
+  Shield,
+  Home,
+  CheckCircle2
+} from 'lucide-react';
 
 interface FormData {
   companyName: string;
@@ -42,9 +54,9 @@ interface FormData {
 
 export default function AdditionalPOSRequestForm() {
   const { branch } = useBranch();
-  const { success: showSuccess, error: showError } = useToast();
+  const { success: showSuccess, error: showError, info } = useToast();
   const navigate = useNavigate();
-  const { step, next, prev, isFirst, isLast } = useFormSteps(6); // 6 steps
+  const { step, next, prev, isFirst, isLast } = useFormSteps(7); // 7 steps
   const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
   const signaturePadRef = useRef<any>(null);
   const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
@@ -81,6 +93,7 @@ export default function AdditionalPOSRequestForm() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accountPhoneNumber, setAccountPhoneNumber] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -116,9 +129,25 @@ export default function AdditionalPOSRequestForm() {
     setIsSecSignatureEmpty(true);
   };
 
+  const handleAccountValidation = (account: any | null) => {
+    if (account) {
+      // Account is valid, we could store account holder name if needed
+      console.log('Valid account:', account);
+    }
+  };
+
+  const handlePhoneNumberFetched = (phoneNumber: string) => {
+    setAccountPhoneNumber(phoneNumber);
+    // Also set it in formData for the OTP step
+    setFormData(prev => ({ ...prev, phoneNumber }));
+  };
+
   const handleRequestOTP = async () => {
-    if (!formData.phoneNumber) {
-      showError('Phone number is required.');
+    // Use phone number from account validation, fallback to manually entered phone
+    const phoneToUse = accountPhoneNumber || formData.phoneNumber;
+    
+    if (!phoneToUse) {
+      showError('Phone number not found for this account. Please contact support.');
       return;
     }
 
@@ -128,10 +157,30 @@ export default function AdditionalPOSRequestForm() {
     }
 
     try {
-      await requestOTP(() => additionalPOSRequestService.requestOTP(formData.phoneNumber));
+      await requestOTP(() => additionalPOSRequestService.requestOTP(phoneToUse));
       next();
     } catch (error: any) {
       showError(error?.message || 'Failed to send OTP.');
+    }
+  };
+
+  const handleResendOTP = async () => {
+    // Use phone number from account validation, fallback to manually entered phone
+    const phoneToUse = accountPhoneNumber || formData.phoneNumber;
+    
+    if (!phoneToUse) {
+      showError('Phone number not found for this account. Please contact support.');
+      return;
+    }
+
+    try {
+      await resendOTP(
+        () => additionalPOSRequestService.requestOTP(phoneToUse),
+        'OTP resent successfully'
+      );
+      info('OTP resent successfully');
+    } catch (error: any) {
+      showError(error?.message || 'Failed to resend OTP.');
     }
   };
 
@@ -188,375 +237,376 @@ export default function AdditionalPOSRequestForm() {
   const renderStep = () => {
     switch (step) {
       case 1:
-        // Company Information
+        // Linked Account Validation
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Company Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                <input 
-                  type="text" 
-                  name="companyName" 
-                  value={formData.companyName} 
-                  onChange={handleChange} 
-                  placeholder="Company Name" 
-                  className="w-full p-3 border rounded-lg" 
+            <div className="border border-amber-200 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-fuchsia-700" />Linked Account Validation
+              </h2>
+              <div className="space-y-4">
+                <AccountSelector
+                  accounts={[]} // Pass empty array to disable dropdown
+                  selectedAccount={formData.linkedAccountNumber}
+                  onAccountChange={(accountNumber: string, accountHolderName?: string) => {
+                    setFormData(prev => ({ ...prev, linkedAccountNumber: accountNumber }));
+                  }}
+                  onAccountValidation={handleAccountValidation}
+                  onPhoneNumberFetched={handlePhoneNumberFetched}
+                  label="Linked Account Number"
+                  required={true}
+                  error={""} // We'll handle validation separately
+                  allowManualEntry={true}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contract Number</label>
-                <input 
-                  type="text" 
-                  name="contractNumber" 
-                  value={formData.contractNumber} 
-                  onChange={handleChange} 
-                  placeholder="Contract Number" 
-                  className="w-full p-3 border rounded-lg" 
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reason For Additional POS</label>
-                <textarea 
-                  name="reasonForAdditionalPOS" 
-                  value={formData.reasonForAdditionalPOS} 
-                  onChange={handleChange} 
-                  placeholder="Reason For Additional POS" 
-                  className="w-full p-3 border rounded-lg" 
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Desktop POS Count</label>
-                <input 
-                  type="number" 
-                  name="desktopPOSCount" 
-                  value={formData.desktopPOSCount} 
-                  onChange={handleNumberChange} 
-                  placeholder="Desktop POS Count" 
-                  className="w-full p-3 border rounded-lg" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile POS Count</label>
-                <input 
-                  type="number" 
-                  name="mobilePOSCount" 
-                  value={formData.mobilePOSCount} 
-                  onChange={handleNumberChange} 
-                  placeholder="Mobile POS Count" 
-                  className="w-full p-3 border rounded-lg" 
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Place of Deployment</label>
-                <input 
-                  type="text" 
-                  name="placeOfDeployment" 
-                  value={formData.placeOfDeployment} 
-                  onChange={handleChange} 
-                  placeholder="Place of Deployment" 
-                  className="w-full p-3 border rounded-lg" 
-                />
+                
+                {!formData.linkedAccountNumber && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="text-sm font-medium text-amber-800">
+                      Please validate the linked account by entering the account number and clicking "Search"
+                    </div>
+                  </div>
+                )}
+                
+                {formData.linkedAccountNumber && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-sm font-medium text-green-800">
+                      Account validated successfully
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         );
       case 2:
-        // Address Information
+        // Company Information
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Company:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Contract #:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.contractNumber || 'Not provided'}</span>
-              </div>
-            </div>
-            
-            <h3 className="text-lg font-medium text-gray-900">Address</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
+          <div className="border border-amber-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Building className="h-5 w-5 text-fuchsia-700" />Company Information
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
                 <input 
                   type="text" 
-                  name="region" 
-                  value={formData.region} 
+                  name="companyName" 
+                  value={formData.companyName} 
                   onChange={handleChange} 
-                  placeholder="Region" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter company name" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Contract Number *</label>
+                <input 
+                  type="text" 
+                  name="contractNumber" 
+                  value={formData.contractNumber} 
+                  onChange={handleChange} 
+                  placeholder="Enter contract number" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reason For Additional POS *</label>
+                <textarea 
+                  name="reasonForAdditionalPOS" 
+                  value={formData.reasonForAdditionalPOS} 
+                  onChange={handleChange} 
+                  placeholder="Describe the reason for requesting additional POS terminals" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                  rows={4}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Zone</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Desktop POS Count</label>
                 <input 
-                  type="text" 
-                  name="zone" 
-                  value={formData.zone} 
-                  onChange={handleChange} 
-                  placeholder="Zone" 
-                  className="w-full p-3 border rounded-lg" 
+                  type="number" 
+                  name="desktopPOSCount" 
+                  value={formData.desktopPOSCount} 
+                  onChange={handleNumberChange} 
+                  placeholder="0" 
+                  min="0"
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Woreda</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mobile POS Count</label>
                 <input 
-                  type="text" 
-                  name="woreda" 
-                  value={formData.woreda} 
-                  onChange={handleChange} 
-                  placeholder="Woreda" 
-                  className="w-full p-3 border rounded-lg" 
+                  type="number" 
+                  name="mobilePOSCount" 
+                  value={formData.mobilePOSCount} 
+                  onChange={handleNumberChange} 
+                  placeholder="0" 
+                  min="0"
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kebele</label>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Place of Deployment *</label>
                 <input 
                   type="text" 
-                  name="kebele" 
-                  value={formData.kebele} 
+                  name="placeOfDeployment" 
+                  value={formData.placeOfDeployment} 
                   onChange={handleChange} 
-                  placeholder="Kebele" 
-                  className="w-full p-3 border rounded-lg" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                <input 
-                  type="text" 
-                  name="city" 
-                  value={formData.city} 
-                  onChange={handleChange} 
-                  placeholder="City" 
-                  className="w-full p-3 border rounded-lg" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">House Number</label>
-                <input 
-                  type="text" 
-                  name="houseNumber" 
-                  value={formData.houseNumber} 
-                  onChange={handleChange} 
-                  placeholder="House Number" 
-                  className="w-full p-3 border rounded-lg" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PO Box</label>
-                <input 
-                  type="text" 
-                  name="poBox" 
-                  value={formData.poBox} 
-                  onChange={handleChange} 
-                  placeholder="PO Box" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter place of deployment" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
               </div>
             </div>
           </div>
         );
       case 3:
-        // Linked Account and Primary Representative
+        // Address Information
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Company:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Location:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.city || formData.region || 'Not provided'}</span>
-              </div>
-            </div>
-            
-            <h3 className="text-lg font-medium text-gray-900">Linked Account</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Linked Account Number</label>
-              <input 
-                type="text" 
-                name="linkedAccountNumber" 
-                value={formData.linkedAccountNumber} 
-                onChange={handleChange} 
-                placeholder="Linked Account Number" 
-                className="w-full p-3 border rounded-lg" 
-              />
-            </div>
-            
-            <h3 className="text-lg font-medium text-gray-900">Primary Representative</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border border-amber-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-fuchsia-700" />Address Information
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Region *</label>
                 <input 
                   type="text" 
-                  name="repFullName" 
-                  value={formData.repFullName} 
+                  name="region" 
+                  value={formData.region} 
                   onChange={handleChange} 
-                  placeholder="Full Name" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter region" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Zone *</label>
                 <input 
-                  type="email" 
-                  name="repEmail" 
-                  value={formData.repEmail} 
+                  type="text" 
+                  name="zone" 
+                  value={formData.zone} 
                   onChange={handleChange} 
-                  placeholder="Email" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter zone" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telephone</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Woreda *</label>
                 <input 
-                  type="tel" 
-                  name="repTelNumber" 
-                  value={formData.repTelNumber} 
+                  type="text" 
+                  name="woreda" 
+                  value={formData.woreda} 
                   onChange={handleChange} 
-                  placeholder="Telephone" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter woreda" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
-                <SignatureStep 
-                  onSignatureComplete={handleSignatureComplete} 
-                  onSignatureClear={handleSignatureClear} 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Kebele</label>
+                <input 
+                  type="text" 
+                  name="kebele" 
+                  value={formData.kebele || ''} 
+                  onChange={handleChange} 
+                  placeholder="Enter kebele" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <input 
+                  type="text" 
+                  name="city" 
+                  value={formData.city || ''} 
+                  onChange={handleChange} 
+                  placeholder="Enter city" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">House Number</label>
+                <input 
+                  type="text" 
+                  name="houseNumber" 
+                  value={formData.houseNumber || ''} 
+                  onChange={handleChange} 
+                  placeholder="Enter house number" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">PO Box</label>
+                <input 
+                  type="text" 
+                  name="poBox" 
+                  value={formData.poBox || ''} 
+                  onChange={handleChange} 
+                  placeholder="Enter PO box" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
               </div>
             </div>
           </div>
         );
       case 4:
-        // Secondary Representative
+        // Primary Representative
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Company:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Primary Rep:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.repFullName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Phone:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.repTelNumber || 'Not provided'}</span>
-              </div>
-            </div>
-            
-            <h3 className="text-lg font-medium text-gray-900">Secondary Representative (Optional)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <div className="border border-amber-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <User className="h-5 w-5 text-fuchsia-700" />Primary Representative
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
                 <input 
                   type="text" 
-                  name="secRepFullName" 
-                  value={formData.secRepFullName || ''} 
+                  name="repFullName" 
+                  value={formData.repFullName} 
                   onChange={handleChange} 
-                  placeholder="Full Name" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter full name" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input 
-                  type="email" 
-                  name="secRepEmail" 
-                  value={formData.secRepEmail || ''} 
-                  onChange={handleChange} 
-                  placeholder="Email" 
-                  className="w-full p-3 border rounded-lg" 
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="email" 
+                    name="repEmail" 
+                    value={formData.repEmail} 
+                    onChange={handleChange} 
+                    placeholder="Enter email address" 
+                    className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                  />
+                </div>
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telephone</label>
-                <input 
-                  type="tel" 
-                  name="secRepTelNumber" 
-                  value={formData.secRepTelNumber || ''} 
-                  onChange={handleChange} 
-                  placeholder="Telephone" 
-                  className="w-full p-3 border rounded-lg" 
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
-                <SignatureStep 
-                  onSignatureComplete={handleSecSignatureComplete} 
-                  onSignatureClear={handleSecSignatureClear} 
-                />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Telephone *</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="tel" 
+                    name="repTelNumber" 
+                    value={formData.repTelNumber} 
+                    onChange={handleChange} 
+                    placeholder="Enter telephone number" 
+                    className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                  />
+                </div>
               </div>
             </div>
           </div>
         );
       case 5:
-        // Contact Information
+        // Secondary Representative
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Company:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Primary Rep:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.repFullName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Secondary Rep:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.secRepFullName || 'Not provided'}</span>
-              </div>
-            </div>
-            
-            <h3 className="text-lg font-medium text-gray-900">Contact Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number for OTP</label>
+          <div className="border border-amber-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <User className="h-5 w-5 text-fuchsia-700" />Secondary Representative (Optional)
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                 <input 
-                  type="tel" 
-                  name="phoneNumber" 
-                  value={formData.phoneNumber} 
+                  type="text" 
+                  name="secRepFullName" 
+                  value={formData.secRepFullName || ''} 
                   onChange={handleChange} 
-                  placeholder="Phone Number for OTP" 
-                  className="w-full p-3 border rounded-lg" 
+                  placeholder="Enter full name" 
+                  className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="email" 
+                    name="secRepEmail" 
+                    value={formData.secRepEmail || ''} 
+                    onChange={handleChange} 
+                    placeholder="Enter email address" 
+                    className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Telephone</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input 
+                    type="tel" 
+                    name="secRepTelNumber" 
+                    value={formData.secRepTelNumber || ''} 
+                    onChange={handleChange} 
+                    placeholder="Enter telephone number" 
+                    className="w-full pl-10 p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" 
+                  />
+                </div>
               </div>
             </div>
           </div>
         );
       case 6:
-        // OTP Verification
+        // Digital Signature
         return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Company:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.companyName || 'Not provided'}</span>
+          <div className="border border-amber-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-fuchsia-700" />Digital Signature
+            </h2>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Primary Representative Signature *</label>
+                <SignatureStep 
+                  onSignatureComplete={handleSignatureComplete} 
+                  onSignatureClear={handleSignatureClear} 
+                />
+                {isSignatureEmpty && (
+                  <p className="mt-1 text-sm text-red-600">Signature is required</p>
+                )}
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Primary Rep:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.repFullName || 'Not provided'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Phone:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.phoneNumber || 'Not provided'}</span>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-700">
+                  Please provide your signature above. This signature will be used for verification purposes.
+                </p>
               </div>
             </div>
-            
-            <OTPStep 
-              otpCode={formData.otpCode} 
-              onOtpChange={handleOtpChange} 
-              onResend={() => resendOTP(() => additionalPOSRequestService.requestOTP(formData.phoneNumber))} 
-              resendCooldown={resendCooldown} 
-              otpMessage={otpMessage} 
-            />
+          </div>
+        );
+      case 7:
+        // OTP Verification
+        return (
+          <div className="border border-amber-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-fuchsia-700" />OTP Verification
+            </h2>
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-700">An OTP has been sent to: <strong className="text-amber-900">{accountPhoneNumber || formData.phoneNumber || 'your registered phone number'}</strong></p>
+                {otpMessage && <p className="text-sm text-green-600 mt-1"><CheckCircle2 className="inline h-3 w-3 mr-1" />{otpMessage}</p>}
+              </div>
+              <div className="max-w-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Enter OTP *</label>
+                <input 
+                  type="text" 
+                  name="otpCode" 
+                  value={formData.otpCode} 
+                  onChange={(e) => handleOtpChange(e.target.value)} 
+                  maxLength={6} 
+                  className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-amber-200 font-mono bg-amber-50" 
+                  placeholder="000000" 
+                />
+                <div className="mt-2 flex justify-between items-center">
+                  <button 
+                    type="button" 
+                    onClick={handleResendOTP}
+                    disabled={resendCooldown > 0 || otpLoading} 
+                    className="text-sm text-fuchsia-700 hover:text-fuchsia-800 disabled:text-gray-400"
+                  >
+                    {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
+                  </button>
+                  <span className="text-sm text-gray-500">{formData.otpCode.length}/6</span>
+                </div>
+              </div>
+            </div>
           </div>
         );
       default:
@@ -564,9 +614,9 @@ export default function AdditionalPOSRequestForm() {
     }
   };
 
-  // Custom navigation for step 5 - Replace Continue with Request OTP button
+  // Custom navigation for step 6 - Replace Continue with Request OTP button
   const renderCustomNavigation = () => {
-    if (step === 5) {
+    if (step === 6) {
       return (
         <div className="flex justify-between items-center pt-6 border-t border-gray-200">
           {!isFirst && (
@@ -582,7 +632,7 @@ export default function AdditionalPOSRequestForm() {
           <button
             type="button"
             onClick={handleRequestOTP}
-            disabled={!formData.phoneNumber || otpLoading || isSignatureEmpty}
+            disabled={(!accountPhoneNumber && !formData.phoneNumber) || otpLoading || isSignatureEmpty}
             className="bg-fuchsia-600 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ml-auto"
           >
             {otpLoading ? (
@@ -604,17 +654,18 @@ export default function AdditionalPOSRequestForm() {
     return (
       <StepNavigation
         currentStep={step}
-        totalSteps={6}
+        totalSteps={7}
         onNext={isLast ? handleSubmit : next}
         onBack={prev}
-        nextLabel={isLast ? 'Submit' : 'Continue'}
+        nextLabel={isLast ? 'Submit Request' : 'Continue'}
         nextDisabled={
-          (step === 1 && (!formData.companyName || !formData.contractNumber)) || 
-          (step === 2 && !formData.region) ||
-          (step === 3 && (!formData.linkedAccountNumber || !formData.repFullName || isSignatureEmpty)) ||
-          (step === 4 && (formData.secRepFullName && !formData.secRepTelNumber)) ||
-          (step === 5 && !formData.phoneNumber) ||
-          (step === 6 && formData.otpCode.length !== 6) || 
+          (step === 1 && !formData.linkedAccountNumber) || 
+          (step === 2 && (!formData.companyName || !formData.contractNumber)) || 
+          (step === 3 && (!formData.region || !formData.zone || !formData.woreda)) ||
+          (step === 4 && (!formData.repFullName || !formData.repEmail || !formData.repTelNumber)) ||
+          (step === 5 && (formData.secRepFullName && (!formData.secRepEmail || !formData.secRepTelNumber))) ||
+          (step === 6 && false) || // Signature step, validation handled in handleRequestOTP
+          (step === 7 && formData.otpCode.length !== 6) || 
           isSubmitting
         }
         nextLoading={isSubmitting}
@@ -624,7 +675,7 @@ export default function AdditionalPOSRequestForm() {
   };
 
   return (
-    <FormLayout title="Additional POS Request" branchName={branch?.name} phone={null}>
+    <FormLayout title="Additional POS Request" branchName={branch?.name}>
       <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
         {renderStep()}
         {renderCustomNavigation()}

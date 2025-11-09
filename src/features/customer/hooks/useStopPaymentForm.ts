@@ -1,4 +1,3 @@
-
 // features/customer/hooks/useStopPaymentForm.ts
 import { useState } from 'react';
 import { type StopPaymentOrderResponseDto } from '@services/transactions/stopPaymentService';
@@ -8,6 +7,7 @@ export type SPOFormMode = 'spo' | 'rspo';
 export interface SPOFormData {
     mode: SPOFormMode;
     accountNumber: string;
+    accountHolderName?: string;
     chequeNumber: string;
     amount: string;
     chequeDate: string;
@@ -17,12 +17,14 @@ export interface SPOFormData {
     signature: string;
     otpCode: string;
     termsAccepted: boolean;
+    phoneNumber?: string;
 }
 
 export function useStopPaymentForm() {
     const [formData, setFormData] = useState<SPOFormData>({
         mode: 'spo',
         accountNumber: '',
+        accountHolderName: '',
         chequeNumber: '',
         amount: '',
         chequeDate: '',
@@ -32,6 +34,7 @@ export function useStopPaymentForm() {
         signature: '',
         otpCode: '',
         termsAccepted: false,
+        phoneNumber: '',
     });
     const [selectedSpo, setSelectedSpo] = useState<StopPaymentOrderResponseDto | null>(null);
 
@@ -44,6 +47,10 @@ export function useStopPaymentForm() {
             signature: '',
             otpCode: '',
             termsAccepted: false,
+            chequeNumber: '',
+            amount: '',
+            chequeDate: '',
+            reason: '',
         }));
         setSelectedSpo(null);
     };

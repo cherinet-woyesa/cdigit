@@ -58,7 +58,7 @@ export default function POSRequestForm() {
     const navigate = useNavigate();
     const { success: showSuccess, error: showError, info } = useToast();
 
-    const { step, next, prev, isFirst, isLast } = useFormSteps(4);
+    const { step, next, prev, isFirst, isLast } = useFormSteps(5);
     const { errors, validateField, clearFieldError } = useFormValidation(posRequestValidationSchema);
     const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
 
@@ -81,7 +81,8 @@ export default function POSRequestForm() {
         otpCode: '',
     });
 
-    const { regions, zones, woredas, regionLoading, zoneLoading, woredaLoading } = useAddressManagement(formData);
+    const addressManagement = useAddressManagement(formData);
+    const { regions, zones, woredas, regionLoading, zoneLoading, woredaLoading } = addressManagement;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [accountPhoneNumber, setAccountPhoneNumber] = useState<string | null>(null);
 
@@ -131,10 +132,11 @@ export default function POSRequestForm() {
 
     const validateCurrentStep = () => {
         const stepFields: Record<number, (keyof FormData)[]> = {
-            1: ['accountNumber', 'businessName', 'businessType', 'contactPerson', 'phoneNumber', 'email'],
-            2: ['region', 'zone', 'wereda', 'houseNumber'],
-            3: ['termsAccepted'],
-            4: ['otpCode'],
+            1: ['accountNumber'], // Only require account number in step 1
+            2: ['businessName', 'businessType', 'contactPerson', 'phoneNumber', 'email'],
+            3: ['region', 'zone', 'wereda', 'houseNumber'],
+            4: ['termsAccepted'],
+            5: ['otpCode'], // OTP step will be step 5 now
         };
 
         const fieldsToValidate = stepFields[step] || [];
@@ -147,6 +149,11 @@ export default function POSRequestForm() {
                 isValid = false;
             }
         });
+        
+        // Special validation for step 1 - account must be validated
+        if (step === 1 && !formData.accountNumber) {
+            isValid = false;
+        }
         
         return isValid;
     };
@@ -242,19 +249,42 @@ export default function POSRequestForm() {
     };
 
     const renderStep1 = () => (
+        <div className="space-y-6">
+            <AccountSelector
+                accounts={[]} // Pass empty array to disable dropdown
+                selectedAccount={formData.accountNumber}
+                onAccountChange={handleAccountChange}
+                onAccountValidation={handleAccountValidation}
+                onPhoneNumberFetched={handlePhoneNumberFetched}
+                error={errors.accountNumber}
+                allowManualEntry={true}
+            />
+            
+            {!formData.accountNumber && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="text-sm font-medium text-amber-800">
+                        Please validate the account by entering the account number and clicking "Search"
+                    </div>
+                </div>
+            )}
+            
+            {formData.accountNumber && accountPhoneNumber && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-sm font-medium text-green-800">
+                        Phone number: <strong>{accountPhoneNumber}</strong>
+                    </div>
+                    <div className="text-xs text-green-600 mt-1">
+                        OTP will be sent to this number
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderStep2 = () => (
         <div className="border border-amber-200 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><Building className="h-5 w-5 text-fuchsia-700" />Business Information</h2>
             <div className="space-y-6">
-                <AccountSelector
-                    accounts={[]} // Pass empty array to disable dropdown
-                    selectedAccount={formData.accountNumber}
-                    onAccountChange={handleAccountChange}
-                    onAccountValidation={handleAccountValidation}
-                    onPhoneNumberFetched={handlePhoneNumberFetched}
-                    error={errors.accountNumber}
-                    allowManualEntry={true}
-                />
-                
                 <div className="md:col-span-2">
                     <Field label="Business Name" required error={errors.businessName}>
                         <input type="text" name="businessName" value={formData.businessName} onChange={handleChange} className="w-full p-3 rounded-lg border border-amber-200 focus:ring-2 focus:ring-fuchsia-500 bg-amber-50" />
@@ -289,7 +319,7 @@ export default function POSRequestForm() {
         </div>
     );
 
-    const renderStep2 = () => (
+    const renderStep3 = () => (
         <div className="border border-amber-200 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><MapPin className="h-5 w-5 text-fuchsia-700" />Address Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -330,11 +360,35 @@ export default function POSRequestForm() {
         </div>
     );
 
-    const renderStep3 = () => (
+    const renderStep4 = () => (
         <div className="border border-amber-200 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><FileText className="h-5 w-5 text-fuchsia-700" />Review Information</h2>
             <div className="bg-amber-50 rounded-lg p-6 space-y-6">
-                {/* Review content here */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h3 className="font-medium text-gray-900">Account Information</h3>
+                        <p className="text-sm text-gray-600">Account Number: {formData.accountNumber}</p>
+                        <p className="text-sm text-gray-600">Customer Name: {formData.customerName}</p>
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-gray-900">Business Information</h3>
+                        <p className="text-sm text-gray-600">Business Name: {formData.businessName}</p>
+                        <p className="text-sm text-gray-600">Business Type: {formData.businessType}</p>
+                        <p className="text-sm text-gray-600">Contact Person: {formData.contactPerson}</p>
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-gray-900">Contact Information</h3>
+                        <p className="text-sm text-gray-600">Phone: {formData.phoneNumber}</p>
+                        <p className="text-sm text-gray-600">Email: {formData.email}</p>
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-gray-900">Address Information</h3>
+                        <p className="text-sm text-gray-600">Region: {formData.region}</p>
+                        <p className="text-sm text-gray-600">Zone: {formData.zone}</p>
+                        <p className="text-sm text-gray-600">Wereda: {formData.wereda}</p>
+                        <p className="text-sm text-gray-600">House Number: {formData.houseNumber}</p>
+                    </div>
+                </div>
             </div>
             <div className="mt-6">
                 <div className="flex items-start">
@@ -348,7 +402,7 @@ export default function POSRequestForm() {
         </div>
     );
 
-    const renderStep4 = () => {
+    const renderStep5 = () => {
         const phoneToDisplay = accountPhoneNumber || formData.phoneNumber;
         
         return (
@@ -381,6 +435,7 @@ export default function POSRequestForm() {
             case 2: return renderStep2();
             case 3: return renderStep3();
             case 4: return renderStep4();
+            case 5: return renderStep5();
             default: return null;
         }
     };
@@ -391,11 +446,11 @@ export default function POSRequestForm() {
                 {getStepContent()}
                 <StepNavigation 
                     currentStep={step} 
-                    totalSteps={4} 
-                    onNext={isLast ? handleSubmit : (step === 3 ? handleRequestOTP : handleNext)} 
+                    totalSteps={5} 
+                    onNext={isLast ? handleSubmit : (step === 4 ? handleRequestOTP : handleNext)} 
                     onBack={prev} 
-                    nextLabel={isLast ? 'Submit Request' : (step === 3 ? 'Request OTP' : 'Continue')} 
-                    nextDisabled={isSubmitting || otpLoading || (step === 3 && !formData.termsAccepted)} 
+                    nextLabel={isLast ? 'Submit Request' : (step === 4 ? 'Request OTP' : 'Continue')} 
+                    nextDisabled={isSubmitting || otpLoading || (step === 4 && !formData.termsAccepted)} 
                     nextLoading={isSubmitting || otpLoading} 
                     hideBack={isFirst} 
                 />

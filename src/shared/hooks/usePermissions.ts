@@ -4,15 +4,15 @@
  */
 
 import { useMemo } from 'react';
-import { useAuth } from '@context/AuthContext';
-import type { Permission, UserRole } from '@config/rbacMatrix';
+import { useAuth } from '../../context/AuthContext';
+import type { Permission, UserRole } from '../../config/rbacMatrix';
 import { 
   hasPermission, 
   hasAnyPermission, 
   hasAllPermissions,
   getRolePermissions 
-} from '@config/rbacMatrix';
-import authorizationAuditService from '@services/audit/authorizationAuditService';
+} from '../../config/rbacMatrix';
+import authorizationAuditService from '../../services/audit/authorizationAuditService';
 
 interface UsePermissionsReturn {
   /**

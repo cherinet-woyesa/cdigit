@@ -278,6 +278,12 @@ function App() {
             <Route path="/form/agent-account-opening" element={<AgentAccountOpeningForm />} />
             <Route path="/form/additional-pos-request" element={<AdditionalPOSRequestForm />} />
             <Route path="/form/cheque-return-slip" element={<ChequeReturnSlipForm />} />
+            <Route path="/form/cbe-birr-link" element={<CbeBirrLinkForm />} />
+            <Route path="/form/cbe-birr-link/confirmation" element={<CbeBirrLinkConfirmation />} />
+            
+            {/* Stop Payment form routes */}
+            <Route path="/form/stop-payment" element={<StopPaymentForm />} />
+            <Route path="/form/stop-payment/confirmation" element={<StopPaymentConfirmation />} />
             
             {/* Missing frontend forms - placeholders for future implementation */}
             <Route path="/form/balance-confirmation" element={<BalanceConfirmation />} />

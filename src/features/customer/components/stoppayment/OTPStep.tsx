@@ -1,4 +1,3 @@
-
 // features/customer/components/stoppayment/OTPStep.tsx
 import OTPVerification from '@features/customer/components/OTPVerification';
 
@@ -9,15 +8,16 @@ interface OTPStepProps {
     resendCooldown: number;
     otpMessage?: string;
     error?: string;
+    phone?: string;
 }
 
-export default function OTPStep({ otpCode, onOtpChange, onResend, resendCooldown, otpMessage, error }: OTPStepProps) {
+export default function OTPStep({ otpCode, onOtpChange, onResend, resendCooldown, otpMessage, error, phone }: OTPStepProps) {
     // OTPVerification expects onOtpChange to receive a string value, not an event
     // So we pass it directly
     return (
         <div>
             <OTPVerification 
-                phone="" // Phone is shown in the message already
+                phone={phone || ""} // Phone is shown in the message already
                 otp={otpCode}
                 onOtpChange={onOtpChange}
                 onResendOtp={onResend}

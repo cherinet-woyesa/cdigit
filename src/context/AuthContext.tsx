@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import type { AccessMethod } from '@types';
+import type { AccessMethod } from '../types/multiChannelAccess';
 import { accessMethodDetector } from "@services/multiChannel/accessMethodDetector";
 
 interface User {
@@ -81,23 +81,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Enhanced role extraction function
     const extractUserRole = (decodedPayload: any): string => {
-        // Try multiple possible role claim names
-        const roles = decodedPayload.role || 
-                     decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
-                     decodedPayload.roles ||
-                     decodedPayload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role'];
-        
-        // Handle different role formats
-        if (Array.isArray(roles)) {
-            return roles[0] || 'Customer';
-        } else if (typeof roles === 'string') {
-            return roles;
-        } else if (decodedPayload.roleName) {
-            return decodedPayload.roleName;
-        }
-        
-        // Default fallback
-        return 'Customer';
+      // Try multiple possible role claim names
+      const roles = decodedPayload.role || 
+                   decodedPayload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+                   decodedPayload.roles ||
+                   decodedPayload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role'];
+      
+      // Handle different role formats
+      if (Array.isArray(roles)) {
+        return roles[0] || 'Customer';
+      } else if (typeof roles === 'string') {
+        return roles;
+      } else if (decodedPayload.roleName) {
+        return decodedPayload.roleName;
+      }
+      
+      // Default fallback
+      return 'Customer';
     };
 
     // Enhanced branch ID extraction

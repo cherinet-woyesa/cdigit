@@ -27,7 +27,7 @@ export default function LostPassbookReplacementForm() {
   const { branch } = useBranch();
   const { success: showSuccess, error: showError } = useToast();
   const navigate = useNavigate();
-  const { step, next, prev, isFirst, isLast } = useFormSteps(4); // 4 steps
+  const { step, next, prev, isFirst, isLast } = useFormSteps(5); // 5 steps
   const { otpLoading, otpMessage, resendCooldown, requestOTP, resendOTP } = useOTPHandling();
   const signaturePadRef = useRef<any>(null);
   const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
@@ -173,17 +173,6 @@ export default function LostPassbookReplacementForm() {
         // Options and remark step
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Account Holder:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.customerName}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Account Number:</span>
-                <span className="font-mono font-semibold text-fuchsia-900">{formData.accountNumber}</span>
-              </div>
-            </div>
-            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Option</label>
               <select
@@ -212,23 +201,6 @@ export default function LostPassbookReplacementForm() {
         // Signature step
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Account Holder:</span>
-                <span className="font-semibold text-fuchsia-900">{formData.customerName}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
-                <span className="font-medium text-fuchsia-800">Account Number:</span>
-                <span className="font-mono font-semibold text-fuchsia-900">{formData.accountNumber}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="font-medium text-fuchsia-800">Option:</span>
-                <span className="font-semibold text-fuchsia-900">
-                  {formData.optionSelected === 'TransferToNewAccount' ? 'Transfer to New Account' : 'Responsibility Taken'}
-                </span>
-              </div>
-            </div>
-            
             <SignatureStep 
               onSignatureComplete={handleSignatureComplete}
               onSignatureClear={handleSignatureClear}
@@ -236,7 +208,7 @@ export default function LostPassbookReplacementForm() {
           </div>
         );
       case 4:
-        // OTP step
+        // Review step
         return (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 rounded-lg p-4 space-y-3 border border-fuchsia-200">
@@ -248,14 +220,23 @@ export default function LostPassbookReplacementForm() {
                 <span className="font-medium text-fuchsia-800">Account Number:</span>
                 <span className="font-mono font-semibold text-fuchsia-900">{formData.accountNumber}</span>
               </div>
-              <div className="flex justify-between items-center py-2">
+              <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
                 <span className="font-medium text-fuchsia-800">Option:</span>
                 <span className="font-semibold text-fuchsia-900">
                   {formData.optionSelected === 'TransferToNewAccount' ? 'Transfer to New Account' : 'Responsibility Taken'}
                 </span>
               </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="font-medium text-fuchsia-800">Remark:</span>
+                <span className="font-semibold text-fuchsia-900">{formData.remark || 'None'}</span>
+              </div>
             </div>
-            
+          </div>
+        );
+      case 5:
+        // OTP step
+        return (
+          <div className="space-y-6">
             <OTPStep 
               otpCode={formData.otp} 
               onOtpChange={handleOtpChange} 
@@ -270,9 +251,9 @@ export default function LostPassbookReplacementForm() {
     }
   };
 
-  // Custom navigation for step 3 - Replace Continue with Request OTP button
+  // Custom navigation for step 4 - Replace Continue with Request OTP button
   const renderCustomNavigation = () => {
-    if (step === 3) {
+    if (step === 4) {
       return (
         <div className="flex justify-between items-center pt-6 border-t border-gray-200">
           {!isFirst && (
@@ -310,14 +291,14 @@ export default function LostPassbookReplacementForm() {
     return (
       <StepNavigation
         currentStep={step}
-        totalSteps={4}
+        totalSteps={5}
         onNext={isLast ? handleSubmit : next}
         onBack={prev}
         nextLabel={isLast ? 'Submit' : 'Continue'}
         nextDisabled={
           (step === 1 && !accountValidated) || 
           (step === 2 && !formData.optionSelected) ||
-          (step === 4 && formData.otp.length !== 6) || 
+          (step === 5 && formData.otp.length !== 6) || 
           isSubmitting
         }
         nextLoading={isSubmitting}

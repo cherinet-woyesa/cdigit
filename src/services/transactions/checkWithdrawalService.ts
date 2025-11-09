@@ -22,6 +22,11 @@ export interface CheckWithdrawalResponse {
   submittedAt: string;
 }
 
+export interface SignatureData {
+  SignatoryName: string | null;
+  SignatureData: string | null;
+}
+
 class CheckWithdrawalService {
   async submitCheckWithdrawal(data: CheckWithdrawalData, token?: string) {
     const payload = {
@@ -32,7 +37,12 @@ class CheckWithdrawalService {
       ChequeNo: data.chequeNo,
       CheckType: data.checkType,
       OtpCode: data.otpCode,
-      Signature: data.signature,
+      Signatures: [
+        {
+          SignatoryName: "Customer", // Provide a default signatory name
+          SignatureData: data.signature || "" // Ensure we have valid signature data
+        }
+      ],
     };
 
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;

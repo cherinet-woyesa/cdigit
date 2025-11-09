@@ -13,8 +13,8 @@ import { OTPVerification } from '@features/customer/components/OTPVerification';
 import { StepNavigation } from '@features/customer/components/StepNavigation';
 import { SignatureStep } from '@features/customer/components/SignatureStep';
 import { checkWithdrawalValidationSchema } from '@features/customer/utils/extendedValidationSchemas';
-import { checkWithdrawalService } from '@services';
-import { authService } from '@services';
+import checkWithdrawalService from '@services/transactions/checkWithdrawalService';
+import authService from '@services/auth/authService';
 import { Shield } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 
@@ -22,8 +22,9 @@ interface FormData {
   accountNumber: string;
   accountHolderName: string;
   amount: string;
-  chequeNumber: string;
+  chequeNo: string;
   checkType: string;
+  checkValueDate: string;
   otp: string;
   phoneNumber: string;
   signature: string;
@@ -43,8 +44,9 @@ export default function CheckWithdrawal() {
     accountNumber: '',
     accountHolderName: '',
     amount: '',
-    chequeNumber: '',
+    chequeNo: '',
     checkType: '',
+    checkValueDate: '',
     otp: '',
     phoneNumber: '',
     signature: '',
@@ -52,7 +54,7 @@ export default function CheckWithdrawal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [accountValidated, setAccountValidated] = useState(false);
-
+  
   const handleAccountChange = (accountNumber: string, accountHolderName?: string) => {
     setFormData(prev => ({
       ...prev,
@@ -84,7 +86,10 @@ export default function CheckWithdrawal() {
   };
 
   const handleOtpChange = (otp: string) => {
-    setFormData(prev => ({ ...prev, otp }));
+    setFormData(prev => ({
+      ...prev,
+      otp
+    }));
     if (otp.length === 6) clearFieldError('otp');
   };
 
@@ -107,7 +112,7 @@ export default function CheckWithdrawal() {
         showError('Please enter a valid amount');
         return;
       }
-      if (!formData.chequeNumber.trim()) {
+      if (!formData.chequeNo.trim()) {
         showError('Please enter a cheque number');
         return;
       }
@@ -116,6 +121,10 @@ export default function CheckWithdrawal() {
     if (step === 2) {
       if (!formData.checkType) {
         showError('Please select a check type');
+        return;
+      }
+      if (!formData.checkValueDate) {
+        showError('Please select a check value date');
         return;
       }
     }
@@ -191,8 +200,9 @@ export default function CheckWithdrawal() {
         branchId: branch.id,
         accountNumber: formData.accountNumber,
         amount: parseFloat(formData.amount),
-        chequeNo: formData.chequeNumber,
+        chequeNo: formData.chequeNo,
         checkType: formData.checkType,
+        checkValueDate: formData.checkValueDate,
         otpCode: formData.otp,
         signature: formData.signature,
       };
@@ -239,13 +249,13 @@ export default function CheckWithdrawal() {
             </label>
             <input
               type="text"
-              value={formData.chequeNumber}
-              onChange={(e) => handleInputChange('chequeNumber')(e.target.value)}
+              value={formData.chequeNo}
+              onChange={(e) => handleInputChange('chequeNo')(e.target.value)}
               className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
               placeholder="Enter cheque number"
             />
-            {errors.chequeNumber && (
-              <p className="mt-1 text-sm text-red-600">{errors.chequeNumber}</p>
+            {errors.chequeNo && (
+              <p className="mt-1 text-sm text-red-600">{errors.chequeNo}</p>
             )}
           </div>
         </div>
@@ -271,6 +281,20 @@ export default function CheckWithdrawal() {
         </select>
         {errors.checkType && (
           <p className="mt-1 text-sm text-red-600">{errors.checkType}</p>
+        )}
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Check Value Date <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="date"
+          value={formData.checkValueDate}
+          onChange={(e) => handleInputChange('checkValueDate')(e.target.value)}
+          className="w-full p-3 rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500"
+        />
+        {errors.checkValueDate && (
+          <p className="mt-1 text-sm text-red-600">{errors.checkValueDate}</p>
         )}
       </div>
     </div>
@@ -305,27 +329,55 @@ export default function CheckWithdrawal() {
         </div>
         <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
           <span className="font-medium text-fuchsia-800">Cheque Number:</span>
-          <span className="font-semibold text-fuchsia-900">{formData.chequeNumber}</span>
+          <span className="font-semibold text-fuchsia-900">{formData.chequeNo}</span>
         </div>
-        <div className="flex justify-between items-center py-2">
+        <div className="flex justify-between items-center py-2 border-b border-fuchsia-300">
           <span className="font-medium text-fuchsia-800">Check Type:</span>
           <span className="font-semibold text-fuchsia-900">{formData.checkType}</span>
+        </div>
+        <div className="flex justify-between items-center py-2">
+          <span className="font-medium text-fuchsia-800">Check Value Date:</span>
+          <span className="font-semibold text-fuchsia-900">{formData.checkValueDate}</span>
         </div>
       </div>
     </div>
   );
 
   const renderStep5 = () => (
-    <OTPVerification
-      phone={formData.phoneNumber}
-      otp={formData.otp}
-      onOtpChange={handleOtpChange}
-      onResendOtp={handleResendOTP}
-      resendCooldown={resendCooldown}
-      loading={otpLoading}
-      error={errors.otp}
-      message={otpMessage}
-    />
+    <div className="border border-fuchsia-200 rounded-lg p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <Shield className="h-5 w-5 text-fuchsia-700" />
+        OTP Verification
+      </h2>
+      
+      <div className="bg-gradient-to-r from-amber-50 to-fuchsia-50 border border-fuchsia-200 rounded-lg p-4 mb-4">
+        <p className="text-sm text-fuchsia-700">
+          An OTP has been sent to your phone number: 
+          <strong className="text-fuchsia-900"> {formData.phoneNumber}</strong>
+        </p>
+      </div>
+
+      <div className="max-w-md">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Enter OTP <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={formData.otp}
+          onChange={(e) => {
+            const sanitizedValue = e.target.value.replace(/\D/g, '').slice(0, 6);
+            handleOtpChange(sanitizedValue);
+          }}
+          maxLength={6}
+          className="w-full p-3 text-center text-2xl tracking-widest rounded-lg border border-fuchsia-300 focus:ring-2 focus:ring-fuchsia-700 focus:border-fuchsia-700 font-mono bg-gradient-to-r from-amber-50 to-fuchsia-50 transition-colors duration-200"
+          placeholder="000000"
+        />
+        
+        {errors.otp && (
+          <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
+        )}
+      </div>
+    </div>
   );
 
   const getStepContent = () => {
@@ -375,46 +427,17 @@ export default function CheckWithdrawal() {
       );
     }
     
-    // For step 5, we need custom navigation with Verify & Submit button
-    if (step === 5) {
-      return (
-        <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={prev}
-            className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
-          >
-            Back
-          </button>
-          
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={formData.otp.length !== 6 || isSubmitting}
-            className="bg-fuchsia-600 text-white px-6 py-3 rounded-lg hover:bg-fuchsia-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ml-auto"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Submitting...
-              </>
-            ) : (
-              'Verify & Submit'
-            )}
-          </button>
-        </div>
-      );
-    }
-
+    // Use StepNavigation for other steps, including step 5
     return (
       <StepNavigation
         currentStep={step}
         totalSteps={5}
-        onNext={handleNext}
+        onNext={step === 5 ? handleSubmit : handleNext}
         onBack={prev}
-        nextLabel="Continue"
+        nextLabel={step === 5 ? 'Verify & Submit' : 'Continue'}
         nextDisabled={
           (step === 1 && !accountValidated) || 
+          (step === 5 && formData.otp.length !== 6) || 
           isSubmitting
         }
         nextLoading={isSubmitting}

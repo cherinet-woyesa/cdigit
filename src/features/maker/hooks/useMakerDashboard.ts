@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useAuth } from "@context/AuthContext";
 import { useNotification } from "@context/NotificationContext";
-import type { DecodedToken } from "@types";
-import type { ActionMessage } from "@types";
+import type { DecodedToken } from "../../../types";
+import type { ActionMessage } from "../../../types";
 import type { WindowDto } from "@services/makerService";
 import makerService from "@services/makerService";
 import type { Metric } from "@components/dashboard/DashboardMetrics";
@@ -50,6 +50,8 @@ export const useMakerDashboard = (activeSection: string, assignedWindow: WindowD
                         type: 'warning',
                         content: 'No window assigned. Please select a window to start serving customers.'
                     });
+                    // Automatically open the window selection modal when no window is assigned
+                    setWindowModalOpen(true);
                 }
             } catch (error: any) {
                 setActionMessage({
