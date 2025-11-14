@@ -107,7 +107,7 @@ const StaffLogin: React.FC = () => {
             <label className="block text-gray-700 font-medium text-sm md:text-lg" htmlFor="email-input">Email</label>
             <input
               id="email-input"
-              type="email"
+              // type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Your AD Email"
