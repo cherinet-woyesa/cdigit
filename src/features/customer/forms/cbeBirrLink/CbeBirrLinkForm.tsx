@@ -1,7 +1,9 @@
 // features/customer/forms/cbeBirrLink/CbeBirrLinkForm.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@context/AuthContext';
+import { useBranch } from '@context/BranchContext';
 import { useToast } from '@context/ToastContext';
 import { useFormSteps } from '@features/customer/hooks/useFormSteps';
 import { useFormValidation } from '@features/customer/hooks/useFormValidation';
@@ -16,26 +18,21 @@ import CustomerInfoSection from '@features/customer/components/CustomerInfoSecti
 import AccountSelection from '@features/customer/components/AccountSelection';
 import { Loader2 } from 'lucide-react';
 
-const ACTION_TYPES = [
-  { value: 'link', label: 'Link Account' },
-  { value: 'unlink', label: 'Unlink Account' },
-  { value: 'change_phone', label: 'Change Phone Number' },
-  { value: 'modify_end_date', label: 'Modify End Date' },
-];
-
-const ID_TYPES = [
-    { value: 'NID', label: 'National ID' },
-    { value: 'PASSPORT', label: 'Passport' },
-    { value: 'DRIVING_LICENSE', label: 'Driving License' },
-    { value: 'RESIDENCE_PERMIT', label: 'Residence Permit' },
-];
-
 export default function CbeBirrLinkForm() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { user, phone } = useAuth();
+    const { branch } = useBranch();
     const { success: showSuccess, error: showError } = useToast();
-    const { step, next, prev, isFirst, isLast, goTo } = useFormSteps(2);
+    const { step, next, isFirst, isLast, goTo } = useFormSteps(2);
     const { customerInfo, searchTerm, setSearchTerm, isSearching, searchCustomer } = useCustomerSearch();
+    
+    const ACTION_TYPES = [
+        { value: 'link', label: t('cbeBirrLinkForm.actionLink') },
+        { value: 'unlink', label: t('cbeBirrLinkForm.actionUnlink') },
+        { value: 'change_phone', label: t('cbeBirrLinkForm.actionChangePhone') },
+        { value: 'modify_end_date', label: t('cbeBirrLinkForm.actionModifyEndDate') },
+    ];
     
     const [formData, setFormData] = useState({
         actionType: 'link' as 'link' | 'unlink' | 'change_phone' | 'modify_end_date',
@@ -89,10 +86,15 @@ export default function CbeBirrLinkForm() {
     const handleSubmit = async () => {
         if (!validateForm(formData) || !customerInfo || !user) return;
 
+        if (!branch?.id) {
+            showError(t('cbeBirrLinkForm.branchMissing'));
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const requestData = {
-                branchName: user.branchId || 'Head Office',
+                branchName: branch.name || t('cbeBirrLinkForm.headOffice'),
                 customerId: customerInfo.customerId,
                 fullName: customerInfo.fullName,
                 idNumber: formData.idNumber,
@@ -106,20 +108,20 @@ export default function CbeBirrLinkForm() {
                 newEndDate: formData.newEndDate || undefined,
                 termsAccepted: formData.termsAccepted,
                 makerId: user.id,
-                makerName: `${user.firstName} ${user.lastName}`.trim() || 'System User',
+                makerName: `${user.firstName} ${user.lastName}`.trim() || t('cbeBirrLinkForm.systemUser'),
                 makerDate: new Date().toISOString(),
             };
             
             const result = await cbeBirrService.submitLinkRequest(requestData);
             
             if (result.success) {
-                showSuccess('Request submitted successfully!');
+                showSuccess(t('cbeBirrLinkForm.requestSubmittedSuccess'));
                 navigate('/form/cbe-birr-link/confirmation', { state: { request: result.data } });
             } else {
-                showError(result.message || 'Failed to submit request.');
+                showError(result.message || t('cbeBirrLinkForm.requestSubmitFailed'));
             }
         } catch (error: any) {
-            showError(error.message || 'An unexpected error occurred.');
+            showError(error.message || t('cbeBirrLinkForm.unexpectedError'));
         } finally {
             setIsSubmitting(false);
         }
@@ -127,18 +129,18 @@ export default function CbeBirrLinkForm() {
 
     const renderSearchStep = () => (
         <div className="bg-white p-6 rounded-lg border">
-            <h2 className="text-xl font-semibold mb-4">Customer Search</h2>
-            <p className="text-gray-600 mb-6">Enter customer's ID, phone, or account number.</p>
+            <h2 className="text-xl font-semibold mb-4">{t('cbeBirrLinkForm.customerSearch')}</h2>
+            <p className="text-gray-600 mb-6">{t('cbeBirrLinkForm.searchInstructions')}</p>
             <div className="flex space-x-2">
                 <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="flex-1 p-3 rounded-lg border"
-                    placeholder="Enter search term"
+                    placeholder={t('cbeBirrLinkForm.searchPlaceholder')}
                 />
                 <button onClick={handleSearch} disabled={isSearching || !searchTerm.trim()} className="px-4 py-2 bg-fuchsia-700 text-white rounded-lg">
-                    {isSearching ? <Loader2 className="animate-spin" /> : 'Search'}
+                    {isSearching ? <Loader2 className="animate-spin" /> : t('cbeBirrLinkForm.search')}
                 </button>
             </div>
         </div>
@@ -152,18 +154,18 @@ export default function CbeBirrLinkForm() {
                 <AccountSelection accounts={customerInfo.accounts} selectedAccounts={selectedAccounts} onToggleAccount={toggleAccount} onToggleAll={toggleAllAccounts} actionType={formData.actionType} />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Request Type" required>
+                    <Field label={t('cbeBirrLinkForm.requestType')} required>
                         <select name="actionType" value={formData.actionType} onChange={handleChange} className="w-full p-3 rounded-lg border">
                             {ACTION_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
                         </select>
                     </Field>
                     {formData.actionType === 'change_phone' && (
-                        <Field label="New Phone Number" required error={errors.newPhoneNumber}>
-                            <input type="tel" name="newPhoneNumber" value={formData.newPhoneNumber} onChange={handleChange} placeholder="+251XXXXXXXXX" className="w-full p-3 rounded-lg border" />
+                        <Field label={t('cbeBirrLinkForm.newPhoneNumber')} required error={errors.newPhoneNumber}>
+                            <input type="tel" name="newPhoneNumber" value={formData.newPhoneNumber} onChange={handleChange} placeholder={t('cbeBirrLinkForm.phonePlaceholder')} className="w-full p-3 rounded-lg border" />
                         </Field>
                     )}
                     {formData.actionType === 'modify_end_date' && (
-                        <Field label="New End Date" required error={errors.newEndDate}>
+                        <Field label={t('cbeBirrLinkForm.newEndDate')} required error={errors.newEndDate}>
                             <input type="date" name="newEndDate" value={formData.newEndDate} onChange={handleChange} min={new Date().toISOString().split('T')[0]} className="w-full p-3 rounded-lg border" />
                         </Field>
                     )}
@@ -173,7 +175,7 @@ export default function CbeBirrLinkForm() {
                     <div className="flex items-start">
                         <input id="termsAccepted" name="termsAccepted" type="checkbox" checked={formData.termsAccepted} onChange={handleChange} className="h-4 w-4" />
                         <div className="ml-3 text-sm">
-                            <label htmlFor="termsAccepted" className="font-medium">I agree to the terms and conditions</label>
+                            <label htmlFor="termsAccepted" className="font-medium">{t('cbeBirrLinkForm.agreeTerms')}</label>
                             {errors.termsAccepted && <p className="mt-1 text-sm text-red-600">{errors.termsAccepted}</p>}
                         </div>
                     </div>
@@ -183,7 +185,7 @@ export default function CbeBirrLinkForm() {
     };
 
     return (
-        <FormLayout title="CBE-Birr & Bank Account Link" phone={phone} branchName={user?.branchId}>
+        <FormLayout title={t('cbeBirrLinkForm.title')} phone={phone} branchName={branch?.name}>
             <div className="space-y-6">
                 {step === 1 ? renderSearchStep() : renderFormStep()}
                 <StepNavigation 
@@ -191,7 +193,7 @@ export default function CbeBirrLinkForm() {
                     totalSteps={2} 
                     onNext={isLast ? handleSubmit : handleSearch} 
                     onBack={() => goTo(1)} 
-                    nextLabel={isLast ? 'Submit' : 'Search'} 
+                    nextLabel={isLast ? t('cbeBirrLinkForm.submit') : t('cbeBirrLinkForm.search')} 
                     nextDisabled={isSubmitting || (isFirst && !searchTerm.trim())} 
                     nextLoading={isSubmitting || isSearching} 
                     hideBack={isFirst} 

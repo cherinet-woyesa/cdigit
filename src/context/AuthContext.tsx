@@ -41,18 +41,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [phone, setPhoneState] = useState<string | null>(null);
-    const [accessMethod, setAccessMethod] = useState<AccessMethod | null>(null);
 
-    // Detect access method on mount
-    useEffect(() => {
+    // TESTING MODE: Detect access method fresh every time (no state caching)
+    const accessMethod = (() => {
         try {
             const method = accessMethodDetector.detectAccessMethod();
-            setAccessMethod(method);
             console.log('AuthContext: Access method detected:', method);
+            return method;
         } catch (error) {
             console.error('AuthContext: Failed to detect access method:', error);
+            return 'mobile_app' as AccessMethod;
         }
-    }, []);
+    })();
 
     // Determine if authentication is required based on access method
     const requiresAuthentication = accessMethod === 'mobile_app';
@@ -238,9 +238,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log('AuthContext: Updated user branch to:', branchId);
         }
     };
-
-    // Helper function to check if user is staff
-    const isStaffUser = user?.role && ['Maker', 'Admin', 'Manager', 'Auditor', 'Authorizer', 'Greeter'].includes(user.role);
 
     return (
         <AuthContext.Provider value={{

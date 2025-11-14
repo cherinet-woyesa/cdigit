@@ -48,17 +48,25 @@ export const BranchProvider: React.FC<BranchProviderProps> = ({ children }) => {
   }, []);
 
   const setBranch = useCallback(async (newBranch: Branch | null) => {
+    console.log('=== BranchContext: setBranch called ===');
+    console.log('New branch:', newBranch);
+    console.log('Current user branchId:', user?.branchId);
+    
     setBranchState(newBranch);
     setError(null);
     
     if (newBranch) {
       localStorage.setItem('selectedBranch', JSON.stringify(newBranch));
+      console.log('Branch saved to localStorage:', newBranch.id);
+      
       // Update user's branch in auth context only if changed to avoid loops
       if (user?.branchId !== newBranch.id) {
+        console.log('Updating user branch in AuthContext to:', newBranch.id);
         updateUserBranch?.(newBranch.id);
       }
     } else {
       localStorage.removeItem('selectedBranch');
+      console.log('Branch cleared from localStorage');
     }
     
     return Promise.resolve();
@@ -80,6 +88,22 @@ export const BranchProvider: React.FC<BranchProviderProps> = ({ children }) => {
       console.log('BranchContext: Fetched branches:', fetchedBranches);
       
       setBranches(fetchedBranches);
+      
+      // TESTING: Always auto-select Abiy Branch for all cases
+      const abiyBranch = fetchedBranches.find(b => b.id === 'd9b1c3f7-4b05-44d3-b58e-9c5a5b4b90f6');
+      if (abiyBranch) {
+        console.log('BranchContext: Auto-selecting Abiy Branch for testing');
+        await setBranch(abiyBranch);
+        return;
+      } else {
+        console.warn('BranchContext: Abiy Branch not found in fetched branches');
+      }
+      
+      // If no user yet, skip branch auto-selection (will happen after login)
+      if (!user?.id) {
+        console.log('BranchContext: No user yet, branches loaded but not auto-selecting');
+        return;
+      }
       
       // For staff users, get branch from JWT token and auto-select it
       const isStaffRole = user?.role && ['Maker', 'Admin', 'Manager'].includes(user.role);
@@ -166,12 +190,23 @@ export const BranchProvider: React.FC<BranchProviderProps> = ({ children }) => {
 
   // Load branches on mount and when user changes
   useEffect(() => {
-    // FIXED: Only load branches if we have a user and branches aren't already loaded
-    if (user?.id && branches.length === 0 && !isLoading) {
-      console.log('BranchContext: Initializing branches for user:', user.id);
+    console.log('=== BranchContext: useEffect triggered ===');
+    console.log('User ID:', user?.id);
+    console.log('User role:', user?.role);
+    console.log('Branches length:', branches.length);
+    console.log('Is loading:', isLoading);
+    console.log('Current branch:', branch);
+    
+    // Load branches if not already loaded (user not required for QR/tablet access)
+    if (branches.length === 0 && !isLoading) {
+      console.log('BranchContext: Initializing branches (no user required)');
       loadBranches().catch(console.error);
+    } else {
+      console.log('BranchContext: Skipping loadBranches - conditions not met');
+      if (branches.length > 0) console.log('  - Branches already loaded:', branches.length);
+      if (isLoading) console.log('  - Already loading');
     }
-  }, [user?.id, loadBranches, branches.length, isLoading]); // FIXED: Added branches.length and isLoading to dependencies
+  }, [loadBranches, branches.length, isLoading, branch, user?.role, user?.id]); // Load on mount or when dependencies change
 
   const refreshBranch = useCallback(async () => {
     if (!branch?.id) return;

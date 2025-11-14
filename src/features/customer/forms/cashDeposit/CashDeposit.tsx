@@ -50,6 +50,12 @@ export default function CashDepositForm() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Debug: Monitor branch changes
+  useEffect(() => {
+    console.log('=== CashDeposit: Branch changed ===');
+    console.log('Branch:', branch);
+  }, [branch]);
+
   // Custom Hooks
   const { step, next, prev, isFirst, isLast } = useFormSteps(3); // Changed from 2 to 3 steps
   const { accounts, loadingAccounts, errorAccounts, selectedAccount, selectAccount } = useAccountSelection('selectedDepositAccount');
@@ -255,6 +261,12 @@ export default function CashDepositForm() {
       showError('Phone number is required. Please ensure the account has a valid phone number.');
       return;
     }
+    
+    // Debug: Log branch information
+    console.log('=== Branch Check Debug ===');
+    console.log('Branch object:', branch);
+    console.log('Branch ID:', branch?.id);
+    console.log('Branch name:', branch?.name);
     
     if (!branch?.id) {
       showError('Branch information is missing. Please select a branch and try again.');

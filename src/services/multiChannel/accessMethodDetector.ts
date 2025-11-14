@@ -5,9 +5,9 @@
  * and captures device information for security and audit purposes.
  */
 
-import type { AccessMethod, DeviceType, DeviceInfo } from '@types';
-import { ACCESS_METHODS, STORAGE_KEYS } from '@constants/multiChannelAccess';
-import { AccessMethodError } from '@types';
+import type { AccessMethod, DeviceType, DeviceInfo } from '../../types/multiChannelAccess';
+import { ACCESS_METHODS, STORAGE_KEYS } from '../../constants/multiChannelAccess';
+import { AccessMethodError } from '../../types/multiChannelAccess';
 
 /**
  * AccessMethodDetector Service
@@ -15,45 +15,32 @@ import { AccessMethodError } from '@types';
  */
 class AccessMethodDetectorService {
   private cachedDeviceInfo: DeviceInfo | null = null;
-  private cachedAccessMethod: AccessMethod | null = null;
 
   /**
    * Detects the access method based on URL, device type, and stored configuration
    * @returns The detected access method
    */
   detectAccessMethod(): AccessMethod {
-    // Check if already cached
-    if (this.cachedAccessMethod) {
-      return this.cachedAccessMethod;
-    }
-
+    // TESTING MODE: Don't use cached value, always detect fresh
+    // This allows easy switching between access methods for testing
+    
     try {
       // 1. Check for QR code access via URL path
       const path = window.location.pathname;
       if (path.startsWith('/qr-login/')) {
-        this.cachedAccessMethod = ACCESS_METHODS.QR_CODE;
-        this.storeAccessMethod(ACCESS_METHODS.QR_CODE);
+        console.log('AccessMethodDetector: Detected QR_CODE from URL path');
         return ACCESS_METHODS.QR_CODE;
       }
 
       // 2. Check for tablet configuration in local storage
       const tabletConfig = this.getTabletConfiguration();
       if (tabletConfig && this.isTabletDevice()) {
-        this.cachedAccessMethod = ACCESS_METHODS.BRANCH_TABLET;
-        this.storeAccessMethod(ACCESS_METHODS.BRANCH_TABLET);
+        console.log('AccessMethodDetector: Detected BRANCH_TABLET from config + device type');
         return ACCESS_METHODS.BRANCH_TABLET;
       }
 
-      // 3. Check stored access method (from previous session)
-      const storedAccessMethod = this.getStoredAccessMethod();
-      if (storedAccessMethod) {
-        this.cachedAccessMethod = storedAccessMethod;
-        return storedAccessMethod;
-      }
-
-      // 4. Default to mobile app for all other cases
-      this.cachedAccessMethod = ACCESS_METHODS.MOBILE_APP;
-      this.storeAccessMethod(ACCESS_METHODS.MOBILE_APP);
+      // 3. Default to mobile app for all other cases
+      console.log('AccessMethodDetector: Defaulting to MOBILE_APP');
       return ACCESS_METHODS.MOBILE_APP;
     } catch (error) {
       console.error('Error detecting access method:', error);
@@ -274,43 +261,7 @@ class AccessMethodDetectorService {
     }
   }
 
-  /**
-   * Gets stored access method from local storage
-   * @returns Stored access method or null
-   */
-  private getStoredAccessMethod(): AccessMethod | null {
-    try {
-      const storedMethod = localStorage.getItem(STORAGE_KEYS.ACCESS_METHOD);
-      if (storedMethod && this.isValidAccessMethod(storedMethod)) {
-        return storedMethod as AccessMethod;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error reading stored access method:', error);
-      return null;
-    }
-  }
 
-  /**
-   * Validates if a string is a valid access method
-   * @param method String to validate
-   * @returns True if valid access method
-   */
-  private isValidAccessMethod(method: string): boolean {
-    return Object.values(ACCESS_METHODS).includes(method as AccessMethod);
-  }
-
-  /**
-   * Stores access method in local storage
-   * @param method Access method to store
-   */
-  private storeAccessMethod(method: AccessMethod): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ACCESS_METHOD, method);
-    } catch (error) {
-      console.error('Error storing access method:', error);
-    }
-  }
 
   /**
    * Stores device info in local storage
@@ -339,11 +290,10 @@ class AccessMethodDetectorService {
   }
 
   /**
-   * Clears cached access method and device info
+   * Clears cached device info
    * Useful when switching access methods or logging out
    */
   clearCache(): void {
-    this.cachedAccessMethod = null;
     this.cachedDeviceInfo = null;
   }
 
@@ -353,7 +303,6 @@ class AccessMethodDetectorService {
    */
   clearStoredData(): void {
     try {
-      localStorage.removeItem(STORAGE_KEYS.ACCESS_METHOD);
       localStorage.removeItem(STORAGE_KEYS.DEVICE_INFO);
       this.clearCache();
     } catch (error) {
