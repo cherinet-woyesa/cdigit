@@ -3,6 +3,12 @@ import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle, MapPin, User, Home } from 'lucide-react';
 
+// *** NEW: Import Context and Logos ***
+import { useProductSelection } from '@context/ProductSelectionContext'; 
+import ConventionalLogo from '@assets/ConventionalLogo.jpg'; 
+import IFBLogo from '@assets/IFBLogo.png'; 
+
+
 interface FormLayoutProps {
   title: string;
   children: ReactNode;
@@ -23,6 +29,14 @@ export function FormLayout({
   className = "" 
 }: FormLayoutProps) {
   const navigate = useNavigate();
+
+  // Get the selected Customer segment from context ***
+  const { selectedProduct } = useProductSelection();
+  // Determine logos based on selection
+  const isIFB = selectedProduct === 'IFB';
+  const logoLeft = isIFB ? IFBLogo : ConventionalLogo;
+  const logoRight = isIFB ? ConventionalLogo : null; // Only Conventional logo is displayed on the right for IFB
+
 
   if (loading) {
     return (
@@ -45,12 +59,23 @@ export function FormLayout({
           <header className="bg-fuchsia-700 text-white">
             <div className="px-6 py-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h1 className="text-lg font-bold">{title}</h1>
-                  <div className="flex items-center gap-2 text-amber-100 text-xs mt-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>{branchName || 'Branch'}</span>
+                <div className="flex items-center gap-3"> {/* Added flex container */}
+                  {/* LEFT LOGO - Always Conventional unless IFB is selected */}
+                  <img src={logoLeft} alt={isIFB ? 'IFB Logo' : 'Conventional Logo'} className="h-8 w-8 rounded-full object-contain" />
+                  
+                  <div>
+                    <h1 className="text-lg font-bold">{title}</h1>
+                    <div className="flex items-center gap-2 text-amber-100 text-xs mt-1">
+                      <MapPin className="h-3 w-3" />
+                      <span>{branchName || 'Branch'}</span>
+                    </div>
                   </div>
+
+                  {/* RIGHT LOGO - Only displayed if IFB is selected (as per request: IFB logo before, Conventional after) */}
+                  {logoRight && (
+                    <img src={logoRight} alt="Conventional Logo" className="h-8 w-8 rounded-full object-contain ml-2 hidden sm:block" />
+                  )}
+                  
                 </div>
                 
                 <div className="flex items-center gap-3">

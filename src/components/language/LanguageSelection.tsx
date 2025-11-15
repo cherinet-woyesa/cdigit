@@ -43,7 +43,8 @@ const LanguageSelection: React.FC = () => {
     document.documentElement.lang = langCode;
     
     // Always navigate to dashboard after language selection
-    navigate('/dashboard');
+    // navigate('/dashboard');
+    navigate('/product-selection');
   }, [i18n, navigate, saveLastUsedLanguage]);
 
   // Keyboard navigation handler

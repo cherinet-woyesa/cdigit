@@ -29,6 +29,10 @@ import { AccessMethodIndicatorWithContext } from '@components/multiChannel/Acces
 import { BranchWatermarkWithContext } from '@components/multiChannel/BranchWatermark';
 // Import the logo
 import logo from '@assets/logo.jpg';
+import { useProductSelection, type ProductType } from '@context/ProductSelectionContext'; 
+// Import the logos
+import ConventionalLogo from '@assets/ConventionalLogo.jpg'; 
+import IFBLogo from '@assets/IFBLogo.png'; 
 
 type FormName =
   | 'accountOpening'
@@ -257,6 +261,10 @@ const CustomerDashboardContent: React.FC = () => {
   const [isNearbyBranchesModalOpen, setIsNearbyBranchesModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
+
+  // *** NEW: Get the selected Customer Segment from context ***
+  const { selectedProduct } = useProductSelection();
+
   // Debounced search with useCallback for stability
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -435,6 +443,15 @@ const CustomerDashboardContent: React.FC = () => {
     searchInputRef.current?.focus();
   }, []);
 
+
+  // Determine which logo to display
+  const currentLogo = useMemo(() => {
+    // Default to Conventional if context is not yet set (or based on your business rule)
+    if (selectedProduct === 'IFB') return IFBLogo;
+    return ConventionalLogo; 
+  }, [selectedProduct]);
+
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 to-fuchsia-50" ref={containerRef}>
       {/* Nearby Branches Modal */}
@@ -458,14 +475,15 @@ const CustomerDashboardContent: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
-              {/* Logo */}
-              <img src={logo} alt="Bank Logo" className="h-16 w-16 rounded-full object-contain" />
+              {/* Logo - DYNAMICALLY RENDERED */}
+              <img src={currentLogo} alt={`${selectedProduct || 'CBE'} Bank Logo`} className="h-16 w-16 rounded-full object-contain" />
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold">{t('bankName', 'Commercial Bank of Ethiopia')}</h1>
                 <p className="text-fuchsia-100 text-sm">
-                  {t('welcomeToCBE', 'Welcome to CBE Digital Banking')}
+                  {t('welcomeToCBE', `Welcome to CBE ${selectedProduct || 'Digital'} Banking`)}
                 </p>
               </div>
+              
             </div>
             
             <div className="flex items-center gap-2 sm:gap-3">

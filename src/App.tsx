@@ -89,6 +89,8 @@ import './utils/testApprovalWorkflows';
 import QrLoginPage from '@features/auth/QrLoginPage';
 import AuditorDashboard from '@features/auditor/AuditorDashboard';
 import AuthorizerDashboard from '@features/authorizer/AuthorizerDashboard';
+import { ProductSelectionProvider } from '@context/ProductSelectionContext';
+import ProductSelection from '@components/ProductSelection';
 // import GreeterDashboard from '@features/greeter/GreeterDashboard';
 
 // FIXED: DashboardRouter with better role handling
@@ -175,6 +177,7 @@ function App() {
   useTokenRefresh();
   
   return (
+    <ProductSelectionProvider>
     <NotificationProvider>
       <FeedbackProvider>
         <MultiChannelBranchProvider>
@@ -185,6 +188,7 @@ function App() {
             <Route path="/welcome" element={<Welcome />} />
             {/* Default entry point for CUSTOMERS */}
             <Route path="/language-selection" element={<LanguageSelection />} />
+            <Route path="/product-selection" element={<ProductSelection />} />
             <Route path="/select-branch" element={<BranchSelectionEnhanced />} />
             <Route path="/otp-login" element={<OTPLogin />} />
             <Route path="/qr-login" element={<QRLogin />} />
@@ -320,6 +324,7 @@ function App() {
         </MultiChannelBranchProvider>
       </FeedbackProvider>
     </NotificationProvider>
+    </ProductSelectionProvider>
   );
 }
 
